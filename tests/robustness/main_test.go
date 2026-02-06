@@ -115,13 +115,33 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 	}
 
 	validateConfig := validate.Config{ExpectRevisionUnique: s.Traffic.ExpectUniqueRevision()}
-	result := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
-	r.Visualize = result.Linearization.Visualize
-	err = result.Error()
-	if err != nil {
-		t.Error(err)
-	}
+	t.Run("Validate", func(t *testing.T) {
+		result := validate.ValidateAndReturnVisualize(&testTimer{T: t}, validateConfig, r.Client, persistedRequests, 5*time.Minute)
+		r.Visualize = result.Linearization.Visualize
+		err = result.Error()
+		if err != nil {
+			t.Error(err)
+		}
+	})
 	panicked = false
+}
+
+type testTimer struct {
+	*testing.T
+}
+
+func (t *testTimer) Run(name string, run func(t validate.TimerLogger)) {
+	lg := t.Logger()
+	lg.Info("Start " + name)
+	start := time.Now()
+	t.T.Run(name, func(t *testing.T) {
+		run(&testTimer{t})
+	})
+	lg.Info("End "+name, zap.Duration("duration", time.Since(start)))
+}
+
+func (t *testTimer) Logger() *zap.Logger {
+	return zaptest.NewLogger(t.T)
 }
 
 func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []report.ClientReport) {
@@ -139,11 +159,15 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 		defer close(failpointInjected)
 		// Give some time for traffic to reach qps target before injecting failpoint.
 		time.Sleep(randomizeTime(WaitBeforeFailpoint, WaitJitter))
-		fr, err := failpoint.Inject(ctx, t, lg, clus, s.Failpoint, baseTime, ids)
-		if err != nil {
-			t.Error(err)
-			cancel()
-		}
+		var fr *report.FailpointReport
+		t.Run("Failpoint", func(t *testing.T) {
+			var err error
+			fr, err = failpoint.Inject(ctx, t, lg, clus, s.Failpoint, baseTime, ids)
+			if err != nil {
+				t.Error(err)
+				cancel()
+			}
+		})
 		// Give some time for traffic to reach qps target after injecting failpoint.
 		time.Sleep(randomizeTime(WaitAfterFailpoint, WaitJitter))
 		if fr != nil {
@@ -157,10 +181,12 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		operationReport := traffic.SimulateTraffic(ctx, t, lg, clus, s.Profile, s.Traffic, failpointInjected, trafficSet)
-		maxRevision := report.OperationsMaxRevision(operationReport)
-		maxRevisionChan <- maxRevision
-		lg.Info("Finished simulating Traffic", zap.Int64("max-revision", maxRevision))
+		t.Run("Traffic", func(t *testing.T) {
+			operationReport := traffic.SimulateTraffic(ctx, t, lg, clus, s.Profile, s.Traffic, failpointInjected, trafficSet)
+			maxRevision := report.OperationsMaxRevision(operationReport)
+			maxRevisionChan <- maxRevision
+			lg.Info("Finished simulating Traffic", zap.Int64("max-revision", maxRevision))
+		})
 		return nil
 	})
 	watchSet := client.NewSet(ids, baseTime)
