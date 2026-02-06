@@ -175,10 +175,10 @@ func TestV2SetMemberAttributes(t *testing.T) {
 	srv.uberApply = srv.NewUberApplier()
 
 	req := pb.Request{
-		Method: "PUT",
-		ID:     1,
-		Path:   membership.MemberAttributesStorePath(1),
-		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:2379"]}`,
+		Method: ptr("PUT"),
+		ID:     ptr(uint64(1)),
+		Path:   ptr(membership.MemberAttributesStorePath(1)),
+		Val:    ptr(`{"Name":"abc","ClientURLs":["http://127.0.0.1:2379"]}`),
 	}
 	data, err := proto.Marshal(&req)
 	if err != nil {
@@ -220,10 +220,10 @@ func TestV2SetClusterVersion(t *testing.T) {
 	srv.uberApply = srv.NewUberApplier()
 
 	req := pb.Request{
-		Method: "PUT",
-		ID:     1,
-		Path:   membership.StoreClusterVersionKey(),
-		Val:    "3.5.0",
+		Method: ptr("PUT"),
+		ID:     ptr(uint64(1)),
+		Path:   ptr(membership.StoreClusterVersionKey()),
+		Val:    ptr("3.5.0"),
 	}
 	data, err := proto.Marshal(&req)
 	if err != nil {

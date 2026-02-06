@@ -200,8 +200,8 @@ func snapDir(dataDir string) string { return filepath.Join(dataDir, "member", "s
 func parseWALMetadata(b []byte) (id, cid types.ID) {
 	var metadata etcdserverpb.Metadata
 	pbutil.MustUnmarshal(&metadata, b)
-	id = types.ID(metadata.NodeID)
-	cid = types.ID(metadata.ClusterID)
+	id = types.ID(metadata.GetNodeID())
+	cid = types.ID(metadata.GetClusterID())
 	return id, cid
 }
 
@@ -323,15 +323,15 @@ func printRequest(entry raftpb.Entry) {
 	var r etcdserverpb.Request
 	if err := r.Unmarshal(entry.Data); err == nil {
 		fmt.Printf("%4d\t%10d\tnorm", entry.Term, entry.Index)
-		switch r.Method {
+		switch r.GetMethod() {
 		case "":
 			fmt.Print("\tnoop")
 		case methodSync:
-			fmt.Printf("\tmethod=SYNC time=%q", time.Unix(0, r.Time).UTC())
+			fmt.Printf("\tmethod=SYNC time=%q", time.Unix(0, r.GetTime()).UTC())
 		case methodQGet, methodDelete:
-			fmt.Printf("\tmethod=%s path=%s", r.Method, excerpt(r.Path, 64, 64))
+			fmt.Printf("\tmethod=%s path=%s", r.GetMethod(), excerpt(r.GetPath(), 64, 64))
 		default:
-			fmt.Printf("\tmethod=%s path=%s val=%s", r.Method, excerpt(r.Path, 64, 64), excerpt(r.Val, 128, 0))
+			fmt.Printf("\tmethod=%s path=%s val=%s", r.GetMethod(), excerpt(r.GetPath(), 64, 64), excerpt(r.GetVal(), 128, 0))
 		}
 	}
 }

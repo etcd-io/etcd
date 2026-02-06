@@ -503,6 +503,10 @@ func (s *v3Manager) copyAndVerifyDB() error {
 	return nil
 }
 
+func ptr[T any](a T) *T {
+	return &a
+}
+
 // saveWALAndSnap creates a WAL for the initial cluster
 //
 // TODO: This code ignores learners !!!
@@ -520,7 +524,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	}
 
 	m := s.cl.MemberByName(s.name)
-	md := &etcdserverpb.Metadata{NodeID: uint64(m.ID), ClusterID: uint64(s.cl.ID())}
+	md := &etcdserverpb.Metadata{NodeID: ptr(uint64(m.ID)), ClusterID: ptr(uint64(s.cl.ID()))}
 	metadata, merr := md.Marshal()
 	if merr != nil {
 		return nil, merr
