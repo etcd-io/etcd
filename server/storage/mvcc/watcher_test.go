@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
@@ -244,7 +243,7 @@ func TestWatchDeleteRange(t *testing.T) {
 
 	select {
 	case r := <-w.Chan():
-		if !reflect.DeepEqual(r.Events, we) {
+		if !protoDeepEqual(t, r.Events, we) {
 			t.Errorf("event = %v, want %v", r.Events, we)
 		}
 	case <-time.After(10 * time.Second):
@@ -365,7 +364,7 @@ func asssertProgressSent(t *testing.T, stream WatchStream, id WatchID, expectPro
 	case resp := <-stream.Chan():
 		if expectProgress {
 			wrs := WatchResponse{WatchID: id, Revision: 2}
-			if !reflect.DeepEqual(resp, wrs) {
+			if !protoDeepEqual(t, resp, wrs) {
 				t.Fatalf("got %+v, expect %+v", resp, wrs)
 			}
 		} else {
@@ -409,7 +408,7 @@ func TestWatcherRequestProgressAll(t *testing.T) {
 	wrs := WatchResponse{WatchID: clientv3.InvalidWatchID, Revision: 2}
 	select {
 	case resp := <-w.Chan():
-		if !reflect.DeepEqual(resp, wrs) {
+		if !protoDeepEqual(t, resp, wrs) {
 			t.Fatalf("got %+v, expect %+v", resp, wrs)
 		}
 	case <-time.After(time.Second):
