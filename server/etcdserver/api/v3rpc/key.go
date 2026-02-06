@@ -25,6 +25,7 @@ import (
 )
 
 type kvServer struct {
+	pb.UnsafeKVServer
 	hdr header
 	kv  etcdserver.RaftKV
 	// maxTxnOps is the max operations per txn.

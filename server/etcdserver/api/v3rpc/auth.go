@@ -23,6 +23,7 @@ import (
 )
 
 type AuthServer struct {
+	pb.UnsafeAuthServer
 	authenticator etcdserver.Authenticator
 }
 

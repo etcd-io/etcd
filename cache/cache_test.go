@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
@@ -223,8 +224,16 @@ func TestCacheWatchAtomicOrderedDelivery(t *testing.T) {
 
 			got := collectAndAssertAtomicEvents(ctx, t, watchCh, len(tt.wantBatch))
 
-			if diff := cmp.Diff(tt.wantBatch, got); diff != "" {
-				t.Fatalf("event mismatch (-want +got):\n%s", diff)
+			for i, want := range tt.wantBatch {
+				if i >= len(got) {
+					t.Fatalf("wanted index %d missing from got list", i)
+				}
+				// cast to actual proto message implementing types
+				want := (*mvccpb.Event)(want)
+				got := (*mvccpb.Event)(got[i])
+				if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+					t.Fatalf("event mismatch (-want +got):\n%s", diff)
+				}
 			}
 		})
 	}
@@ -688,7 +697,7 @@ func verifySnapshot(t *testing.T, cache *Cache, want []*mvccpb.KeyValue) {
 		t.Fatalf("Get all keys: %v", err)
 	}
 
-	if diff := cmp.Diff(want, resp.Kvs); diff != "" {
+	if diff := cmp.Diff(want, resp.Kvs, protocmp.Transform()); diff != "" {
 		t.Fatalf("cache snapshot mismatch (-want +got):\n%s", diff)
 	}
 }

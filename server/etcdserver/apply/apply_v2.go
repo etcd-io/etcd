@@ -38,19 +38,24 @@ func (r *RequestV2) String() string {
 	return rpb.String()
 }
 
-func v2ToV3Request(lg *zap.Logger, r *RequestV2) pb.InternalRaftRequest {
-	if r.Method != http.MethodPut || (!storeMemberAttributeRegexp.MatchString(r.Path) && r.Path != membership.StoreClusterVersionKey()) {
-		lg.Panic("detected disallowed v2 WAL for stage --v2-deprecation=write-only", zap.String("method", r.Method))
+func v2ToV3Request(lg *zap.Logger, rv2 *RequestV2) pb.InternalRaftRequest {
+	r := (*pb.Request)(rv2)
+	rMethod := r.GetMethod()
+	rPath := r.GetPath()
+	rVal := r.GetVal()
+	rID := r.GetID()
+	if rMethod != http.MethodPut || (!storeMemberAttributeRegexp.MatchString(rPath) && rPath != membership.StoreClusterVersionKey()) {
+		lg.Panic("detected disallowed v2 WAL for stage --v2-deprecation=write-only", zap.String("method", rMethod))
 	}
-	if storeMemberAttributeRegexp.MatchString(r.Path) {
-		id := membership.MustParseMemberIDFromKey(lg, path.Dir(r.Path))
+	if storeMemberAttributeRegexp.MatchString(rPath) {
+		id := membership.MustParseMemberIDFromKey(lg, path.Dir(rPath))
 		var attr membership.Attributes
-		if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
-			lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
+		if err := json.Unmarshal([]byte(rVal), &attr); err != nil {
+			lg.Panic("failed to unmarshal", zap.String("value", rVal), zap.Error(err))
 		}
 		return pb.InternalRaftRequest{
 			Header: &pb.RequestHeader{
-				ID: r.ID,
+				ID: rID,
 			},
 			ClusterMemberAttrSet: &membershippb.ClusterMemberAttrSetRequest{
 				Member_ID: uint64(id),
@@ -61,16 +66,16 @@ func v2ToV3Request(lg *zap.Logger, r *RequestV2) pb.InternalRaftRequest {
 			},
 		}
 	}
-	if r.Path == membership.StoreClusterVersionKey() {
+	if rPath == membership.StoreClusterVersionKey() {
 		return pb.InternalRaftRequest{
 			Header: &pb.RequestHeader{
-				ID: r.ID,
+				ID: rID,
 			},
 			ClusterVersionSet: &membershippb.ClusterVersionSetRequest{
-				Ver: r.Val,
+				Ver: rVal,
 			},
 		}
 	}
-	lg.Panic("detected disallowed v2 WAL for stage --v2-deprecation=write-only", zap.String("method", r.Method))
+	lg.Panic("detected disallowed v2 WAL for stage --v2-deprecation=write-only", zap.String("method", rMethod))
 	return pb.InternalRaftRequest{}
 }

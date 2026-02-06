@@ -133,16 +133,20 @@ func appendConfigChangeEnts(ents *[]raftpb.Entry) {
 	*ents = append(*ents, configChangeEntries...)
 }
 
+func ptr[T any](a T) *T {
+	return &a
+}
+
 func appendNormalRequestEnts(ents *[]raftpb.Entry) {
 	a := true
 	b := false
 
-	requests := []etcdserverpb.Request{
-		{ID: 0, Method: "", Path: "/path0", Val: "{\"hey\":\"ho\",\"hi\":[\"yo\"]}", Dir: true, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 9, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 1, Method: methodQGet, Path: "/path1", Val: "{\"0\":\"1\",\"2\":[\"3\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 9, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 2, Method: methodSync, Path: "/path2", Val: "{\"0\":\"1\",\"2\":[\"3\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 3, Method: methodDelete, Path: "/path3", Val: "{\"hey\":\"ho\",\"hi\":[\"yo\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &a, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 4, Method: methodRandom, Path: "/path4/superlong" + strings.Repeat("/path", 30), Val: "{\"hey\":\"ho\",\"hi\":[\"yo\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
+	requests := []*etcdserverpb.Request{
+		{ID: ptr(uint64(0)), Method: ptr(""), Path: ptr("/path0"), Val: ptr("{\"hey\":\"ho\",\"hi\":[\"yo\"]}"), Dir: ptr(true), PrevValue: ptr(""), PrevIndex: ptr(uint64(0)), PrevExist: &b, Expiration: ptr(int64(9)), Wait: ptr(false), Since: ptr(uint64(1)), Recursive: ptr(false), Sorted: ptr(false), Quorum: ptr(false), Time: ptr(int64(1)), Stream: ptr(false), Refresh: &b},
+		{ID: ptr(uint64(1)), Method: ptr(methodQGet), Path: ptr("/path1"), Val: ptr("{\"0\":\"1\",\"2\":[\"3\"]}"), Dir: ptr(false), PrevValue: ptr(""), PrevIndex: ptr(uint64(0)), PrevExist: &b, Expiration: ptr(int64(9)), Wait: ptr(false), Since: ptr(uint64(1)), Recursive: ptr(false), Sorted: ptr(false), Quorum: ptr(false), Time: ptr(int64(1)), Stream: ptr(false), Refresh: &b},
+		{ID: ptr(uint64(2)), Method: ptr(methodSync), Path: ptr("/path2"), Val: ptr("{\"0\":\"1\",\"2\":[\"3\"]}"), Dir: ptr(false), PrevValue: ptr(""), PrevIndex: ptr(uint64(0)), PrevExist: &b, Expiration: ptr(int64(2)), Wait: ptr(false), Since: ptr(uint64(1)), Recursive: ptr(false), Sorted: ptr(false), Quorum: ptr(false), Time: ptr(int64(1)), Stream: ptr(false), Refresh: &b},
+		{ID: ptr(uint64(3)), Method: ptr(methodDelete), Path: ptr("/path3"), Val: ptr("{\"hey\":\"ho\",\"hi\":[\"yo\"]}"), Dir: ptr(false), PrevValue: ptr(""), PrevIndex: ptr(uint64(0)), PrevExist: &a, Expiration: ptr(int64(2)), Wait: ptr(false), Since: ptr(uint64(1)), Recursive: ptr(false), Sorted: ptr(false), Quorum: ptr(false), Time: ptr(int64(1)), Stream: ptr(false), Refresh: &b},
+		{ID: ptr(uint64(4)), Method: ptr(methodRandom), Path: ptr("/path4/superlong" + strings.Repeat("/path", 30)), Val: ptr("{\"hey\":\"ho\",\"hi\":[\"yo\"]}"), Dir: ptr(false), PrevValue: ptr(""), PrevIndex: ptr(uint64(0)), PrevExist: &b, Expiration: ptr(int64(2)), Wait: ptr(false), Since: ptr(uint64(1)), Recursive: ptr(false), Sorted: ptr(false), Quorum: ptr(false), Time: ptr(int64(1)), Stream: ptr(false), Refresh: &b},
 	}
 
 	for i, request := range requests {
@@ -150,7 +154,7 @@ func appendNormalRequestEnts(ents *[]raftpb.Entry) {
 		currentry.Term = 3
 		currentry.Index = uint64(i + 5)
 		currentry.Type = raftpb.EntryNormal
-		currentry.Data = pbutil.MustMarshal(&request)
+		currentry.Data = pbutil.MustMarshalMessage(request)
 		*ents = append(*ents, currentry)
 	}
 }
@@ -218,7 +222,7 @@ func appendNormalIRREnts(ents *[]raftpb.Entry) {
 
 	irrauthrolerevokepermission := &etcdserverpb.AuthRoleRevokePermissionRequest{Role: "role3", Key: []byte("key"), RangeEnd: []byte("rangeend")}
 
-	irrs := []etcdserverpb.InternalRaftRequest{
+	irrs := []*etcdserverpb.InternalRaftRequest{
 		{ID: 5, Range: irrrange},
 		{ID: 6, Put: irrput},
 		{ID: 7, DeleteRange: irrdeleterange},
@@ -250,7 +254,7 @@ func appendNormalIRREnts(ents *[]raftpb.Entry) {
 		currentry.Term = uint64(i + 4)
 		currentry.Index = uint64(i + 10)
 		currentry.Type = raftpb.EntryNormal
-		currentry.Data = pbutil.MustMarshal(&irr)
+		currentry.Data = pbutil.MustMarshalMessage(irr)
 		*ents = append(*ents, currentry)
 	}
 }

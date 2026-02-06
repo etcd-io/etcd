@@ -252,9 +252,9 @@ func createWALFileWithSnapshotRecord(cfg config.ServerConfig, snapshotTerm, snap
 		err = w.Close()
 	}()
 
-	walSnap := walpb.Snapshot{
-		Index: snapshotIndex,
-		Term:  snapshotTerm,
+	walSnap := &walpb.Snapshot{
+		Index: &snapshotIndex,
+		Term:  &snapshotTerm,
 		ConfState: &raftpb.ConfState{
 			Voters:    []uint64{0x00ffca74},
 			AutoLeave: false,

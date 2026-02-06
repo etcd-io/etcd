@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -188,13 +189,13 @@ func TestIterationWithBatching(t *testing.T) {
 		name   string
 		method iterMethod
 		pivot  int64
-		want   [][]*clientv3.Event
+		want   [][]*mvccpb.Event
 	}{
 		{
 			name:   "ascending_gte_includes_batched_revision",
 			method: ascendGTE,
 			pivot:  10,
-			want: [][]*clientv3.Event{
+			want: [][]*mvccpb.Event{
 				{
 					{Kv: &mvccpb.KeyValue{Key: []byte("key-b-1"), ModRevision: 10}},
 					{Kv: &mvccpb.KeyValue{Key: []byte("key-b-2"), ModRevision: 10}},
@@ -209,7 +210,7 @@ func TestIterationWithBatching(t *testing.T) {
 			name:   "ascending_lt_stops_before_batched_revision",
 			method: ascendLT,
 			pivot:  10,
-			want: [][]*clientv3.Event{
+			want: [][]*mvccpb.Event{
 				{
 					{Kv: &mvccpb.KeyValue{Key: []byte("key-a"), ModRevision: 5}},
 				},
@@ -219,7 +220,7 @@ func TestIterationWithBatching(t *testing.T) {
 			name:   "all_revisions_with_proper_batch_sizes",
 			method: ascendGTE,
 			pivot:  0,
-			want: [][]*clientv3.Event{
+			want: [][]*mvccpb.Event{
 				{
 					{Kv: &mvccpb.KeyValue{Key: []byte("key-a"), ModRevision: 5}},
 				},
@@ -238,14 +239,18 @@ func TestIterationWithBatching(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			var got [][]*clientv3.Event
+			var got [][]*mvccpb.Event
 
 			rb.iterate(tt.method, tt.pivot, func(rev int64, events []*clientv3.Event) bool {
-				got = append(got, events)
+				var cast []*mvccpb.Event
+				for _, e := range events {
+					cast = append(cast, (*mvccpb.Event)(e))
+				}
+				got = append(got, cast)
 				return true
 			})
 
-			if diff := cmp.Diff(tt.want, got); diff != "" {
+			if diff := cmp.Diff(tt.want, got, protocmp.Transform()); diff != "" {
 				t.Fatalf("Events mismatch (-want +got):\n%s", diff)
 			}
 		})

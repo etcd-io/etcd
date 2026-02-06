@@ -27,6 +27,7 @@ import (
 )
 
 type ClusterServer struct {
+	pb.UnsafeClusterServer
 	cluster api.Cluster
 	server  *etcdserver.EtcdServer
 }

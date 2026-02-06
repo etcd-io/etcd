@@ -421,8 +421,8 @@ func recoverSnapshot(cfg config.ServerConfig, be backend.Backend, beExist bool, 
 		idx := len(walSnaps) - 1
 		snapshot = &raftpb.Snapshot{
 			Metadata: raftpb.SnapshotMetadata{
-				Term:  walSnaps[idx].Term,
-				Index: walSnaps[idx].Index,
+				Term:  walSnaps[idx].GetTerm(),
+				Index: walSnaps[idx].GetIndex(),
 			},
 		}
 		if walSnaps[idx].ConfState != nil {
@@ -627,11 +627,12 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*wal.WAL, *raftpb.HardState, []raftpb.Entry, *raftpb.Snapshot, *snapshotMetadata) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+		index, term := snapshot.Metadata.Index, snapshot.Metadata.Term
+		walsnap.Index, walsnap.Term = &index, &term
 	}
 	repaired := false
 	for {
-		w, err := wal.Open(cfg.Logger, cfg.WALDir(), walsnap)
+		w, err := wal.Open(cfg.Logger, cfg.WALDir(), &walsnap)
 		if err != nil {
 			cfg.Logger.Fatal("failed to open WAL", zap.Error(err))
 		}
@@ -654,9 +655,9 @@ func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*w
 			continue
 		}
 		var metadata etcdserverpb.Metadata
-		pbutil.MustUnmarshal(&metadata, wmetadata)
-		id := types.ID(metadata.NodeID)
-		cid := types.ID(metadata.ClusterID)
+		pbutil.MustUnmarshalMessage(&metadata, wmetadata)
+		id := types.ID(metadata.GetNodeID())
+		cid := types.ID(metadata.GetClusterID())
 		meta := &snapshotMetadata{clusterID: cid, nodeID: id}
 		return w, &st, ents, snapshot, meta
 	}
@@ -666,11 +667,15 @@ type snapshotMetadata struct {
 	nodeID, clusterID types.ID
 }
 
+func ptr[T any](a T) *T {
+	return &a
+}
+
 func bootstrapNewWAL(cfg config.ServerConfig, cl *bootstrappedCluster) *bootstrappedWAL {
-	metadata := pbutil.MustMarshal(
+	metadata := pbutil.MustMarshalMessage(
 		&etcdserverpb.Metadata{
-			NodeID:    uint64(cl.nodeID),
-			ClusterID: uint64(cl.cl.ID()),
+			NodeID:    ptr(uint64(cl.nodeID)),
+			ClusterID: ptr(uint64(cl.cl.ID())),
 		},
 	)
 	w, err := wal.Create(cfg.Logger, cfg.WALDir(), metadata)

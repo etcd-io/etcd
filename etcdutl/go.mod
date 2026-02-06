@@ -26,6 +26,7 @@ require (
 	go.etcd.io/etcd/server/v3 v3.6.0-alpha.0
 	go.etcd.io/raft/v3 v3.6.0-beta.0.0.20260116184858-6d944ca211ee
 	go.uber.org/zap v1.27.1
+	google.golang.org/protobuf v1.36.11
 	gotest.tools/v3 v3.5.2
 )
 
@@ -88,7 +89,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/grpc v1.78.0 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570 // indirect

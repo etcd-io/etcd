@@ -89,6 +89,8 @@ type maintenanceServer struct {
 	cg     ConfigGetter
 
 	healthNotifier notifier
+
+	pb.UnsafeMaintenanceServer
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer, healthNotifier notifier) pb.MaintenanceServer {

@@ -44,7 +44,7 @@ type watcher struct {
 	// nextrev is the minimum expected next event revision.
 	nextrev int64
 	// lastHeader has the last header sent over the stream.
-	lastHeader pb.ResponseHeader
+	lastHeader *pb.ResponseHeader
 
 	// wps is the parent.
 	wps *watchProxyStream
@@ -107,7 +107,7 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 
 	w.lastHeader = wr.Header
 	w.post(&pb.WatchResponse{
-		Header:          &wr.Header,
+		Header:          wr.Header,
 		Created:         wr.Created,
 		CompactRevision: wr.CompactRevision,
 		Canceled:        wr.Canceled,

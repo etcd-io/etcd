@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 const minSectorSize = 512
@@ -120,7 +121,7 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 		}
 		return err
 	}
-	if err := rec.Unmarshal(data[:recBytes]); err != nil {
+	if err := proto.Unmarshal(data[:recBytes], rec); err != nil {
 		if d.isTornEntry(data) {
 			return io.ErrUnexpectedEOF
 		}
@@ -128,7 +129,7 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 	}
 
 	// skip crc checking if the record type is CrcType
-	if rec.Type != CrcType {
+	if rec.GetType() != CrcType {
 		_, err := d.crc.Write(rec.Data)
 		if err != nil {
 			return err

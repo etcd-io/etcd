@@ -165,7 +165,9 @@ func (ms *MockServers) Stop() {
 	ms.wg.Wait()
 }
 
-type mockKVServer struct{}
+type mockKVServer struct {
+	pb.UnsafeKVServer
+}
 
 func (m *mockKVServer) Range(context.Context, *pb.RangeRequest) (*pb.RangeResponse, error) {
 	return &pb.RangeResponse{}, nil
@@ -191,7 +193,9 @@ func (m *mockKVServer) Lease(context.Context, *pb.LeaseGrantRequest) (*pb.LeaseG
 	return &pb.LeaseGrantResponse{}, nil
 }
 
-type mockLeaseServer struct{}
+type mockLeaseServer struct {
+	pb.UnsafeLeaseServer
+}
 
 func (s mockLeaseServer) LeaseGrant(context.Context, *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
 	return &pb.LeaseGrantResponse{}, nil
