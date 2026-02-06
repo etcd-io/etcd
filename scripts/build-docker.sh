@@ -26,38 +26,60 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-ARCH=$(go env GOARCH)
-VERSION="${VERSION}-${ARCH}"
-DOCKERFILE="Dockerfile"
+BUILD_DIR=${BUILD_DIR:-release}
+mkdir -p "${BUILD_DIR}"
 
-if [ -z "${BINARYDIR:-}" ]; then
-  RELEASE="etcd-${1}"-$(go env GOOS)-${ARCH}
-  BINARYDIR="${RELEASE}"
-  TARFILE="${RELEASE}.tar.gz"
-  TARURL="https://github.com/etcd-io/etcd/releases/download/${1}/${TARFILE}"
-  if ! curl -f -L -o "${TARFILE}" "${TARURL}" ; then
-    echo "Failed to download ${TARURL}."
-    exit 1
+PLATFORMS=${PLATFORMS:-"linux/amd64,linux/arm64,linux/ppc64le,linux/s390x"}
+
+for platform in $(echo "${PLATFORMS}" | tr ',' ' '); do
+  RELEASE="etcd-${VERSION}-linux-${platform#linux/}"
+  if [ ! -d "${BUILD_DIR}/${RELEASE}" ]; then
+    TARFILE="${RELEASE}.tar.gz"
+    TARURL="https://github.com/etcd-io/etcd/releases/download/${VERSION}/${TARFILE}"
+    if ! curl -f -L -o "${BUILD_DIR}/${TARFILE}" "${TARURL}" ; then
+      echo "Failed to download ${TARURL}."
+      exit 1
+    fi
+    tar -C "${BUILD_DIR}" -zvxf "${BUILD_DIR}/${TARFILE}"
   fi
-  tar -zvxf "${TARFILE}"
-fi
+done
 
-BINARYDIR=${BINARYDIR:-.}
-BUILDDIR=${BUILDDIR:-.}
-
-IMAGEDIR=${BUILDDIR}/image-docker
-
-mkdir -p "${IMAGEDIR}"/var/etcd
-mkdir -p "${IMAGEDIR}"/var/lib/etcd
-cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${BINARYDIR}"/etcdutl "${IMAGEDIR}"
-
-cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
-
-if [ -z "${TAG:-}" ]; then
-    # Fix incorrect image "Architecture" using buildkit
-    # From https://stackoverflow.com/q/72144329/
-    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
-    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
+tag_args=()
+if [ -z "${REGISTRY:-}" ]; then
+  tag_args+=("-t" "gcr.io/etcd-development/etcd:${VERSION}")
+  tag_args+=("-t" "quay.io/coreos/etcd:${VERSION}")
 else
-    docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
+  tag_args+=("-t" "${REGISTRY}/etcd:${VERSION}")
 fi
+
+if [ -n "${CI:-}" ]; then
+  docker run --privileged --rm tonistiigi/binfmt --install all
+  docker buildx create \
+    --name multiarch-multiplatform-builder \
+    --driver docker-container \
+    --bootstrap --use
+fi
+
+docker buildx build --build-arg="VERSION=${VERSION}" \
+  --build-arg="BUILD_DIR=${BUILD_DIR}" \
+  --platform="${PLATFORMS}" \
+  --load \
+  "${tag_args[@]}" \
+  .
+
+for platform in $(echo "${PLATFORMS}" | tr ',' ' '); do
+  platform_tag_args=()
+  for arg in "${tag_args[@]}"; do
+    if [ "${arg}" != "-t" ]; then
+      arg+="-${platform#linux/}"
+    fi
+    platform_tag_args+=("$arg")
+  done
+
+  docker buildx build --build-arg="VERSION=${VERSION}" \
+    --build-arg="BUILD_DIR=${BUILD_DIR}" \
+    --platform="${platform}" \
+    --load \
+    "${platform_tag_args[@]}" \
+    .
+done
