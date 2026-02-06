@@ -28,11 +28,12 @@ import (
 var ErrMissingLeaderKey = errors.New(`"leader" field must be provided`)
 
 type electionServer struct {
+	epb.UnsafeElectionServer
 	c *clientv3.Client
 }
 
 func NewElectionServer(c *clientv3.Client) epb.ElectionServer {
-	return &electionServer{c}
+	return &electionServer{c: c}
 }
 
 func (es *electionServer) Campaign(ctx context.Context, req *epb.CampaignRequest) (*epb.CampaignResponse, error) {

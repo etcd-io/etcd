@@ -51,6 +51,8 @@ type watchServer struct {
 	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
 	ag        AuthGetter
+
+	pb.UnsafeWatchServer
 }
 
 // NewWatchServer returns a new watch server.
