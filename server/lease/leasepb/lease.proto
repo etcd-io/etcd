@@ -9,7 +9,6 @@ option go_package = "go.etcd.io/etcd/server/v3/lease/leasepb;leasepb";
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
 option (gogoproto.unmarshaler_all) = true;
-option (gogoproto.goproto_getters_all) = false;
 
 message Lease {
   int64 ID = 1;
