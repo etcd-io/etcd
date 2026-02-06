@@ -257,6 +257,20 @@ type Config struct {
 	//revive:disable-next-line:var-naming
 	TlsMaxVersion string `json:"tls-max-version"`
 
+	// PeerTLSReloadCA enables dynamic reloading of peer trusted CA certificates.
+	// When enabled, the CA certificates specified in peer-trusted-ca-file are
+	// periodically reloaded, enabling zero-downtime CA rotation.
+	PeerTLSReloadCA bool `json:"peer-tls-reload-ca"`
+
+	// ClientTLSReloadCA enables dynamic reloading of client trusted CA certificates.
+	// When enabled, the CA certificates specified in trusted-ca-file are
+	// periodically reloaded, enabling zero-downtime CA rotation.
+	ClientTLSReloadCA bool `json:"client-tls-reload-ca"`
+
+	// TLSCAReloadInterval is the interval for checking CA file changes.
+	// Default is 10 seconds.
+	TLSCAReloadInterval time.Duration `json:"tls-ca-reload-interval"`
+
 	ClusterState          string `json:"initial-cluster-state"`
 	DNSCluster            string `json:"discovery-srv"`
 	DNSClusterServiceName string `json:"discovery-srv-name"`
@@ -703,6 +717,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&cfg.PeerTLSInfo.SkipClientSANVerify, "peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.")
 	fs.StringVar(&cfg.TlsMinVersion, "tls-min-version", string(tlsutil.TLSVersion12), "Minimum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3.")
 	fs.StringVar(&cfg.TlsMaxVersion, "tls-max-version", string(tlsutil.TLSVersionDefault), "Maximum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3 (empty defers to Go).")
+	fs.BoolVar(&cfg.PeerTLSReloadCA, "peer-tls-reload-ca", false, "Enable dynamic reloading of peer trusted CA certificates.")
+	fs.BoolVar(&cfg.ClientTLSReloadCA, "client-tls-reload-ca", false, "Enable dynamic reloading of client trusted CA certificates.")
+	fs.DurationVar(&cfg.TLSCAReloadInterval, "tls-ca-reload-interval", tlsutil.DefaultCAReloadInterval, "Interval for checking CA file changes when CA reload is enabled.")
 
 	fs.Var(
 		flags.NewUniqueURLsWithExceptions("*", "*"),
