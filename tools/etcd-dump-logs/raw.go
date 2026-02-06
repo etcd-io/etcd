@@ -1,0 +1,150 @@
+// Copyright 2022 The etcd Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package main
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"google.golang.org/protobuf/proto"
+
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/server/v3/storage/wal"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/raft/v3/raftpb"
+)
+
+func readRaw(fromIndex *uint64, waldir string, out io.Writer) {
+	var walReaders []fileutil.FileReader
+	dirEntry, err := os.ReadDir(waldir)
+	if err != nil {
+		log.Fatalf("Error: Failed to read directory '%s' error:%v", waldir, err)
+	}
+	for _, e := range dirEntry {
+		finfo, err := e.Info()
+		if err != nil {
+			log.Fatalf("Error: failed to get fileInfo of file: %s, error: %v", e.Name(), err)
+		}
+		if filepath.Ext(finfo.Name()) != ".wal" {
+			log.Printf("Warning: Ignoring not .wal file: %s", finfo.Name())
+			continue
+		}
+		f, err := os.Open(filepath.Join(waldir, finfo.Name()))
+		if err != nil {
+			log.Printf("Error: Failed to read file: %s . error:%v", finfo.Name(), err)
+		}
+		walReaders = append(walReaders, fileutil.NewFileReader(f))
+	}
+	decoder := wal.NewDecoderAdvanced(true, walReaders...)
+	// The variable is used to not pollute log with multiple continuous crc errors.
+	crcDesync := false
+	for {
+		rec := walpb.Record{}
+		err := decoder.Decode(&rec)
+		if err == nil || errors.Is(err, walpb.ErrCRCMismatch) {
+			if err != nil && !crcDesync {
+				log.Printf("Error: Reading entry failed with CRC error: %c", err)
+				crcDesync = true
+			}
+			printRec(&rec, fromIndex, out)
+			if rec.GetType() == wal.CrcType {
+				decoder.UpdateCRC(rec.GetCrc())
+				crcDesync = false
+			}
+			continue
+		}
+		if errors.Is(err, io.EOF) {
+			fmt.Fprintf(out, "EOF: All entries were processed.\n")
+			break
+		} else if errors.Is(err, io.ErrUnexpectedEOF) {
+			fmt.Fprintf(out, "ErrUnexpectedEOF: The last record might be corrupted, error: %v.\n", err)
+			break
+		}
+		log.Printf("Error: Reading failed: %v", err)
+		break
+	}
+}
+
+func printRec(rec *walpb.Record, fromIndex *uint64, out io.Writer) {
+	switch rec.GetType() {
+	case wal.MetadataType:
+		var metadata etcdserverpb.Metadata
+		pbutil.MustUnmarshalMessage(&metadata, rec.Data)
+		fmt.Fprintf(out, "Metadata: %s\n", metadata.String())
+	case wal.CrcType:
+		fmt.Fprintf(out, "CRC: %d\n", rec.GetCrc())
+	case wal.EntryType:
+		e := wal.MustUnmarshalEntry(rec.Data)
+		if fromIndex == nil || *e.Index >= *fromIndex {
+			// Format: Entry: Term:%d Index:%d Data:%q
+			typeStr := ""
+			if *e.Type != raftpb.EntryNormal {
+				typeStr = fmt.Sprintf(" Type:%s", e.Type.String())
+			}
+
+			// Helper to format data as octal escaped string to match the old v1 behavior:
+			var dataStr string
+			if len(e.Data) > 0 {
+				var buf strings.Builder
+				for _, b := range e.Data {
+					if b >= 32 && b < 127 && b != '"' && b != '\\' {
+						buf.WriteByte(b)
+					} else {
+						switch b {
+						case '\n':
+							buf.WriteString(`\n`)
+						case '\r':
+							buf.WriteString(`\r`)
+						case '\t':
+							buf.WriteString(`\t`)
+						case '"':
+							buf.WriteString(`\"`)
+						case '\\':
+							buf.WriteString(`\\`)
+						default:
+							fmt.Fprintf(&buf, "\\%03o", b)
+						}
+					}
+				}
+				dataStr = fmt.Sprintf(" Data:\"%s\" ", buf.String())
+			}
+
+			fmt.Fprintf(out, "Entry: Term:%d Index:%d%s%s\n", *e.Term, *e.Index, typeStr, dataStr)
+		}
+	case wal.SnapshotType:
+		var snap walpb.Snapshot
+		pbutil.MustUnmarshalMessage(&snap, rec.Data)
+		if fromIndex == nil || snap.GetIndex() >= *fromIndex {
+			fmt.Fprintf(out, "Snapshot: index:%d term:%d\n", snap.GetIndex(), snap.GetTerm())
+		}
+	case wal.StateType:
+		var state raftpb.HardState
+		if err := proto.Unmarshal(rec.Data, &state); err != nil {
+			log.Fatalf("Error unmarshaling hardstate: %v", err)
+		}
+		if fromIndex == nil || *state.Commit >= *fromIndex {
+			fmt.Fprintf(out, "HardState: %s\n", state.String())
+		}
+	default:
+		log.Printf("Unexpected WAL log type: %d", rec.GetType())
+	}
+}

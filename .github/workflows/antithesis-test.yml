@@ -1,0 +1,93 @@
+---
+name: Build and trigger Antithesis exploration
+
+on:
+  # pull_request:
+  #   branches: [main]
+  schedule:
+    - cron: "0 0 * * *" # run every day at midnight
+  workflow_dispatch:
+    inputs:
+      test:
+        description: 'Test name'
+        required: false
+        type: string
+      duration:
+        description: 'Duration (exploration hours)'
+        required: true
+        type: int
+      description:
+        description: 'Description (avoid quotes, please!)'
+        required: true
+        type: string
+      etcd_ref:
+        description: 'etcd version to build etcd-server from'
+        required: false
+        type: string
+      email:
+        description: 'Additional email notification recipient (separate with ;)'
+        required: true
+        type: string
+
+# Declare default permissions as read only.
+permissions: read-all
+
+env:
+  REGISTRY: us-central1-docker.pkg.dev
+  REPOSITORY: molten-verve-216720/linuxfoundation-repository
+
+jobs:
+  build-and-push-and-test:
+    runs-on: ubuntu-latest
+    environment: Antithesis
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Login to Antithesis Docker Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: _json_key
+          password: ${{ secrets.ANTITHESIS_CONTAINER_REGISTRY_TOKEN }}
+
+      - name: Build and push config image
+        working-directory: ./tests/antithesis
+        run: |
+          make antithesis-build-config-image IMAGE_TAG=${{ inputs.etcd_ref || 'main' }}_${{ github.sha }}
+          export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-config:${{ inputs.etcd_ref || 'main' }}_${{ github.sha }}"
+          docker tag etcd-config:latest $IMAGE
+          docker push $IMAGE
+
+      - name: Build and push client image
+        working-directory: ./tests/antithesis
+        run: |
+          make antithesis-build-client-docker-image
+          export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-client:${{ inputs.etcd_ref || 'main' }}_${{ github.sha }}"
+          docker tag etcd-client:latest $IMAGE
+          docker push $IMAGE
+
+      - name: Build and push etcd image
+        working-directory: ./tests/antithesis
+        run: |
+          make antithesis-build-etcd-image REF=${{ inputs.etcd_ref || 'main' }}
+          export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-server:${{ inputs.etcd_ref || 'main' }}_${{ github.sha }}"
+          docker tag etcd-server:latest $IMAGE
+          docker push $IMAGE
+
+      - name: Run Antithesis Tests
+        uses: antithesishq/antithesis-trigger-action@72e1bc49d6a5f66c9b892e2b311844e00d342554 # v0.11
+        with:
+          notebook_name: etcd
+          tenant: linuxfoundation
+          username: ${{ secrets.ANTITHESIS_WEBHOOK_USERNAME }}
+          password: ${{ secrets.ANTITHESIS_WEBHOOK_PASSWORD }}
+          github_token: ${{ secrets.GH_PAT }}
+          config_image: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-config:${{ inputs.etcd_ref || 'main' }}_${{ github.sha }}
+          images: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-client:${{ inputs.etcd_ref || 'main' }}_${{ github.sha }};us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-server:${{ inputs.etcd_ref || 'main' }}_${{ github.sha }};docker.io/library/ubuntu:latest;us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-config:${{ inputs.etcd_ref || 'main' }}_${{ github.sha }}
+          description: ${{ inputs.description || 'etcd nightly antithesis run' }}
+          email_recipients: ${{ inputs.email || 'siarkowicz@google.com' }}
+          test_name: ${{ inputs.test || 'etcd nightly antithesis run' }}
+          additional_parameters: |-
+            custom.duration = ${{ inputs.duration || 12 }}
+            antithesis.source = ${{ inputs.etcd_ref || 'main' }}

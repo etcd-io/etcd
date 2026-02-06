@@ -1,0 +1,27 @@
+[
+	{
+		"project": "sigs.k8s.io/yaml",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License"
+			}
+		]
+	},
+	{
+		"project": "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/inconshreveable/mousetrap",
+		"licenses": [
+			{
+				"type": "Apache License 2.0"
+			}
+		]
+	}
+]

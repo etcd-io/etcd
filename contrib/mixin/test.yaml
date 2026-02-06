@@ -1,0 +1,157 @@
+---
+rule_files: [manifests/etcd-prometheusRules.yaml]
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: up{job="etcd",instance="10.10.10.0"}
+        values: 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      - series: up{job="etcd",instance="10.10.10.1"}
+        values: 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      - series: up{job="etcd",instance="10.10.10.2"}
+        values: 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: etcdInsufficientMembers
+      - eval_time: 5m
+        alertname: etcdInsufficientMembers
+      - eval_time: 22m
+        alertname: etcdMembersDown
+      - eval_time: 24m
+        alertname: etcdMembersDown
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: warning
+            exp_annotations:
+              description: 'etcd cluster "etcd": members are down (3).'
+              summary: etcd cluster members are down.
+      - eval_time: 7m
+        alertname: etcdInsufficientMembers
+      - eval_time: 11m
+        alertname: etcdInsufficientMembers
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              description: 'etcd cluster "etcd": insufficient members (1).'
+              summary: etcd cluster has insufficient number of members.
+      - eval_time: 15m
+        alertname: etcdInsufficientMembers
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              description: 'etcd cluster "etcd": insufficient members (0).'
+              summary: etcd cluster has insufficient number of members.
+  - interval: 1m
+    input_series:
+      - series: up{job="etcd",instance="10.10.10.0"}
+        values: 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0
+      - series: up{job="etcd",instance="10.10.10.1"}
+        values: 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0
+      - series: up{job="etcd",instance="10.10.10.2"}
+        values: 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+    alert_rule_test:
+      - eval_time: 24m
+        alertname: etcdMembersDown
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: warning
+            exp_annotations:
+              description: 'etcd cluster "etcd": members are down (3).'
+              summary: etcd cluster members are down.
+  - interval: 1m
+    input_series:
+      - series: up{job="etcd",instance="10.10.10.0"}
+        values: 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0
+      - series: up{job="etcd",instance="10.10.10.1"}
+        values: 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0
+      - series: etcd_network_peer_sent_failures_total{To="member-1",job="etcd",endpoint="test"}
+        values: 0 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28
+    alert_rule_test:
+      - eval_time: 23m
+        alertname: etcdMembersDown
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: warning
+            exp_annotations:
+              description: 'etcd cluster "etcd": members are down (1).'
+              summary: etcd cluster members are down.
+  - interval: 1m
+    input_series:
+      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}
+        values: 0 0 2 0 0 1 0 0 0 0 0 0 0 0 0 0
+      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.1"}
+        values: 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0
+      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.2"}
+        values: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: etcdHighNumberOfLeaderChanges
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: warning
+            exp_annotations:
+              description: 'etcd cluster "etcd": 4 leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.'
+              summary: etcd cluster has high number of leader changes.
+  - interval: 1m
+    input_series:
+      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}
+        values: 0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0
+      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.1"}
+        values: 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0
+      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.2"}
+        values: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: etcdHighNumberOfLeaderChanges
+        exp_alerts:
+  - interval: 1m
+    input_series:
+      - series: etcd_mvcc_db_total_size_in_bytes{job="etcd",instance="10.10.10.0"}
+        values: 0+8192x240
+      - series: etcd_server_quota_backend_bytes{job="etcd",instance="10.10.10.0"}
+        values: 524288+0x240
+      - series: etcd_mvcc_db_total_size_in_bytes{job="etcd",instance="10.10.10.1"}
+        values: 0+1024x240
+      - series: etcd_server_quota_backend_bytes{job="etcd",instance="10.10.10.1"}
+        values: 524288+0x240
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: etcdExcessiveDatabaseGrowth
+        exp_alerts:
+          - exp_labels:
+              instance: 10.10.10.0
+              job: etcd
+              severity: warning
+            exp_annotations:
+              description: 'etcd cluster "etcd": Predicting running out of disk space in the next four hours, based on write observations within the past four hours on etcd instance 10.10.10.0, please check as it might be disruptive.'
+              summary: etcd cluster database growing very fast.
+  - interval: 1m
+    input_series:
+      - series: etcd_mvcc_db_total_size_in_use_in_bytes{job="etcd",instance="10.10.10.0"}
+        values: 300000000+0x10
+      - series: etcd_mvcc_db_total_size_in_bytes{job="etcd",instance="10.10.10.0"}
+        values: 1000000000+0x10
+      - series: etcd_mvcc_db_total_size_in_use_in_bytes{job="etcd",instance="10.10.10.1"}
+        values: 700000000+0x10
+      - series: etcd_mvcc_db_total_size_in_bytes{job="etcd",instance="10.10.10.1"}
+        values: 1000000000+0x10
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: etcdDatabaseHighFragmentationRatio
+        exp_alerts:
+          - exp_labels:
+              instance: 10.10.10.0
+              job: etcd
+              severity: warning
+            exp_annotations:
+              description: 'etcd cluster "etcd": database size in use on instance 10.10.10.0 is 30% of the actual allocated disk space, please run defragmentation (e.g. etcdctl defrag) to retrieve the unused fragmented disk space.'
+              runbook_url: https://etcd.io/docs/v3.5/op-guide/maintenance/#defragmentation
+              summary: etcd database size in use is less than 50% of the actual allocated storage.

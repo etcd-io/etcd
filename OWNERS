@@ -1,0 +1,19 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+approvers:
+  - sig-etcd-chairs     # Defined in OWNERS_ALIASES
+  - sig-etcd-tech-leads # Defined in OWNERS_ALIASES
+  - spzala              # Sahdev Zala <spzala@us.ibm.com>
+emeritus_approvers:
+  - bdarnell            # Ben Darnell <ben@bendarnell.com>
+  - fanminshi           # Fanmin Shi <fanmin.shi@gmail.com>
+  - gyuho               # Gyuho Lee <gyuhox@gmail.com>
+  - hexfusion           # Sam Batschelet <sbatsche@redhat.com>
+  - heyitsanthony       # Anthony Romano <romanoanthony061@gmail.com>
+  - jingyih             # Jingyi Hu <jingyih@google.com>
+  - jpbetz              # Joe Betz <jpbetz@google.com>
+  - mitake              # Hitoshi Mitake <h.mitake@gmail.com>
+  - philips             # Brandon Philips <brandon@ifup.org>
+  - ptabor              # Piotr Tabor <piotr.tabor@gmail.com>
+  - wenjiaswe           # Wenjia Zhang <wenjiazhang@google.com> <wenjia.swe@gmail.com>
+  - xiang90             # Xiang Li <xiangli.cs@gmail.com>

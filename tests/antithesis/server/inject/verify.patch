@@ -1,0 +1,22 @@
+diff --git a/client/pkg/verify/verify.go b/client/pkg/verify/verify.go
+index cb48d8ff0..095f890ec 100644
+--- a/client/pkg/verify/verify.go
++++ b/client/pkg/verify/verify.go
+@@ -18,6 +18,8 @@ import (
+ 	"fmt"
+ 	"os"
+ 	"strings"
++
++	"github.com/antithesishq/antithesis-sdk-go/assert"
+ )
+ 
+ const envVerify = "ETCD_VERIFY"
+@@ -69,7 +71,7 @@ func DisableVerifications() func() {
+ func Verify(msg string, f VerifyFunc) {
+ 	if IsVerificationEnabled(envVerifyValueAssert) {
+ 		ok, details := f()
+-		verifier(ok, msg, details)
++		assert.Always(ok, msg, details)
+ 	}
+ }
+ 

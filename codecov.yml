@@ -1,0 +1,42 @@
+---
+# https://docs.codecov.com/docs/codecovyml-reference
+codecov:
+  token: 6040de41-c073-4d6f-bbf8-d89256ef31e1
+  disable_default_path_fixes: true
+  require_ci_to_pass: false
+  notify:
+    wait_for_ci: false
+fixes:
+  - go.etcd.io/etcd/api/v3/::api/
+  - go.etcd.io/etcd/client/v3/::client/v3/
+  - go.etcd.io/etcd/etcdctl/v3/::etcdctl/
+  - go.etcd.io/etcd/etcdutl/v3/::etcdutl/
+  - go.etcd.io/etcd/pkg/v3/::pkg/
+  - go.etcd.io/etcd/server/v3/::server/
+ignore:
+  - '**/*.pb.go'
+  - '**/*.pb.gw.go'
+  - tests/**/*
+  - go.etcd.io/etcd/tests/**/*
+coverage:
+  range: 60..80
+  round: down
+  precision: 2
+  status:
+    project:
+      default:
+        target: auto
+        # allow some coverage reductions within a threshold
+        # this allows a 1% drop from the previous base commit coverage
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 80%
+comment:
+  layout: "header, files, diff, footer"
+  behavior: default # default: update, if exists. Otherwise post new; new: delete old and post new
+  require_changes: false # if true: only post the comment if coverage changes
+  require_base: false # [true :: must have a base report to post]
+  require_head: true # [true :: must have a head report to post]
+  hide_project_coverage: false # [true :: only show coverage on the git diff]

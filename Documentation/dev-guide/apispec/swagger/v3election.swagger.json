@@ -1,0 +1,402 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "server/etcdserver/api/v3election/v3electionpb/v3election.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "Election"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v3/election/campaign": {
+      "post": {
+        "summary": "Campaign waits to acquire leadership in an election, returning a LeaderKey\nrepresenting the leadership if successful. The LeaderKey can then be used\nto issue new values on the election, transactionally guard API requests on\nleadership still being held, and resign from the election.",
+        "operationId": "Election_Campaign",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3electionpbCampaignResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3electionpbCampaignRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Election"
+        ]
+      }
+    },
+    "/v3/election/leader": {
+      "post": {
+        "summary": "Leader returns the current election proclamation, if any.",
+        "operationId": "Election_Leader",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3electionpbLeaderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3electionpbLeaderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Election"
+        ]
+      }
+    },
+    "/v3/election/observe": {
+      "post": {
+        "summary": "Observe streams election proclamations in-order as made by the election's\nelected leaders.",
+        "operationId": "Election_Observe",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/v3electionpbLeaderResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of v3electionpbLeaderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3electionpbLeaderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Election"
+        ]
+      }
+    },
+    "/v3/election/proclaim": {
+      "post": {
+        "summary": "Proclaim updates the leader's posted value with a new value.",
+        "operationId": "Election_Proclaim",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3electionpbProclaimResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3electionpbProclaimRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Election"
+        ]
+      }
+    },
+    "/v3/election/resign": {
+      "post": {
+        "summary": "Resign releases election leadership so other campaigners may acquire\nleadership on the election.",
+        "operationId": "Election_Resign",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3electionpbResignResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3electionpbResignRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Election"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "etcdserverpbResponseHeader": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "cluster_id is the ID of the cluster which sent the response."
+        },
+        "member_id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "member_id is the ID of the member which sent the response."
+        },
+        "revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "revision is the key-value store revision when the request was applied, and it's\nunset (so 0) in case of calls not interacting with key-value store.\nFor watch progress responses, the header.revision indicates progress. All future events\nreceived in this stream are guaranteed to have a higher revision number than the\nheader.revision number."
+        },
+        "raft_term": {
+          "type": "string",
+          "format": "uint64",
+          "description": "raft_term is the raft term when the request was applied."
+        }
+      }
+    },
+    "mvccpbKeyValue": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "format": "byte",
+          "description": "key is the key in bytes. An empty key is not allowed."
+        },
+        "create_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "create_revision is the revision of last creation on this key."
+        },
+        "mod_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "mod_revision is the revision of last modification on this key."
+        },
+        "version": {
+          "type": "string",
+          "format": "int64",
+          "description": "version is the version of the key. A deletion resets\nthe version to zero and any modification of the key\nincreases its version."
+        },
+        "value": {
+          "type": "string",
+          "format": "byte",
+          "description": "value is the value held by the key, in bytes."
+        },
+        "lease": {
+          "type": "string",
+          "format": "int64",
+          "description": "lease is the ID of the lease that attached to key.\nWhen the attached lease expires, the key will be deleted.\nIf lease is 0, then no lease is attached to the key."
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v3electionpbCampaignRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "format": "byte",
+          "description": "name is the election's identifier for the campaign."
+        },
+        "lease": {
+          "type": "string",
+          "format": "int64",
+          "description": "lease is the ID of the lease attached to leadership of the election. If the\nlease expires or is revoked before resigning leadership, then the\nleadership is transferred to the next campaigner, if any."
+        },
+        "value": {
+          "type": "string",
+          "format": "byte",
+          "description": "value is the initial proclaimed value set when the campaigner wins the\nelection."
+        }
+      }
+    },
+    "v3electionpbCampaignResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "leader": {
+          "$ref": "#/definitions/v3electionpbLeaderKey",
+          "description": "leader describes the resources used for holding leadereship of the election."
+        }
+      }
+    },
+    "v3electionpbLeaderKey": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "format": "byte",
+          "description": "name is the election identifier that corresponds to the leadership key."
+        },
+        "key": {
+          "type": "string",
+          "format": "byte",
+          "description": "key is an opaque key representing the ownership of the election. If the key\nis deleted, then leadership is lost."
+        },
+        "rev": {
+          "type": "string",
+          "format": "int64",
+          "description": "rev is the creation revision of the key. It can be used to test for ownership\nof an election during transactions by testing the key's creation revision\nmatches rev."
+        },
+        "lease": {
+          "type": "string",
+          "format": "int64",
+          "description": "lease is the lease ID of the election leader."
+        }
+      }
+    },
+    "v3electionpbLeaderRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "format": "byte",
+          "description": "name is the election identifier for the leadership information."
+        }
+      }
+    },
+    "v3electionpbLeaderResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "kv": {
+          "$ref": "#/definitions/mvccpbKeyValue",
+          "description": "kv is the key-value pair representing the latest leader update."
+        }
+      }
+    },
+    "v3electionpbProclaimRequest": {
+      "type": "object",
+      "properties": {
+        "leader": {
+          "$ref": "#/definitions/v3electionpbLeaderKey",
+          "description": "leader is the leadership hold on the election."
+        },
+        "value": {
+          "type": "string",
+          "format": "byte",
+          "description": "value is an update meant to overwrite the leader's current value."
+        }
+      }
+    },
+    "v3electionpbProclaimResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "v3electionpbResignRequest": {
+      "type": "object",
+      "properties": {
+        "leader": {
+          "$ref": "#/definitions/v3electionpbLeaderKey",
+          "description": "leader is the leadership to relinquish by resignation."
+        }
+      }
+    },
+    "v3electionpbResignResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    }
+  }
+}

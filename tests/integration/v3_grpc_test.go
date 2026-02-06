@@ -1,0 +1,2357 @@
+// Copyright 2016 The etcd Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package integration
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"math/rand"
+	"os"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
+	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/testing/protocmp"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
+	gofail "go.etcd.io/gofail/runtime"
+)
+
+// TestV3PutOverwrite puts a key with the v3 api to a random Cluster member,
+// overwrites it, then checks that the change was applied.
+func TestV3PutOverwrite(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	key := []byte("foo")
+	reqput := &pb.PutRequest{Key: key, Value: []byte("bar"), PrevKv: true}
+
+	respput, err := kvc.Put(t.Context(), reqput)
+	require.NoErrorf(t, err, "couldn't put key")
+
+	// overwrite
+	reqput.Value = []byte("baz")
+	respput2, err := kvc.Put(t.Context(), reqput)
+	require.NoErrorf(t, err, "couldn't put key")
+	require.Greaterf(t, respput2.Header.Revision, respput.Header.Revision, "expected newer revision on overwrite, got %v <= %v",
+		respput2.Header.Revision, respput.Header.Revision)
+	if pkv := respput2.PrevKv; pkv == nil || string(pkv.Value) != "bar" {
+		t.Fatalf("expected PrevKv=bar, got response %+v", respput2)
+	}
+
+	reqrange := &pb.RangeRequest{Key: key}
+	resprange, err := kvc.Range(t.Context(), reqrange)
+	require.NoErrorf(t, err, "couldn't get key")
+	require.Lenf(t, resprange.Kvs, 1, "expected 1 key, got %v", len(resprange.Kvs))
+
+	kv := resprange.Kvs[0]
+	if kv.ModRevision <= kv.CreateRevision {
+		t.Errorf("expected modRev > createRev, got %d <= %d",
+			kv.ModRevision, kv.CreateRevision)
+	}
+	if !reflect.DeepEqual(reqput.Value, kv.Value) {
+		t.Errorf("expected value %v, got %v", reqput.Value, kv.Value)
+	}
+}
+
+// TestV3PutRestart checks if a put after an unrelated member restart succeeds
+func TestV3PutRestart(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	defer clus.Terminate(t)
+
+	kvIdx := rand.Intn(3)
+	kvc := integration.ToGRPC(clus.Client(kvIdx)).KV
+
+	stopIdx := kvIdx
+	for stopIdx == kvIdx {
+		stopIdx = rand.Intn(3)
+	}
+
+	clus.Client(stopIdx).Close()
+	clus.Members[stopIdx].Stop(t)
+	clus.Members[stopIdx].Restart(t)
+	c, cerr := integration.NewClientV3(clus.Members[stopIdx])
+	require.NoErrorf(t, cerr, "cannot create client")
+	clus.Members[stopIdx].ServerClient = c
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+	_, err := kvc.Put(ctx, reqput)
+	if err != nil && errors.Is(err, ctx.Err()) {
+		t.Fatalf("expected grpc error, got local ctx error (%v)", err)
+	}
+}
+
+// TestV3CompactCurrentRev ensures keys are present when compacting on current revision.
+func TestV3CompactCurrentRev(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	preq := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+	for i := 0; i < 3; i++ {
+		_, err := kvc.Put(t.Context(), preq)
+		require.NoErrorf(t, err, "couldn't put key")
+	}
+	// get key to add to proxy cache, if any
+	_, err := kvc.Range(t.Context(), &pb.RangeRequest{Key: []byte("foo")})
+	require.NoError(t, err)
+	// compact on current revision
+	_, err = kvc.Compact(t.Context(), &pb.CompactionRequest{Revision: 4})
+	require.NoErrorf(t, err, "couldn't compact kv space")
+	// key still exists when linearized?
+	_, err = kvc.Range(t.Context(), &pb.RangeRequest{Key: []byte("foo")})
+	require.NoErrorf(t, err, "couldn't get key after compaction")
+	// key still exists when serialized?
+	_, err = kvc.Range(t.Context(), &pb.RangeRequest{Key: []byte("foo"), Serializable: true})
+	require.NoErrorf(t, err, "couldn't get serialized key after compaction")
+}
+
+// TestV3HashKV ensures that multiple calls of HashKV on same node return same hash and compact rev.
+func TestV3HashKV(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	mvc := integration.ToGRPC(clus.RandClient()).Maintenance
+
+	for i := 0; i < 10; i++ {
+		resp, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte(fmt.Sprintf("bar%d", i))})
+		require.NoError(t, err)
+
+		rev := resp.Header.Revision
+		hresp, err := mvc.HashKV(t.Context(), &pb.HashKVRequest{Revision: 0})
+		require.NoError(t, err)
+		if rev != hresp.Header.Revision {
+			t.Fatalf("Put rev %v != HashKV rev %v", rev, hresp.Header.Revision)
+		}
+
+		prevHash := hresp.Hash
+		prevCompactRev := hresp.CompactRevision
+		for i := 0; i < 10; i++ {
+			hresp, err := mvc.HashKV(t.Context(), &pb.HashKVRequest{Revision: 0})
+			require.NoError(t, err)
+			if rev != hresp.Header.Revision {
+				t.Fatalf("Put rev %v != HashKV rev %v", rev, hresp.Header.Revision)
+			}
+
+			if prevHash != hresp.Hash {
+				t.Fatalf("prevHash %v != Hash %v", prevHash, hresp.Hash)
+			}
+
+			if prevCompactRev != hresp.CompactRevision {
+				t.Fatalf("prevCompactRev %v != CompactRevision %v", prevHash, hresp.Hash)
+			}
+
+			prevHash = hresp.Hash
+			prevCompactRev = hresp.CompactRevision
+		}
+	}
+}
+
+func TestV3TxnTooManyOps(t *testing.T) {
+	integration.BeforeTest(t)
+	maxTxnOps := uint(128)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, MaxTxnOps: maxTxnOps})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+
+	// unique keys
+	i := new(int)
+	keyf := func() []byte {
+		*i++
+		return []byte(fmt.Sprintf("key-%d", i))
+	}
+
+	addCompareOps := func(txn *pb.TxnRequest) {
+		txn.Compare = append(txn.Compare,
+			&pb.Compare{
+				Result: pb.Compare_GREATER,
+				Target: pb.Compare_CREATE,
+				Key:    keyf(),
+			})
+	}
+	addSuccessOps := func(txn *pb.TxnRequest) {
+		txn.Success = append(txn.Success,
+			&pb.RequestOp{
+				Request: &pb.RequestOp_RequestPut{
+					RequestPut: &pb.PutRequest{
+						Key:   keyf(),
+						Value: []byte("bar"),
+					},
+				},
+			})
+	}
+	addFailureOps := func(txn *pb.TxnRequest) {
+		txn.Failure = append(txn.Failure,
+			&pb.RequestOp{
+				Request: &pb.RequestOp_RequestPut{
+					RequestPut: &pb.PutRequest{
+						Key:   keyf(),
+						Value: []byte("bar"),
+					},
+				},
+			})
+	}
+	addTxnOps := func(txn *pb.TxnRequest) {
+		newTxn := &pb.TxnRequest{}
+		addSuccessOps(newTxn)
+		txn.Success = append(txn.Success,
+			&pb.RequestOp{
+				Request: &pb.RequestOp_RequestTxn{
+					RequestTxn: newTxn,
+				},
+			},
+		)
+	}
+
+	tests := []func(txn *pb.TxnRequest){
+		addCompareOps,
+		addSuccessOps,
+		addFailureOps,
+		addTxnOps,
+	}
+
+	for i, tt := range tests {
+		txn := &pb.TxnRequest{}
+		for j := 0; j < int(maxTxnOps+1); j++ {
+			tt(txn)
+		}
+
+		_, err := kvc.Txn(t.Context(), txn)
+		if !eqErrGRPC(err, rpctypes.ErrGRPCTooManyOps) {
+			t.Errorf("#%d: err = %v, want %v", i, err, rpctypes.ErrGRPCTooManyOps)
+		}
+	}
+}
+
+func TestV3TxnDuplicateKeys(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	putreq := &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: &pb.PutRequest{Key: []byte("abc"), Value: []byte("def")}}}
+	delKeyReq := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key: []byte("abc"),
+			},
+		},
+	}
+	delInRangeReq := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key: []byte("a"), RangeEnd: []byte("b"),
+			},
+		},
+	}
+	delOutOfRangeReq := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key: []byte("abb"), RangeEnd: []byte("abc"),
+			},
+		},
+	}
+	txnDelReq := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestTxn{
+			RequestTxn: &pb.TxnRequest{Success: []*pb.RequestOp{delInRangeReq}},
+		},
+	}
+	txnDelReqTwoSide := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestTxn{
+			RequestTxn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{delInRangeReq},
+				Failure: []*pb.RequestOp{delInRangeReq},
+			},
+		},
+	}
+
+	txnPutReq := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestTxn{
+			RequestTxn: &pb.TxnRequest{Success: []*pb.RequestOp{putreq}},
+		},
+	}
+	txnPutReqTwoSide := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestTxn{
+			RequestTxn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{putreq},
+				Failure: []*pb.RequestOp{putreq},
+			},
+		},
+	}
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	tests := []struct {
+		txnSuccess []*pb.RequestOp
+
+		werr error
+	}{
+		{
+			txnSuccess: []*pb.RequestOp{putreq, putreq},
+
+			werr: rpctypes.ErrGRPCDuplicateKey,
+		},
+		{
+			txnSuccess: []*pb.RequestOp{putreq, delKeyReq},
+
+			werr: rpctypes.ErrGRPCDuplicateKey,
+		},
+		{
+			txnSuccess: []*pb.RequestOp{putreq, delInRangeReq},
+
+			werr: rpctypes.ErrGRPCDuplicateKey,
+		},
+		// Then(Put(a), Then(Del(a)))
+		{
+			txnSuccess: []*pb.RequestOp{putreq, txnDelReq},
+
+			werr: rpctypes.ErrGRPCDuplicateKey,
+		},
+		// Then(Del(a), Then(Put(a)))
+		{
+			txnSuccess: []*pb.RequestOp{delInRangeReq, txnPutReq},
+
+			werr: rpctypes.ErrGRPCDuplicateKey,
+		},
+		// Then((Then(Put(a)), Else(Put(a))), (Then(Put(a)), Else(Put(a)))
+		{
+			txnSuccess: []*pb.RequestOp{txnPutReqTwoSide, txnPutReqTwoSide},
+
+			werr: rpctypes.ErrGRPCDuplicateKey,
+		},
+		// Then(Del(x), (Then(Put(a)), Else(Put(a))))
+		{
+			txnSuccess: []*pb.RequestOp{delOutOfRangeReq, txnPutReqTwoSide},
+
+			werr: nil,
+		},
+		// Then(Then(Del(a)), (Then(Del(a)), Else(Del(a))))
+		{
+			txnSuccess: []*pb.RequestOp{txnDelReq, txnDelReqTwoSide},
+
+			werr: nil,
+		},
+		{
+			txnSuccess: []*pb.RequestOp{delKeyReq, delInRangeReq, delKeyReq, delInRangeReq},
+
+			werr: nil,
+		},
+		{
+			txnSuccess: []*pb.RequestOp{putreq, delOutOfRangeReq},
+
+			werr: nil,
+		},
+	}
+	for i, tt := range tests {
+		txn := &pb.TxnRequest{Success: tt.txnSuccess}
+		_, err := kvc.Txn(t.Context(), txn)
+		if !eqErrGRPC(err, tt.werr) {
+			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+		}
+	}
+}
+
+// TestV3TxnRevision tests that the transaction header revision is set as expected.
+func TestV3TxnRevision(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	pr := &pb.PutRequest{Key: []byte("abc"), Value: []byte("def")}
+	presp, err := kvc.Put(t.Context(), pr)
+	require.NoError(t, err)
+
+	txnget := &pb.RequestOp{Request: &pb.RequestOp_RequestRange{RequestRange: &pb.RangeRequest{Key: []byte("abc")}}}
+	txn := &pb.TxnRequest{Success: []*pb.RequestOp{txnget}}
+	tresp, err := kvc.Txn(t.Context(), txn)
+	require.NoError(t, err)
+
+	// did not update revision
+	if presp.Header.Revision != tresp.Header.Revision {
+		t.Fatalf("got rev %d, wanted rev %d", tresp.Header.Revision, presp.Header.Revision)
+	}
+
+	txndr := &pb.RequestOp{Request: &pb.RequestOp_RequestDeleteRange{RequestDeleteRange: &pb.DeleteRangeRequest{Key: []byte("def")}}}
+	txn = &pb.TxnRequest{Success: []*pb.RequestOp{txndr}}
+	tresp, err = kvc.Txn(t.Context(), txn)
+	require.NoError(t, err)
+
+	// did not update revision
+	if presp.Header.Revision != tresp.Header.Revision {
+		t.Fatalf("got rev %d, wanted rev %d", tresp.Header.Revision, presp.Header.Revision)
+	}
+
+	txnput := &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: &pb.PutRequest{Key: []byte("abc"), Value: []byte("123")}}}
+	txn = &pb.TxnRequest{Success: []*pb.RequestOp{txnput}}
+	tresp, err = kvc.Txn(t.Context(), txn)
+	require.NoError(t, err)
+
+	// updated revision
+	if tresp.Header.Revision != presp.Header.Revision+1 {
+		t.Fatalf("got rev %d, wanted rev %d", tresp.Header.Revision, presp.Header.Revision+1)
+	}
+}
+
+// TestV3TxnCmpHeaderRev tests that the txn header revision is set as expected
+// when compared to the Succeeded field in the txn response.
+func TestV3TxnCmpHeaderRev(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+
+	for i := 0; i < 10; i++ {
+		// Concurrently put a key with a txn comparing on it.
+		revc := make(chan int64, 1)
+		errCh := make(chan error, 1)
+		go func() {
+			defer close(revc)
+			pr := &pb.PutRequest{Key: []byte("k"), Value: []byte("v")}
+			presp, err := kvc.Put(t.Context(), pr)
+			errCh <- err
+			if err != nil {
+				return
+			}
+			revc <- presp.Header.Revision
+		}()
+
+		// The read-only txn uses the optimized readindex server path.
+		txnget := &pb.RequestOp{Request: &pb.RequestOp_RequestRange{
+			RequestRange: &pb.RangeRequest{Key: []byte("k")},
+		}}
+		txn := &pb.TxnRequest{Success: []*pb.RequestOp{txnget}}
+		// i = 0 /\ Succeeded => put followed txn
+		cmp := &pb.Compare{
+			Result:      pb.Compare_EQUAL,
+			Target:      pb.Compare_VERSION,
+			Key:         []byte("k"),
+			TargetUnion: &pb.Compare_Version{Version: int64(i)},
+		}
+		txn.Compare = append(txn.Compare, cmp)
+
+		tresp, err := kvc.Txn(t.Context(), txn)
+		require.NoError(t, err)
+
+		prev := <-revc
+		err = <-errCh
+		require.NoError(t, err)
+		// put followed txn; should eval to false
+		if prev > tresp.Header.Revision && !tresp.Succeeded {
+			t.Errorf("#%d: got else but put rev %d followed txn rev (%+v)", i, prev, tresp)
+		}
+		// txn follows put; should eval to true
+		if tresp.Header.Revision >= prev && tresp.Succeeded {
+			t.Errorf("#%d: got then but put rev %d preceded txn (%+v)", i, prev, tresp)
+		}
+	}
+}
+
+// TestV3TxnRangeCompare tests range comparisons in txns
+func TestV3TxnRangeCompare(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	// put keys, named by expected revision
+	for _, k := range []string{"/a/2", "/a/3", "/a/4", "/f/5"} {
+		_, err := clus.Client(0).Put(t.Context(), k, "x")
+		require.NoError(t, err)
+	}
+
+	tests := []struct {
+		cmp *pb.Compare
+
+		wSuccess bool
+	}{
+		{
+			// >= /a/; all create revs fit
+			&pb.Compare{
+				Key:         []byte("/a/"),
+				RangeEnd:    []byte{0},
+				Target:      pb.Compare_CREATE,
+				Result:      pb.Compare_LESS,
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 6},
+			},
+			true,
+		},
+		{
+			// >= /a/; one create rev doesn't fit
+			&pb.Compare{
+				Key:         []byte("/a/"),
+				RangeEnd:    []byte{0},
+				Target:      pb.Compare_CREATE,
+				Result:      pb.Compare_LESS,
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 5},
+			},
+			false,
+		},
+		{
+			// prefix /a/*; all create revs fit
+			&pb.Compare{
+				Key:         []byte("/a/"),
+				RangeEnd:    []byte("/a0"),
+				Target:      pb.Compare_CREATE,
+				Result:      pb.Compare_LESS,
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 5},
+			},
+			true,
+		},
+		{
+			// prefix /a/*; one create rev doesn't fit
+			&pb.Compare{
+				Key:         []byte("/a/"),
+				RangeEnd:    []byte("/a0"),
+				Target:      pb.Compare_CREATE,
+				Result:      pb.Compare_LESS,
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 4},
+			},
+			false,
+		},
+		{
+			// does not exist, does not succeed
+			&pb.Compare{
+				Key:         []byte("/b/"),
+				RangeEnd:    []byte("/b0"),
+				Target:      pb.Compare_VALUE,
+				Result:      pb.Compare_EQUAL,
+				TargetUnion: &pb.Compare_Value{Value: []byte("x")},
+			},
+			false,
+		},
+		{
+			// all keys are leased
+			&pb.Compare{
+				Key:         []byte("/a/"),
+				RangeEnd:    []byte("/a0"),
+				Target:      pb.Compare_LEASE,
+				Result:      pb.Compare_GREATER,
+				TargetUnion: &pb.Compare_Lease{Lease: 0},
+			},
+			false,
+		},
+		{
+			// no keys are leased
+			&pb.Compare{
+				Key:         []byte("/a/"),
+				RangeEnd:    []byte("/a0"),
+				Target:      pb.Compare_LEASE,
+				Result:      pb.Compare_EQUAL,
+				TargetUnion: &pb.Compare_Lease{Lease: 0},
+			},
+			true,
+		},
+	}
+
+	kvc := integration.ToGRPC(clus.Client(0)).KV
+	for i, tt := range tests {
+		txn := &pb.TxnRequest{}
+		txn.Compare = append(txn.Compare, tt.cmp)
+		tresp, err := kvc.Txn(t.Context(), txn)
+		require.NoError(t, err)
+		if tt.wSuccess != tresp.Succeeded {
+			t.Errorf("#%d: expected %v, got %v", i, tt.wSuccess, tresp.Succeeded)
+		}
+	}
+}
+
+// TestV3TxnNestedPath tests nested txns follow paths as expected.
+func TestV3TxnNestedPath(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+
+	cmpTrue := &pb.Compare{
+		Result:      pb.Compare_EQUAL,
+		Target:      pb.Compare_VERSION,
+		Key:         []byte("k"),
+		TargetUnion: &pb.Compare_Version{Version: int64(0)},
+	}
+	cmpFalse := &pb.Compare{
+		Result:      pb.Compare_EQUAL,
+		Target:      pb.Compare_VERSION,
+		Key:         []byte("k"),
+		TargetUnion: &pb.Compare_Version{Version: int64(1)},
+	}
+
+	// generate random path to eval txns
+	topTxn := &pb.TxnRequest{}
+	txn := topTxn
+	txnPath := make([]bool, 10)
+	for i := range txnPath {
+		nextTxn := &pb.TxnRequest{}
+		op := &pb.RequestOp{Request: &pb.RequestOp_RequestTxn{RequestTxn: nextTxn}}
+		txnPath[i] = rand.Intn(2) == 0
+		if txnPath[i] {
+			txn.Compare = append(txn.Compare, cmpTrue)
+			txn.Success = append(txn.Success, op)
+		} else {
+			txn.Compare = append(txn.Compare, cmpFalse)
+			txn.Failure = append(txn.Failure, op)
+		}
+		txn = nextTxn
+	}
+
+	tresp, err := kvc.Txn(t.Context(), topTxn)
+	require.NoError(t, err)
+
+	curTxnResp := tresp
+	for i := range txnPath {
+		if curTxnResp.Succeeded != txnPath[i] {
+			t.Fatalf("expected path %+v, got response %s", txnPath, tresp.String())
+		}
+		curTxnResp = curTxnResp.Responses[0].Response.(*pb.ResponseOp_ResponseTxn).ResponseTxn
+	}
+}
+
+// TestV3PutIgnoreValue ensures that writes with ignore_value overwrites with previous key-value pair.
+func TestV3PutIgnoreValue(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	key, val := []byte("foo"), []byte("bar")
+
+	newPutReq := func() *pb.PutRequest {
+		return &pb.PutRequest{
+			Key:   bytes.Clone(key),
+			Value: bytes.Clone(val),
+		}
+	}
+
+	// create lease
+	lc := integration.ToGRPC(clus.RandClient()).Lease
+	lresp, err := lc.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
+	require.NoError(t, err)
+	require.Empty(t, lresp.Error)
+
+	tests := []struct {
+		putFunc  func() error
+		putErr   error
+		wleaseID int64
+	}{
+		{ // put failure for non-existent key
+			func() error {
+				preq := newPutReq()
+				preq.IgnoreValue = true
+				_, err := kvc.Put(t.Context(), preq)
+				return err
+			},
+			rpctypes.ErrGRPCKeyNotFound,
+			0,
+		},
+		{ // txn failure for non-existent key
+			func() error {
+				preq := newPutReq()
+				preq.Value = nil
+				preq.IgnoreValue = true
+				txn := &pb.TxnRequest{}
+				txn.Success = append(txn.Success, &pb.RequestOp{
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
+				})
+				_, err := kvc.Txn(t.Context(), txn)
+				return err
+			},
+			rpctypes.ErrGRPCKeyNotFound,
+			0,
+		},
+		{ // put success
+			func() error {
+				_, err := kvc.Put(t.Context(), newPutReq())
+				return err
+			},
+			nil,
+			0,
+		},
+		{ // txn success, attach lease
+			func() error {
+				preq := newPutReq()
+				preq.Value = nil
+				preq.Lease = lresp.ID
+				preq.IgnoreValue = true
+				txn := &pb.TxnRequest{}
+				txn.Success = append(txn.Success, &pb.RequestOp{
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
+				})
+				_, err := kvc.Txn(t.Context(), txn)
+				return err
+			},
+			nil,
+			lresp.ID,
+		},
+		{ // non-empty value with ignore_value should error
+			func() error {
+				preq := newPutReq()
+				preq.IgnoreValue = true
+				_, err := kvc.Put(t.Context(), preq)
+				return err
+			},
+			rpctypes.ErrGRPCValueProvided,
+			0,
+		},
+		{ // overwrite with previous value, ensure no prev-kv is returned and lease is detached
+			func() error {
+				preq := newPutReq()
+				preq.Value = nil
+				preq.IgnoreValue = true
+				presp, err := kvc.Put(t.Context(), preq)
+				if err != nil {
+					return err
+				}
+				if presp.PrevKv != nil && len(presp.PrevKv.Key) != 0 {
+					return fmt.Errorf("unexexpected previous key-value %v", presp.PrevKv)
+				}
+				return nil
+			},
+			nil,
+			0,
+		},
+		{ // revoke lease, ensure detached key doesn't get deleted
+			func() error {
+				_, err := lc.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: lresp.ID})
+				return err
+			},
+			nil,
+			0,
+		},
+	}
+
+	for i, tt := range tests {
+		if err := tt.putFunc(); !eqErrGRPC(err, tt.putErr) {
+			t.Fatalf("#%d: err expected %v, got %v", i, tt.putErr, err)
+		}
+		if tt.putErr != nil {
+			continue
+		}
+		rr, err := kvc.Range(t.Context(), &pb.RangeRequest{Key: key})
+		if err != nil {
+			t.Fatalf("#%d: %v", i, err)
+		}
+		if len(rr.Kvs) != 1 {
+			t.Fatalf("#%d: len(rr.KVs) expected 1, got %d", i, len(rr.Kvs))
+		}
+		if !bytes.Equal(rr.Kvs[0].Value, val) {
+			t.Fatalf("#%d: value expected %q, got %q", i, val, rr.Kvs[0].Value)
+		}
+		if rr.Kvs[0].Lease != tt.wleaseID {
+			t.Fatalf("#%d: lease ID expected %d, got %d", i, tt.wleaseID, rr.Kvs[0].Lease)
+		}
+	}
+}
+
+// TestV3PutIgnoreLease ensures that writes with ignore_lease uses previous lease for the key overwrites.
+func TestV3PutIgnoreLease(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+
+	// create lease
+	lc := integration.ToGRPC(clus.RandClient()).Lease
+	lresp, err := lc.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
+	require.NoError(t, err)
+	require.Empty(t, lresp.Error)
+
+	key, val, val1 := []byte("zoo"), []byte("bar"), []byte("bar1")
+	newPutReq := func() *pb.PutRequest {
+		return &pb.PutRequest{
+			Key:   bytes.Clone(key),
+			Value: bytes.Clone(val),
+		}
+	}
+
+	tests := []struct {
+		putFunc  func() error
+		putErr   error
+		wleaseID int64
+		wvalue   []byte
+	}{
+		{ // put failure for non-existent key
+			func() error {
+				preq := newPutReq()
+				preq.IgnoreLease = true
+				_, err := kvc.Put(t.Context(), preq)
+				return err
+			},
+			rpctypes.ErrGRPCKeyNotFound,
+			0,
+			nil,
+		},
+		{ // txn failure for non-existent key
+			func() error {
+				preq := newPutReq()
+				preq.IgnoreLease = true
+				txn := &pb.TxnRequest{}
+				txn.Success = append(txn.Success, &pb.RequestOp{
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
+				})
+				_, err := kvc.Txn(t.Context(), txn)
+				return err
+			},
+			rpctypes.ErrGRPCKeyNotFound,
+			0,
+			nil,
+		},
+		{ // put success
+			func() error {
+				preq := newPutReq()
+				preq.Lease = lresp.ID
+				_, err := kvc.Put(t.Context(), preq)
+				return err
+			},
+			nil,
+			lresp.ID,
+			val,
+		},
+		{ // txn success, modify value using 'ignore_lease' and ensure lease is not detached
+			func() error {
+				preq := newPutReq()
+				preq.Value = val1
+				preq.IgnoreLease = true
+				txn := &pb.TxnRequest{}
+				txn.Success = append(txn.Success, &pb.RequestOp{
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
+				})
+				_, err := kvc.Txn(t.Context(), txn)
+				return err
+			},
+			nil,
+			lresp.ID,
+			val1,
+		},
+		{ // non-empty lease with ignore_lease should error
+			func() error {
+				preq := newPutReq()
+				preq.Lease = lresp.ID
+				preq.IgnoreLease = true
+				_, err := kvc.Put(t.Context(), preq)
+				return err
+			},
+			rpctypes.ErrGRPCLeaseProvided,
+			0,
+			nil,
+		},
+		{ // overwrite with previous value, ensure no prev-kv is returned and lease is detached
+			func() error {
+				presp, err := kvc.Put(t.Context(), newPutReq())
+				if err != nil {
+					return err
+				}
+				if presp.PrevKv != nil && len(presp.PrevKv.Key) != 0 {
+					return fmt.Errorf("unexexpected previous key-value %v", presp.PrevKv)
+				}
+				return nil
+			},
+			nil,
+			0,
+			val,
+		},
+		{ // revoke lease, ensure detached key doesn't get deleted
+			func() error {
+				_, err := lc.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: lresp.ID})
+				return err
+			},
+			nil,
+			0,
+			val,
+		},
+	}
+
+	for i, tt := range tests {
+		if err := tt.putFunc(); !eqErrGRPC(err, tt.putErr) {
+			t.Fatalf("#%d: err expected %v, got %v", i, tt.putErr, err)
+		}
+		if tt.putErr != nil {
+			continue
+		}
+		rr, err := kvc.Range(t.Context(), &pb.RangeRequest{Key: key})
+		if err != nil {
+			t.Fatalf("#%d: %v", i, err)
+		}
+		if len(rr.Kvs) != 1 {
+			t.Fatalf("#%d: len(rr.KVs) expected 1, got %d", i, len(rr.Kvs))
+		}
+		if !bytes.Equal(rr.Kvs[0].Value, tt.wvalue) {
+			t.Fatalf("#%d: value expected %q, got %q", i, val, rr.Kvs[0].Value)
+		}
+		if rr.Kvs[0].Lease != tt.wleaseID {
+			t.Fatalf("#%d: lease ID expected %d, got %d", i, tt.wleaseID, rr.Kvs[0].Lease)
+		}
+	}
+}
+
+// TestV3PutMissingLease ensures that a Put on a key with a bogus lease fails.
+func TestV3PutMissingLease(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	key := []byte("foo")
+	preq := &pb.PutRequest{Key: key, Lease: 123456}
+	tests := []func(){
+		// put case
+		func() {
+			if presp, err := kvc.Put(t.Context(), preq); err == nil {
+				t.Errorf("succeeded put key. req: %v. resp: %v", preq, presp)
+			}
+		},
+		// txn success case
+		func() {
+			txn := &pb.TxnRequest{}
+			txn.Success = append(txn.Success, &pb.RequestOp{
+				Request: &pb.RequestOp_RequestPut{
+					RequestPut: preq,
+				},
+			})
+			if tresp, err := kvc.Txn(t.Context(), txn); err == nil {
+				t.Errorf("succeeded txn success. req: %v. resp: %v", txn, tresp)
+			}
+		},
+		// txn failure case
+		func() {
+			txn := &pb.TxnRequest{}
+			txn.Failure = append(txn.Failure, &pb.RequestOp{
+				Request: &pb.RequestOp_RequestPut{
+					RequestPut: preq,
+				},
+			})
+			cmp := &pb.Compare{
+				Result: pb.Compare_GREATER,
+				Target: pb.Compare_CREATE,
+				Key:    []byte("bar"),
+			}
+			txn.Compare = append(txn.Compare, cmp)
+			if tresp, err := kvc.Txn(t.Context(), txn); err == nil {
+				t.Errorf("succeeded txn failure. req: %v. resp: %v", txn, tresp)
+			}
+		},
+		// ignore bad lease in failure on success txn
+		func() {
+			txn := &pb.TxnRequest{}
+			rreq := &pb.RangeRequest{Key: []byte("bar")}
+			txn.Success = append(txn.Success, &pb.RequestOp{
+				Request: &pb.RequestOp_RequestRange{
+					RequestRange: rreq,
+				},
+			})
+			txn.Failure = append(txn.Failure, &pb.RequestOp{
+				Request: &pb.RequestOp_RequestPut{
+					RequestPut: preq,
+				},
+			})
+			if tresp, err := kvc.Txn(t.Context(), txn); err != nil {
+				t.Errorf("failed good txn. req: %v. resp: %v", txn, tresp)
+			}
+		},
+	}
+
+	for i, f := range tests {
+		f()
+		// key shouldn't have been stored
+		rreq := &pb.RangeRequest{Key: key}
+		rresp, err := kvc.Range(t.Context(), rreq)
+		if err != nil {
+			t.Errorf("#%d. could not rangereq (%v)", i, err)
+		} else if len(rresp.Kvs) != 0 {
+			t.Errorf("#%d. expected no keys, got %v", i, rresp)
+		}
+	}
+}
+
+// TestV3DeleteRange tests various edge cases in the DeleteRange API.
+func TestV3DeleteRange(t *testing.T) {
+	integration.BeforeTest(t)
+	tests := []struct {
+		name string
+
+		keySet []string
+		begin  string
+		end    string
+		prevKV bool
+
+		wantSet [][]byte
+		deleted int64
+	}{
+		{
+			"delete middle",
+			[]string{"foo", "foo/abc", "fop"},
+			"foo/", "fop", false,
+			[][]byte{[]byte("foo"), []byte("fop")},
+			1,
+		},
+		{
+			"no delete",
+			[]string{"foo", "foo/abc", "fop"},
+			"foo/", "foo/", false,
+			[][]byte{[]byte("foo"), []byte("foo/abc"), []byte("fop")},
+			0,
+		},
+		{
+			"delete first",
+			[]string{"foo", "foo/abc", "fop"},
+			"fo", "fop", false,
+			[][]byte{[]byte("fop")},
+			2,
+		},
+		{
+			"delete tail",
+			[]string{"foo", "foo/abc", "fop"},
+			"foo/", "fos", false,
+			[][]byte{[]byte("foo")},
+			2,
+		},
+		{
+			"delete exact",
+			[]string{"foo", "foo/abc", "fop"},
+			"foo/abc", "", false,
+			[][]byte{[]byte("foo"), []byte("fop")},
+			1,
+		},
+		{
+			"delete none [x,x)",
+			[]string{"foo"},
+			"foo", "foo", false,
+			[][]byte{[]byte("foo")},
+			0,
+		},
+		{
+			"delete middle with preserveKVs set",
+			[]string{"foo", "foo/abc", "fop"},
+			"foo/", "fop", true,
+			[][]byte{[]byte("foo"), []byte("fop")},
+			1,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+			kvc := integration.ToGRPC(clus.RandClient()).KV
+			defer clus.Terminate(t)
+
+			ks := tt.keySet
+			for j := range ks {
+				reqput := &pb.PutRequest{Key: []byte(ks[j]), Value: []byte{}}
+				_, err := kvc.Put(t.Context(), reqput)
+				if err != nil {
+					t.Fatalf("couldn't put key (%v)", err)
+				}
+			}
+
+			dreq := &pb.DeleteRangeRequest{
+				Key:      []byte(tt.begin),
+				RangeEnd: []byte(tt.end),
+				PrevKv:   tt.prevKV,
+			}
+			dresp, err := kvc.DeleteRange(t.Context(), dreq)
+			if err != nil {
+				t.Fatalf("couldn't delete range on test %d (%v)", i, err)
+			}
+			if tt.deleted != dresp.Deleted {
+				t.Errorf("expected %d on test %v, got %d", tt.deleted, i, dresp.Deleted)
+			}
+			if tt.prevKV {
+				if len(dresp.PrevKvs) != int(dresp.Deleted) {
+					t.Errorf("preserve %d keys, want %d", len(dresp.PrevKvs), dresp.Deleted)
+				}
+			}
+
+			rreq := &pb.RangeRequest{Key: []byte{0x0}, RangeEnd: []byte{0xff}}
+			rresp, err := kvc.Range(t.Context(), rreq)
+			if err != nil {
+				t.Errorf("couldn't get range on test %v (%v)", i, err)
+			}
+			if dresp.Header.Revision != rresp.Header.Revision {
+				t.Errorf("expected revision %v, got %v",
+					dresp.Header.Revision, rresp.Header.Revision)
+			}
+
+			var keys [][]byte
+			for j := range rresp.Kvs {
+				keys = append(keys, rresp.Kvs[j].Key)
+			}
+			if !reflect.DeepEqual(tt.wantSet, keys) {
+				t.Errorf("expected %v on test %v, got %v", tt.wantSet, i, keys)
+			}
+		})
+	}
+}
+
+// TestV3TxnInvalidRange tests that invalid ranges are rejected in txns.
+func TestV3TxnInvalidRange(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	preq := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+
+	for i := 0; i < 3; i++ {
+		_, err := kvc.Put(t.Context(), preq)
+		if err != nil {
+			t.Fatalf("couldn't put key (%v)", err)
+		}
+	}
+
+	_, err := kvc.Compact(t.Context(), &pb.CompactionRequest{Revision: 2})
+	if err != nil {
+		t.Fatalf("couldn't compact kv space (%v)", err)
+	}
+
+	// future rev
+	txn := &pb.TxnRequest{}
+	txn.Success = append(txn.Success, &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: preq,
+		},
+	})
+
+	rreq := &pb.RangeRequest{Key: []byte("foo"), Revision: 100}
+	txn.Success = append(txn.Success, &pb.RequestOp{
+		Request: &pb.RequestOp_RequestRange{
+			RequestRange: rreq,
+		},
+	})
+
+	if _, err := kvc.Txn(t.Context(), txn); !eqErrGRPC(err, rpctypes.ErrGRPCFutureRev) {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCFutureRev)
+	}
+
+	// compacted rev
+	tv, _ := txn.Success[1].Request.(*pb.RequestOp_RequestRange)
+	tv.RequestRange.Revision = 1
+	if _, err := kvc.Txn(t.Context(), txn); !eqErrGRPC(err, rpctypes.ErrGRPCCompacted) {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCCompacted)
+	}
+}
+
+func TestV3TooLargeRequest(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+
+	// 2MB request value
+	largeV := make([]byte, 2*1024*1024)
+	preq := &pb.PutRequest{Key: []byte("foo"), Value: largeV}
+
+	_, err := kvc.Put(t.Context(), preq)
+	if !eqErrGRPC(err, rpctypes.ErrGRPCRequestTooLarge) {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCRequestTooLarge)
+	}
+}
+
+// TestV3Hash tests hash.
+func TestV3Hash(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	cli := clus.RandClient()
+	kvc := integration.ToGRPC(cli).KV
+	m := integration.ToGRPC(cli).Maintenance
+
+	preq := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+
+	for i := 0; i < 3; i++ {
+		_, err := kvc.Put(t.Context(), preq)
+		if err != nil {
+			t.Fatalf("couldn't put key (%v)", err)
+		}
+	}
+
+	resp, err := m.Hash(t.Context(), &pb.HashRequest{})
+	if err != nil || resp.Hash == 0 {
+		t.Fatalf("couldn't hash (%v, hash %d)", err, resp.Hash)
+	}
+}
+
+// TestV3HashRestart ensures that hash stays the same after restart.
+func TestV3HashRestart(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	defer clus.Terminate(t)
+
+	cli := clus.RandClient()
+	resp, err := integration.ToGRPC(cli).Maintenance.Hash(t.Context(), &pb.HashRequest{})
+	if err != nil || resp.Hash == 0 {
+		t.Fatalf("couldn't hash (%v, hash %d)", err, resp.Hash)
+	}
+	hash1 := resp.Hash
+
+	clus.Members[0].Stop(t)
+	clus.Members[0].Restart(t)
+	clus.WaitMembersForLeader(t, clus.Members)
+	kvc := integration.ToGRPC(clus.Client(0)).KV
+	waitForRestart(t, kvc)
+
+	cli = clus.RandClient()
+	resp, err = integration.ToGRPC(cli).Maintenance.Hash(t.Context(), &pb.HashRequest{})
+	if err != nil || resp.Hash == 0 {
+		t.Fatalf("couldn't hash (%v, hash %d)", err, resp.Hash)
+	}
+	hash2 := resp.Hash
+
+	if hash1 != hash2 {
+		t.Fatalf("hash expected %d, got %d", hash1, hash2)
+	}
+}
+
+// TestV3StorageQuotaAPI tests the V3 server respects quotas at the API layer
+func TestV3StorageQuotaAPI(t *testing.T) {
+	integration.BeforeTest(t)
+	quotasize := int64(16 * os.Getpagesize())
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+
+	// Set a quota on one node
+	clus.Members[0].QuotaBackendBytes = quotasize
+	clus.Members[0].Stop(t)
+	clus.Members[0].Restart(t)
+
+	defer clus.Terminate(t)
+	kvc := integration.ToGRPC(clus.Client(0)).KV
+	waitForRestart(t, kvc)
+
+	key := []byte("abc")
+
+	// test small put that fits in quota
+	smallbuf := make([]byte, 512)
+	_, err := kvc.Put(t.Context(), &pb.PutRequest{Key: key, Value: smallbuf})
+	require.NoError(t, err)
+
+	// test big put
+	bigbuf := make([]byte, quotasize)
+	_, err = kvc.Put(t.Context(), &pb.PutRequest{Key: key, Value: bigbuf})
+	if !eqErrGRPC(err, rpctypes.ErrGRPCNoSpace) {
+		t.Fatalf("big put got %v, expected %v", err, rpctypes.ErrGRPCNoSpace)
+	}
+
+	// test big txn
+	puttxn := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key:   key,
+				Value: bigbuf,
+			},
+		},
+	}
+	txnreq := &pb.TxnRequest{}
+	txnreq.Success = append(txnreq.Success, puttxn)
+	_, txnerr := kvc.Txn(t.Context(), txnreq)
+	if !eqErrGRPC(txnerr, rpctypes.ErrGRPCNoSpace) {
+		t.Fatalf("big txn got %v, expected %v", err, rpctypes.ErrGRPCNoSpace)
+	}
+}
+
+func TestV3RangeRequest(t *testing.T) {
+	integration.BeforeTest(t)
+	tests := []struct {
+		name string
+
+		putKeys []string
+		reqs    []*pb.RangeRequest
+
+		wresps  [][]string
+		wmores  []bool
+		wcounts []int64
+
+		// streamUnsupported[j] marks request reqs[j] as using features that
+		// RangeStream intentionally does not support (non-key-ascending sort,
+		// min/max mod/create revision filters). Must match len(reqs).
+		streamUnsupported []bool
+	}{
+		{
+			"single key",
+			[]string{"foo", "bar"},
+			[]*pb.RangeRequest{
+				// exists
+				{Key: []byte("foo")},
+				// doesn't exist
+				{Key: []byte("baz")},
+			},
+
+			[][]string{
+				{"foo"},
+				{},
+			},
+			[]bool{false, false},
+			[]int64{1, 0},
+			[]bool{false, false},
+		},
+		{
+			"multi-key",
+			[]string{"a", "b", "c", "d", "e"},
+			[]*pb.RangeRequest{
+				// all in range
+				{Key: []byte("a"), RangeEnd: []byte("z")},
+				// [b, d)
+				{Key: []byte("b"), RangeEnd: []byte("d")},
+				// out of range
+				{Key: []byte("f"), RangeEnd: []byte("z")},
+				// [c,c) = empty
+				{Key: []byte("c"), RangeEnd: []byte("c")},
+				// [d, b) = empty
+				{Key: []byte("d"), RangeEnd: []byte("b")},
+				// ["\0", "\0") => all in range
+				{Key: []byte{0}, RangeEnd: []byte{0}},
+			},
+
+			[][]string{
+				{"a", "b", "c", "d", "e"},
+				{"b", "c"},
+				{},
+				{},
+				{},
+				{"a", "b", "c", "d", "e"},
+			},
+			[]bool{false, false, false, false, false, false},
+			[]int64{5, 2, 0, 0, 0, 5},
+			[]bool{false, false, false, false, false, false},
+		},
+		{
+			"revision",
+			[]string{"a", "b", "c", "d", "e"},
+			[]*pb.RangeRequest{
+				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 0},
+				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 1},
+				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 2},
+				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 3},
+			},
+
+			[][]string{
+				{"a", "b", "c", "d", "e"},
+				{},
+				{"a"},
+				{"a", "b"},
+			},
+			[]bool{false, false, false, false},
+			[]int64{5, 0, 1, 2},
+			[]bool{false, false, false, false},
+		},
+		{
+			"limit",
+			[]string{"a", "b", "c"},
+			[]*pb.RangeRequest{
+				// more
+				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 1},
+				// half
+				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 2},
+				// no more
+				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 3},
+				// limit over
+				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 4},
+			},
+
+			[][]string{
+				{"a"},
+				{"a", "b"},
+				{"a", "b", "c"},
+				{"a", "b", "c"},
+			},
+			[]bool{true, true, false, false},
+			[]int64{3, 3, 3, 3},
+			[]bool{false, false, false, false},
+		},
+		{
+			"count only",
+			[]string{"a", "b", "c"},
+			[]*pb.RangeRequest{
+				// all match
+				{Key: []byte("a"), RangeEnd: []byte("z"), CountOnly: true},
+				// single-key match
+				{Key: []byte("b"), RangeEnd: []byte("c"), CountOnly: true},
+				// no match
+				{Key: []byte("x"), RangeEnd: []byte("z"), CountOnly: true},
+				// CountOnly with Limit: Limit must not truncate the count.
+				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 1, CountOnly: true},
+			},
+
+			[][]string{{}, {}, {}, {}},
+			[]bool{false, false, false, false},
+			[]int64{3, 1, 0, 3},
+			[]bool{false, false, false, false},
+		},
+		{
+			"sort",
+			[]string{"b", "a", "c", "d", "c"},
+			[]*pb.RangeRequest{
+				{
+					Key: []byte("a"), RangeEnd: []byte("z"),
+					Limit:      1,
+					SortOrder:  pb.RangeRequest_ASCEND,
+					SortTarget: pb.RangeRequest_KEY,
+				},
+				{
+					Key: []byte("a"), RangeEnd: []byte("z"),
+					Limit:      1,
+					SortOrder:  pb.RangeRequest_DESCEND,
+					SortTarget: pb.RangeRequest_KEY,
+				},
+				{
+					Key: []byte("a"), RangeEnd: []byte("z"),
+					Limit:      1,
+					SortOrder:  pb.RangeRequest_ASCEND,
+					SortTarget: pb.RangeRequest_CREATE,
+				},
+				{
+					Key: []byte("a"), RangeEnd: []byte("z"),
+					Limit:      1,
+					SortOrder:  pb.RangeRequest_DESCEND,
+					SortTarget: pb.RangeRequest_MOD,
+				},
+				{
+					Key: []byte("z"), RangeEnd: []byte("z"),
+					Limit:      1,
+					SortOrder:  pb.RangeRequest_DESCEND,
+					SortTarget: pb.RangeRequest_CREATE,
+				},
+				{ // sort ASCEND by default
+					Key: []byte("a"), RangeEnd: []byte("z"),
+					Limit:      10,
+					SortOrder:  pb.RangeRequest_NONE,
+					SortTarget: pb.RangeRequest_CREATE,
+				},
+			},
+
+			[][]string{
+				{"a"},
+				{"d"},
+				{"b"},
+				{"c"},
+				{},
+				{"b", "a", "c", "d"},
+			},
+			[]bool{true, true, true, true, false, false},
+			[]int64{4, 4, 4, 4, 0, 4},
+			// Only ASCEND+KEY (index 0) and SortOrder_NONE (index 5) are supported by RangeStream.
+			[]bool{false, true, true, true, true, false},
+		},
+		{
+			"min/max mod rev",
+			[]string{"rev2", "rev3", "rev4", "rev5", "rev6"},
+			[]*pb.RangeRequest{
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MinModRevision: 3,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MaxModRevision: 3,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MinModRevision: 3,
+					MaxModRevision: 5,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MaxModRevision: 10,
+				},
+			},
+
+			[][]string{
+				{"rev3", "rev4", "rev5", "rev6"},
+				{"rev2", "rev3"},
+				{"rev3", "rev4", "rev5"},
+				{"rev2", "rev3", "rev4", "rev5", "rev6"},
+			},
+			[]bool{false, false, false, false},
+			[]int64{5, 5, 5, 5},
+			[]bool{true, true, true, true},
+		},
+		{
+			"min/max create rev",
+			[]string{"rev2", "rev3", "rev2", "rev2", "rev6", "rev3"},
+			[]*pb.RangeRequest{
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MinCreateRevision: 3,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MaxCreateRevision: 3,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MinCreateRevision: 3,
+					MaxCreateRevision: 5,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MaxCreateRevision: 10,
+				},
+			},
+
+			[][]string{
+				{"rev3", "rev6"},
+				{"rev2", "rev3"},
+				{"rev3"},
+				{"rev2", "rev3", "rev6"},
+			},
+			[]bool{false, false, false, false},
+			[]int64{3, 3, 3, 3},
+			[]bool{true, true, true, true},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+			defer clus.Terminate(t)
+			for _, k := range tt.putKeys {
+				kvc := integration.ToGRPC(clus.RandClient()).KV
+				req := &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}
+				if _, err := kvc.Put(t.Context(), req); err != nil {
+					t.Fatalf("#%d: couldn't put key (%v)", i, err)
+				}
+			}
+
+			for j, req := range tt.reqs {
+				kvc := integration.ToGRPC(clus.RandClient()).KV
+				resp, err := kvc.Range(t.Context(), req)
+				if err != nil {
+					t.Errorf("#%d.%d: Range error: %v", i, j, err)
+					continue
+				}
+				if !integration.ThroughProxy && !tt.streamUnsupported[j] {
+					got := rangeStream(t, kvc, req)
+					require.Emptyf(t, cmp.Diff(resp, got, protocmp.Transform()),
+						"RangeStream response must match Range response")
+				}
+
+				if len(resp.Kvs) != len(tt.wresps[j]) {
+					t.Errorf("#%d.%d: bad len(resp.Kvs). got = %d, want = %d, ", i, j, len(resp.Kvs), len(tt.wresps[j]))
+					continue
+				}
+				for k, wKey := range tt.wresps[j] {
+					respKey := string(resp.Kvs[k].Key)
+					if respKey != wKey {
+						t.Errorf("#%d.%d: key[%d]. got = %v, want = %v, ", i, j, k, respKey, wKey)
+					}
+				}
+				if resp.More != tt.wmores[j] {
+					t.Errorf("#%d.%d: bad more. got = %v, want = %v, ", i, j, resp.More, tt.wmores[j])
+				}
+				if resp.GetCount() != tt.wcounts[j] {
+					t.Errorf("#%d.%d: bad count. got = %v, want = %v, ", i, j, resp.GetCount(), tt.wcounts[j])
+				}
+				wrev := int64(len(tt.putKeys) + 1)
+				if resp.Header.Revision != wrev {
+					t.Errorf("#%d.%d: bad header revision. got = %d. want = %d", i, j, resp.Header.Revision, wrev)
+				}
+			}
+		})
+	}
+}
+
+// rangeStream calls RangeStream and returns the merged response.
+func rangeStream(t *testing.T, kvc pb.KVClient, req *pb.RangeRequest) *pb.RangeResponse {
+	t.Helper()
+
+	stream, err := kvc.RangeStream(t.Context(), req)
+	require.NoError(t, err)
+
+	got := &pb.RangeResponse{}
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			break
+		}
+		require.NoError(t, rerr)
+		proto.Merge(got, chunk.RangeResponse)
+	}
+	return got
+}
+
+// TestV3RangeStreamCount verifies Count semantics on the last streamed chunk,
+// including the case where the stream truncates at Limit with more matching
+// keys pending (exercises the CountOnly fallback query at the pinned revision).
+func TestV3RangeStreamCount(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	const nKeys = 25
+	for i := 0; i < nKeys; i++ {
+		_, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("k%02d", i)),
+			Value: []byte("v"),
+		})
+		require.NoError(t, err)
+	}
+
+	// The server-side chunker starts at Limit=10 and adapts from there, so
+	// nKeys=25 reliably produces multi-chunk responses for unlimited/large
+	// limits, while small limits fit in the first chunk.
+	tests := []struct {
+		name        string
+		limit       int64
+		wantCount   int64
+		wantMore    bool
+		wantKeys    int
+		wantMinRecv int
+	}{
+		{
+			name:        "unlimited exhausts with running count",
+			limit:       0,
+			wantCount:   nKeys,
+			wantMore:    false,
+			wantKeys:    nKeys,
+			wantMinRecv: 2,
+		},
+		{
+			name:        "limit below total truncates with fallback count",
+			limit:       5,
+			wantCount:   nKeys,
+			wantMore:    true,
+			wantKeys:    5,
+			wantMinRecv: 1,
+		},
+		{
+			name:        "limit equal to total, no truncation",
+			limit:       nKeys,
+			wantCount:   nKeys,
+			wantMore:    false,
+			wantKeys:    nKeys,
+			wantMinRecv: 2,
+		},
+		{
+			name:        "limit above total, exhausts early",
+			limit:       100,
+			wantCount:   nKeys,
+			wantMore:    false,
+			wantKeys:    nKeys,
+			wantMinRecv: 2,
+		},
+		{
+			name:        "limit at first-chunk boundary with fallback count",
+			limit:       10,
+			wantCount:   nKeys,
+			wantMore:    true,
+			wantKeys:    10,
+			wantMinRecv: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+				Key:      []byte("k00"),
+				RangeEnd: []byte("l"),
+				Limit:    tt.limit,
+			})
+			require.NoError(t, err)
+
+			merged := &pb.RangeResponse{}
+			recvs := 0
+			for {
+				chunk, rerr := stream.Recv()
+				if errors.Is(rerr, io.EOF) {
+					break
+				}
+				require.NoError(t, rerr)
+				recvs++
+				proto.Merge(merged, chunk.RangeResponse)
+			}
+			require.Equalf(t, tt.wantCount, merged.Count, "Count")
+			require.Equalf(t, tt.wantMore, merged.More, "More")
+			require.Lenf(t, merged.Kvs, tt.wantKeys, "kv count")
+			require.GreaterOrEqualf(t, recvs, tt.wantMinRecv, "chunk count")
+		})
+	}
+}
+
+// TestV3RangeStreamPartialThenCompacted verifies that once the stream has
+// emitted partial results at a pinned revision, a compaction past that
+// revision causes the next chunk to surface ErrCompacted instead of silently
+// returning inconsistent data.
+func TestV3RangeStreamPartialThenCompacted(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	value := []byte(strings.Repeat("x", 10*1024))
+	for i := 0; i < 1000; i++ {
+		_, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("stream-%04d", i)),
+			Value: value,
+		})
+		require.NoError(t, err)
+	}
+
+	stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+		Key:      []byte("stream-"),
+		RangeEnd: []byte("stream."),
+	})
+	require.NoError(t, err)
+
+	received := 0
+	for received < 10 {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			t.Fatalf("stream ended before the test could compact; received %d keys", received)
+		}
+		require.NoError(t, rerr)
+		received += len(chunk.GetRangeResponse().GetKvs())
+	}
+
+	advance, err := kvc.Put(t.Context(), &pb.PutRequest{
+		Key:   []byte("zz-advance-revision"),
+		Value: []byte("x"),
+	})
+	require.NoError(t, err)
+
+	_, err = kvc.Compact(t.Context(), &pb.CompactionRequest{
+		Revision: advance.Header.Revision,
+		Physical: true,
+	})
+	require.NoError(t, err)
+
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			t.Fatalf("expected compacted error after receiving partial keys; received %d keys", received)
+		}
+
+		if rerr != nil {
+			require.Truef(t, eqErrGRPC(rerr, rpctypes.ErrGRPCCompacted), "got %v, expected %v", rerr, rpctypes.ErrGRPCCompacted)
+			require.GreaterOrEqual(t, received, 10)
+			return
+		}
+		received += len(chunk.GetRangeResponse().GetKvs())
+	}
+}
+
+func TestV3RangeStreamWriteBetweenChunks(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+
+	integration.BeforeTest(t)
+	integration.SkipIfNoGoFail(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+
+	// Relies on an implementation detail that n > 10 yields multiple chunks.
+	const nKeys = 25
+	var pinnedRev int64
+	for i := 0; i < nKeys; i++ {
+		resp, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("k%02d", i)),
+			Value: []byte("v"),
+		})
+		require.NoError(t, err)
+		pinnedRev = resp.Header.Revision
+	}
+
+	// Sleep between chunks to prevent gRPC queueing.
+	require.NoError(t, gofail.Enable("beforeRangeStreamChunk", `sleep("1s")`))
+	defer func() { require.NoError(t, gofail.Disable("beforeRangeStreamChunk")) }()
+
+	stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+		Key:      []byte("k00"),
+		RangeEnd: []byte("l"),
+	})
+	require.NoError(t, err)
+
+	// Recv before Put so the Put is guaranteed to be after the revision pin.
+	first, err := stream.Recv()
+	require.NoError(t, err)
+	require.NotEmpty(t, first.GetRangeResponse().GetKvs())
+
+	_, err = kvc.Put(t.Context(), &pb.PutRequest{
+		Key:   []byte("k99-new"),
+		Value: []byte("v"),
+	})
+	require.NoError(t, err)
+
+	merged := &pb.RangeResponse{}
+	proto.Merge(merged, first.RangeResponse)
+	chunks := 1
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			break
+		}
+		require.NoError(t, rerr)
+		chunks++
+		proto.Merge(merged, chunk.RangeResponse)
+	}
+
+	require.GreaterOrEqualf(t, chunks, 2, "expected multi-chunk stream, got %d", chunks)
+	require.Lenf(t, merged.Kvs, nKeys, "stream must return only the keys that existed at pinned revision")
+	for i, kv := range merged.Kvs {
+		require.Equal(t, fmt.Sprintf("k%02d", i), string(kv.Key))
+		require.Equal(t, "v", string(kv.Value))
+	}
+	require.Equalf(t, pinnedRev, merged.Header.Revision, "stream header revision must equal the latest revision at stream start")
+	require.Equalf(t, int64(nKeys), merged.Count, "stream Count must reflect the pinned revision")
+}
+
+// TestV3RangeStreamLargeValues verifies the stream progresses and emits all
+// KVs when individual stored values exceed the chunk target.
+func TestV3RangeStreamLargeValues(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+	integration.BeforeTest(t)
+
+	const (
+		valueSize = 4 * 1024 * 1024
+		nKeys     = 20
+	)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:            1,
+		MaxRequestBytes: 8 * 1024 * 1024,
+	})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.Client(0)).KV
+	value := make([]byte, valueSize)
+	for i := 0; i < nKeys; i++ {
+		_, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("big-%02d", i)),
+			Value: value,
+		})
+		require.NoError(t, err)
+	}
+
+	m := clus.Members[0]
+	m.Stop(t)
+	m.MaxRequestBytes = embed.DefaultMaxRequestBytes
+	require.Lessf(t, int(m.MaxRequestBytes), valueSize, "valueSize must exceed MaxRequestBytes to exercise large-value path")
+	require.NoError(t, m.Restart(t))
+	clus.WaitMembersForLeader(t, clus.Members)
+	kvc = integration.ToGRPC(clus.Client(0)).KV
+	waitForRestart(t, kvc)
+
+	stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+		Key:      []byte("big-"),
+		RangeEnd: []byte("big."),
+	}, grpc.MaxCallRecvMsgSize(nKeys*valueSize+512*1024))
+	require.NoError(t, err)
+
+	var kvs, recvs int
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			break
+		}
+		require.NoError(t, rerr)
+		recvs++
+		for j, kv := range chunk.GetRangeResponse().GetKvs() {
+			require.Equal(t, fmt.Sprintf("big-%02d", kvs+j), string(kv.Key))
+			require.Equal(t, value, kv.Value)
+		}
+		kvs += len(chunk.GetRangeResponse().GetKvs())
+	}
+	require.Equalf(t, nKeys, kvs, "kv count")
+	require.GreaterOrEqualf(t, recvs, 2, "expected multi-chunk stream for %d-byte values", valueSize)
+}
+
+// TestTLSGRPCRejectInsecureClient checks that connection is rejected if server is TLS but not client.
+func TestTLSGRPCRejectInsecureClient(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
+	defer clus.Terminate(t)
+
+	// nil out TLS field so client will use an insecure connection
+	clus.Members[0].ClientTLSInfo = nil
+	client, err := integration.NewClientV3(clus.Members[0])
+	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("unexpected error (%v)", err)
+	} else if client == nil {
+		// Ideally, no client would be returned. However, grpc will
+		// return a connection without trying to handshake first so
+		// the connection appears OK.
+		return
+	}
+	defer client.Close()
+
+	donec := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+		reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+		_, perr := integration.ToGRPC(client).KV.Put(ctx, reqput)
+		cancel()
+		donec <- perr
+	}()
+
+	if perr := <-donec; perr == nil {
+		t.Fatalf("expected client error on put")
+	}
+}
+
+// TestTLSGRPCRejectSecureClient checks that connection is rejected if client is TLS but not server.
+func TestTLSGRPCRejectSecureClient(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	clus.Members[0].ClientTLSInfo = &integration.TestTLSInfo
+	clus.Members[0].GRPCURL = strings.Replace(clus.Members[0].GRPCURL, "http://", "https://", 1)
+	client, err := integration.NewClientV3(clus.Members[0])
+	if client != nil || err == nil {
+		client.Close()
+		t.Fatalf("expected no client")
+	} else if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("unexpected error (%v)", err)
+	}
+}
+
+// TestTLSGRPCAcceptSecureAll checks that connection is accepted if both client and server are TLS
+func TestTLSGRPCAcceptSecureAll(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
+	defer clus.Terminate(t)
+
+	client, err := integration.NewClientV3(clus.Members[0])
+	if err != nil {
+		t.Fatalf("expected tls client (%v)", err)
+	}
+	defer client.Close()
+
+	reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+	if _, err := integration.ToGRPC(client).KV.Put(t.Context(), reqput); err != nil {
+		t.Fatalf("unexpected error on put over tls (%v)", err)
+	}
+}
+
+// TestTLSReloadAtomicReplace ensures server reloads expired/valid certs
+// when all certs are atomically replaced by directory renaming.
+// And expects server to reject client requests, and vice versa.
+func TestTLSReloadAtomicReplace(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.RemoveAll(tmpDir)
+
+	certsDir := t.TempDir()
+
+	certsDirExp := t.TempDir()
+
+	cloneFunc := func() transport.TLSInfo {
+		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo, certsDir)
+		require.NoError(t, terr)
+		_, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDirExp)
+		require.NoError(t, err)
+		return tlsInfo
+	}
+	replaceFunc := func() {
+		err := os.Rename(certsDir, tmpDir)
+		require.NoError(t, err)
+		err = os.Rename(certsDirExp, certsDir)
+		require.NoError(t, err)
+		// after rename,
+		// 'certsDir' contains expired certs
+		// 'tmpDir' contains valid certs
+		// 'certsDirExp' does not exist
+	}
+	revertFunc := func() {
+		err := os.Rename(tmpDir, certsDirExp)
+		require.NoError(t, err)
+		err = os.Rename(certsDir, tmpDir)
+		require.NoError(t, err)
+		err = os.Rename(certsDirExp, certsDir)
+		require.NoError(t, err)
+	}
+	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, false)
+}
+
+// TestTLSReloadCopy ensures server reloads expired/valid certs
+// when new certs are copied over, one by one. And expects server
+// to reject client requests, and vice versa.
+func TestTLSReloadCopy(t *testing.T) {
+	certsDir := t.TempDir()
+
+	cloneFunc := func() transport.TLSInfo {
+		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo, certsDir)
+		require.NoError(t, terr)
+		return tlsInfo
+	}
+	replaceFunc := func() {
+		_, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDir)
+		require.NoError(t, err)
+	}
+	revertFunc := func() {
+		_, err := copyTLSFiles(integration.TestTLSInfo, certsDir)
+		require.NoError(t, err)
+	}
+	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, false)
+}
+
+// TestTLSReloadCopyIPOnly ensures server reloads expired/valid certs
+// when new certs are copied over, one by one. And expects server
+// to reject client requests, and vice versa.
+func TestTLSReloadCopyIPOnly(t *testing.T) {
+	certsDir := t.TempDir()
+
+	cloneFunc := func() transport.TLSInfo {
+		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfoIP, certsDir)
+		require.NoError(t, terr)
+		return tlsInfo
+	}
+	replaceFunc := func() {
+		_, err := copyTLSFiles(integration.TestTLSInfoExpiredIP, certsDir)
+		require.NoError(t, err)
+	}
+	revertFunc := func() {
+		_, err := copyTLSFiles(integration.TestTLSInfoIP, certsDir)
+		require.NoError(t, err)
+	}
+	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, true)
+}
+
+func testTLSReload(
+	t *testing.T,
+	cloneFunc func() transport.TLSInfo,
+	replaceFunc func(),
+	revertFunc func(),
+	useIP bool,
+) {
+	integration.BeforeTest(t)
+
+	// 1. separate copies for TLS assets modification
+	tlsInfo := cloneFunc()
+
+	// 2. start cluster with valid certs
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:      1,
+		PeerTLS:   &tlsInfo,
+		ClientTLS: &tlsInfo,
+		UseIP:     useIP,
+	})
+	defer clus.Terminate(t)
+
+	// 3. concurrent client dialing while certs become expired
+	errc := make(chan error, 1)
+	go func() {
+		for {
+			cc, err := tlsInfo.ClientConfig()
+			if err != nil {
+				// errors in 'go/src/crypto/tls/tls.go'
+				// tls: private key does not match public key
+				// tls: failed to find any PEM data in key input
+				// tls: failed to find any PEM data in certificate input
+				// Or 'does not exist', 'not found', etc
+				t.Log(err)
+				continue
+			}
+			cli, cerr := integration.NewClient(t, clientv3.Config{
+				Endpoints:   []string{clus.Members[0].GRPCURL},
+				DialTimeout: time.Second,
+				TLS:         cc,
+			})
+			if cerr != nil {
+				errc <- cerr
+				return
+			}
+			cli.Close()
+		}
+	}()
+
+	// 4. replace certs with expired ones
+	replaceFunc()
+
+	// 5. expect dial time-out when loading expired certs
+	select {
+	case gerr := <-errc:
+		if !errors.Is(gerr, context.DeadlineExceeded) {
+			t.Fatalf("expected %v, got %v", context.DeadlineExceeded, gerr)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("failed to receive dial timeout error")
+	}
+
+	// 6. replace expired certs back with valid ones
+	revertFunc()
+
+	// 7. new requests should trigger listener to reload valid certs
+	tls, terr := tlsInfo.ClientConfig()
+	require.NoError(t, terr)
+	cl, cerr := integration.NewClient(t, clientv3.Config{
+		Endpoints:   []string{clus.Members[0].GRPCURL},
+		DialTimeout: 5 * time.Second,
+		TLS:         tls,
+	})
+	if cerr != nil {
+		t.Fatalf("expected no error, got %v", cerr)
+	}
+	cl.Close()
+}
+
+func TestGRPCRequireLeader(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	clus.Members[1].Stop(t)
+	clus.Members[2].Stop(t)
+
+	client, err := integration.NewClientV3(clus.Members[0])
+	if err != nil {
+		t.Fatalf("cannot create client: %v", err)
+	}
+	defer client.Close()
+
+	// wait for election timeout, then member[0] will not have a leader.
+	time.Sleep(time.Duration(3*integration.ElectionTicks) * config.TickDuration)
+
+	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
+	ctx := metadata.NewOutgoingContext(t.Context(), md)
+	reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+	if _, err := integration.ToGRPC(client).KV.Put(ctx, reqput); rpctypes.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
+	}
+}
+
+func TestGRPCStreamRequireLeader(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	defer clus.Terminate(t)
+
+	client, err := integration.NewClientV3(clus.Members[0])
+	if err != nil {
+		t.Fatalf("failed to create client (%v)", err)
+	}
+	defer client.Close()
+
+	wAPI := integration.ToGRPC(client).Watch
+	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
+	ctx := metadata.NewOutgoingContext(t.Context(), md)
+	wStream, err := wAPI.Watch(ctx)
+	if err != nil {
+		t.Fatalf("wAPI.Watch error: %v", err)
+	}
+
+	clus.Members[1].Stop(t)
+	clus.Members[2].Stop(t)
+
+	// existing stream should be rejected
+	_, err = wStream.Recv()
+	if rpctypes.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
+	}
+
+	// new stream should also be rejected
+	wStream, err = wAPI.Watch(ctx)
+	if err != nil {
+		t.Fatalf("wAPI.Watch error: %v", err)
+	}
+	_, err = wStream.Recv()
+	if rpctypes.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
+	}
+
+	clus.Members[1].Restart(t)
+	clus.Members[2].Restart(t)
+
+	clus.WaitMembersForLeader(t, clus.Members)
+	time.Sleep(time.Duration(2*integration.ElectionTicks) * config.TickDuration)
+
+	// new stream should also be OK now after we restarted the other members
+	wStream, err = wAPI.Watch(ctx)
+	if err != nil {
+		t.Fatalf("wAPI.Watch error: %v", err)
+	}
+	wreq := &pb.WatchRequest{
+		RequestUnion: &pb.WatchRequest_CreateRequest{
+			CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo")},
+		},
+	}
+	err = wStream.Send(wreq)
+	if err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+}
+
+// TestV3LargeRequests ensures that configurable MaxRequestBytes works as intended.
+func TestV3LargeRequests(t *testing.T) {
+	integration.BeforeTest(t)
+	tests := []struct {
+		maxRequestBytes uint
+		valueSize       int
+		expectError     error
+	}{
+		// don't set to 0. use 0 as the default.
+		{256, 1024, rpctypes.ErrGRPCRequestTooLarge},
+		{10 * 1024 * 1024, 9 * 1024 * 1024, nil},
+		{10 * 1024 * 1024, 10 * 1024 * 1024, rpctypes.ErrGRPCRequestTooLarge},
+		{10 * 1024 * 1024, 10*1024*1024 + 5, rpctypes.ErrGRPCRequestTooLarge},
+	}
+	for i, test := range tests {
+		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, MaxRequestBytes: test.maxRequestBytes})
+			defer clus.Terminate(t)
+			kvcli := integration.ToGRPC(clus.Client(0)).KV
+			reqput := &pb.PutRequest{Key: []byte("foo"), Value: make([]byte, test.valueSize)}
+			_, err := kvcli.Put(t.Context(), reqput)
+			if !eqErrGRPC(err, test.expectError) {
+				t.Errorf("#%d: expected error %v, got %v", i, test.expectError, err)
+			}
+
+			// request went through, expect large response back from server
+			if test.expectError == nil {
+				reqget := &pb.RangeRequest{Key: []byte("foo")}
+				// limit receive call size with original value + gRPC overhead bytes
+				_, err = kvcli.Range(t.Context(), reqget, grpc.MaxCallRecvMsgSize(test.valueSize+512*1024))
+				if err != nil {
+					t.Errorf("#%d: range expected no error, got %v", i, err)
+				}
+			}
+		})
+	}
+}
+
+// TestV3AdditionalGRPCOptions ensures that configurable GRPCAdditionalServerOptions works as intended.
+func TestV3AdditionalGRPCOptions(t *testing.T) {
+	integration.BeforeTest(t)
+	tests := []struct {
+		name            string
+		maxRequestBytes uint
+		grpcOpts        []grpc.ServerOption
+		valueSize       int
+		expectError     error
+	}{
+		{
+			name:            "requests will get a gRPC error because it's larger than gRPC MaxRecvMsgSize",
+			maxRequestBytes: 8 * 1024 * 1024,
+			grpcOpts:        nil,
+			valueSize:       9 * 1024 * 1024,
+			expectError:     status.Errorf(codes.ResourceExhausted, "grpc: received message larger than max"),
+		},
+		{
+			name:            "requests will get an etcd custom gRPC error because it's larger than MaxRequestBytes",
+			maxRequestBytes: 8 * 1024 * 1024,
+			grpcOpts:        []grpc.ServerOption{grpc.MaxRecvMsgSize(10 * 1024 * 1024)},
+			valueSize:       9 * 1024 * 1024,
+			expectError:     rpctypes.ErrGRPCRequestTooLarge,
+		},
+		{
+			name:            "requests size is smaller than MaxRequestBytes but larger than MaxRecvMsgSize",
+			maxRequestBytes: 8 * 1024 * 1024,
+			grpcOpts:        []grpc.ServerOption{grpc.MaxRecvMsgSize(4 * 1024 * 1024)},
+			valueSize:       6 * 1024 * 1024,
+			expectError:     status.Errorf(codes.ResourceExhausted, "grpc: received message larger than max"),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			clus := integration.NewCluster(t, &integration.ClusterConfig{
+				Size:                        1,
+				MaxRequestBytes:             test.maxRequestBytes,
+				ClientMaxCallSendMsgSize:    12 * 1024 * 1024,
+				GRPCAdditionalServerOptions: test.grpcOpts,
+			})
+			defer clus.Terminate(t)
+			kvcli := integration.ToGRPC(clus.Client(0)).KV
+			reqput := &pb.PutRequest{Key: []byte("foo"), Value: make([]byte, test.valueSize)}
+			if _, err := kvcli.Put(t.Context(), reqput); err != nil {
+				var etcdErr rpctypes.EtcdError
+				if errors.As(err, &etcdErr) {
+					if err.Error() != status.Convert(test.expectError).Message() {
+						t.Errorf("expected %v, got %v", status.Convert(test.expectError).Message(), err.Error())
+					}
+				} else if !strings.HasPrefix(err.Error(), test.expectError.Error()) {
+					t.Errorf("expected error starting with '%s', got '%s'", test.expectError.Error(), err.Error())
+				}
+			}
+			// request went through, expect large response back from server
+			if test.expectError == nil {
+				reqget := &pb.RangeRequest{Key: []byte("foo")}
+				// limit receive call size with original value + gRPC overhead bytes
+				_, err := kvcli.Range(t.Context(), reqget, grpc.MaxCallRecvMsgSize(test.valueSize+512*1024))
+				if err != nil {
+					t.Errorf("range expected no error, got %v", err)
+				}
+			}
+		})
+	}
+}
+
+func eqErrGRPC(err1 error, err2 error) bool {
+	return !(err1 == nil && err2 != nil) || err1.Error() == err2.Error()
+}
+
+// waitForRestart tries a range request until the client's server responds.
+// This is mainly a stop-gap function until grpcproxy's KVClient adapter
+// (and by extension, clientv3) supports grpc.CallOption pass-through so
+// FailFast=false works with Put.
+func waitForRestart(t *testing.T, kvc pb.KVClient) {
+	req := &pb.RangeRequest{Key: []byte("_"), Serializable: true}
+	// TODO: Remove retry loop once the new grpc load balancer provides retry.
+	var err error
+	for i := 0; i < 10; i++ {
+		if _, err = kvc.Range(t.Context(), req, grpc.WaitForReady(true)); err != nil {
+			if status, ok := status.FromError(err); ok && status.Code() == codes.Unavailable {
+				time.Sleep(time.Millisecond * 250)
+			} else {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err != nil {
+		t.Fatalf("timed out waiting for restart: %v", err)
+	}
+}
