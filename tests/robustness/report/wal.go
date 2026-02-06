@@ -28,7 +28,6 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
@@ -217,12 +216,7 @@ func parseEntryNormal(ent raftpb.Entry) (*model.EtcdRequest, error) {
 		return nil, nil
 	}
 	if err := raftReq.Unmarshal(ent.Data); err != nil {
-		var r pb.Request
-		isV2Entry := pbutil.MaybeUnmarshal(&r, ent.Data)
-		if !isV2Entry {
-			return nil, err
-		}
-		return nil, nil
+		return nil, err
 	}
 	switch {
 	case raftReq.Put != nil:

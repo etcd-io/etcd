@@ -28,7 +28,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"go.uber.org/zap"
 
@@ -213,15 +212,6 @@ func genIDSlice(a []uint64) []types.ID {
 	return ids
 }
 
-// excerpt replaces middle part with ellipsis and returns a double-quoted
-// string safely escaped with Go syntax.
-func excerpt(str string, pre, suf int) string {
-	if pre+suf > len(str) {
-		return fmt.Sprintf("%q", str)
-	}
-	return fmt.Sprintf("%q...%q", str[:pre], str[len(str)-suf:])
-}
-
 type EntryFilter func(e raftpb.Entry) (bool, string)
 
 // The 9 pass functions below takes the raftpb.Entry and return if the entry should be printed and the type of entry,
@@ -236,9 +226,8 @@ func passInternalRaftRequest(entry raftpb.Entry) (bool, string) {
 }
 
 func passUnknownNormal(entry raftpb.Entry) (bool, string) {
-	var rr1 etcdserverpb.Request
 	var rr2 etcdserverpb.InternalRaftRequest
-	return (entry.Type == raftpb.EntryNormal) && (rr1.Unmarshal(entry.Data) != nil) && (rr2.Unmarshal(entry.Data) != nil), "UnknownNormal"
+	return (entry.Type == raftpb.EntryNormal) && (rr2.Unmarshal(entry.Data) != nil), "UnknownNormal"
 }
 
 func passIRRRange(entry raftpb.Entry) (bool, string) {
@@ -282,9 +271,8 @@ func passIRRLeaseCheckpoint(entry raftpb.Entry) (bool, string) {
 }
 
 func passRequest(entry raftpb.Entry) (bool, string) {
-	var rr1 etcdserverpb.Request
 	var rr2 etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr1.Unmarshal(entry.Data) == nil && rr2.Unmarshal(entry.Data) != nil, "Request"
+	return entry.Type == raftpb.EntryNormal && rr2.Unmarshal(entry.Data) != nil, "Request"
 }
 
 type EntryPrinter func(e raftpb.Entry)
@@ -316,23 +304,6 @@ func printConfChange(entry raftpb.Entry) {
 		fmt.Print("\t???")
 	} else {
 		fmt.Printf("\tmethod=%s id=%s", r.Type, types.ID(r.NodeID))
-	}
-}
-
-func printRequest(entry raftpb.Entry) {
-	var r etcdserverpb.Request
-	if err := r.Unmarshal(entry.Data); err == nil {
-		fmt.Printf("%4d\t%10d\tnorm", entry.Term, entry.Index)
-		switch r.Method {
-		case "":
-			fmt.Print("\tnoop")
-		case methodSync:
-			fmt.Printf("\tmethod=SYNC time=%q", time.Unix(0, r.Time).UTC())
-		case methodQGet, methodDelete:
-			fmt.Printf("\tmethod=%s path=%s", r.Method, excerpt(r.Path, 64, 64))
-		default:
-			fmt.Printf("\tmethod=%s path=%s val=%s", r.Method, excerpt(r.Path, 64, 64), excerpt(r.Val, 128, 0))
-		}
 	}
 }
 
@@ -378,7 +349,6 @@ func listEntriesType(entrytype string, streamdecoder string, ents []raftpb.Entry
 	entryFilters := evaluateEntrytypeFlag(entrytype)
 	printerMap := map[string]EntryPrinter{
 		"InternalRaftRequest": printInternalRaftRequest,
-		"Request":             printRequest,
 		"ConfigChange":        printConfChange,
 		"UnknownNormal":       printUnknownNormal,
 	}
