@@ -11,7 +11,6 @@ option go_package = "go.etcd.io/etcd/api/v3/etcdserverpb";
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
 option (gogoproto.unmarshaler_all) = true;
-option (gogoproto.goproto_getters_all) = false;
 
 message RequestHeader {
   option (versionpb.etcd_version_msg) = "3.0";
