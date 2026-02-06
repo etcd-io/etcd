@@ -9,7 +9,6 @@ import (
 	math "math"
 	math_bits "math/bits"
 
-	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/golang/protobuf/proto"
 )
 
@@ -25,22 +24,22 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Request struct {
-	ID                   uint64   `protobuf:"varint,1,opt,name=ID" json:"ID"`
-	Method               string   `protobuf:"bytes,2,opt,name=Method" json:"Method"`
-	Path                 string   `protobuf:"bytes,3,opt,name=Path" json:"Path"`
-	Val                  string   `protobuf:"bytes,4,opt,name=Val" json:"Val"`
-	Dir                  bool     `protobuf:"varint,5,opt,name=Dir" json:"Dir"`
-	PrevValue            string   `protobuf:"bytes,6,opt,name=PrevValue" json:"PrevValue"`
-	PrevIndex            uint64   `protobuf:"varint,7,opt,name=PrevIndex" json:"PrevIndex"`
+	ID                   *uint64  `protobuf:"varint,1,opt,name=ID" json:"ID,omitempty"`
+	Method               *string  `protobuf:"bytes,2,opt,name=Method" json:"Method,omitempty"`
+	Path                 *string  `protobuf:"bytes,3,opt,name=Path" json:"Path,omitempty"`
+	Val                  *string  `protobuf:"bytes,4,opt,name=Val" json:"Val,omitempty"`
+	Dir                  *bool    `protobuf:"varint,5,opt,name=Dir" json:"Dir,omitempty"`
+	PrevValue            *string  `protobuf:"bytes,6,opt,name=PrevValue" json:"PrevValue,omitempty"`
+	PrevIndex            *uint64  `protobuf:"varint,7,opt,name=PrevIndex" json:"PrevIndex,omitempty"`
 	PrevExist            *bool    `protobuf:"varint,8,opt,name=PrevExist" json:"PrevExist,omitempty"`
-	Expiration           int64    `protobuf:"varint,9,opt,name=Expiration" json:"Expiration"`
-	Wait                 bool     `protobuf:"varint,10,opt,name=Wait" json:"Wait"`
-	Since                uint64   `protobuf:"varint,11,opt,name=Since" json:"Since"`
-	Recursive            bool     `protobuf:"varint,12,opt,name=Recursive" json:"Recursive"`
-	Sorted               bool     `protobuf:"varint,13,opt,name=Sorted" json:"Sorted"`
-	Quorum               bool     `protobuf:"varint,14,opt,name=Quorum" json:"Quorum"`
-	Time                 int64    `protobuf:"varint,15,opt,name=Time" json:"Time"`
-	Stream               bool     `protobuf:"varint,16,opt,name=Stream" json:"Stream"`
+	Expiration           *int64   `protobuf:"varint,9,opt,name=Expiration" json:"Expiration,omitempty"`
+	Wait                 *bool    `protobuf:"varint,10,opt,name=Wait" json:"Wait,omitempty"`
+	Since                *uint64  `protobuf:"varint,11,opt,name=Since" json:"Since,omitempty"`
+	Recursive            *bool    `protobuf:"varint,12,opt,name=Recursive" json:"Recursive,omitempty"`
+	Sorted               *bool    `protobuf:"varint,13,opt,name=Sorted" json:"Sorted,omitempty"`
+	Quorum               *bool    `protobuf:"varint,14,opt,name=Quorum" json:"Quorum,omitempty"`
+	Time                 *int64   `protobuf:"varint,15,opt,name=Time" json:"Time,omitempty"`
+	Stream               *bool    `protobuf:"varint,16,opt,name=Stream" json:"Stream,omitempty"`
 	Refresh              *bool    `protobuf:"varint,17,opt,name=Refresh" json:"Refresh,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -81,50 +80,50 @@ func (m *Request) XXX_DiscardUnknown() {
 var xxx_messageInfo_Request proto.InternalMessageInfo
 
 func (m *Request) GetID() uint64 {
-	if m != nil {
-		return m.ID
+	if m != nil && m.ID != nil {
+		return *m.ID
 	}
 	return 0
 }
 
 func (m *Request) GetMethod() string {
-	if m != nil {
-		return m.Method
+	if m != nil && m.Method != nil {
+		return *m.Method
 	}
 	return ""
 }
 
 func (m *Request) GetPath() string {
-	if m != nil {
-		return m.Path
+	if m != nil && m.Path != nil {
+		return *m.Path
 	}
 	return ""
 }
 
 func (m *Request) GetVal() string {
-	if m != nil {
-		return m.Val
+	if m != nil && m.Val != nil {
+		return *m.Val
 	}
 	return ""
 }
 
 func (m *Request) GetDir() bool {
-	if m != nil {
-		return m.Dir
+	if m != nil && m.Dir != nil {
+		return *m.Dir
 	}
 	return false
 }
 
 func (m *Request) GetPrevValue() string {
-	if m != nil {
-		return m.PrevValue
+	if m != nil && m.PrevValue != nil {
+		return *m.PrevValue
 	}
 	return ""
 }
 
 func (m *Request) GetPrevIndex() uint64 {
-	if m != nil {
-		return m.PrevIndex
+	if m != nil && m.PrevIndex != nil {
+		return *m.PrevIndex
 	}
 	return 0
 }
@@ -137,57 +136,57 @@ func (m *Request) GetPrevExist() bool {
 }
 
 func (m *Request) GetExpiration() int64 {
-	if m != nil {
-		return m.Expiration
+	if m != nil && m.Expiration != nil {
+		return *m.Expiration
 	}
 	return 0
 }
 
 func (m *Request) GetWait() bool {
-	if m != nil {
-		return m.Wait
+	if m != nil && m.Wait != nil {
+		return *m.Wait
 	}
 	return false
 }
 
 func (m *Request) GetSince() uint64 {
-	if m != nil {
-		return m.Since
+	if m != nil && m.Since != nil {
+		return *m.Since
 	}
 	return 0
 }
 
 func (m *Request) GetRecursive() bool {
-	if m != nil {
-		return m.Recursive
+	if m != nil && m.Recursive != nil {
+		return *m.Recursive
 	}
 	return false
 }
 
 func (m *Request) GetSorted() bool {
-	if m != nil {
-		return m.Sorted
+	if m != nil && m.Sorted != nil {
+		return *m.Sorted
 	}
 	return false
 }
 
 func (m *Request) GetQuorum() bool {
-	if m != nil {
-		return m.Quorum
+	if m != nil && m.Quorum != nil {
+		return *m.Quorum
 	}
 	return false
 }
 
 func (m *Request) GetTime() int64 {
-	if m != nil {
-		return m.Time
+	if m != nil && m.Time != nil {
+		return *m.Time
 	}
 	return 0
 }
 
 func (m *Request) GetStream() bool {
-	if m != nil {
-		return m.Stream
+	if m != nil && m.Stream != nil {
+		return *m.Stream
 	}
 	return false
 }
@@ -200,8 +199,8 @@ func (m *Request) GetRefresh() bool {
 }
 
 type Metadata struct {
-	NodeID               uint64   `protobuf:"varint,1,opt,name=NodeID" json:"NodeID"`
-	ClusterID            uint64   `protobuf:"varint,2,opt,name=ClusterID" json:"ClusterID"`
+	NodeID               *uint64  `protobuf:"varint,1,opt,name=NodeID" json:"NodeID,omitempty"`
+	ClusterID            *uint64  `protobuf:"varint,2,opt,name=ClusterID" json:"ClusterID,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -241,15 +240,15 @@ func (m *Metadata) XXX_DiscardUnknown() {
 var xxx_messageInfo_Metadata proto.InternalMessageInfo
 
 func (m *Metadata) GetNodeID() uint64 {
-	if m != nil {
-		return m.NodeID
+	if m != nil && m.NodeID != nil {
+		return *m.NodeID
 	}
 	return 0
 }
 
 func (m *Metadata) GetClusterID() uint64 {
-	if m != nil {
-		return m.ClusterID
+	if m != nil && m.ClusterID != nil {
+		return *m.ClusterID
 	}
 	return 0
 }
@@ -262,32 +261,31 @@ func init() {
 func init() { proto.RegisterFile("etcdserver.proto", fileDescriptor_09ffbeb3bebbce7e) }
 
 var fileDescriptor_09ffbeb3bebbce7e = []byte{
-	// 400 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x5c, 0xd2, 0xdf, 0xce, 0xd2, 0x30,
-	0x14, 0x00, 0xf0, 0xaf, 0xb0, 0x8f, 0x3f, 0x15, 0x15, 0x1b, 0x62, 0x4e, 0x88, 0x99, 0x0b, 0x7a,
-	0xb1, 0x2b, 0x76, 0x61, 0x7c, 0x01, 0x1c, 0x17, 0x4b, 0xc4, 0xe0, 0x30, 0x98, 0x78, 0x57, 0xd9,
-	0x11, 0x9a, 0x00, 0x9d, 0x5d, 0xb7, 0xf0, 0x06, 0xbe, 0x82, 0x8f, 0xc4, 0xa5, 0x4f, 0x60, 0x0c,
-	0xbe, 0x88, 0xe9, 0xd8, 0x58, 0xfd, 0xae, 0xb6, 0xfc, 0xce, 0xe9, 0xe9, 0x69, 0x7b, 0xe8, 0x10,
-	0xf5, 0x26, 0xc9, 0x50, 0x15, 0xa8, 0xa6, 0xa9, 0x92, 0x5a, 0xb2, 0x41, 0x23, 0xe9, 0xd7, 0xf1,
-	0x68, 0x2b, 0xb7, 0xb2, 0x0c, 0x04, 0xe6, 0xef, 0x9a, 0x33, 0xf9, 0xe1, 0xd0, 0x6e, 0x8c, 0xdf,
-	0x73, 0xcc, 0x34, 0x1b, 0xd1, 0x56, 0x14, 0x02, 0xf1, 0x88, 0xef, 0xcc, 0x9c, 0xf3, 0xef, 0x97,
-	0x77, 0x71, 0x2b, 0x0a, 0xd9, 0x0b, 0xda, 0x59, 0xa0, 0xde, 0xc9, 0x04, 0x5a, 0x1e, 0xf1, 0xfb,
-	0x55, 0xa4, 0x32, 0x06, 0xd4, 0x59, 0x72, 0xbd, 0x83, 0xb6, 0x15, 0x2b, 0x85, 0x3d, 0xa7, 0xed,
-	0x35, 0xdf, 0x83, 0x63, 0x05, 0x0c, 0x18, 0x0f, 0x85, 0x82, 0x7b, 0x8f, 0xf8, 0xbd, 0xda, 0x43,
-	0xa1, 0xd8, 0x84, 0xf6, 0x97, 0x0a, 0x8b, 0x35, 0xdf, 0xe7, 0x08, 0x1d, 0x6b, 0x55, 0xc3, 0x75,
-	0x4e, 0x74, 0x4c, 0xf0, 0x04, 0x5d, 0xab, 0xd1, 0x86, 0xeb, 0x9c, 0xf9, 0x49, 0x64, 0x1a, 0x7a,
-	0xb7, 0x5d, 0x48, 0xdc, 0x30, 0x7b, 0x4d, 0xe9, 0xfc, 0x94, 0x0a, 0xc5, 0xb5, 0x90, 0x47, 0xe8,
-	0x7b, 0xc4, 0x6f, 0x57, 0x85, 0x2c, 0x37, 0x67, 0xfb, 0xcc, 0x85, 0x06, 0x6a, 0xb5, 0x5a, 0x0a,
-	0x1b, 0xd3, 0xfb, 0x95, 0x38, 0x6e, 0x10, 0x1e, 0x59, 0x3d, 0x5c, 0xc9, 0xec, 0x1f, 0xe3, 0x26,
-	0x57, 0x99, 0x28, 0x10, 0x06, 0xd6, 0xd2, 0x86, 0xcd, 0x9d, 0xae, 0xa4, 0xd2, 0x98, 0xc0, 0x63,
-	0x2b, 0xa1, 0x32, 0x13, 0xfd, 0x98, 0x4b, 0x95, 0x1f, 0xe0, 0x89, 0x1d, 0xbd, 0x9a, 0xe9, 0xea,
-	0x93, 0x38, 0x20, 0x3c, 0xb5, 0xba, 0x2e, 0xa5, 0xac, 0xaa, 0x15, 0xf2, 0x03, 0x0c, 0xff, 0xab,
-	0x5a, 0x1a, 0x73, 0xcd, 0x43, 0x7f, 0x53, 0x98, 0xed, 0xe0, 0x99, 0x75, 0x2b, 0x35, 0x4e, 0xde,
-	0xd3, 0xde, 0x02, 0x35, 0x4f, 0xb8, 0xe6, 0xa6, 0xd2, 0x07, 0x99, 0xe0, 0x83, 0x69, 0xa8, 0xcc,
-	0x9c, 0xf0, 0xdd, 0x3e, 0xcf, 0x34, 0xaa, 0x28, 0x2c, 0x87, 0xe2, 0xf6, 0x0a, 0x37, 0x9e, 0xbd,
-	0x3d, 0x5f, 0x5c, 0xf2, 0xeb, 0xe2, 0x92, 0x3f, 0x17, 0x97, 0xfc, 0xfc, 0xeb, 0xde, 0x7d, 0x79,
-	0xb5, 0x95, 0x53, 0x33, 0x90, 0x53, 0x21, 0x03, 0xf3, 0x0d, 0x78, 0x2a, 0x82, 0xe2, 0x4d, 0x60,
-	0x0f, 0xe9, 0xbf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x0d, 0x91, 0x71, 0x0f, 0xc5, 0x02, 0x00, 0x00,
+	// 370 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x92, 0x3f, 0xcf, 0xd3, 0x30,
+	0x10, 0xc6, 0x71, 0x93, 0xfe, 0x33, 0xa5, 0x14, 0x0b, 0xa1, 0x1b, 0x50, 0x14, 0x95, 0x25, 0x53,
+	0x33, 0x20, 0x76, 0x04, 0xe9, 0x90, 0xa1, 0xa8, 0xa4, 0xa8, 0x48, 0x6c, 0xa6, 0x39, 0xa8, 0xa5,
+	0xb6, 0x0e, 0x8e, 0x13, 0xf5, 0xa3, 0xb0, 0xf2, 0x6d, 0x18, 0xf9, 0x08, 0xa8, 0xef, 0x17, 0x79,
+	0xe5, 0x4b, 0xda, 0x74, 0xca, 0xf3, 0xfc, 0x2e, 0xbe, 0x7b, 0xe4, 0x33, 0x9f, 0xa1, 0xdd, 0xe5,
+	0x25, 0x9a, 0x1a, 0xcd, 0xa2, 0x30, 0xda, 0x6a, 0x31, 0xe9, 0x48, 0xf1, 0x7d, 0xfe, 0xc7, 0xe3,
+	0xc3, 0x0c, 0x7f, 0x55, 0x58, 0x5a, 0x31, 0xe5, 0xbd, 0x34, 0x01, 0x16, 0xb2, 0xc8, 0xcf, 0x7a,
+	0x69, 0x22, 0x5e, 0xf1, 0xc1, 0x0a, 0xed, 0x5e, 0xe7, 0xd0, 0x0b, 0x59, 0x34, 0xce, 0x5a, 0x27,
+	0x04, 0xf7, 0xd7, 0xd2, 0xee, 0xc1, 0x23, 0x4a, 0x5a, 0xcc, 0xb8, 0xb7, 0x95, 0x07, 0xf0, 0x09,
+	0x39, 0xe9, 0x48, 0xa2, 0x0c, 0xf4, 0x43, 0x16, 0x8d, 0x32, 0x27, 0xc5, 0x6b, 0x3e, 0x5e, 0x1b,
+	0xac, 0xb7, 0xf2, 0x50, 0x21, 0x0c, 0xe8, 0xcf, 0x0e, 0x5c, 0xab, 0xe9, 0x29, 0xc7, 0x33, 0x0c,
+	0x29, 0x44, 0x07, 0xae, 0xd5, 0xe5, 0x59, 0x95, 0x16, 0x46, 0xd4, 0xb3, 0x03, 0x22, 0xe0, 0x7c,
+	0x79, 0x2e, 0x94, 0x91, 0x56, 0xe9, 0x13, 0x8c, 0x43, 0x16, 0x79, 0xd9, 0x1d, 0x71, 0x89, 0xbf,
+	0x4a, 0x65, 0x81, 0xd3, 0x41, 0xd2, 0xe2, 0x25, 0xef, 0x6f, 0xd4, 0x69, 0x87, 0xf0, 0x94, 0x66,
+	0x35, 0xc6, 0xcd, 0xc9, 0x70, 0x57, 0x99, 0x52, 0xd5, 0x08, 0x93, 0x66, 0xce, 0x0d, 0xb8, 0x1b,
+	0xd9, 0x68, 0x63, 0x31, 0x87, 0x67, 0x54, 0x6a, 0x9d, 0xe3, 0x9f, 0x2b, 0x6d, 0xaa, 0x23, 0x4c,
+	0x1b, 0xde, 0x38, 0x37, 0xf7, 0x8b, 0x3a, 0x22, 0x3c, 0xa7, 0x44, 0xa4, 0xa9, 0x87, 0x35, 0x28,
+	0x8f, 0x30, 0x6b, 0x7b, 0x90, 0x13, 0xe0, 0x16, 0xf1, 0xc3, 0x60, 0xb9, 0x87, 0x17, 0x54, 0xb8,
+	0xda, 0xf9, 0x7b, 0x3e, 0x5a, 0xa1, 0x95, 0xb9, 0xb4, 0xd2, 0x9d, 0xfe, 0xa4, 0x73, 0xbc, 0xed,
+	0xa9, 0x75, 0x2e, 0xf7, 0xc7, 0x43, 0x55, 0x5a, 0x34, 0x69, 0x42, 0xeb, 0xf2, 0xb3, 0x0e, 0x7c,
+	0x78, 0xf7, 0xf7, 0x12, 0xb0, 0x7f, 0x97, 0x80, 0xfd, 0xbf, 0x04, 0xec, 0xf7, 0x43, 0xf0, 0xe4,
+	0xdb, 0x9b, 0x9f, 0x7a, 0xe1, 0x1e, 0xc2, 0x42, 0xe9, 0xd8, 0x7d, 0x63, 0x59, 0xa8, 0xb8, 0x7e,
+	0x1b, 0xdf, 0x3f, 0x8e, 0xc7, 0x00, 0x00, 0x00, 0xff, 0xff, 0x4f, 0x24, 0x3f, 0xda, 0x3d, 0x02,
+	0x00, 0x00,
 }
 
 func (m *Request) Marshal() (dAtA []byte, err error) {
@@ -326,57 +324,73 @@ func (m *Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x88
 	}
-	i--
-	if m.Stream {
-		dAtA[i] = 1
-	} else {
-		dAtA[i] = 0
+	if m.Stream != nil {
+		i--
+		if *m.Stream {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x80
 	}
-	i--
-	dAtA[i] = 0x1
-	i--
-	dAtA[i] = 0x80
-	i = encodeVarintEtcdserver(dAtA, i, uint64(m.Time))
-	i--
-	dAtA[i] = 0x78
-	i--
-	if m.Quorum {
-		dAtA[i] = 1
-	} else {
-		dAtA[i] = 0
+	if m.Time != nil {
+		i = encodeVarintEtcdserver(dAtA, i, uint64(*m.Time))
+		i--
+		dAtA[i] = 0x78
 	}
-	i--
-	dAtA[i] = 0x70
-	i--
-	if m.Sorted {
-		dAtA[i] = 1
-	} else {
-		dAtA[i] = 0
+	if m.Quorum != nil {
+		i--
+		if *m.Quorum {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x70
 	}
-	i--
-	dAtA[i] = 0x68
-	i--
-	if m.Recursive {
-		dAtA[i] = 1
-	} else {
-		dAtA[i] = 0
+	if m.Sorted != nil {
+		i--
+		if *m.Sorted {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x68
 	}
-	i--
-	dAtA[i] = 0x60
-	i = encodeVarintEtcdserver(dAtA, i, uint64(m.Since))
-	i--
-	dAtA[i] = 0x58
-	i--
-	if m.Wait {
-		dAtA[i] = 1
-	} else {
-		dAtA[i] = 0
+	if m.Recursive != nil {
+		i--
+		if *m.Recursive {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x60
 	}
-	i--
-	dAtA[i] = 0x50
-	i = encodeVarintEtcdserver(dAtA, i, uint64(m.Expiration))
-	i--
-	dAtA[i] = 0x48
+	if m.Since != nil {
+		i = encodeVarintEtcdserver(dAtA, i, uint64(*m.Since))
+		i--
+		dAtA[i] = 0x58
+	}
+	if m.Wait != nil {
+		i--
+		if *m.Wait {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x50
+	}
+	if m.Expiration != nil {
+		i = encodeVarintEtcdserver(dAtA, i, uint64(*m.Expiration))
+		i--
+		dAtA[i] = 0x48
+	}
 	if m.PrevExist != nil {
 		i--
 		if *m.PrevExist {
@@ -387,40 +401,54 @@ func (m *Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x40
 	}
-	i = encodeVarintEtcdserver(dAtA, i, uint64(m.PrevIndex))
-	i--
-	dAtA[i] = 0x38
-	i -= len(m.PrevValue)
-	copy(dAtA[i:], m.PrevValue)
-	i = encodeVarintEtcdserver(dAtA, i, uint64(len(m.PrevValue)))
-	i--
-	dAtA[i] = 0x32
-	i--
-	if m.Dir {
-		dAtA[i] = 1
-	} else {
-		dAtA[i] = 0
+	if m.PrevIndex != nil {
+		i = encodeVarintEtcdserver(dAtA, i, uint64(*m.PrevIndex))
+		i--
+		dAtA[i] = 0x38
 	}
-	i--
-	dAtA[i] = 0x28
-	i -= len(m.Val)
-	copy(dAtA[i:], m.Val)
-	i = encodeVarintEtcdserver(dAtA, i, uint64(len(m.Val)))
-	i--
-	dAtA[i] = 0x22
-	i -= len(m.Path)
-	copy(dAtA[i:], m.Path)
-	i = encodeVarintEtcdserver(dAtA, i, uint64(len(m.Path)))
-	i--
-	dAtA[i] = 0x1a
-	i -= len(m.Method)
-	copy(dAtA[i:], m.Method)
-	i = encodeVarintEtcdserver(dAtA, i, uint64(len(m.Method)))
-	i--
-	dAtA[i] = 0x12
-	i = encodeVarintEtcdserver(dAtA, i, uint64(m.ID))
-	i--
-	dAtA[i] = 0x8
+	if m.PrevValue != nil {
+		i -= len(*m.PrevValue)
+		copy(dAtA[i:], *m.PrevValue)
+		i = encodeVarintEtcdserver(dAtA, i, uint64(len(*m.PrevValue)))
+		i--
+		dAtA[i] = 0x32
+	}
+	if m.Dir != nil {
+		i--
+		if *m.Dir {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.Val != nil {
+		i -= len(*m.Val)
+		copy(dAtA[i:], *m.Val)
+		i = encodeVarintEtcdserver(dAtA, i, uint64(len(*m.Val)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.Path != nil {
+		i -= len(*m.Path)
+		copy(dAtA[i:], *m.Path)
+		i = encodeVarintEtcdserver(dAtA, i, uint64(len(*m.Path)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.Method != nil {
+		i -= len(*m.Method)
+		copy(dAtA[i:], *m.Method)
+		i = encodeVarintEtcdserver(dAtA, i, uint64(len(*m.Method)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.ID != nil {
+		i = encodeVarintEtcdserver(dAtA, i, uint64(*m.ID))
+		i--
+		dAtA[i] = 0x8
+	}
 	return len(dAtA) - i, nil
 }
 
@@ -448,12 +476,16 @@ func (m *Metadata) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i -= len(m.XXX_unrecognized)
 		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	i = encodeVarintEtcdserver(dAtA, i, uint64(m.ClusterID))
-	i--
-	dAtA[i] = 0x10
-	i = encodeVarintEtcdserver(dAtA, i, uint64(m.NodeID))
-	i--
-	dAtA[i] = 0x8
+	if m.ClusterID != nil {
+		i = encodeVarintEtcdserver(dAtA, i, uint64(*m.ClusterID))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.NodeID != nil {
+		i = encodeVarintEtcdserver(dAtA, i, uint64(*m.NodeID))
+		i--
+		dAtA[i] = 0x8
+	}
 	return len(dAtA) - i, nil
 }
 
@@ -474,28 +506,58 @@ func (m *Request) Size() (n int) {
 	}
 	var l int
 	_ = l
-	n += 1 + sovEtcdserver(uint64(m.ID))
-	l = len(m.Method)
-	n += 1 + l + sovEtcdserver(uint64(l))
-	l = len(m.Path)
-	n += 1 + l + sovEtcdserver(uint64(l))
-	l = len(m.Val)
-	n += 1 + l + sovEtcdserver(uint64(l))
-	n += 2
-	l = len(m.PrevValue)
-	n += 1 + l + sovEtcdserver(uint64(l))
-	n += 1 + sovEtcdserver(uint64(m.PrevIndex))
+	if m.ID != nil {
+		n += 1 + sovEtcdserver(uint64(*m.ID))
+	}
+	if m.Method != nil {
+		l = len(*m.Method)
+		n += 1 + l + sovEtcdserver(uint64(l))
+	}
+	if m.Path != nil {
+		l = len(*m.Path)
+		n += 1 + l + sovEtcdserver(uint64(l))
+	}
+	if m.Val != nil {
+		l = len(*m.Val)
+		n += 1 + l + sovEtcdserver(uint64(l))
+	}
+	if m.Dir != nil {
+		n += 2
+	}
+	if m.PrevValue != nil {
+		l = len(*m.PrevValue)
+		n += 1 + l + sovEtcdserver(uint64(l))
+	}
+	if m.PrevIndex != nil {
+		n += 1 + sovEtcdserver(uint64(*m.PrevIndex))
+	}
 	if m.PrevExist != nil {
 		n += 2
 	}
-	n += 1 + sovEtcdserver(uint64(m.Expiration))
-	n += 2
-	n += 1 + sovEtcdserver(uint64(m.Since))
-	n += 2
-	n += 2
-	n += 2
-	n += 1 + sovEtcdserver(uint64(m.Time))
-	n += 3
+	if m.Expiration != nil {
+		n += 1 + sovEtcdserver(uint64(*m.Expiration))
+	}
+	if m.Wait != nil {
+		n += 2
+	}
+	if m.Since != nil {
+		n += 1 + sovEtcdserver(uint64(*m.Since))
+	}
+	if m.Recursive != nil {
+		n += 2
+	}
+	if m.Sorted != nil {
+		n += 2
+	}
+	if m.Quorum != nil {
+		n += 2
+	}
+	if m.Time != nil {
+		n += 1 + sovEtcdserver(uint64(*m.Time))
+	}
+	if m.Stream != nil {
+		n += 3
+	}
 	if m.Refresh != nil {
 		n += 3
 	}
@@ -511,8 +573,12 @@ func (m *Metadata) Size() (n int) {
 	}
 	var l int
 	_ = l
-	n += 1 + sovEtcdserver(uint64(m.NodeID))
-	n += 1 + sovEtcdserver(uint64(m.ClusterID))
+	if m.NodeID != nil {
+		n += 1 + sovEtcdserver(uint64(*m.NodeID))
+	}
+	if m.ClusterID != nil {
+		n += 1 + sovEtcdserver(uint64(*m.ClusterID))
+	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -558,7 +624,7 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
 			}
-			m.ID = 0
+			var v uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowEtcdserver
@@ -568,11 +634,12 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.ID |= uint64(b&0x7F) << shift
+				v |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			m.ID = &v
 		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Method", wireType)
@@ -603,7 +670,8 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Method = string(dAtA[iNdEx:postIndex])
+			s := string(dAtA[iNdEx:postIndex])
+			m.Method = &s
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -635,7 +703,8 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Path = string(dAtA[iNdEx:postIndex])
+			s := string(dAtA[iNdEx:postIndex])
+			m.Path = &s
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -667,7 +736,8 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Val = string(dAtA[iNdEx:postIndex])
+			s := string(dAtA[iNdEx:postIndex])
+			m.Val = &s
 			iNdEx = postIndex
 		case 5:
 			if wireType != 0 {
@@ -688,7 +758,8 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			m.Dir = bool(v != 0)
+			b := bool(v != 0)
+			m.Dir = &b
 		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PrevValue", wireType)
@@ -719,13 +790,14 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PrevValue = string(dAtA[iNdEx:postIndex])
+			s := string(dAtA[iNdEx:postIndex])
+			m.PrevValue = &s
 			iNdEx = postIndex
 		case 7:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PrevIndex", wireType)
 			}
-			m.PrevIndex = 0
+			var v uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowEtcdserver
@@ -735,11 +807,12 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.PrevIndex |= uint64(b&0x7F) << shift
+				v |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			m.PrevIndex = &v
 		case 8:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PrevExist", wireType)
@@ -765,7 +838,7 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Expiration", wireType)
 			}
-			m.Expiration = 0
+			var v int64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowEtcdserver
@@ -775,11 +848,12 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Expiration |= int64(b&0x7F) << shift
+				v |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			m.Expiration = &v
 		case 10:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Wait", wireType)
@@ -799,12 +873,13 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			m.Wait = bool(v != 0)
+			b := bool(v != 0)
+			m.Wait = &b
 		case 11:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Since", wireType)
 			}
-			m.Since = 0
+			var v uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowEtcdserver
@@ -814,11 +889,12 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Since |= uint64(b&0x7F) << shift
+				v |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			m.Since = &v
 		case 12:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Recursive", wireType)
@@ -838,7 +914,8 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			m.Recursive = bool(v != 0)
+			b := bool(v != 0)
+			m.Recursive = &b
 		case 13:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Sorted", wireType)
@@ -858,7 +935,8 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			m.Sorted = bool(v != 0)
+			b := bool(v != 0)
+			m.Sorted = &b
 		case 14:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Quorum", wireType)
@@ -878,12 +956,13 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			m.Quorum = bool(v != 0)
+			b := bool(v != 0)
+			m.Quorum = &b
 		case 15:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Time", wireType)
 			}
-			m.Time = 0
+			var v int64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowEtcdserver
@@ -893,11 +972,12 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Time |= int64(b&0x7F) << shift
+				v |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			m.Time = &v
 		case 16:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Stream", wireType)
@@ -917,7 +997,8 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			m.Stream = bool(v != 0)
+			b := bool(v != 0)
+			m.Stream = &b
 		case 17:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Refresh", wireType)
@@ -994,7 +1075,7 @@ func (m *Metadata) Unmarshal(dAtA []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NodeID", wireType)
 			}
-			m.NodeID = 0
+			var v uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowEtcdserver
@@ -1004,16 +1085,17 @@ func (m *Metadata) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NodeID |= uint64(b&0x7F) << shift
+				v |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			m.NodeID = &v
 		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ClusterID", wireType)
 			}
-			m.ClusterID = 0
+			var v uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowEtcdserver
@@ -1023,11 +1105,12 @@ func (m *Metadata) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.ClusterID |= uint64(b&0x7F) << shift
+				v |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			m.ClusterID = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := skipEtcdserver(dAtA[iNdEx:])
