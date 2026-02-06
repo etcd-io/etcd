@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Copyright 2025 The etcd Authors
+
+# Copyright 2026 The etcd Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,8 +22,13 @@
 
 set -euo pipefail
 
-source ./scripts/test_lib.sh
+ETCD_ROOT_DIR=${ETCD_ROOT_DIR:-$(git rev-parse --show-toplevel)}
+source "${ETCD_ROOT_DIR}/scripts/test_lib.sh"
+
+log_callout "Syncing Go toolchain directive"
 
 TARGET_GO_VERSION="${TARGET_GO_VERSION:-"$(cat "${ETCD_ROOT_DIR}/.go-version")"}"
-find . -name 'go.mod' -exec go mod edit -toolchain=go"${TARGET_GO_VERSION}" {} \;
-go work edit -toolchain=go"${TARGET_GO_VERSION}"
+run find "${ETCD_ROOT_DIR}" -name 'go.mod' -exec go mod edit -toolchain=go"${TARGET_GO_VERSION}" {} \;
+run go work edit -toolchain=go"${TARGET_GO_VERSION}"
+
+log_success "Go toolchain directive synced"
