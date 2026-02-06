@@ -32,6 +32,10 @@ var (
 	infoRecord = append([]byte("\x0e\x00\x00\x00\x00\x00\x00\x00\b\x01\x10\x99\xb5\xe4\xd0\x03\x1a\x04"), infoData...)
 )
 
+func ptr[T any](a T) *T {
+	return &a
+}
+
 func TestReadRecord(t *testing.T) {
 	badInfoRecord := make([]byte, len(infoRecord))
 	copy(badInfoRecord, infoRecord)
@@ -42,7 +46,7 @@ func TestReadRecord(t *testing.T) {
 		wr   *walpb.Record
 		we   error
 	}{
-		{infoRecord, &walpb.Record{Type: 1, Crc: crc32.Checksum(infoData, crcTable), Data: infoData}, nil},
+		{infoRecord, &walpb.Record{Type: ptr(int64(1)), Crc: ptr(crc32.Checksum(infoData, crcTable)), Data: infoData}, nil},
 		{[]byte(""), &walpb.Record{}, io.EOF},
 		{infoRecord[:14], &walpb.Record{}, io.ErrUnexpectedEOF},
 		{infoRecord[:len(infoRecord)-len(infoData)], &walpb.Record{}, io.ErrUnexpectedEOF},
@@ -75,7 +79,7 @@ func TestWriteRecord(t *testing.T) {
 	d := []byte("Hello world!")
 	buf := new(bytes.Buffer)
 	e := newEncoder(buf, 0, 0)
-	e.encode(&walpb.Record{Type: typ, Data: d})
+	e.encode(&walpb.Record{Type: ptr(int64(typ)), Data: d})
 	e.flush()
 	f, err := createFileWithData(t, buf)
 	if err != nil {
@@ -86,7 +90,7 @@ func TestWriteRecord(t *testing.T) {
 	if err != nil {
 		t.Errorf("err = %v, want nil", err)
 	}
-	if b.Type != typ {
+	if b.GetType() != typ {
 		t.Errorf("type = %d, want %d", b.Type, typ)
 	}
 	if !reflect.DeepEqual(b.Data, d) {

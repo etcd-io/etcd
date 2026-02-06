@@ -65,7 +65,8 @@ func (e *encoder) encode(rec *walpb.Record) error {
 	defer e.mu.Unlock()
 
 	e.crc.Write(rec.Data)
-	rec.Crc = e.crc.Sum32()
+	crc := e.crc.Sum32()
+	rec.Crc = &crc
 	var (
 		data []byte
 		err  error

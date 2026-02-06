@@ -22,10 +22,10 @@ import (
 var ErrCRCMismatch = errors.New("walpb: crc mismatch")
 
 func (rec *Record) Validate(crc uint32) error {
-	if rec.Crc == crc {
+	if rec.GetCrc() == crc {
 		return nil
 	}
-	return fmt.Errorf("%w: expected: %x computed: %x", ErrCRCMismatch, rec.Crc, crc)
+	return fmt.Errorf("%w: expected: %x computed: %x", ErrCRCMismatch, rec.GetCrc(), crc)
 }
 
 // ValidateSnapshotForWrite ensures the Snapshot the newly written snapshot is valid.
@@ -34,7 +34,7 @@ func (rec *Record) Validate(crc uint32) error {
 // to the requirements.
 func ValidateSnapshotForWrite(e *Snapshot) error {
 	// Since etcd>=3.5.0
-	if e.ConfState == nil && e.Index > 0 {
+	if e.ConfState == nil && e.GetIndex() > 0 {
 		return errors.New("Saved (not-initial) snapshot is missing ConfState: " + e.String())
 	}
 	return nil

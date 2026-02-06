@@ -114,7 +114,7 @@ func (s *Snapshotter) LoadNewestAvailable(walSnaps []walpb.Snapshot) (*raftpb.Sn
 	return s.loadMatching(func(snapshot *raftpb.Snapshot) bool {
 		m := snapshot.Metadata
 		for i := len(walSnaps) - 1; i >= 0; i-- {
-			if m.Term == walSnaps[i].Term && m.Index == walSnaps[i].Index {
+			if m.Term == walSnaps[i].GetTerm() && m.Index == walSnaps[i].GetIndex() {
 				return true
 			}
 		}

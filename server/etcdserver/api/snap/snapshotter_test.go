@@ -149,6 +149,10 @@ func TestSnapNames(t *testing.T) {
 	}
 }
 
+func ptr[T any](a T) *T {
+	return &a
+}
+
 func TestLoadNewestSnap(t *testing.T) {
 	dir := filepath.Join(os.TempDir(), "snapshot")
 	err := os.Mkdir(dir, 0o700)
@@ -180,17 +184,17 @@ func TestLoadNewestSnap(t *testing.T) {
 		},
 		{
 			name:              "loadnewestavailable-newest",
-			availableWALSnaps: []walpb.Snapshot{{Index: 0, Term: 0}, {Index: 1, Term: 1}, {Index: 5, Term: 1}},
+			availableWALSnaps: []walpb.Snapshot{{Index: ptr(uint64(0)), Term: ptr(uint64(0))}, {Index: ptr(uint64(1)), Term: ptr(uint64(1))}, {Index: ptr(uint64(5)), Term: ptr(uint64(1))}},
 			expected:          &newSnap,
 		},
 		{
 			name:              "loadnewestavailable-newest-unsorted",
-			availableWALSnaps: []walpb.Snapshot{{Index: 5, Term: 1}, {Index: 1, Term: 1}, {Index: 0, Term: 0}},
+			availableWALSnaps: []walpb.Snapshot{{Index: ptr(uint64(5)), Term: ptr(uint64(1))}, {Index: ptr(uint64(1)), Term: ptr(uint64(1))}, {Index: ptr(uint64(0)), Term: ptr(uint64(0))}},
 			expected:          &newSnap,
 		},
 		{
 			name:              "loadnewestavailable-previous",
-			availableWALSnaps: []walpb.Snapshot{{Index: 0, Term: 0}, {Index: 1, Term: 1}},
+			availableWALSnaps: []walpb.Snapshot{{Index: ptr(uint64(0)), Term: ptr(uint64(0))}, {Index: ptr(uint64(1)), Term: ptr(uint64(1))}},
 			expected:          testSnap,
 		},
 	}

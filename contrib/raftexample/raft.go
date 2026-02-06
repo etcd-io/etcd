@@ -117,9 +117,11 @@ func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, 
 }
 
 func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
+	index := snap.Metadata.Index
+	term := snap.Metadata.Term
 	walSnap := walpb.Snapshot{
-		Index:     snap.Metadata.Index,
-		Term:      snap.Metadata.Term,
+		Index:     &index,
+		Term:      &term,
 		ConfState: &snap.Metadata.ConfState,
 	}
 	// save the snapshot file before writing the snapshot to the wal.
@@ -232,9 +234,10 @@ func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 
 	walsnap := walpb.Snapshot{}
 	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+		index, term := snapshot.Metadata.Index, snapshot.Metadata.Term
+		walsnap.Index, walsnap.Term = &index, &term
 	}
-	log.Printf("loading WAL at term %d and index %d", walsnap.Term, walsnap.Index)
+	log.Printf("loading WAL at term %d and index %d", walsnap.GetTerm(), walsnap.GetIndex())
 	w, err := wal.Open(zap.NewExample(), rc.waldir, walsnap)
 	if err != nil {
 		log.Fatalf("raftexample: error loading wal (%v)", err)

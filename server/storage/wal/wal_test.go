@@ -71,12 +71,12 @@ func TestNew(t *testing.T) {
 
 	var wb bytes.Buffer
 	e := newEncoder(&wb, 0, 0)
-	err = e.encode(&walpb.Record{Type: CrcType, Crc: 0})
+	err = e.encode(&walpb.Record{Type: ptr(CrcType), Crc: ptr(uint32(0))})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
-	err = e.encode(&walpb.Record{Type: MetadataType, Data: []byte("somedata")})
+	err = e.encode(&walpb.Record{Type: ptr(MetadataType), Data: []byte("somedata")})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	r := &walpb.Record{
-		Type: SnapshotType,
+		Type: ptr(SnapshotType),
 		Data: pbutil.MustMarshal(&walpb.Snapshot{}),
 	}
 	err = e.encode(r)
@@ -233,7 +233,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	f.Close()
 
-	w, err = Open(zaptest.NewLogger(t), dir, walpb.Snapshot{Index: 5})
+	w, err = Open(zaptest.NewLogger(t), dir, walpb.Snapshot{Index: ptr(uint64(5))})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	if g := filepath.Base(w.tail().Name()); g != wname {
 		t.Errorf("name = %+v, want %+v", g, wname)
@@ -331,7 +331,7 @@ func TestCut(t *testing.T) {
 	if err = w.cut(); err != nil {
 		t.Fatal(err)
 	}
-	snap := walpb.Snapshot{Index: 2, Term: 1, ConfState: &confState}
+	snap := walpb.Snapshot{Index: ptr(uint64(2)), Term: ptr(uint64(1)), ConfState: &confState}
 	if err = w.SaveSnapshot(snap); err != nil {
 		t.Fatal(err)
 	}
@@ -567,7 +567,7 @@ func TestRecoverAfterCut(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < 10; i++ {
-		if err = md.SaveSnapshot(walpb.Snapshot{Index: uint64(i), Term: 1, ConfState: &confState}); err != nil {
+		if err = md.SaveSnapshot(walpb.Snapshot{Index: ptr(uint64(i)), Term: ptr(uint64(1)), ConfState: &confState}); err != nil {
 			t.Fatal(err)
 		}
 		es := []raftpb.Entry{{Index: uint64(i)}}
@@ -585,7 +585,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		w, err := Open(zaptest.NewLogger(t), p, walpb.Snapshot{Index: uint64(i), Term: 1})
+		w, err := Open(zaptest.NewLogger(t), p, walpb.Snapshot{Index: ptr(uint64(i)), Term: ptr(uint64(1))})
 		if err != nil {
 			if i <= 4 {
 				if !strings.Contains(err.Error(), "do not increase continuously") {
@@ -1010,12 +1010,12 @@ func TestReadAllFail(t *testing.T) {
 func TestValidSnapshotEntries(t *testing.T) {
 	p := t.TempDir()
 	snap0 := walpb.Snapshot{}
-	snap1 := walpb.Snapshot{Index: 1, Term: 1, ConfState: &confState}
+	snap1 := walpb.Snapshot{Index: ptr(uint64(1)), Term: ptr(uint64(1)), ConfState: &confState}
 	state1 := raftpb.HardState{Commit: 1, Term: 1}
-	snap2 := walpb.Snapshot{Index: 2, Term: 1, ConfState: &confState}
-	snap3 := walpb.Snapshot{Index: 3, Term: 2, ConfState: &confState}
+	snap2 := walpb.Snapshot{Index: ptr(uint64(2)), Term: ptr(uint64(1)), ConfState: &confState}
+	snap3 := walpb.Snapshot{Index: ptr(uint64(3)), Term: ptr(uint64(2)), ConfState: &confState}
 	state2 := raftpb.HardState{Commit: 3, Term: 2}
-	snap4 := walpb.Snapshot{Index: 4, Term: 2, ConfState: &confState} // will be orphaned since the last committed entry will be snap3
+	snap4 := walpb.Snapshot{Index: ptr(uint64(4)), Term: ptr(uint64(2)), ConfState: &confState} // will be orphaned since the last committed entry will be snap3
 	func() {
 		w, err := Create(zaptest.NewLogger(t), p, nil)
 		if err != nil {
@@ -1063,10 +1063,10 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 	}()
 	p := t.TempDir()
 	snap0 := walpb.Snapshot{}
-	snap1 := walpb.Snapshot{Index: 1, Term: 1, ConfState: &confState}
+	snap1 := walpb.Snapshot{Index: ptr(uint64(1)), Term: ptr(uint64(1)), ConfState: &confState}
 	state1 := raftpb.HardState{Commit: 1, Term: 1}
-	snap2 := walpb.Snapshot{Index: 2, Term: 1, ConfState: &confState}
-	snap3 := walpb.Snapshot{Index: 3, Term: 2, ConfState: &confState}
+	snap2 := walpb.Snapshot{Index: ptr(uint64(2)), Term: ptr(uint64(1)), ConfState: &confState}
+	snap3 := walpb.Snapshot{Index: ptr(uint64(3)), Term: ptr(uint64(2)), ConfState: &confState}
 	state2 := raftpb.HardState{Commit: 3, Term: 2}
 	func() {
 		w, err := Create(zaptest.NewLogger(t), p, nil)
@@ -1152,7 +1152,7 @@ func TestLastRecordLengthExceedFileEnd(t *testing.T) {
 			require.ErrorIs(t, err, io.ErrUnexpectedEOF)
 			break
 		}
-		if rec.Type == EntryType {
+		if rec.GetType() == EntryType {
 			e := MustUnmarshalEntry(rec.Data)
 			t.Logf("Validating normal entry: %v", e)
 			recData := fmt.Sprintf("waldata%d", e.Index)
@@ -1169,8 +1169,8 @@ func TestLastRecordLengthExceedFileEnd(t *testing.T) {
 	require.NoError(t, os.Rename(fileName, newFileName))
 
 	w, err := Open(zaptest.NewLogger(t), filepath.Dir(fileName), walpb.Snapshot{
-		Index: 0,
-		Term:  0,
+		Index: ptr(uint64(0)),
+		Term:  ptr(uint64(0)),
 	})
 	require.NoError(t, err)
 	defer w.Close()

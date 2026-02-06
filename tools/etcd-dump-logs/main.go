@@ -127,7 +127,8 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		if *startIndex > 0 {
 			*startIndex--
 		}
-		walsnap.Index = *startIndex
+		index := *startIndex
+		walsnap.Index = &index
 	} else {
 		if *snapfile == "" {
 			ss := snap.New(lg, snapDir(dataDir))
@@ -138,7 +139,8 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 
 		switch {
 		case err == nil:
-			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+			index, term := snapshot.Metadata.Index, snapshot.Metadata.Term
+			walsnap.Index, walsnap.Term = &index, &term
 			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
 
 			confStateJSON, merr := json.Marshal(snapshot.Metadata.ConfState)
