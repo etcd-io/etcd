@@ -486,7 +486,7 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
-					snapshot: &walpb.Snapshot{Index: 3, ConfState: &raftpb.ConfState{}},
+					snapshot: &walpb.Snapshot{Index: new(uint64(3)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 5},
@@ -511,14 +511,14 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
-					snapshot: &walpb.Snapshot{Index: 3, ConfState: &raftpb.ConfState{}},
+					snapshot: &walpb.Snapshot{Index: new(uint64(3)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 5},
 					entries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 				},
 			},
-			readAt: walpb.Snapshot{Index: 3},
+			readAt: walpb.Snapshot{Index: new(uint64(3))},
 			walReadAll: want{
 				wantState:   raftpb.HardState{Commit: 5},
 				wantEntries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
@@ -540,7 +540,7 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
 				},
 				{
-					snapshot: &walpb.Snapshot{Index: 3, ConfState: &raftpb.ConfState{}},
+					snapshot: &walpb.Snapshot{Index: new(uint64(3)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 4},
@@ -560,7 +560,7 @@ func TestWriteReadWAL(t *testing.T) {
 			name: "entries preceding snapshot",
 			operations: []batch{
 				{
-					snapshot: &walpb.Snapshot{Index: 4, ConfState: &raftpb.ConfState{}},
+					snapshot: &walpb.Snapshot{Index: new(uint64(4)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 2},
@@ -575,7 +575,7 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
 				},
 			},
-			readAt: walpb.Snapshot{Index: 4},
+			readAt: walpb.Snapshot{Index: new(uint64(4))},
 			walReadAll: want{
 				wantState:   raftpb.HardState{Commit: 6},
 				wantEntries: []raftpb.Entry{{Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
@@ -593,14 +593,14 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
-					snapshot: &walpb.Snapshot{Index: 3, ConfState: &raftpb.ConfState{}},
+					snapshot: &walpb.Snapshot{Index: new(uint64(3)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 5},
 					entries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 				},
 			},
-			readAt: walpb.Snapshot{Index: 4},
+			readAt: walpb.Snapshot{Index: new(uint64(4))},
 			walReadAll: want{
 				wantError:   "snapshot not found",
 				wantState:   raftpb.HardState{Commit: 5},

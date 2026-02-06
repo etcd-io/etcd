@@ -38,8 +38,8 @@ func TestValidateSnapshot(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "empty", snap: &Snapshot{}, wantErr: false},
-		{name: "invalid", snap: &Snapshot{Index: 5, Term: 3}, wantErr: true},
-		{name: "valid", snap: &Snapshot{Index: 5, Term: 3, ConfState: &raftpb.ConfState{Voters: []uint64{0x00cad1}}}, wantErr: false},
+		{name: "invalid", snap: &Snapshot{Index: new(uint64(5)), Term: new(uint64(3))}, wantErr: true},
+		{name: "valid", snap: &Snapshot{Index: new(uint64(5)), Term: new(uint64(3)), ConfState: &raftpb.ConfState{Voters: []uint64{0x00cad1}}}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

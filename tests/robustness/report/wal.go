@@ -372,7 +372,7 @@ func ReadAllWALEntries(lg *zap.Logger, dirpath string) (state raftpb.HardState, 
 	rec := &walpb.Record{}
 	decoder := wal.NewDecoder(files...)
 	for err = decoder.Decode(rec); err == nil; err = decoder.Decode(rec) {
-		switch rec.Type {
+		switch rec.GetType() {
 		case wal.EntryType:
 			e := wal.MustUnmarshalEntry(rec.Data)
 			i := len(ents)
@@ -391,7 +391,7 @@ func ReadAllWALEntries(lg *zap.Logger, dirpath string) (state raftpb.HardState, 
 				state.Reset()
 				return state, nil, wal.ErrCRCMismatch
 			}
-			decoder.UpdateCRC(rec.Crc)
+			decoder.UpdateCRC(rec.GetCrc())
 		case wal.SnapshotType:
 		default:
 			return state, nil, fmt.Errorf("unexpected block type %d", rec.Type)
