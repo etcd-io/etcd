@@ -81,8 +81,8 @@ func TestGetLatestWalSnap(t *testing.T) {
 			// populate wal file
 			w, err := wal.Create(lg, datadir.ToWALDir(dataDir), pbutil.MustMarshal(
 				&etcdserverpb.Metadata{
-					NodeID:    1,
-					ClusterID: 2,
+					NodeID:    new(uint64(1)),
+					ClusterID: new(uint64(2)),
 				},
 			))
 			require.NoError(t, err)

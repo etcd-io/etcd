@@ -519,8 +519,8 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		s.cl.AddMember(m, true)
 	}
 
-	m := s.cl.MemberByName(s.name)
-	md := &etcdserverpb.Metadata{NodeID: uint64(m.ID), ClusterID: uint64(s.cl.ID())}
+	m := s.cl.MemberByName(s.name) //nolint:staticcheck // See https://github.com/dominikh/go-tools/issues/1698
+	md := &etcdserverpb.Metadata{NodeID: new(uint64(m.ID)), ClusterID: new(uint64(s.cl.ID()))}
 	metadata, merr := md.Marshal()
 	if merr != nil {
 		return nil, merr
