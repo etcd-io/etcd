@@ -26,10 +26,10 @@ import (
 
 func Apply(lg *zap.Logger, e *raftpb.Entry, uberApply UberApplier, w wait.Wait, shouldApplyV3 membership.ShouldApplyV3) (ar *Result, id uint64) {
 	var raftReq pb.InternalRaftRequest
-	if !pbutil.MaybeUnmarshal(&raftReq, e.Data) { // backward compatible
+	if !pbutil.MaybeUnmarshalMessage(&raftReq, e.Data) { // backward compatible
 		var r pb.Request
 		rp := &r
-		pbutil.MustUnmarshal(rp, e.Data)
+		pbutil.MustUnmarshalMessage(rp, e.Data)
 		lg.Debug("Apply", zap.Stringer("V2request", rp))
 		raftReq = v2ToV3Request(lg, (*RequestV2)(rp))
 	}

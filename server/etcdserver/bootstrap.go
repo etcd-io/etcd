@@ -655,7 +655,7 @@ func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*w
 			continue
 		}
 		var metadata etcdserverpb.Metadata
-		pbutil.MustUnmarshal(&metadata, wmetadata)
+		pbutil.MustUnmarshalMessage(&metadata, wmetadata)
 		id := types.ID(metadata.GetNodeID())
 		cid := types.ID(metadata.GetClusterID())
 		meta := &snapshotMetadata{clusterID: cid, nodeID: id}
@@ -672,7 +672,7 @@ func ptr[T any](a T) *T {
 }
 
 func bootstrapNewWAL(cfg config.ServerConfig, cl *bootstrappedCluster) *bootstrappedWAL {
-	metadata := pbutil.MustMarshal(
+	metadata := pbutil.MustMarshalMessage(
 		&etcdserverpb.Metadata{
 			NodeID:    ptr(uint64(cl.nodeID)),
 			ClusterID: ptr(uint64(cl.cl.ID())),

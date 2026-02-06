@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/crc"
 	"go.etcd.io/etcd/pkg/v3/ioutil"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"google.golang.org/protobuf/proto"
 )
 
 // walPageBytes is the alignment for flushing records to the backing Writer.
@@ -70,20 +71,20 @@ func (e *encoder) encode(rec *walpb.Record) error {
 	var (
 		data []byte
 		err  error
-		n    int
 	)
 
-	if rec.Size() > len(e.buf) {
-		data, err = rec.Marshal()
+	size := proto.Size(rec)
+	opts := proto.MarshalOptions{UseCachedSize: true}
+	if size > len(e.buf) {
+		data, err = opts.Marshal(rec)
 		if err != nil {
 			return err
 		}
 	} else {
-		n, err = rec.MarshalTo(e.buf)
+		data, err = opts.MarshalAppend(e.buf[:0], rec)
 		if err != nil {
 			return err
 		}
-		data = e.buf[:n]
 	}
 
 	data, lenField := prepareDataWithPadding(data)

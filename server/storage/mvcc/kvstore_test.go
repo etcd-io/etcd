@@ -31,6 +31,7 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -64,7 +65,7 @@ func TestStorePut(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := proto.Marshal(&kv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +145,7 @@ func TestStorePut(t *testing.T) {
 
 		s.Put([]byte("foo"), []byte("bar"), lease.LeaseID(i+1))
 
-		data, err := tt.wkv.Marshal()
+		data, err := proto.Marshal(&tt.wkv)
 		if err != nil {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
@@ -187,7 +188,7 @@ func TestStoreRange(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := proto.Marshal(&kv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +261,7 @@ func TestStoreDeleteRange(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := proto.Marshal(&kv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,9 +301,9 @@ func TestStoreDeleteRange(t *testing.T) {
 			t.Errorf("#%d: n = %d, want 1", i, n)
 		}
 
-		data, err := (&mvccpb.KeyValue{
+		data, err := proto.Marshal(&mvccpb.KeyValue{
 			Key: []byte("foo"),
-		}).Marshal()
+		})
 		if err != nil {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
@@ -383,7 +384,7 @@ func TestStoreRestore(t *testing.T) {
 		ModRevision:    4,
 		Version:        1,
 	}
-	putkvb, err := putkv.Marshal()
+	putkvb, err := proto.Marshal(&putkv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +392,7 @@ func TestStoreRestore(t *testing.T) {
 	delkv := mvccpb.KeyValue{
 		Key: []byte("foo"),
 	}
-	delkvb, err := delkv.Marshal()
+	delkvb, err := proto.Marshal(&delkv)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -154,7 +154,7 @@ func appendNormalRequestEnts(ents *[]raftpb.Entry) {
 		currentry.Term = 3
 		currentry.Index = uint64(i + 5)
 		currentry.Type = raftpb.EntryNormal
-		currentry.Data = pbutil.MustMarshal(&request)
+		currentry.Data = pbutil.MustMarshalMessage(&request)
 		*ents = append(*ents, currentry)
 	}
 }
@@ -254,7 +254,7 @@ func appendNormalIRREnts(ents *[]raftpb.Entry) {
 		currentry.Term = uint64(i + 4)
 		currentry.Index = uint64(i + 10)
 		currentry.Type = raftpb.EntryNormal
-		currentry.Data = pbutil.MustMarshal(&irr)
+		currentry.Data = pbutil.MustMarshalMessage(&irr)
 		*ents = append(*ents, currentry)
 	}
 }

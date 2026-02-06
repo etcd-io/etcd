@@ -83,7 +83,7 @@ func TestGetLatestWalSnap(t *testing.T) {
 			require.NoError(t, fileutil.TouchDirAll(lg, datadir.ToSnapDir(dataDir)))
 
 			// populate wal file
-			w, err := wal.Create(lg, datadir.ToWALDir(dataDir), pbutil.MustMarshal(
+			w, err := wal.Create(lg, datadir.ToWALDir(dataDir), pbutil.MustMarshalMessage(
 				&etcdserverpb.Metadata{
 					NodeID:    ptr(uint64(1)),
 					ClusterID: ptr(uint64(2)),

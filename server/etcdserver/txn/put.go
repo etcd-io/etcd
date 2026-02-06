@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
@@ -29,7 +30,7 @@ import (
 func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
 	ctx, trace = traceutil.EnsureTrace(ctx, lg, "put",
 		traceutil.Field{Key: "key", Value: string(p.Key)},
-		traceutil.Field{Key: "req_size", Value: p.Size()},
+		traceutil.Field{Key: "req_size", Value: proto.Size(p)},
 	)
 	err = checkLease(lessor, p)
 	if err != nil {

@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -172,7 +173,7 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 					ds.Revision = rev.Main
 
 					var kv mvccpb.KeyValue
-					err = kv.Unmarshal(v)
+					err = proto.Unmarshal(v, &kv)
 					if err != nil {
 						return fmt.Errorf("cannot unmarshal value, key: %q value: %q err: %w", k, v, err)
 					}
@@ -525,7 +526,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 
 	m := s.cl.MemberByName(s.name)
 	md := &etcdserverpb.Metadata{NodeID: ptr(uint64(m.ID)), ClusterID: ptr(uint64(s.cl.ID()))}
-	metadata, merr := md.Marshal()
+	metadata, merr := proto.Marshal(md)
 	if merr != nil {
 		return nil, merr
 	}

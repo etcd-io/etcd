@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -216,9 +217,9 @@ func parseEntryNormal(ent raftpb.Entry) (*model.EtcdRequest, error) {
 	if len(ent.Data) == 0 {
 		return nil, nil
 	}
-	if err := raftReq.Unmarshal(ent.Data); err != nil {
+	if err := proto.Unmarshal(ent.Data, &raftReq); err != nil {
 		var r pb.Request
-		isV2Entry := pbutil.MaybeUnmarshal(&r, ent.Data)
+		isV2Entry := pbutil.MaybeUnmarshalMessage(&r, ent.Data)
 		if !isV2Entry {
 			return nil, err
 		}

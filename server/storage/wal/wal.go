@@ -492,7 +492,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 					// We still return the continuous WAL entries that have already been read.
 					// Refer to https://github.com/etcd-io/etcd/pull/19038#issuecomment-2557414292.
 					return nil, state, ents, fmt.Errorf("%w, snapshot[Index: %d, Term: %d], current entry[Index: %d, Term: %d], len(ents): %d",
-						ErrSliceOutOfRange, w.start.Index, w.start.Term, e.Index, e.Term, len(ents))
+						ErrSliceOutOfRange, w.start.GetIndex(), w.start.GetTerm(), e.Index, e.Term, len(ents))
 				}
 				// The line below is potentially overriding some 'uncommitted' entries.
 				ents = append(ents[:offset], e)
@@ -521,7 +521,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 
 		case SnapshotType:
 			var snap walpb.Snapshot
-			pbutil.MustUnmarshal(&snap, rec.Data)
+			pbutil.MustUnmarshalMessage(&snap, rec.Data)
 			if snap.GetIndex() == w.start.GetIndex() {
 				if snap.GetTerm() != w.start.GetTerm() {
 					state.Reset()
@@ -623,7 +623,7 @@ func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]walpb.Snapshot, erro
 		switch rec.GetType() {
 		case SnapshotType:
 			var loadedSnap walpb.Snapshot
-			pbutil.MustUnmarshal(&loadedSnap, rec.Data)
+			pbutil.MustUnmarshalMessage(&loadedSnap, rec.Data)
 			snaps = append(snaps, loadedSnap)
 		case StateType:
 			state = MustUnmarshalState(rec.Data)
@@ -710,7 +710,7 @@ func Verify(lg *zap.Logger, walDir string, snap walpb.Snapshot) (*raftpb.HardSta
 			decoder.UpdateCRC(rec.GetCrc())
 		case SnapshotType:
 			var loadedSnap walpb.Snapshot
-			pbutil.MustUnmarshal(&loadedSnap, rec.Data)
+			pbutil.MustUnmarshalMessage(&loadedSnap, rec.Data)
 			if loadedSnap.GetIndex() == snap.GetIndex() {
 				if loadedSnap.GetTerm() != snap.GetTerm() {
 					return nil, ErrSnapshotMismatch
@@ -999,7 +999,7 @@ func (w *WAL) SaveSnapshot(e walpb.Snapshot) error {
 		return err
 	}
 
-	b := pbutil.MustMarshal(&e)
+	b := pbutil.MustMarshalMessage(&e)
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
