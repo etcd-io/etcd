@@ -19,7 +19,3 @@
 // for etcd. Thanks to this file 'go mod tidy' does not removes dependencies.
 
 package libs
-
-import (
-	_ "github.com/gogo/protobuf/proto"
-)
