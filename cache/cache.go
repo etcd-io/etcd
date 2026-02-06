@@ -409,3 +409,8 @@ func (c *Cache) validateRange(startKey, endKey []byte) error {
 		return nil
 	}
 }
+
+// WaitForNextResync blocks until the next resync loop iteration is complete.
+func (c *Cache) WaitForNextResync(ctx context.Context) error {
+	return c.demux.WaitForNextResync(ctx)
+}
