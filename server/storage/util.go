@@ -39,6 +39,12 @@ func AssertNoV2StoreContent(lg *zap.Logger, st v2store.Store, deprecationStage c
 	if metaOnly {
 		return nil
 	}
+	if deprecationStage == config.V2Depr1WriteOnlySkipCheck {
+		lg.Warn("DANGEROUS: --v2-deprecation=write-only-skip-check is set, bypassing v2 content check",
+			zap.String("detected", "v2store contains custom content"),
+			zap.String("warning", "v2 data will NOT be included in snapshots"))
+		return nil
+	}
 	if deprecationStage.IsAtLeast(config.V2Depr1WriteOnly) {
 		return fmt.Errorf("detected disallowed custom content in v2store for stage --v2-deprecation=%s", deprecationStage)
 	}
