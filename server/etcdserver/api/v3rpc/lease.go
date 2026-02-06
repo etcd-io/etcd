@@ -30,6 +30,7 @@ type LeaseServer struct {
 	lg  *zap.Logger
 	hdr header
 	le  etcdserver.Lessor
+	pb.UnsafeLeaseServer
 }
 
 func NewLeaseServer(s *etcdserver.EtcdServer) pb.LeaseServer {

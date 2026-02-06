@@ -23,6 +23,8 @@ import (
 
 type AuthProxy struct {
 	authClient pb.AuthClient
+	// we want compile errors if new methods are added
+	pb.UnsafeAuthServer
 }
 
 func NewAuthProxy(c *clientv3.Client) pb.AuthServer {

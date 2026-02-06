@@ -51,6 +51,9 @@ type watchServer struct {
 	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
 	ag        AuthGetter
+
+	// we want compile errors if new methods are added
+	pb.UnsafeWatchServer
 }
 
 // NewWatchServer returns a new watch server.

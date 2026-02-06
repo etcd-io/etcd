@@ -546,7 +546,7 @@ func (mm mockMaintenance) Downgrade(ctx context.Context, action DowngradeAction,
 }
 
 type mockFailingAuthServer struct {
-	*etcdserverpb.UnimplementedAuthServer
+	etcdserverpb.UnimplementedAuthServer
 }
 
 func (mockFailingAuthServer) Authenticate(context.Context, *etcdserverpb.AuthenticateRequest) (*etcdserverpb.AuthenticateResponse, error) {
@@ -554,7 +554,7 @@ func (mockFailingAuthServer) Authenticate(context.Context, *etcdserverpb.Authent
 }
 
 type mockAuthServer struct {
-	*etcdserverpb.UnimplementedAuthServer
+	etcdserverpb.UnimplementedAuthServer
 }
 
 func (mockAuthServer) Authenticate(context.Context, *etcdserverpb.AuthenticateRequest) (*etcdserverpb.AuthenticateResponse, error) {
