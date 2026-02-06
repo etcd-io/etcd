@@ -62,7 +62,7 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	defer st.mux.RUnlock()
 	index := snap.Metadata.Index
 	term := snap.Metadata.Term
-	walsnap := walpb.Snapshot{
+	walsnap := &walpb.Snapshot{
 		Index:     &index,
 		Term:      &term,
 		ConfState: &snap.Metadata.ConfState,
@@ -112,7 +112,7 @@ func (st *storage) Sync() error {
 func (st *storage) MinimalEtcdVersion() *semver.Version {
 	st.mux.Lock()
 	defer st.mux.Unlock()
-	walsnap := walpb.Snapshot{}
+	walsnap := &walpb.Snapshot{}
 
 	sn, err := st.s.Load()
 	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {

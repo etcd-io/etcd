@@ -42,7 +42,7 @@ func (p *pbPrinter) Watch(r v3.WatchResponse) {
 		evs[i] = (*mvccpb.Event)(ev)
 	}
 	wr := pb.WatchResponse{
-		Header:          &r.Header,
+		Header:          r.Header,
 		Events:          evs,
 		CompactRevision: r.CompactRevision,
 		Canceled:        r.Canceled,

@@ -175,7 +175,7 @@ func TestLoadNewestSnap(t *testing.T) {
 
 	cases := []struct {
 		name              string
-		availableWALSnaps []walpb.Snapshot
+		availableWALSnaps []*walpb.Snapshot
 		expected          *raftpb.Snapshot
 	}{
 		{
@@ -184,17 +184,17 @@ func TestLoadNewestSnap(t *testing.T) {
 		},
 		{
 			name:              "loadnewestavailable-newest",
-			availableWALSnaps: []walpb.Snapshot{{Index: ptr(uint64(0)), Term: ptr(uint64(0))}, {Index: ptr(uint64(1)), Term: ptr(uint64(1))}, {Index: ptr(uint64(5)), Term: ptr(uint64(1))}},
+			availableWALSnaps: []*walpb.Snapshot{{Index: ptr(uint64(0)), Term: ptr(uint64(0))}, {Index: ptr(uint64(1)), Term: ptr(uint64(1))}, {Index: ptr(uint64(5)), Term: ptr(uint64(1))}},
 			expected:          &newSnap,
 		},
 		{
 			name:              "loadnewestavailable-newest-unsorted",
-			availableWALSnaps: []walpb.Snapshot{{Index: ptr(uint64(5)), Term: ptr(uint64(1))}, {Index: ptr(uint64(1)), Term: ptr(uint64(1))}, {Index: ptr(uint64(0)), Term: ptr(uint64(0))}},
+			availableWALSnaps: []*walpb.Snapshot{{Index: ptr(uint64(5)), Term: ptr(uint64(1))}, {Index: ptr(uint64(1)), Term: ptr(uint64(1))}, {Index: ptr(uint64(0)), Term: ptr(uint64(0))}},
 			expected:          &newSnap,
 		},
 		{
 			name:              "loadnewestavailable-previous",
-			availableWALSnaps: []walpb.Snapshot{{Index: ptr(uint64(0)), Term: ptr(uint64(0))}, {Index: ptr(uint64(1)), Term: ptr(uint64(1))}},
+			availableWALSnaps: []*walpb.Snapshot{{Index: ptr(uint64(0)), Term: ptr(uint64(0))}, {Index: ptr(uint64(1)), Term: ptr(uint64(1))}},
 			expected:          testSnap,
 		},
 	}

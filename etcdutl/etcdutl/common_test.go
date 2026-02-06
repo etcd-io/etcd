@@ -37,13 +37,13 @@ func ptr[T any](a T) *T {
 func TestGetLatestWalSnap(t *testing.T) {
 	testCases := []struct {
 		name                  string
-		walSnaps              []walpb.Snapshot
+		walSnaps              []*walpb.Snapshot
 		snapshots             []raftpb.Snapshot
 		expectedLatestWALSnap walpb.Snapshot
 	}{
 		{
 			name: "wal snapshot records match the snapshot files",
-			walSnaps: []walpb.Snapshot{
+			walSnaps: []*walpb.Snapshot{
 				{Index: ptr(uint64(10)), Term: ptr(uint64(2))},
 				{Index: ptr(uint64(20)), Term: ptr(uint64(3))},
 				{Index: ptr(uint64(30)), Term: ptr(uint64(5))},
@@ -57,7 +57,7 @@ func TestGetLatestWalSnap(t *testing.T) {
 		},
 		{
 			name: "there are orphan snapshot files",
-			walSnaps: []walpb.Snapshot{
+			walSnaps: []*walpb.Snapshot{
 				{Index: ptr(uint64(10)), Term: ptr(uint64(2))},
 				{Index: ptr(uint64(20)), Term: ptr(uint64(3))},
 				{Index: ptr(uint64(35)), Term: ptr(uint64(5))},

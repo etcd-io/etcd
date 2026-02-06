@@ -89,7 +89,7 @@ type Watcher interface {
 }
 
 type WatchResponse struct {
-	Header pb.ResponseHeader
+	Header *pb.ResponseHeader
 	Events []*Event
 
 	// CompactRevision is the minimum revision the watcher may receive.
@@ -137,7 +137,7 @@ func (wr *WatchResponse) Err() error {
 
 // IsProgressNotify returns true if the WatchResponse is progress notification.
 func (wr *WatchResponse) IsProgressNotify() bool {
-	return len(wr.Events) == 0 && !wr.Canceled && !wr.Created && wr.CompactRevision == 0 && wr.Header.Revision != 0
+	return len(wr.Events) == 0 && !wr.Canceled && !wr.Created && wr.CompactRevision == 0 && wr.Header.GetRevision() != 0
 }
 
 // watcher implements the Watcher interface
@@ -718,7 +718,7 @@ func (w *watchGRPCStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
 	}
 	// TODO: return watch ID?
 	wr := &WatchResponse{
-		Header:          *pbresp.Header,
+		Header:          pbresp.Header,
 		Events:          events,
 		CompactRevision: pbresp.CompactRevision,
 		Created:         pbresp.Created,
@@ -843,12 +843,12 @@ func (w *watchGRPCStream) serveSubstream(ws *watcherStream, resumec chan struct{
 					// if wch is disconnected before the Put is issued, then reconnects
 					// after it is committed, it'll miss the Put.
 					if ws.initReq.rev == 0 {
-						nextRev = wr.Header.Revision
+						nextRev = wr.Header.GetRevision()
 					}
 				}
 			} else {
 				// current progress of watch; <= store revision
-				nextRev = wr.Header.Revision + 1
+				nextRev = wr.Header.GetRevision() + 1
 			}
 
 			if len(wr.Events) > 0 {
