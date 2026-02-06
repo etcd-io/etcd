@@ -5,10 +5,6 @@ import "gogoproto/gogo.proto";
 
 option go_package = "go.etcd.io/etcd/api/v3/etcdserverpb";
 
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.sizer_all) = true;
-option (gogoproto.unmarshaler_all) = true;
-
 message Metadata {
 	optional uint64 NodeID    = 1 [(gogoproto.nullable) = false];
 	optional uint64 ClusterID = 2 [(gogoproto.nullable) = false];
