@@ -96,6 +96,65 @@ func printJSON(v any) {
 	printJSONTo(os.Stdout, v)
 }
 
+type TxnResponseJSON struct {
+	Header    *pb.ResponseHeader `json:"header,omitempty"`
+	Succeeded bool               `json:"succeeded"`
+	Responses []ResponseOpJSON   `json:"responses,omitempty"`
+}
+type ResponseOpJSON struct {
+	Response ResponseOpResponseJSON `json:"Response"`
+}
+type ResponseOpResponseJSON struct {
+	ResponseRange       *pb.RangeResponse       `json:"response_range,omitempty"`
+	ResponsePut         *pb.PutResponse         `json:"response_put,omitempty"`
+	ResponseDeleteRange *pb.DeleteRangeResponse `json:"response_delete_range,omitempty"`
+	ResponseTxn         *pb.TxnResponse         `json:"response_txn,omitempty"`
+}
+
+func (t *TxnResponseJSON) ToProto() *pb.TxnResponse {
+	r := &pb.TxnResponse{
+		Header:    t.Header,
+		Succeeded: t.Succeeded,
+	}
+	for _, jsonResponse := range t.Responses {
+		switch {
+		case jsonResponse.Response.ResponseDeleteRange != nil:
+			r.Responses = append(r.Responses, &pb.ResponseOp{Response: &pb.ResponseOp_ResponseDeleteRange{ResponseDeleteRange: jsonResponse.Response.ResponseDeleteRange}})
+		case jsonResponse.Response.ResponseRange != nil:
+			r.Responses = append(r.Responses, &pb.ResponseOp{Response: &pb.ResponseOp_ResponseRange{ResponseRange: jsonResponse.Response.ResponseRange}})
+		case jsonResponse.Response.ResponseTxn != nil:
+			r.Responses = append(r.Responses, &pb.ResponseOp{Response: &pb.ResponseOp_ResponseTxn{ResponseTxn: jsonResponse.Response.ResponseTxn}})
+		case jsonResponse.Response.ResponsePut != nil:
+			r.Responses = append(r.Responses, &pb.ResponseOp{Response: &pb.ResponseOp_ResponsePut{ResponsePut: jsonResponse.Response.ResponsePut}})
+		default:
+			// unknown
+			r.Responses = append(r.Responses, &pb.ResponseOp{})
+		}
+	}
+	return r
+}
+func TxnResponseJSONFromProto(protoResponse *pb.TxnResponse) TxnResponseJSON {
+	r := TxnResponseJSON{
+		Header:    protoResponse.GetHeader(),
+		Succeeded: protoResponse.GetSucceeded(),
+	}
+	for _, response := range protoResponse.GetResponses() {
+		switch response := response.Response.(type) {
+		case *pb.ResponseOp_ResponseRange:
+			r.Responses = append(r.Responses, ResponseOpJSON{ResponseOpResponseJSON{ResponseRange: response.ResponseRange}})
+		case *pb.ResponseOp_ResponsePut:
+			r.Responses = append(r.Responses, ResponseOpJSON{ResponseOpResponseJSON{ResponsePut: response.ResponsePut}})
+		case *pb.ResponseOp_ResponseDeleteRange:
+			r.Responses = append(r.Responses, ResponseOpJSON{ResponseOpResponseJSON{ResponseDeleteRange: response.ResponseDeleteRange}})
+		case *pb.ResponseOp_ResponseTxn:
+			r.Responses = append(r.Responses, ResponseOpJSON{ResponseOpResponseJSON{ResponseTxn: response.ResponseTxn}})
+		default:
+			r.Responses = append(r.Responses, ResponseOpJSON{ResponseOpResponseJSON{}})
+		}
+	}
+	return r
+}
+
 func (p *jsonPrinter) printJSON(v any) {
 	var data any
 	if !p.isHex {
@@ -104,6 +163,8 @@ func (p *jsonPrinter) printJSON(v any) {
 	}
 
 	switch r := v.(type) {
+	case *clientv3.TxnResponse:
+		data = TxnResponseJSONFromProto((*pb.TxnResponse)(r))
 	case *clientv3.MemberAddResponse:
 		data = &struct {
 			Header  *HexResponseHeader `json:"header"`
