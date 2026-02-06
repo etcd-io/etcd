@@ -5,10 +5,6 @@ import "gogoproto/gogo.proto";
 
 option go_package = "go.etcd.io/etcd/api/v3/etcdserverpb";
 
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.sizer_all) = true;
-option (gogoproto.unmarshaler_all) = true;
-
 message Request {
 	optional uint64 ID         =  1 [(gogoproto.nullable) = false];
 	optional string Method     =  2 [(gogoproto.nullable) = false];
