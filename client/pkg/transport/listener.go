@@ -207,6 +207,12 @@ type TLSInfo struct {
 
 	// LocalAddr is the local IP address to use when communicating with a peer.
 	LocalAddr string
+
+	// CAReloader is an optional CA certificate reloader for dynamic CA updates.
+	// When set, ServerConfig() will use this reloader for client certificate
+	// verification instead of a static CA pool. The caller is responsible for
+	// starting the reloader before use and stopping it when done.
+	CAReloader *tlsutil.CAReloader
 }
 
 func (info TLSInfo) String() string {
@@ -545,11 +551,92 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 	if len(cs) > 0 {
 		info.Logger.Info("Loading cert pool", zap.Strings("cs", cs),
 			zap.Any("tlsinfo", info))
-		cp, err := tlsutil.NewCertPool(cs)
-		if err != nil {
-			return nil, err
+
+		// When CAReloader is provided, use VerifyConnection callback
+		// to verify client certificates with dynamically reloaded CAs.
+		if info.CAReloader != nil {
+			caReloader := info.CAReloader
+
+			// Build allowed CN/hostname checker if configured
+			var verifyCertificate func(*x509.Certificate) bool
+			if info.AllowedCN != "" {
+				verifyCertificate = func(cert *x509.Certificate) bool {
+					return info.AllowedCN == cert.Subject.CommonName
+				}
+			} else if info.AllowedHostname != "" {
+				verifyCertificate = func(cert *x509.Certificate) bool {
+					return cert.VerifyHostname(info.AllowedHostname) == nil
+				}
+			} else if len(info.AllowedCNs) > 0 {
+				verifyCertificate = func(cert *x509.Certificate) bool {
+					for _, allowedCN := range info.AllowedCNs {
+						if allowedCN == cert.Subject.CommonName {
+							return true
+						}
+					}
+					return false
+				}
+			} else if len(info.AllowedHostnames) > 0 {
+				verifyCertificate = func(cert *x509.Certificate) bool {
+					for _, allowedHostname := range info.AllowedHostnames {
+						if cert.VerifyHostname(allowedHostname) == nil {
+							return true
+						}
+					}
+					return false
+				}
+			}
+
+			// Use RequireAnyClientCert to accept any client cert,
+			// then verify in VerifyConnection callback with fresh CAs.
+			cfg.ClientAuth = tls.RequireAnyClientCert
+			// Clear VerifyPeerCertificate set by baseConfig() since it expects
+			// verifiedChains to be populated, but RequireAnyClientCert causes
+			// Go to pass nil verifiedChains. All verification (including
+			// AllowedCN/AllowedHostname checks) is handled by VerifyConnection.
+			cfg.VerifyPeerCertificate = nil
+			cfg.VerifyConnection = func(cs tls.ConnectionState) error {
+				if len(cs.PeerCertificates) == 0 {
+					return errors.New("client certificate required")
+				}
+
+				roots := caReloader.GetCertPool()
+				opts := x509.VerifyOptions{
+					Roots:         roots,
+					Intermediates: x509.NewCertPool(),
+					KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+				}
+
+				// Add intermediate certificates
+				for _, cert := range cs.PeerCertificates[1:] {
+					opts.Intermediates.AddCert(cert)
+				}
+
+				// Verify the leaf certificate
+				verifiedChains, err := cs.PeerCertificates[0].Verify(opts)
+				if err != nil {
+					return err
+				}
+
+				// Check AllowedCN/AllowedHostname if configured
+				if verifyCertificate != nil {
+					for _, chains := range verifiedChains {
+						if len(chains) > 0 && verifyCertificate(chains[0]) {
+							return nil
+						}
+					}
+					return errors.New("client certificate authentication failed")
+				}
+
+				return nil
+			}
+		} else {
+			cp, err := tlsutil.NewCertPool(cs)
+			if err != nil {
+				return nil, err
+			}
+			cfg.ClientCAs = cp
 		}
-		cfg.ClientCAs = cp
 	}
 
 	// "h2" NextProtos is necessary for enabling HTTP2 for go's HTTP server
