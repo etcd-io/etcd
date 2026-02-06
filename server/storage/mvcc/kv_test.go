@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
@@ -136,7 +135,7 @@ func testKVRange(t *testing.T, f rangeFunc) {
 		if r.Rev != wrev {
 			t.Errorf("#%d: rev = %d, want %d", i, r.Rev, wrev)
 		}
-		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
+		if !protoDeepEqual(t, r.KVs, tt.wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
 		}
 	}
@@ -172,7 +171,7 @@ func testKVRangeRev(t *testing.T, f rangeFunc) {
 		if r.Rev != tt.wrev {
 			t.Errorf("#%d: rev = %d, want %d", i, r.Rev, tt.wrev)
 		}
-		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
+		if !protoDeepEqual(t, r.KVs, tt.wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
 		}
 	}
@@ -241,7 +240,7 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 		if err != nil {
 			t.Fatalf("#%d: range error (%v)", i, err)
 		}
-		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
+		if !protoDeepEqual(t, r.KVs, tt.wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
 		}
 		if r.Rev != wrev {
@@ -280,7 +279,7 @@ func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: base + 1, Version: base, Lease: base},
 		}
-		if !reflect.DeepEqual(r.KVs, wkvs) {
+		if !protoDeepEqual(t, r.KVs, wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
 		}
 	}
@@ -391,7 +390,7 @@ func testKVPutWithSameLease(t *testing.T, f putFunc) {
 	wkvs := []mvccpb.KeyValue{
 		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 3, Version: 2, Lease: leaseID},
 	}
-	if !reflect.DeepEqual(r.KVs, wkvs) {
+	if !protoDeepEqual(t, r.KVs, wkvs) {
 		t.Errorf("kvs = %+v, want %+v", r.KVs, wkvs)
 	}
 }
@@ -419,7 +418,7 @@ func TestKVOperationInSequence(t *testing.T) {
 		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1, Lease: int64(lease.NoLease)},
 		}
-		if !reflect.DeepEqual(r.KVs, wkvs) {
+		if !protoDeepEqual(t, r.KVs, wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
 		}
 		if r.Rev != base+1 {
@@ -523,7 +522,7 @@ func TestKVTxnOperationInSequence(t *testing.T) {
 		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1, Lease: int64(lease.NoLease)},
 		}
-		if !reflect.DeepEqual(r.KVs, wkvs) {
+		if !protoDeepEqual(t, r.KVs, wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
 		}
 		if r.Rev != base+1 {
@@ -599,7 +598,7 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 		if err != nil {
 			t.Errorf("#%d: unexpect range error %v", i, err)
 		}
-		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
+		if !protoDeepEqual(t, r.KVs, tt.wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
 		}
 	}
@@ -720,7 +719,7 @@ func TestKVRestore(t *testing.T) {
 		}
 		cleanup(ns, b)
 
-		if !reflect.DeepEqual(nkvss, kvss) {
+		if !protoDeepEqual(t, nkvss, kvss) {
 			t.Errorf("#%d: kvs history = %+v, want %+v", i, nkvss, kvss)
 		}
 	}
@@ -763,7 +762,7 @@ func TestKVSnapshot(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpect range error (%v)", err)
 	}
-	if !reflect.DeepEqual(r.KVs, wkvs) {
+	if !protoDeepEqual(t, r.KVs, wkvs) {
 		t.Errorf("kvs = %+v, want %+v", r.KVs, wkvs)
 	}
 	if r.Rev != 4 {
@@ -824,7 +823,7 @@ func TestWatchableKVWatch(t *testing.T) {
 			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
 		}
 		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev[0]) {
+		if !protoDeepEqual(t, ev, wev[0]) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev[0])
 		}
 	case <-time.After(5 * time.Second):
@@ -839,7 +838,7 @@ func TestWatchableKVWatch(t *testing.T) {
 			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
 		}
 		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev[1]) {
+		if !protoDeepEqual(t, ev, wev[1]) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev[1])
 		}
 	case <-time.After(5 * time.Second):
@@ -855,7 +854,7 @@ func TestWatchableKVWatch(t *testing.T) {
 			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
 		}
 		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev[1]) {
+		if !protoDeepEqual(t, ev, wev[1]) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev[1])
 		}
 	case <-time.After(5 * time.Second):
@@ -869,7 +868,7 @@ func TestWatchableKVWatch(t *testing.T) {
 			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
 		}
 		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev[2]) {
+		if !protoDeepEqual(t, ev, wev[2]) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev[2])
 		}
 	case <-time.After(5 * time.Second):
