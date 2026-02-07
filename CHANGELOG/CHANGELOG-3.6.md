@@ -6,7 +6,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.8 (TBC)
 
-This update release preserves upgrade compatability for many users.  Two flags are preserved, and etcd will still accept the endpoint Metadata field, although it will not be passed to grpc-go.  This patch also includes a golang update in order to prevent security vulnerabilities [CVE-2025-47914](https://github.com/advisories/GHSA-f6x5-jh6r-wrfv) and [CVE-2025-58181](https://github.com/advisories/GHSA-j5w8-q4qc-rx2x).
+This update release preserves upgrade compatability for many users.  Two flags are preserved, and etcd will still accept the endpoint Metadata field, although it will not be passed to grpc-go.  This patch also includes a golang update in order to prevent security vulnerabilities [CVE-2025-47914](https://github.com/advisories/GHSA-f6x5-jh6r-wrfv), [CVE-2025-61732](https://github.com/advisories/GHSA-8jvr-vh7g-f8gx), and [CVE-2025-58181](https://github.com/advisories/GHSA-j5w8-q4qc-rx2x).
 
 ### etcd server
 
