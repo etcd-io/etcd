@@ -107,7 +107,6 @@ func mustCreateWALLog(t *testing.T, path string) {
 
 	// append entries into wal log
 	appendConfigChangeEnts(&ents)
-	appendNormalRequestEnts(&ents)
 	appendNormalIRREnts(&ents)
 	appendUnknownNormalEnts(&ents)
 
@@ -131,28 +130,6 @@ func appendConfigChangeEnts(ents *[]raftpb.Entry) {
 		{Term: 2, Index: 4, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(&configChangeData[3])},
 	}
 	*ents = append(*ents, configChangeEntries...)
-}
-
-func appendNormalRequestEnts(ents *[]raftpb.Entry) {
-	a := true
-	b := false
-
-	requests := []etcdserverpb.Request{
-		{ID: 0, Method: "", Path: "/path0", Val: "{\"hey\":\"ho\",\"hi\":[\"yo\"]}", Dir: true, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 9, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 1, Method: methodQGet, Path: "/path1", Val: "{\"0\":\"1\",\"2\":[\"3\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 9, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 2, Method: methodSync, Path: "/path2", Val: "{\"0\":\"1\",\"2\":[\"3\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 3, Method: methodDelete, Path: "/path3", Val: "{\"hey\":\"ho\",\"hi\":[\"yo\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &a, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 4, Method: methodRandom, Path: "/path4/superlong" + strings.Repeat("/path", 30), Val: "{\"hey\":\"ho\",\"hi\":[\"yo\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-	}
-
-	for i, request := range requests {
-		var currentry raftpb.Entry
-		currentry.Term = 3
-		currentry.Index = uint64(i + 5)
-		currentry.Type = raftpb.EntryNormal
-		currentry.Data = pbutil.MustMarshal(&request)
-		*ents = append(*ents, currentry)
-	}
 }
 
 func appendNormalIRREnts(ents *[]raftpb.Entry) {
