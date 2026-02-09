@@ -10,6 +10,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 - [Removed all deprecated experimental flags](https://github.com/etcd-io/etcd/pull/19959)
 - [Removed v2discovery](https://github.com/etcd-io/etcd/pull/20109)
 - [Removed client/v2](https://github.com/etcd-io/etcd/pull/20117)
+- [Removed v2 request and apply_v2.go](https://github.com/etcd-io/etcd/pull/21263)
 
 ### etcd server
 
