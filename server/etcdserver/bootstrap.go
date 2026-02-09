@@ -339,7 +339,14 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	}
 	remotes := existingCluster.Members()
 	cl.SetID(types.ID(0), existingCluster.ID())
-	member := cl.MemberByName(cfg.Name)
+    member := cl.MemberByName(cfg.Name)
+    // prevent re-adding learner with empty data-dir
+    if member.IsLearner {
+        return nil, fmt.Errorf(
+            "cannot re-add learner %s with empty data-dir; restore data-dir or re-add after snapshot",
+            member.ID,
+        )
+    }
 	return &bootstrappedCluster{
 		remotes: remotes,
 		cl:      cl,
