@@ -831,13 +831,15 @@ func (e *Etcd) grpcGatewayDial(splitHTTP bool) (grpcDial func(ctx context.Contex
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	return func(ctx context.Context) (*grpc.ClientConn, error) {
-		conn, err := grpc.DialContext(ctx, addr, opts...) //nolint:staticcheck // TODO: remove for a supported version
+	return func(_ context.Context) (*grpc.ClientConn, error) {
+		// We can't force a connection to the gRPC server because the server
+		// isn't ready to serve yet. Doing so would cause a deadlock.
+		conn, err := grpc.NewClient(addr, opts...)
 		if err != nil {
-			sctx.lg.Error("grpc gateway failed to dial", zap.String("addr", addr), zap.Error(err))
+			sctx.lg.Error("failed to setup grpc-gateway client", zap.String("addr", addr), zap.Error(err))
 			return nil, err
 		}
-		return conn, err
+		return conn, nil
 	}
 }
 

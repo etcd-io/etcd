@@ -1488,6 +1488,13 @@ func WithEndpoints(endpoints []string) framecfg.ClientOption {
 	}
 }
 
+func WithDialTimeout(tio time.Duration) framecfg.ClientOption {
+	return func(c any) {
+		cfg := c.(*clientv3.Config)
+		cfg.DialTimeout = tio
+	}
+}
+
 func (c *Cluster) newClientCfg() (*clientv3.Config, error) {
 	cfg := &clientv3.Config{
 		Endpoints:          c.Endpoints(),

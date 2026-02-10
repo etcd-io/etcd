@@ -129,12 +129,11 @@ func TestTLSMinMaxVersion(t *testing.T) {
 			cli, cerr := integration.NewClient(t, clientv3.Config{
 				Endpoints:   []string{clus.Members[0].GRPCURL},
 				DialTimeout: time.Second,
-				DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 				TLS:         cc,
 			})
 			if cerr != nil {
 				assert.Truef(t, tt.expectError, "got TLS handshake error while expecting success: %v", cerr)
-				assert.Equal(t, context.DeadlineExceeded, cerr)
+				assert.ErrorIs(t, cerr, context.DeadlineExceeded)
 				return
 			}
 
