@@ -60,8 +60,6 @@ func New(lg *zap.Logger, dir string) *Snapshotter {
 		lg = zap.NewNop()
 	}
 
-	cleanupBrokenSnapshots(dir, 1, lg)
-
 	return &Snapshotter{
 		lg:  lg,
 		dir: dir,
