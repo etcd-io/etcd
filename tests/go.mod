@@ -16,7 +16,7 @@ replace (
 )
 
 require (
-	github.com/anishathalye/porcupine v1.0.2
+	github.com/anishathalye/porcupine v1.1.0
 	github.com/antithesishq/antithesis-sdk-go v0.4.3
 	github.com/coreos/go-semver v0.3.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
