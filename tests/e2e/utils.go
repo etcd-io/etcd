@@ -33,7 +33,6 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -50,7 +49,6 @@ func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3
 	ccfg := clientv3.Config{
 		Endpoints:   entpoints,
 		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 	}
 	if tlscfg != nil {
 		ccfg.TLS, err = tlscfg.ClientConfig()

@@ -30,7 +30,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -432,7 +431,7 @@ func TestMaintenanceStatus(t *testing.T) {
 			}
 
 			t.Logf("Creating client...")
-			cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}}) //nolint:staticcheck // TODO: remove for a supported version
+			cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps})
 			require.NoError(t, err)
 			defer cli.Close()
 			t.Logf("Creating client [DONE]")

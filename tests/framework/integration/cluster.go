@@ -897,7 +897,6 @@ func NewClientV3(m *Member) (*clientv3.Client, error) {
 	cfg := clientv3.Config{
 		Endpoints:          []string{m.GRPCURL},
 		DialTimeout:        5 * time.Second,
-		DialOptions:        []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		MaxCallSendMsgSize: m.ClientMaxCallSendMsgSize,
 		MaxCallRecvMsgSize: m.ClientMaxCallRecvMsgSize,
 		Logger:             m.Logger.Named("client"),
@@ -1488,11 +1487,17 @@ func WithEndpoints(endpoints []string) framecfg.ClientOption {
 	}
 }
 
+func WithDialTimeout(tio time.Duration) framecfg.ClientOption {
+	return func(c any) {
+		cfg := c.(*clientv3.Config)
+		cfg.DialTimeout = tio
+	}
+}
+
 func (c *Cluster) newClientCfg() (*clientv3.Config, error) {
 	cfg := &clientv3.Config{
 		Endpoints:          c.Endpoints(),
 		DialTimeout:        5 * time.Second,
-		DialOptions:        []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		MaxCallSendMsgSize: c.Cfg.ClientMaxCallSendMsgSize,
 		MaxCallRecvMsgSize: c.Cfg.ClientMaxCallRecvMsgSize,
 	}

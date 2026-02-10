@@ -23,7 +23,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -66,7 +65,6 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 	cli, cerr := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		TLS:         cc,
 	})
 	if cli != nil {
@@ -129,12 +127,11 @@ func TestTLSMinMaxVersion(t *testing.T) {
 			cli, cerr := integration.NewClient(t, clientv3.Config{
 				Endpoints:   []string{clus.Members[0].GRPCURL},
 				DialTimeout: time.Second,
-				DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 				TLS:         cc,
 			})
 			if cerr != nil {
 				assert.Truef(t, tt.expectError, "got TLS handshake error while expecting success: %v", cerr)
-				assert.Equal(t, context.DeadlineExceeded, cerr)
+				assert.ErrorIs(t, cerr, context.DeadlineExceeded)
 				return
 			}
 

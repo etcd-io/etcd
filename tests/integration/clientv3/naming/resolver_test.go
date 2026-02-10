@@ -75,7 +75,7 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 	}
 
 	// Create connection with provided lb policy
-	conn, err := grpc.Dial("etcd:///foo", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithResolvers(b), //nolint:staticcheck // TODO: remove for a supported version
+	conn, err := grpc.NewClient("etcd:///foo", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithResolvers(b),
 		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{"loadBalancingPolicy":"%s"}`, lbPolicy)))
 	if err != nil {
 		t.Fatal("failed to connect to foo", err)

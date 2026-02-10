@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -60,7 +59,6 @@ func TestAddUserAfterDelete(t *testing.T) {
 	cfg := clientv3.Config{
 		Endpoints:   authapi.Endpoints(),
 		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 	}
 	cfg.Username, cfg.Password = "root", "123"
 	authed, err := integration.NewClient(t, cfg)
@@ -116,7 +114,6 @@ func TestUserErrorAuth(t *testing.T) {
 	cfg := clientv3.Config{
 		Endpoints:   authapi.Endpoints(),
 		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 	}
 	cfg.Username, cfg.Password = "wrong-id", "123"
 	_, err = integration.NewClient(t, cfg)

@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -49,7 +48,6 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	ccfg := clientv3.Config{
 		Endpoints:            []string{eps[0]},
 		DialTimeout:          time.Second,
-		DialOptions:          []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		DialKeepAliveTime:    time.Second,
 		DialKeepAliveTimeout: 500 * time.Millisecond,
 	}
@@ -175,7 +173,6 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 	ccfg := clientv3.Config{
 		Endpoints:   []string{eps[0]},
 		DialTimeout: 1 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 	}
 	cli, err := integration.NewClient(t, ccfg)
 	require.NoError(t, err)
