@@ -17,10 +17,10 @@
 
 ## Main branch
 
-The dependabot is enabled & [configured](https://github.com/etcd-io/etcd/blob/main/.github/dependabot.yml) to
-manage dependencies for etcd `main` branch. But dependabot doesn't work well for multi-module repository like `etcd`,
+Dependabot is enabled and [configured](https://github.com/etcd-io/etcd/blob/main/.github/dependabot.yml) to
+manage dependencies for the etcd `main` branch. However, dependabot doesn't work well for a multi-module repository like `etcd`,
 see [dependabot-core/issues/6678](https://github.com/dependabot/dependabot-core/issues/6678).
-Usually, human intervention is required each time when dependabot automatically opens some PRs to bump dependencies.
+Usually, human intervention is required each time dependabot automatically opens PRs to bump dependencies.
 Please see the guidance below.
 
 ### Dependencies used in workflows
@@ -45,7 +45,7 @@ in the following order,
 - go.etcd.io/etcd/tests/v3
 - go.etcd.io/etcd/v3
 - go.etcd.io/etcd/tools/v3
-For more details about etcd Golang modules, please check <https://etcd.io/docs/next/dev-internal/modules>
+  For more details about etcd Golang modules, please check <https://etcd.io/docs/next/dev-internal/modules>
 
 Note the module `go.etcd.io/etcd/tools/v3` doesn't depend on any other modules, nor by any other modules, so it doesn't matter when to bump dependencies for it.
 
@@ -68,7 +68,7 @@ git add .
 git commit --signoff -m "dependency: bump github.com/spf13/cobra from 1.6.1 to 1.7.0"
 ```
 
-Please close the related PRs which were automatically opened by dependabot. 
+Please close the related PRs which were automatically opened by dependabot.
 
 When you bump multiple dependencies in one PR, it's recommended to create a separate commit for each dependency. But it isn't a must; for example,
 you can get all dependencies bumping for the module `go.etcd.io/etcd/tools/v3` included in one commit.
@@ -137,7 +137,7 @@ Please refer to [build(deps): bump arduino/setup-protoc from 1.3.0 to 2.0.0](htt
 
 ### Rotation worksheet
 
-The dependabot scheduling interval is weekly; it means dependabot will automatically raise a bunch of PRs per week.
+The dependabot scheduling interval is weekly; this means dependabot will automatically raise a number of PRs per week.
 Usually, human intervention is required each time. We have a [rotation worksheet](https://docs.google.com/spreadsheets/d/1jodHIO7Dk2VWTs1IRnfMFaRktS9IH8XRyifOnPdSY8I/edit#gid=1394774387),
 and everyone is welcome to participate; you just need to register your name in the worksheet.
 
@@ -187,7 +187,7 @@ release is v3.6.0, so etcd 3.6.0 depends on raft v3.6.0.
 Please see the table below:
 
 | etcd versions | bbolt versions | raft versions |
-|---------------|----------------|---------------|
+| ------------- | -------------- | ------------- |
 | 3.4.x         | v1.3.x         | N/A           |
 | 3.5.x         | v1.3.x         | N/A           |
 | 3.6.x         | v1.4.x         | v3.6.x        |

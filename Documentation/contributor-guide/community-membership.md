@@ -2,11 +2,11 @@
 
 This doc outlines the various responsibilities of contributor roles in etcd.
 
-| Role       | Responsibilities                             | Requirements                                                  | Defined by                    |
-|------------|----------------------------------------------|---------------------------------------------------------------|-------------------------------|
-| Member     | Active contributor in the community          | Sponsored by 2 reviewers and multiple contributions           | etcd GitHub org member        |
-| Reviewer   | Review contributions from other members      | History of review and authorship                              | [OWNERS] file reviewer entry  |
-| Maintainer | Set direction and priorities for the project | Demonstrated responsibility and excellent technical judgement | [OWNERS] file approver entry  |
+| Role       | Responsibilities                             | Requirements                                                  | Defined by                   |
+| ---------- | -------------------------------------------- | ------------------------------------------------------------- | ---------------------------- |
+| Member     | Active contributor in the community          | Sponsored by 2 reviewers and multiple contributions           | etcd GitHub org member       |
+| Reviewer   | Review contributions from other members      | History of review and authorship                              | [OWNERS] file reviewer entry |
+| Maintainer | Set direction and priorities for the project | Demonstrated responsibility and excellent technical judgement | [OWNERS] file approver entry |
 
 ## New contributors
 
@@ -24,7 +24,7 @@ below.
 
 ## Member
 
-Members are continuously active contributors to the community.  They can have
+Members are continuously active contributors to the community. They can have
 issues and PRs assigned to them. Members are expected to remain active
 contributors to the community.
 
@@ -33,11 +33,11 @@ contributors to the community.
 ### Member requirements
 
 - Enabled [two-factor authentication] on their GitHub account
-- Have made multiple contributions to the project or community.  Contribution may include, but is not limited to:
+- Have made multiple contributions to the project or community. Contribution may include, but is not limited to:
   - Authoring or reviewing PRs on GitHub. At least one PR must be **merged**.
   - Filing or commenting on issues on GitHub
   - Contributing to community discussions (e.g. meetings, Slack, email discussion
-      forums, Stack Overflow)
+    forums, Stack Overflow)
 - Subscribed to [etcd-dev@googlegroups.com](https://groups.google.com/g/etcd-dev)
 - Have read the [contributor guide]
 - Sponsored by two active maintainers or reviewers.
@@ -59,7 +59,7 @@ contributors to the community.
   - Addresses bugs or issues discovered after code is accepted
 
 **Note:** Members who frequently contribute code are expected to proactively
-perform code reviews and work towards becoming a *reviewer*.
+perform code reviews and work towards becoming a _reviewer_.
 
 ## Reviewers
 
@@ -69,11 +69,11 @@ the codebase and software engineering principles. Their LGTM counts towards
 merging a code change into the project. A reviewer is generally on the ladder towards
 maintainership.
 
-**Defined by:** *reviewers* entry in the [OWNERS] file.
+**Defined by:** _reviewers_ entry in the [OWNERS] file.
 
 ### Reviewer requirements
 
-- member for at least 3 months.
+- Member for at least 3 months.
 - Primary reviewer for at least 5 PRs to the codebase.
 - Reviewed or contributed at least 20 substantial PRs to the codebase.
 - Knowledgeable about the codebase.
@@ -101,7 +101,7 @@ are committed to the long-term success of a project. Maintainership is about bui
 trust with the current maintainers and being a person that they can
 depend on to make decisions in the best interest of the project in a consistent manner.
 
-**Defined by:** *approvers* entry in the [OWNERS] file.
+**Defined by:** _approvers_ entry in the [OWNERS] file.
 
 ### Maintainer requirements
 
@@ -117,7 +117,7 @@ depend on to make decisions in the best interest of the project in a consistent 
 - To become a maintainer send an email with your candidacy to <etcd-maintainers-private@googlegroups.com>
   - Ensure your sponsors are @mentioned in the email
   - Include a list of contributions representative of your work on the project.
-  - Existing maintainers vote will privately and respond to the email with either acceptance or feedback for suggested improvement.
+  - Existing maintainers will privately vote and respond to the email with either acceptance or feedback for suggested improvements.
 - With your membership approved you are expected to:
   - Open a PR and add an entry to the [OWNERS] file
   - Request to be added to the <etcd-maintainers@googlegroups.com> and <etcd-maintainers-private@googlegroups.com> mailing lists
@@ -126,7 +126,7 @@ depend on to make decisions in the best interest of the project in a consistent 
   - Request access to `etcd-development` GCP project where we publish releases
   - Request access to passwords shared between maintainers
   - Request cncf service desk access by emailing <projects@cncf.io>
-  - Raise cncf service desk ticket to be addded to [cncf-etcd-maintainers mailing list](https://lists.cncf.io/g/cncf-etcd-maintainers/directory)
+  - Raise CNCF service desk ticket to be added to [cncf-etcd-maintainers mailing list](https://lists.cncf.io/g/cncf-etcd-maintainers/directory)
 
 ### Maintainer responsibilities and privileges
 
@@ -161,7 +161,7 @@ Retiring maintainers must:
 - Open a PR and move to emeritus approvers in the [OWNERS] file
 - Open a PR to be removed from the [etcd-maintainer teams of the etcd-io organization in GitHub](https://github.com/orgs/etcd-io/teams/maintainers-etcd)
 - Remove their access to `etcd-development` GCP project where we publish releases
-- Raise cncf service desk ticket to be removed as a [cncf-etcd-maintainers mailing list](https://lists.cncf.io/g/cncf-etcd-maintainers/directory) admin
+- Raise CNCF service desk ticket to be removed as a [cncf-etcd-maintainers mailing list](https://lists.cncf.io/g/cncf-etcd-maintainers/directory) admin
 - Request to be removed as a member of the [etcd-maintainers](https://groups.google.com/g/etcd-maintainers) and [etcd-maintainers-private](https://groups.google.com/g/etcd-maintainers-private) Google groups
 
 ## Acknowledgements
