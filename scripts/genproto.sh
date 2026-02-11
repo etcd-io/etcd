@@ -186,41 +186,6 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
     Documentation/dev-guide/apispec/swagger/"${swaggerName}".swagger.json
 done
 
-# We only upgraded grpc-gateway from v1 to v2, but keep gogo/protobuf as it's for now.
-# So we have to convert v1 message to v2 message. Once we get rid of gogo/protobuf, and
-# start to depend on protobuf v2, then we can remove this patch.
-#
-# TODO(https://github.com/etcd-io/etcd/issues/14533): Remove the patch below after removal of gogo/protobuf
-for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock server/etcdserver/api/v3election/v3electionpb/v3election; do
-  gwfile="$(dirname ${pb})/gw/$(basename ${pb}).pb.gw.go"
-
-  # Changes something like below,
-  #  import (
-  # +       protov1 "github.com/golang/protobuf/proto"
-  # +
-  run ${SED?} -i -E "s|import \(|import \(\n\tprotov1 \"github.com/golang/protobuf/proto\"\n|g" "${gwfile}"
-
-  # Changes something like below,
-  # - return msg, metadata, err
-  # + return protov1.MessageV2(msg), metadata, err
-  run ${SED?} -i -E "s|return msg, metadata, err|return protov1.MessageV2\(msg\), metadata, err|g" "${gwfile}"
-
-  # Changes something like below,
-  # - if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-  # + if err := marshaler.NewDecoder(newReader()).Decode(protov1.MessageV2(&protoReq)); err != nil && err != io.EOF {
-  run ${SED?} -i -E "s|Decode\(\&protoReq\)|Decode\(protov1\.MessageV2\(\&protoReq\)\)|g" "${gwfile}"
-
-  # Changes something like below,
-  # - forward_Lease_LeaseKeepAlive_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
-  # + forward_Lease_LeaseKeepAlive_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) {
-  # +   m1, err := resp.Recv()
-  # +   return protov1.MessageV2(m1), err
-  # + }, mux.GetForwardResponseOptions()...)
-  run ${SED?} -i -E "s|return resp.Recv\(\)|\n\t\t\tm1, err := resp.Recv\(\)\n\t\t\treturn protov1.MessageV2\(m1\), err\n\t\t|g" "${gwfile}"
-
-  run go fmt "${gwfile}"
-done
-
 if [ "${1:-}" != "--skip-protodoc" ]; then
   log_callout "protodoc is auto-generating grpc API reference documentation..."
 
