@@ -69,6 +69,18 @@ func TestNew(t *testing.T) {
 		t.Fatalf("err = %v, want nil", err)
 	}
 
+	if os.Getenv("ETCD_UPDATE_FIXTURE_DATA") == "true" {
+		os.WriteFile("testdata/TestNew.wal", gd, os.FileMode(0644))
+	}
+	fixtureData, err := os.ReadFile("testdata/TestNew.wal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(gd, fixtureData) {
+		t.Log("data did not match fixture, rerun with ETCD_UPDATE_FIXTURE_DATA=true to regenerate fixture")
+		t.Errorf("data = %v, want %v", gd, fixtureData)
+	}
+
 	var wb bytes.Buffer
 	e := newEncoder(&wb, 0, 0)
 	err = e.encode(&walpb.Record{Type: CrcType, Crc: 0})
