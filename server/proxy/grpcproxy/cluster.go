@@ -45,6 +45,9 @@ type clusterProxy struct {
 
 	umu  sync.RWMutex
 	umap map[string]endpoints.Endpoint
+
+	// we want compile errors if new methods are added
+	pb.UnsafeClusterServer
 }
 
 // NewClusterProxy takes optional prefix to fetch grpc-proxy member endpoints.
