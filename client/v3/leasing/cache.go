@@ -265,10 +265,10 @@ func (lc *leaseCache) clearOldRevokes(ctx context.Context) {
 
 func (lc *leaseCache) evalCmp(cmps []v3.Cmp) (cmpVal bool, ok bool) {
 	for _, cmp := range cmps {
-		if len(cmp.RangeEnd) > 0 {
+		if len(cmp.GetCompare().GetRangeEnd()) > 0 {
 			return false, false
 		}
-		lk := lc.entries[string(cmp.Key)]
+		lk := lc.entries[string(cmp.GetCompare().GetKey())]
 		if lk == nil {
 			return false, false
 		}
