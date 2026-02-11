@@ -17,6 +17,8 @@ require (
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	go.etcd.io/raft/v3 v3.6.0-beta.0.0.20260116184858-6d944ca211ee
 	golang.org/x/tools v0.42.0
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1
+	google.golang.org/protobuf v1.36.11
 	gotest.tools/gotestsum v1.13.0
 	gotest.tools/v3 v3.5.2
 	honnef.co/go/tools v0.6.1
@@ -249,7 +251,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/grpc v1.78.0 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	mvdan.cc/gofumpt v0.9.2 // indirect
