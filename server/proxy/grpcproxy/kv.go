@@ -225,7 +225,7 @@ func TxnRequestToOp(r *pb.TxnRequest) clientv3.Op {
 	thenops := make([]clientv3.Op, len(r.Success))
 	elseops := make([]clientv3.Op, len(r.Failure))
 	for i := range r.Compare {
-		cmps[i] = (clientv3.Cmp)(*r.Compare[i])
+		cmps[i] = clientv3.FromCompare(r.Compare[i])
 	}
 	for i := range r.Success {
 		thenops[i] = requestOpToOp(r.Success[i])
