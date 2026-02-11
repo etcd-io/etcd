@@ -71,14 +71,14 @@ func TestKVGet(t *testing.T) {
 				require.NoError(t, err)
 				firstRev := resp.Header.Revision
 
-				kvA := createKV("a", "bar", firstRev+1, firstRev+1, 1)
-				kvB := createKV("b", "bar", firstRev+2, firstRev+2, 1)
-				kvCV1 := createKV("c", "bar1", firstRev+3, firstRev+3, 1)
-				kvCV2 := createKV("c", "bar2", firstRev+3, firstRev+4, 2)
-				kvC := createKV("c", "bar", firstRev+3, firstRev+5, 3)
+				kvA := createKV("a", "aa1", firstRev+1, firstRev+1, 1)
+				kvB := createKV("b", "a", firstRev+2, firstRev+2, 1)
+				kvCV1 := createKV("c", "ac1", firstRev+3, firstRev+3, 1)
+				kvCV2 := createKV("c", "ac2", firstRev+3, firstRev+4, 2)
+				kvC := createKV("c", "aac", firstRev+3, firstRev+5, 3)
 				kvFoo := createKV("foo", "bar", firstRev+6, firstRev+6, 1)
-				kvFooAbc := createKV("foo/abc", "bar", firstRev+7, firstRev+7, 1)
-				kvFop := createKV("fop", "bar", firstRev+8, firstRev+8, 1)
+				kvFooAbc := createKV("foo/abc", "0", firstRev+7, firstRev+7, 1)
+				kvFop := createKV("fop", "s", firstRev+8, firstRev+8, 1)
 
 				inputs := []*mvccpb.KeyValue{kvA, kvB, kvCV1, kvCV2, kvC, kvFoo, kvFooAbc, kvFop}
 				for i := range inputs {
@@ -89,6 +89,8 @@ func TestKVGet(t *testing.T) {
 				allKvs := []*mvccpb.KeyValue{kvA, kvB, kvC, kvFoo, kvFooAbc, kvFop}
 				kvsByVersion := []*mvccpb.KeyValue{kvA, kvB, kvFoo, kvFooAbc, kvFop, kvC}
 				reversedKvs := []*mvccpb.KeyValue{kvFop, kvFooAbc, kvFoo, kvC, kvB, kvA}
+				kvsByValue := []*mvccpb.KeyValue{kvFooAbc, kvB, kvA, kvC, kvFoo, kvFop}
+				kvsByValueDesc := []*mvccpb.KeyValue{kvFop, kvFoo, kvC, kvA, kvB, kvFooAbc}
 
 				currentResp, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 				require.NoError(t, err)
@@ -122,6 +124,9 @@ func TestKVGet(t *testing.T) {
 					{name: "all KVs ordered by create revision, unspecified sort order", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: allKvs}},
 					{name: "all KVs ordered by create revision descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: reversedKvs}},
 					{name: "all KVs ordered by key descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: reversedKvs}},
+					{name: "all KVs ordered by value, unspecified sort order", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByValue}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: kvsByValue}},
+					{name: "all KVs ordered by value, ascending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByValue}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: kvsByValue}},
+					{name: "all KVs ordered by value descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByValue}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: kvsByValueDesc}},
 					{name: "all KVs descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: reversedKvs}},
 					{name: "Get first version of 'c' by its revision", begin: "c", options: config.GetOptions{Revision: int(firstRev) + 3}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 1, Kvs: []*mvccpb.KeyValue{kvCV1}}},
 					{name: "Get second version of 'c' by its revision", begin: "c", options: config.GetOptions{Revision: int(firstRev) + 4}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 1, Kvs: []*mvccpb.KeyValue{kvCV2}}},
@@ -130,7 +135,7 @@ func TestKVGet(t *testing.T) {
 					{name: "all KVs with mininum mod revision sorted by mod revision", begin: "", options: config.GetOptions{Prefix: true, MinModRevision: int(firstRev) + 3, SortBy: clientv3.SortByModRevision}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: []*mvccpb.KeyValue{kvC, kvFoo, kvFooAbc, kvFop}}},
 					{name: "all KVs with maximum mod revision, sorted by key descending", begin: "", options: config.GetOptions{Prefix: true, MaxModRevision: int(firstRev) + 4, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: []*mvccpb.KeyValue{kvB, kvA}}},
 					{name: "all KVs with minimum create revision, sorted by version, descending", begin: "", options: config.GetOptions{Prefix: true, MinCreateRevision: int(firstRev) + 3, Order: clientv3.SortDescend, SortBy: clientv3.SortByVersion}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: []*mvccpb.KeyValue{kvC, kvFoo, kvFooAbc, kvFop}}},
-					{name: "all KVs with maximimum create revision, sorted by value", begin: "", options: config.GetOptions{Prefix: true, MaxCreateRevision: int(firstRev) + 6, Order: clientv3.SortDescend, SortBy: clientv3.SortByValue}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: []*mvccpb.KeyValue{kvA, kvB, kvC, kvFoo}}},
+					{name: "all KVs with maximimum create revision, sorted by value", begin: "", options: config.GetOptions{Prefix: true, MaxCreateRevision: int(firstRev) + 6, Order: clientv3.SortDescend, SortBy: clientv3.SortByValue}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: []*mvccpb.KeyValue{kvFoo, kvC, kvA, kvB}}},
 				}
 				testsWithKeysOnly := make([]testcase, 0, len(tests))
 				for _, otc := range tests {
