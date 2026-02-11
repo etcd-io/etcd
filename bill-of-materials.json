@@ -225,15 +225,6 @@
 		]
 	},
 	{
-		"project": "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus",
 		"licenses": [
 			{
