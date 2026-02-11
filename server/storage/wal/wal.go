@@ -169,7 +169,8 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	if err = w.encoder.encode(&walpb.Record{Type: new(MetadataType), Data: metadata}); err != nil {
 		return nil, err
 	}
-	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
+	// Create an empty snapshot record during the initial bootstrap only.
+	if err = w.SaveSnapshot(walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}); err != nil {
 		return nil, err
 	}
 

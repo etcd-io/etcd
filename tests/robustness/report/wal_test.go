@@ -486,7 +486,7 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
-					snapshot: &walpb.Snapshot{Index: new(uint64(3)), ConfState: &raftpb.ConfState{}},
+					snapshot: &walpb.Snapshot{Index: new(uint64(3)), Term: new(uint64(0)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 5},
@@ -511,7 +511,7 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
-					snapshot: &walpb.Snapshot{Index: new(uint64(3)), ConfState: &raftpb.ConfState{}},
+					snapshot: &walpb.Snapshot{Index: new(uint64(3)), Term: new(uint64(0)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 5},
@@ -540,7 +540,7 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
 				},
 				{
-					snapshot: &walpb.Snapshot{Index: new(uint64(3)), ConfState: &raftpb.ConfState{}},
+					snapshot: &walpb.Snapshot{Index: new(uint64(3)), Term: new(uint64(0)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 4},
@@ -560,7 +560,7 @@ func TestWriteReadWAL(t *testing.T) {
 			name: "entries preceding snapshot",
 			operations: []batch{
 				{
-					snapshot: &walpb.Snapshot{Index: new(uint64(4)), ConfState: &raftpb.ConfState{}},
+					snapshot: &walpb.Snapshot{Index: new(uint64(4)), Term: new(uint64(0)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 2},
@@ -593,7 +593,7 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
-					snapshot: &walpb.Snapshot{Index: new(uint64(3)), ConfState: &raftpb.ConfState{}},
+					snapshot: &walpb.Snapshot{Index: new(uint64(3)), Term: new(uint64(0)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 5},

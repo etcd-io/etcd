@@ -37,7 +37,8 @@ func TestValidateSnapshot(t *testing.T) {
 		snap    *Snapshot
 		wantErr bool
 	}{
-		{name: "empty", snap: &Snapshot{}, wantErr: false},
+		{name: "empty", snap: &Snapshot{}, wantErr: true}, // index and term must be explicitly set
+		{name: "initial", snap: &Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}, wantErr: false},
 		{name: "invalid", snap: &Snapshot{Index: new(uint64(5)), Term: new(uint64(3))}, wantErr: true},
 		{name: "valid", snap: &Snapshot{Index: new(uint64(5)), Term: new(uint64(3)), ConfState: &raftpb.ConfState{Voters: []uint64{0x00cad1}}}, wantErr: false},
 	}

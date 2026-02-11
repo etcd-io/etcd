@@ -29,7 +29,7 @@ func Test_readRaw(t *testing.T) {
 	assert.Equal(t,
 		`CRC: 0
 Metadata: 
-Snapshot: 
+Snapshot: index:0 term:0 
 Entry: Term:1 Index:1 Type:EntryConfChange Data:"\010\001\020\000\030\002\"\000" 
 Entry: Term:2 Index:2 Type:EntryConfChange Data:"\010\002\020\001\030\002\"\000" 
 Entry: Term:2 Index:3 Type:EntryConfChange Data:"\010\003\020\002\030\002\"\000" 

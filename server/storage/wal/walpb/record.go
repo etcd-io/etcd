@@ -33,6 +33,12 @@ func (rec *Record) Validate(crc uint32) error {
 // There might exist log-entries written by old etcd versions that does not conform
 // to the requirements.
 func ValidateSnapshotForWrite(e *Snapshot) error {
+	if e.Index == nil {
+		return errors.New("snapshot is missing index: " + e.String())
+	}
+	if e.Term == nil {
+		return errors.New("snapshot is missing term: " + e.String())
+	}
 	// Since etcd>=3.5.0
 	if e.ConfState == nil && e.GetIndex() > 0 {
 		return errors.New("Saved (not-initial) snapshot is missing ConfState: " + e.String())

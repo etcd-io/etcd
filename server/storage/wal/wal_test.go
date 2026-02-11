@@ -89,7 +89,7 @@ func TestNew(t *testing.T) {
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	r := &walpb.Record{
 		Type: new(SnapshotType),
-		Data: pbutil.MustMarshal(&walpb.Snapshot{}),
+		Data: pbutil.MustMarshal(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}),
 	}
 	err = e.encode(r)
 	require.NoErrorf(t, err, "err = %v, want nil", err)
@@ -457,7 +457,7 @@ func TestRecover(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
+			if err = w.SaveSnapshot(walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}); err != nil {
 				t.Fatal(err)
 			}
 
@@ -632,7 +632,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
+	if err = w.SaveSnapshot(walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}); err != nil {
 		t.Fatal(err)
 	}
 	if err = w.Save(raftpb.HardState{}, []raftpb.Entry{{Index: 0}}); err != nil {
@@ -1021,7 +1021,7 @@ func TestReadAllFail(t *testing.T) {
 // for hardstate
 func TestValidSnapshotEntries(t *testing.T) {
 	p := t.TempDir()
-	snap0 := walpb.Snapshot{}
+	snap0 := walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}
 	snap1 := walpb.Snapshot{Index: new(uint64(1)), Term: new(uint64(1)), ConfState: &confState}
 	state1 := raftpb.HardState{Commit: 1, Term: 1}
 	snap2 := walpb.Snapshot{Index: new(uint64(2)), Term: new(uint64(1)), ConfState: &confState}
