@@ -78,6 +78,9 @@ linters:
             # DenyList: Add GRPC and WAL to strict the rule not allowing instances like Wal or Grpc. The default values are located at commonInitialisms, refer to: https://github.com/mgechev/revive/blob/v1.3.7/lint/utils.go#L93-L133.
             - - GRPC
               - WAL
+            # Disable checks on package names that collide with Go standard library packages. See example error:
+            #    var-naming: avoid package names that conflict with Go standard library package names (revive)
+            - - skip-package-name-collision-with-go-std: true
         - name: exported
           disabled: true
         - name: unexported-return
