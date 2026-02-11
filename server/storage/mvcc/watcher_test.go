@@ -110,7 +110,7 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 		id, err := w.Watch(t.Context(), tcase.givenID, []byte("foo"), nil, 0)
 		if tcase.expectedErr != nil || err != nil {
 			if !errors.Is(err, tcase.expectedErr) {
-				t.Errorf("expected get error %q in test case %q, got %q", tcase.expectedErr, i, err)
+				t.Errorf("expected get error %q in test case %d, got %q", tcase.expectedErr, i, err)
 			}
 		} else if tcase.expectedID != id {
 			t.Errorf("expected to create ID %d, got %d in test case %d", tcase.expectedID, id, i)
