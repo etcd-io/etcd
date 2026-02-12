@@ -1,11 +1,9 @@
 syntax = "proto2";
 package snappb;
 
-import "gogoproto/gogo.proto";
-
 option go_package = "go.etcd.io/etcd/server/v3/etcdserver/api/snap/snappb";
 
 message snapshot {
-	optional uint32 crc  = 1 [(gogoproto.nullable) = false];
+	optional uint32 crc  = 1;
 	optional bytes data  = 2;
 }
