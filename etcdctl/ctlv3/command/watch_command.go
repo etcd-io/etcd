@@ -171,7 +171,7 @@ func printWatchCh(c *clientv3.Client, ch clientv3.WatchChan, execArgs []string) 
 		if resp.IsProgressNotify() {
 			fmt.Fprintf(os.Stdout, "progress notify: %d\n", resp.Header.Revision)
 		}
-		display.Watch(resp)
+		display.Watch(&resp)
 
 		if len(execArgs) > 0 {
 			for _, ev := range resp.Events {

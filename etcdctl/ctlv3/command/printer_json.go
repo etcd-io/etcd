@@ -36,28 +36,32 @@ type (
 )
 
 func (h *HexResponseHeader) MarshalJSON() ([]byte, error) {
-	type Alias pb.ResponseHeader
-
 	return json.Marshal(&struct {
 		ClusterID string `json:"cluster_id"`
 		MemberID  string `json:"member_id"`
-		Alias
+		Revision  int64  `json:"revision,omitempty"`
+		RaftTerm  uint64 `json:"raft_term,omitempty"`
 	}{
 		ClusterID: fmt.Sprintf("%x", h.ClusterId),
 		MemberID:  fmt.Sprintf("%x", h.MemberId),
-		Alias:     (Alias)(*h),
+		Revision:  h.Revision,
+		RaftTerm:  h.RaftTerm,
 	})
 }
 
 func (m *HexMember) MarshalJSON() ([]byte, error) {
-	type Alias pb.Member
-
 	return json.Marshal(&struct {
-		ID string `json:"ID"`
-		Alias
+		ID         string   `json:"ID"`
+		Name       string   `json:"name,omitempty"`
+		PeerURLs   []string `json:"peerURLs,omitempty"`
+		ClientURLs []string `json:"clientURLs,omitempty"`
+		IsLearner  bool     `json:"isLearner,omitempty"`
 	}{
-		ID:    fmt.Sprintf("%x", m.ID),
-		Alias: (Alias)(*m),
+		ID:         fmt.Sprintf("%x", m.ID),
+		Name:       m.Name,
+		PeerURLs:   m.PeerURLs,
+		ClientURLs: m.ClientURLs,
+		IsLearner:  m.IsLearner,
 	})
 }
 
@@ -73,11 +77,11 @@ func (p *jsonPrinter) EndpointHealth(r []epHealth) { printJSON(r) }
 func (p *jsonPrinter) EndpointStatus(r []epStatus) { printJSON(r) }
 func (p *jsonPrinter) EndpointHashKV(r []epHashKV) { printJSON(r) }
 
-func (p *jsonPrinter) MemberAdd(r clientv3.MemberAddResponse)                   { p.printJSON(r) }
-func (p *jsonPrinter) MemberRemove(_ uint64, r clientv3.MemberRemoveResponse)   { p.printJSON(r) }
-func (p *jsonPrinter) MemberUpdate(_ uint64, r clientv3.MemberUpdateResponse)   { p.printJSON(r) }
-func (p *jsonPrinter) MemberPromote(_ uint64, r clientv3.MemberPromoteResponse) { p.printJSON(r) }
-func (p *jsonPrinter) MemberList(r clientv3.MemberListResponse)                 { p.printJSON(r) }
+func (p *jsonPrinter) MemberAdd(r *clientv3.MemberAddResponse)                   { p.printJSON(r) }
+func (p *jsonPrinter) MemberRemove(_ uint64, r *clientv3.MemberRemoveResponse)   { p.printJSON(r) }
+func (p *jsonPrinter) MemberUpdate(_ uint64, r *clientv3.MemberUpdateResponse)   { p.printJSON(r) }
+func (p *jsonPrinter) MemberPromote(_ uint64, r *clientv3.MemberPromoteResponse) { p.printJSON(r) }
+func (p *jsonPrinter) MemberList(r *clientv3.MemberListResponse)                 { p.printJSON(r) }
 
 func printJSONTo(w io.Writer, v any) {
 	b, err := json.Marshal(v)
@@ -100,67 +104,47 @@ func (p *jsonPrinter) printJSON(v any) {
 	}
 
 	switch r := v.(type) {
-	case clientv3.MemberAddResponse:
-		type Alias clientv3.MemberAddResponse
-
+	case *clientv3.MemberAddResponse:
 		data = &struct {
 			Header  *HexResponseHeader `json:"header"`
 			Member  *HexMember         `json:"member"`
 			Members []*HexMember       `json:"members"`
-			*Alias
 		}{
 			Header:  (*HexResponseHeader)(r.Header),
 			Member:  (*HexMember)(r.Member),
 			Members: toHexMembers(r.Members),
-			Alias:   (*Alias)(&r),
 		}
-	case clientv3.MemberRemoveResponse:
-		type Alias clientv3.MemberRemoveResponse
-
+	case *clientv3.MemberRemoveResponse:
 		data = &struct {
 			Header  *HexResponseHeader `json:"header"`
 			Members []*HexMember       `json:"members"`
-			*Alias
 		}{
 			Header:  (*HexResponseHeader)(r.Header),
 			Members: toHexMembers(r.Members),
-			Alias:   (*Alias)(&r),
 		}
-	case clientv3.MemberUpdateResponse:
-		type Alias clientv3.MemberUpdateResponse
-
+	case *clientv3.MemberUpdateResponse:
 		data = &struct {
 			Header  *HexResponseHeader `json:"header"`
 			Members []*HexMember       `json:"members"`
-			*Alias
 		}{
 			Header:  (*HexResponseHeader)(r.Header),
 			Members: toHexMembers(r.Members),
-			Alias:   (*Alias)(&r),
 		}
-	case clientv3.MemberPromoteResponse:
-		type Alias clientv3.MemberPromoteResponse
-
+	case *clientv3.MemberPromoteResponse:
 		data = &struct {
 			Header  *HexResponseHeader `json:"header"`
 			Members []*HexMember       `json:"members"`
-			*Alias
 		}{
 			Header:  (*HexResponseHeader)(r.Header),
 			Members: toHexMembers(r.Members),
-			Alias:   (*Alias)(&r),
 		}
-	case clientv3.MemberListResponse:
-		type Alias clientv3.MemberListResponse
-
+	case *clientv3.MemberListResponse:
 		data = &struct {
 			Header  *HexResponseHeader `json:"header"`
 			Members []*HexMember       `json:"members"`
-			*Alias
 		}{
 			Header:  (*HexResponseHeader)(r.Header),
 			Members: toHexMembers(r.Members),
-			Alias:   (*Alias)(&r),
 		}
 	default:
 		data = v
