@@ -247,6 +247,8 @@ func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) error
 
 func (sws *serverWatchStream) recvLoop() error {
 	for {
+		// gofail: var closeWatchStream struct{}
+		// return errors.New("closeWatchStream failpoint triggered")
 		req, err := sws.gRPCStream.Recv()
 		if errors.Is(err, io.EOF) {
 			return nil
