@@ -20,6 +20,7 @@ import (
 	"errors"
 	"sync"
 
+	"google.golang.org/protobuf/proto"
 	"k8s.io/utils/lru"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -44,7 +45,7 @@ type Cache interface {
 // keyFunc returns the key of a request, which is used to look up its caching response in the cache.
 func keyFunc(req *pb.RangeRequest) string {
 	// TODO: use marshalTo to reduce allocation
-	b, err := req.Marshal()
+	b, err := proto.Marshal(req)
 	if err != nil {
 		panic(err)
 	}

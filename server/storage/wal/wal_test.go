@@ -91,7 +91,7 @@ func TestNew(t *testing.T) {
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	r := &walpb.Record{
 		Type: new(SnapshotType),
-		Data: pbutil.MustMarshal(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}),
+		Data: pbutil.MustMarshalMessage(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}),
 	}
 	err = e.encode(r)
 	require.NoErrorf(t, err, "err = %v, want nil", err)
