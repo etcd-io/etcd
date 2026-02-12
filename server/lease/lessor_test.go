@@ -101,7 +101,7 @@ func TestLessorGrant(t *testing.T) {
 	defer tx.Unlock()
 	lpb := schema.MustUnsafeGetLease(tx, int64(l.ID))
 	if lpb == nil {
-		t.Errorf("lpb = %d, want not nil", lpb)
+		t.Errorf("lpb is nil, want not nil")
 	}
 }
 
@@ -205,7 +205,7 @@ func TestLessorRevoke(t *testing.T) {
 	defer tx.Unlock()
 	lpb := schema.MustUnsafeGetLease(tx, int64(l.ID))
 	if lpb != nil {
-		t.Errorf("lpb = %d, want nil", lpb)
+		t.Errorf("lpb = %d, want nil", lpb.ID)
 	}
 }
 
