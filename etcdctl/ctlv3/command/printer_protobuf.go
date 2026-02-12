@@ -19,7 +19,6 @@ import (
 	"os"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
@@ -37,13 +36,9 @@ func newPBPrinter() printer {
 }
 
 func (p *pbPrinter) Watch(r v3.WatchResponse) {
-	evs := make([]*mvccpb.Event, len(r.Events))
-	for i, ev := range r.Events {
-		evs[i] = (*mvccpb.Event)(ev)
-	}
 	wr := pb.WatchResponse{
 		Header:          &r.Header,
-		Events:          evs,
+		Events:          r.Events,
 		CompactRevision: r.CompactRevision,
 		Canceled:        r.Canceled,
 		Created:         r.Created,

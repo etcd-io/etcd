@@ -70,7 +70,7 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 
 	var lastRev int64
 	for i := range wr.Events {
-		ev := (*mvccpb.Event)(wr.Events[i])
+		ev := wr.Events[i]
 		if ev.Kv.ModRevision < w.nextrev {
 			continue
 		}
