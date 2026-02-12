@@ -15,8 +15,10 @@
 package mvccpb
 
 const (
-	// Alias of Event_PUT
+	// PUT is an alias of Event_PUT
+	// Deprecated: use Event_PUT instead. Will be removed in v3.8.
 	PUT = Event_PUT
-	// Alias of Permission_WRITE
+	// DELETE is an alias of Permission_WRITE
+	// Deprecated: use Event_DELETE instead. Will be removed in v3.8.
 	DELETE = Event_DELETE
 )

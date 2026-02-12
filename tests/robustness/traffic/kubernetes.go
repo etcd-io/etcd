@@ -368,9 +368,9 @@ func (s *storage) Update(resp clientv3.WatchResponse) {
 		}
 		s.revision = e.Kv.ModRevision
 		switch e.Type {
-		case mvccpb.PUT:
+		case mvccpb.Event_PUT:
 			s.keyRevision[string(e.Kv.Key)] = e.Kv.ModRevision
-		case mvccpb.DELETE:
+		case mvccpb.Event_DELETE:
 			delete(s.keyRevision, string(e.Kv.Key))
 		}
 	}
