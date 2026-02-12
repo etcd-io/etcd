@@ -15,10 +15,13 @@
 package authpb
 
 const (
-	// Alias of Permission_READ
+	// READ is an alias of Permission_READ
+	// Deprecated: use Permission_READ instead. Will be removed in v3.8.
 	READ = Permission_READ
-	// Alias of Permission_WRITE
+	// WRITE is an alias of Permission_WRITE
+	// Deprecated: use Permission_WRITE instead. Will be removed in v3.8.
 	WRITE = Permission_WRITE
-	// Alias of Permission_READWRITE
+	// READWRITE is an alias of Permission_READWRITE
+	// Deprecated: use Permission_READWRITE instead. Will be removed in v3.8.
 	READWRITE = Permission_READWRITE
 )

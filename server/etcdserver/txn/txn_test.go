@@ -553,7 +553,7 @@ func setupAuth(t *testing.T, be backend.Backend) auth.AuthStore {
 	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
 		Name: "rw",
 		Perm: &authpb.Permission{
-			PermType: authpb.READWRITE,
+			PermType: authpb.Permission_READWRITE,
 			Key:      []byte("foo"),
 			RangeEnd: []byte("zoo"),
 		},

@@ -143,7 +143,7 @@ func mustCreateRolesAndEnableAuth(t *testing.T, authApplier *authApplierV3) {
 	_, err = authApplier.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: userReadOnly, Role: roleReadOnly})
 	require.NoError(t, err)
 	_, err = authApplier.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{Name: roleReadOnly, Perm: &authpb.Permission{
-		PermType: authpb.READ,
+		PermType: authpb.Permission_READ,
 		Key:      []byte(key),
 		RangeEnd: []byte(rangeEnd),
 	}})
@@ -156,7 +156,7 @@ func mustCreateRolesAndEnableAuth(t *testing.T, authApplier *authApplierV3) {
 	_, err = authApplier.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: userWriteOnly, Role: roleWriteOnly})
 	require.NoError(t, err)
 	_, err = authApplier.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{Name: roleWriteOnly, Perm: &authpb.Permission{
-		PermType: authpb.WRITE,
+		PermType: authpb.Permission_WRITE,
 		Key:      []byte(key),
 		RangeEnd: []byte(rangeEnd),
 	}})
@@ -805,7 +805,7 @@ func TestCheckLeasePutsKeys(t *testing.T) {
 	_, err = aa.as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
 		Name: "bobsrole",
 		Perm: &authpb.Permission{
-			PermType: authpb.READWRITE,
+			PermType: authpb.Permission_READWRITE,
 			Key:      []byte("a"),
 			RangeEnd: nil,
 		},
