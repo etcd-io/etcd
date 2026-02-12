@@ -40,23 +40,23 @@ func TestGetLatestWalSnap(t *testing.T) {
 		{
 			name: "wal snapshot records match the snapshot files",
 			walSnaps: []walpb.Snapshot{
-				{Index: 10, Term: 2},
-				{Index: 20, Term: 3},
-				{Index: 30, Term: 5},
+				{Index: new(uint64(10)), Term: new(uint64(2))},
+				{Index: new(uint64(20)), Term: new(uint64(3))},
+				{Index: new(uint64(30)), Term: new(uint64(5))},
 			},
 			snapshots: []raftpb.Snapshot{
 				{Metadata: raftpb.SnapshotMetadata{Index: 10, Term: 2}},
 				{Metadata: raftpb.SnapshotMetadata{Index: 20, Term: 3}},
 				{Metadata: raftpb.SnapshotMetadata{Index: 30, Term: 5}},
 			},
-			expectedLatestWALSnap: walpb.Snapshot{Index: 30, Term: 5},
+			expectedLatestWALSnap: walpb.Snapshot{Index: new(uint64(30)), Term: new(uint64(5))},
 		},
 		{
 			name: "there are orphan snapshot files",
 			walSnaps: []walpb.Snapshot{
-				{Index: 10, Term: 2},
-				{Index: 20, Term: 3},
-				{Index: 35, Term: 5},
+				{Index: new(uint64(10)), Term: new(uint64(2))},
+				{Index: new(uint64(20)), Term: new(uint64(3))},
+				{Index: new(uint64(35)), Term: new(uint64(5))},
 			},
 			snapshots: []raftpb.Snapshot{
 				{Metadata: raftpb.SnapshotMetadata{Index: 10, Term: 2}},
@@ -65,7 +65,7 @@ func TestGetLatestWalSnap(t *testing.T) {
 				{Metadata: raftpb.SnapshotMetadata{Index: 40, Term: 6}},
 				{Metadata: raftpb.SnapshotMetadata{Index: 50, Term: 7}},
 			},
-			expectedLatestWALSnap: walpb.Snapshot{Index: 35, Term: 5},
+			expectedLatestWALSnap: walpb.Snapshot{Index: new(uint64(35)), Term: new(uint64(5))},
 		},
 	}
 
@@ -91,7 +91,7 @@ func TestGetLatestWalSnap(t *testing.T) {
 				walSnap.ConfState = &raftpb.ConfState{Voters: []uint64{1}}
 				walErr := w.SaveSnapshot(walSnap)
 				require.NoError(t, walErr)
-				walErr = w.Save(raftpb.HardState{Term: walSnap.Term, Commit: walSnap.Index, Vote: 1}, nil)
+				walErr = w.Save(raftpb.HardState{Term: walSnap.GetTerm(), Commit: walSnap.GetIndex(), Vote: 1}, nil)
 				require.NoError(t, walErr)
 			}
 			err = w.Close()

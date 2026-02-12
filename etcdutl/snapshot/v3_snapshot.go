@@ -586,7 +586,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	if err := sn.SaveSnap(raftSnap); err != nil {
 		return nil, err
 	}
-	snapshot := walpb.Snapshot{Index: commit, Term: term, ConfState: &confState}
+	snapshot := walpb.Snapshot{Index: &commit, Term: &term, ConfState: &confState}
 	return &hardState, w.SaveSnapshot(snapshot)
 }
 

@@ -421,8 +421,8 @@ func recoverSnapshot(cfg config.ServerConfig, be backend.Backend, beExist bool, 
 		idx := len(walSnaps) - 1
 		snapshot = &raftpb.Snapshot{
 			Metadata: raftpb.SnapshotMetadata{
-				Term:  walSnaps[idx].Term,
-				Index: walSnaps[idx].Index,
+				Term:  walSnaps[idx].GetTerm(),
+				Index: walSnaps[idx].GetIndex(),
 			},
 		}
 		if walSnaps[idx].ConfState != nil {
@@ -627,7 +627,7 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*wal.WAL, *raftpb.HardState, []raftpb.Entry, *raftpb.Snapshot, *snapshotMetadata) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+		walsnap.Index, walsnap.Term = new(snapshot.Metadata.Index), new(snapshot.Metadata.Term)
 	}
 	repaired := false
 	for {
