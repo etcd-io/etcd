@@ -199,8 +199,8 @@ func snapDir(dataDir string) string { return filepath.Join(dataDir, "member", "s
 func parseWALMetadata(b []byte) (id, cid types.ID) {
 	var metadata etcdserverpb.Metadata
 	pbutil.MustUnmarshal(&metadata, b)
-	id = types.ID(metadata.NodeID)
-	cid = types.ID(metadata.ClusterID)
+	id = types.ID(metadata.GetNodeID())
+	cid = types.ID(metadata.GetClusterID())
 	return id, cid
 }
 
