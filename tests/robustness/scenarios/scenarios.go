@@ -271,6 +271,38 @@ func Regression(t *testing.T) []TestScenario {
 			e2e.WithGoFailEnabled(true),
 		),
 	})
+	scenarios = append(scenarios, TestScenario{
+		Name:      "Issue20221_fix20229_resumable",
+		Failpoint: failpoint.BlackholeUntilSnapshot,
+		Watch: client.WatchConfig{
+			RequestProgress: true,
+		},
+		Profile: traffic.HighTrafficProfile,
+		Traffic: traffic.EtcdPut,
+		Cluster: *e2e.NewConfig(
+			e2e.WithSnapshotCount(10),
+			e2e.WithPeerProxy(true),
+			e2e.WithIsPeerTLS(true),
+			e2e.WithWatchProcessNotifyInterval(10*time.Millisecond),
+			e2e.WithSnapshotCatchUpEntries(10),
+		),
+	})
+	scenarios = append(scenarios, TestScenario{
+		Name:      "Issue20221_fix20229_bookmarkable",
+		Failpoint: failpoint.BlackholeAndForceWatchReconnect,
+		Watch: client.WatchConfig{
+			RequestProgress: true,
+		},
+		Profile: traffic.HighClusterClientCountTrafficProfile,
+		Traffic: traffic.EtcdPut,
+		Cluster: *e2e.NewConfig(
+			e2e.WithSnapshotCount(10),
+			e2e.WithPeerProxy(true),
+			e2e.WithIsPeerTLS(true),
+			e2e.WithWatchProcessNotifyInterval(10*time.Millisecond),
+			e2e.WithSnapshotCatchUpEntries(10),
+		),
+	})
 	if v.Compare(version.V3_5) >= 0 {
 		opts := []e2e.EPClusterOption{
 			e2e.WithSnapshotCount(100),

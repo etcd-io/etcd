@@ -75,6 +75,16 @@ test-robustness-issue19179: /tmp/etcd-v3.5.17-failpoints/bin
 	GO_TEST_FLAGS='-v -run=TestRobustnessRegression/Issue19179 -count 200 -failfast --bin-dir=/tmp/etcd-v3.5.17-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \
 	  echo "Failed to reproduce" || echo "Successful reproduction"
 
+.PHONY: test-robustness-issue20221-fix20229-resumable
+test-robustness-issue20221-fix20229-resumable: /tmp/etcd-bc47e771-failpoints/bin
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue20221_fix20229_resumable --count 100 --failfast --bin-dir=/tmp/etcd-bc47e771-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \
+	 echo "Failed to reproduce" || echo "Successful reproduction"
+
+.PHONY: test-robustness-issue20221-fix20229-bookmarkable
+test-robustness-issue20221-fix20229-bookmarkable: /tmp/etcd-bc47e771-patch-failpoints/bin
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue20221_fix20229_bookmarkable --count 100 --failfast --bin-dir=/tmp/etcd-bc47e771-patch-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \
+	 echo "Failed to reproduce" || echo "Successful reproduction"
+
 # Etcd API usage by Kubernetes
 
 .PHONY: k8s-coverage
@@ -120,13 +130,39 @@ $(GOPATH)/bin/gofail: $(REPOSITORY_ROOT)/tools/mod/go.mod $(REPOSITORY_ROOT)/too
 	  $(MAKE) gofail-enable; \
 	  $(MAKE) build;
 
-/tmp/etcd-v3.6.0-failpoints/bin: $(GOPATH)/bin/gofail
-	rm -rf /tmp/etcd-v3.6.0-failpoints/
-	mkdir -p /tmp/etcd-v3.6.0-failpoints/
-	cd /tmp/etcd-v3.6.0-failpoints/; \
-	  git clone --depth 1 --branch main https://github.com/etcd-io/etcd.git .; \
+# Please keep the version in the target name to enable the autocomplete feature for the Makefile.
+/tmp/etcd-v3.6.0-failpoints/bin:
+/tmp/etcd-v3.6.%-failpoints/bin: $(GOPATH)/bin/gofail
+	rm -rf /tmp/etcd-v3.6.$*-failpoints/
+	mkdir -p /tmp/etcd-v3.6.$*-failpoints/
+	cd /tmp/etcd-v3.6.$*-failpoints/; \
+	  git clone --depth 1 --branch v3.6.$* https://github.com/etcd-io/etcd.git .; \
 	  $(MAKE) gofail-enable; \
 	  $(MAKE) build;
+
+/tmp/etcd-bc47e771-failpoints/bin: $(GOPATH)/bin/gofail
+	rm -rf /tmp/etcd-bc47e771-failpoints/
+	mkdir -p /tmp/etcd-bc47e771-failpoints/
+	cd /tmp/etcd-bc47e771-failpoints/; \
+	  git init; \
+	  git remote add origin https://github.com/etcd-io/etcd.git; \
+	  git fetch --depth 1 origin bc47e7711664ec5557c5ae528d0d02175ea6e166; \
+	  git checkout FETCH_HEAD; \
+	  $(MAKE) gofail-enable; \
+	  $(MAKE) build;
+
+/tmp/etcd-bc47e771-patch-failpoints/bin: $(GOPATH)/bin/gofail
+	rm -rf /tmp/etcd-bc47e771-patch-failpoints/
+	mkdir -p /tmp/etcd-bc47e771-patch-failpoints/
+	cd /tmp/etcd-bc47e771-patch-failpoints/ && \
+	  git init && \
+	  git remote add origin https://github.com/etcd-io/etcd.git && \
+	  git fetch --depth 1 origin bc47e7711664ec5557c5ae528d0d02175ea6e166 && \
+	  git checkout FETCH_HEAD && \
+	  cp -r $(REPOSITORY_ROOT)/tests/robustness/patches/closeWatchStream . && \
+	  patch --fuzz=0 server/etcdserver/api/v3rpc/watch.go ./closeWatchStream/watch.patch && \
+	  $(MAKE) gofail-enable && \
+	  $(MAKE) build
 
 /tmp/etcd-release-3.6-failpoints/bin: $(GOPATH)/bin/gofail
 	rm -rf /tmp/etcd-release-3.6-failpoints/
