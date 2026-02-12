@@ -101,7 +101,7 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 	pred, err := c.validateWatch(key, op)
 	if err != nil {
 		ch := make(chan clientv3.WatchResponse, 1)
-		ch <- clientv3.WatchResponse{Canceled: true, CancelReason: err.Error()}
+		ch <- clientv3.WatchResponse{Header: &pb.ResponseHeader{}, Canceled: true, CancelReason: err.Error()}
 		close(ch)
 		return ch
 	}
