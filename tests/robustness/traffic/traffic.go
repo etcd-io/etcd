@@ -401,10 +401,9 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 		if err != nil {
 			return
 		}
-		err = runWatch(ctx, p, cfg)
-		if err != nil {
-			p.Logger.Error("runWatchLoop: Get failed", zap.Error(err))
-		}
+		// Client.get may fail when the blackhole is injected.
+		// We suppress logging for these expected failures to avoid polluting the logs.
+		_ = runWatch(ctx, p, cfg)
 	}
 }
 
