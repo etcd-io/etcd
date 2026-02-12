@@ -17,6 +17,7 @@ package cache
 import (
 	"sync"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -61,6 +62,7 @@ func (w *watcher) enqueueResponse(resp clientv3.WatchResponse) bool {
 
 func (w *watcher) Compact(compactRev int64) {
 	resp := &clientv3.WatchResponse{
+		Header:          &etcdserverpb.ResponseHeader{},
 		Canceled:        true,
 		CompactRevision: compactRev,
 		CancelReason:    rpctypes.ErrCompacted.Error(),

@@ -37,7 +37,7 @@ func newPBPrinter() printer {
 
 func (p *pbPrinter) Watch(r v3.WatchResponse) {
 	wr := pb.WatchResponse{
-		Header:          &r.Header,
+		Header:          r.Header,
 		Events:          r.Events,
 		CompactRevision: r.CompactRevision,
 		Canceled:        r.Canceled,
