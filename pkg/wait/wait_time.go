@@ -29,17 +29,17 @@ var closec chan struct{}
 
 func init() { closec = make(chan struct{}); close(closec) }
 
-type timeList struct {
+type TimeList struct {
 	l                   sync.Mutex
 	lastTriggerDeadline uint64
 	m                   map[uint64]chan struct{}
 }
 
-func NewTimeList() *timeList {
-	return &timeList{m: make(map[uint64]chan struct{})}
+func NewTimeList() *TimeList {
+	return &TimeList{m: make(map[uint64]chan struct{})}
 }
 
-func (tl *timeList) Wait(deadline uint64) <-chan struct{} {
+func (tl *TimeList) Wait(deadline uint64) <-chan struct{} {
 	tl.l.Lock()
 	defer tl.l.Unlock()
 	if tl.lastTriggerDeadline >= deadline {
@@ -53,7 +53,7 @@ func (tl *timeList) Wait(deadline uint64) <-chan struct{} {
 	return ch
 }
 
-func (tl *timeList) Trigger(deadline uint64) {
+func (tl *TimeList) Trigger(deadline uint64) {
 	tl.l.Lock()
 	defer tl.l.Unlock()
 	tl.lastTriggerDeadline = deadline

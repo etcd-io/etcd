@@ -52,7 +52,7 @@ func TestUint32Value(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			var val uint32Value
+			var val Uint32Value
 			err := val.Set(tc.s)
 
 			if tc.expectError {
