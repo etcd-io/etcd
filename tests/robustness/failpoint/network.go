@@ -33,6 +33,7 @@ var (
 	BlackholePeerNetwork            Failpoint = blackholePeerNetworkFailpoint{triggerBlackhole{waitTillSnapshot: false}}
 	BlackholeUntilSnapshot          Failpoint = blackholePeerNetworkFailpoint{triggerBlackhole{waitTillSnapshot: true}}
 	BlackholeAndForceWatchReconnect Failpoint = blackholeAndForceWatchReconnect{}
+	PeerPartitionTillSnapshot       Failpoint = peerPartitionTillSnapshotFailpoint{}
 	DelayPeerNetwork                Failpoint = delayPeerNetworkFailpoint{duration: time.Second, baseLatency: 75 * time.Millisecond, randomizedLatency: 50 * time.Millisecond}
 	DropPeerNetwork                 Failpoint = dropPeerNetworkFailpoint{duration: time.Second, dropProbabilityPercent: 50}
 )
@@ -70,9 +71,10 @@ func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, proces
 func Blackhole(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, shouldWaitTillSnapshot bool) error {
 	proxy := member.PeerProxy()
 
-	// Blackholing will cause peers to not be able to use streamWriters registered with member
-	// but peer traffic is still possible because member has 'pipeline' with peers
-	// TODO: find a way to stop all traffic
+	// Blackhole only blocks inbound peer traffic via the receiver proxy.
+	// For complete bidirectional isolation (inbound + outbound), also
+	// blackhole the member's forward proxies as done in
+	// peerPartitionTillSnapshotFailpoint and blackholeAndForceWatchReconnect.
 	t.Logf("Blackholing traffic from and to member %q", member.Config().Name)
 	proxy.BlackholeTx()
 	proxy.BlackholeRx()
@@ -220,7 +222,52 @@ func (f dropPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig,
 	return config.ClusterSize > 1 && clus.PeerProxy() != nil
 }
 
-// The idea of this failpoint we force the watch clients to reconnect.
+// peerPartitionTillSnapshotFailpoint blackholes both inbound (receiver proxy)
+// and outbound (forward proxies) peer traffic until the member falls far enough
+// behind to require a snapshot transfer upon recovery.
+type peerPartitionTillSnapshotFailpoint struct{}
+
+func (f peerPartitionTillSnapshotFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
+	member := clus.Procs[rand.Int()%len(clus.Procs)]
+
+	t.Logf("Partitioning peer traffic from and to member %q", member.Config().Name)
+
+	// Block inbound: receiver proxy prevents other members from reaching this member
+	proxy := member.PeerProxy()
+	proxy.BlackholeTx()
+	proxy.BlackholeRx()
+
+	// Block outbound: forward proxies prevent this member from reaching other members
+	for _, fwdProxy := range member.PeerForwardProxies() {
+		fwdProxy.BlackholeTx()
+		fwdProxy.BlackholeRx()
+	}
+
+	defer func() {
+		t.Logf("Peer traffic restored from and to member %q", member.Config().Name)
+		proxy.UnblackholeTx()
+		proxy.UnblackholeRx()
+		for _, fwdProxy := range member.PeerForwardProxies() {
+			fwdProxy.UnblackholeTx()
+			fwdProxy.UnblackholeRx()
+		}
+	}()
+
+	return nil, waitTillSnapshot(ctx, t, clus, member)
+}
+
+func (f peerPartitionTillSnapshotFailpoint) Name() string {
+	return "peerPartitionTillSnapshot"
+}
+
+func (f peerPartitionTillSnapshotFailpoint) Available(config e2e.EtcdProcessClusterConfig, process e2e.EtcdProcess, profile traffic.Profile) bool {
+	if entriesToGuaranteeSnapshot(config) > 200 || !e2e.CouldSetSnapshotCatchupEntries(process.Config().ExecPath) {
+		return false
+	}
+	return config.ClusterSize > 1 && process.PeerProxy() != nil && len(process.PeerForwardProxies()) > 0
+}
+
+// The idea of this failpoint is to force the watch clients to reconnect.
 //
 // The implementation will dramatically increase the density of watches on
 // the snapshot-receiving member compared to BlackholeUntilSnapshot alone.
@@ -239,10 +286,18 @@ func (f blackholeAndForceWatchReconnect) Inject(ctx context.Context, t *testing.
 	t.Logf("Blackholing traffic from and to member %q", member.Config().Name)
 	proxy.BlackholeTx()
 	proxy.BlackholeRx()
+	for _, fwdProxy := range member.PeerForwardProxies() {
+		fwdProxy.BlackholeTx()
+		fwdProxy.BlackholeRx()
+	}
 	defer func() {
 		t.Logf("Traffic restored from and to member %q", member.Config().Name)
 		proxy.UnblackholeTx()
 		proxy.UnblackholeRx()
+		for _, fwdProxy := range member.PeerForwardProxies() {
+			fwdProxy.UnblackholeTx()
+			fwdProxy.UnblackholeRx()
+		}
 	}()
 
 	// Wait until the revision gap is large enough to trigger a snapshot.
@@ -302,7 +357,7 @@ func (f blackholeAndForceWatchReconnect) Available(config e2e.EtcdProcessCluster
 	if entriesToGuaranteeSnapshot(config) > 200 || !e2e.CouldSetSnapshotCatchupEntries(process.Config().ExecPath) {
 		return false
 	}
-	if config.ClusterSize <= 1 || process.PeerProxy() == nil {
+	if config.ClusterSize <= 1 || process.PeerProxy() == nil || len(process.PeerForwardProxies()) == 0 {
 		return false
 	}
 	fp := process.Failpoints()
