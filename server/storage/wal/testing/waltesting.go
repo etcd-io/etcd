@@ -61,7 +61,7 @@ func NewTmpWAL(tb testing.TB, reqs []*etcdserverpb.InternalRaftRequest) (*wal.WA
 				Term:  1,
 				Index: 1,
 				Type:  raftpb.EntryNormal,
-				Data:  pbutil.MustMarshal(req),
+				Data:  pbutil.MustMarshalMessage(req),
 			})
 		}
 		err = w.Save(state, entries)

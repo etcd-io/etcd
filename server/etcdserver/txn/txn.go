@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -157,7 +158,7 @@ func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt 
 			trace.StartSubTrace(
 				traceutil.Field{Key: "req_type", Value: "put"},
 				traceutil.Field{Key: "key", Value: string(tv.RequestPut.Key)},
-				traceutil.Field{Key: "req_size", Value: tv.RequestPut.Size()})
+				traceutil.Field{Key: "req_size", Value: proto.Size(tv.RequestPut)})
 			prevKV, err := getPrevKV(trace, txnWrite, tv.RequestPut)
 			if err != nil {
 				return 0, fmt.Errorf("applyTxn: failed to get prevKV on put: %w", err)

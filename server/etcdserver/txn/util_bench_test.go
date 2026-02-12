@@ -21,33 +21,29 @@ import (
 
 	"go.uber.org/zap/zaptest"
 
-	"go.etcd.io/raft/v3/raftpb"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 )
 
 func BenchmarkWarnOfExpensiveRequestNoLog(b *testing.B) {
-	m := &raftpb.Message{
-		Type:    0,
-		To:      0,
-		From:    1,
-		Term:    2,
-		LogTerm: 3,
-		Index:   0,
-		Entries: []raftpb.Entry{
+	m := &pb.RangeResponse{
+		Header: &pb.ResponseHeader{},
+		Kvs: []*mvccpb.KeyValue{
 			{
-				Term:  0,
-				Index: 0,
-				Type:  0,
-				Data:  make([]byte, 1024),
+				Key:            []byte("/somekey"),
+				CreateRevision: 0,
+				ModRevision:    1,
+				Version:        2,
+				Value:          []byte("/somevalue"),
+				Lease:          3,
 			},
 		},
-		Commit:     0,
-		Snapshot:   nil,
-		Reject:     false,
-		RejectHint: 0,
-		Context:    nil,
+		More:  true,
+		Count: 0,
 	}
 	err := errors.New("benchmarking warn of expensive request")
 	lg := zaptest.NewLogger(b)
+
 	for n := 0; n < b.N; n++ {
 		WarnOfExpensiveRequest(lg, time.Second, time.Now(), nil, m, err)
 	}

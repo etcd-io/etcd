@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
@@ -121,7 +122,7 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 			)
 		}
 		var kv mvccpb.KeyValue
-		if err := kv.Unmarshal(vs[0]); err != nil {
+		if err := proto.Unmarshal(vs[0], &kv); err != nil {
 			tr.s.lg.Fatal(
 				"failed to unmarshal mvccpb.KeyValue",
 				zap.Error(err),
@@ -222,7 +223,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		Lease:          int64(leaseID),
 	}
 
-	d, err := kv.Marshal()
+	d, err := proto.Marshal(&kv)
 	if err != nil {
 		tw.storeTxnCommon.s.lg.Fatal(
 			"failed to marshal mvccpb.KeyValue",
@@ -287,7 +288,7 @@ func (tw *storeTxnWrite) delete(key []byte) {
 
 	kv := mvccpb.KeyValue{Key: key}
 
-	d, err := kv.Marshal()
+	d, err := proto.Marshal(&kv)
 	if err != nil {
 		tw.storeTxnCommon.s.lg.Fatal(
 			"failed to marshal mvccpb.KeyValue",

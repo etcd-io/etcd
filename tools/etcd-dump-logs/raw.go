@@ -85,7 +85,7 @@ func printRec(rec *walpb.Record, fromIndex *uint64, out io.Writer) {
 	switch rec.GetType() {
 	case wal.MetadataType:
 		var metadata etcdserverpb.Metadata
-		pbutil.MustUnmarshal(&metadata, rec.Data)
+		pbutil.MustUnmarshalMessage(&metadata, rec.Data)
 		fmt.Fprintf(out, "Metadata: %s\n", metadata.String())
 	case wal.CrcType:
 		fmt.Fprintf(out, "CRC: %d\n", rec.GetCrc())
@@ -96,7 +96,7 @@ func printRec(rec *walpb.Record, fromIndex *uint64, out io.Writer) {
 		}
 	case wal.SnapshotType:
 		var snap walpb.Snapshot
-		pbutil.MustUnmarshal(&snap, rec.Data)
+		pbutil.MustUnmarshalMessage(&snap, rec.Data)
 		if fromIndex == nil || snap.GetIndex() >= *fromIndex {
 			fmt.Fprintf(out, "Snapshot: %s\n", snap.String())
 		}

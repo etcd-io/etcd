@@ -23,11 +23,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
@@ -858,7 +858,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r *pb.I
 		requestDurationSec.WithLabelValues(reqType, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
 	}()
 
-	data, err = r.Marshal()
+	data, err = proto.Marshal(r)
 	if err != nil {
 		return nil, err
 	}
