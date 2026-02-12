@@ -58,7 +58,7 @@ func alarmDisarmCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-	display.Alarm(*resp)
+	display.Alarm(resp)
 }
 
 func NewAlarmListCommand() *cobra.Command {
@@ -81,5 +81,5 @@ func alarmListCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-	display.Alarm(*resp)
+	display.Alarm(resp)
 }

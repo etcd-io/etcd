@@ -72,7 +72,7 @@ func leaseGrantCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, fmt.Errorf("failed to grant lease (%w)", err))
 	}
-	display.Grant(*resp)
+	display.Grant(resp)
 }
 
 // NewLeaseRevokeCommand returns the cobra command for "lease revoke".
@@ -100,7 +100,7 @@ func leaseRevokeCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, fmt.Errorf("failed to revoke lease (%w)", err))
 	}
-	display.Revoke(id, *resp)
+	display.Revoke(id, resp)
 }
 
 var timeToLiveKeys bool
@@ -131,7 +131,7 @@ func leaseTimeToLiveCommandFunc(cmd *cobra.Command, args []string) {
 	if rerr != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, rerr)
 	}
-	display.TimeToLive(*resp, timeToLiveKeys)
+	display.TimeToLive(resp, timeToLiveKeys)
 }
 
 // NewLeaseListCommand returns the cobra command for "lease list".
@@ -150,7 +150,7 @@ func leaseListCommandFunc(cmd *cobra.Command, args []string) {
 	if rerr != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, rerr)
 	}
-	display.Leases(*resp)
+	display.Leases(resp)
 }
 
 var leaseKeepAliveOnce bool
@@ -182,7 +182,7 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 		if kerr != nil {
 			cobrautl.ExitWithError(cobrautl.ExitBadConnection, kerr)
 		}
-		display.KeepAlive(*respc)
+		display.KeepAlive(respc)
 		return
 	}
 
@@ -191,7 +191,7 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, kerr)
 	}
 	for resp := range respc {
-		display.KeepAlive(*resp)
+		display.KeepAlive(resp)
 	}
 
 	if _, ok := (display).(*simplePrinter); ok {

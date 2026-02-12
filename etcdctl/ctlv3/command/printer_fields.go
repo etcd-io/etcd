@@ -58,7 +58,7 @@ func (p *fieldsPrinter) hdr(h *pb.ResponseHeader) {
 	fmt.Println(`"RaftTerm" :`, h.RaftTerm)
 }
 
-func (p *fieldsPrinter) Del(r v3.DeleteResponse) {
+func (p *fieldsPrinter) Del(r *v3.DeleteResponse) {
 	p.hdr(r.Header)
 	fmt.Println(`"Deleted" :`, r.Deleted)
 	for _, kv := range r.PrevKvs {
@@ -66,7 +66,7 @@ func (p *fieldsPrinter) Del(r v3.DeleteResponse) {
 	}
 }
 
-func (p *fieldsPrinter) Get(r v3.GetResponse) {
+func (p *fieldsPrinter) Get(r *v3.GetResponse) {
 	p.hdr(r.Header)
 	for _, kv := range r.Kvs {
 		p.kv("", kv)
@@ -75,31 +75,31 @@ func (p *fieldsPrinter) Get(r v3.GetResponse) {
 	fmt.Println(`"Count" :`, r.Count)
 }
 
-func (p *fieldsPrinter) Put(r v3.PutResponse) {
+func (p *fieldsPrinter) Put(r *v3.PutResponse) {
 	p.hdr(r.Header)
 	if r.PrevKv != nil {
 		p.kv("Prev", r.PrevKv)
 	}
 }
 
-func (p *fieldsPrinter) Txn(r v3.TxnResponse) {
+func (p *fieldsPrinter) Txn(r *v3.TxnResponse) {
 	p.hdr(r.Header)
 	fmt.Println(`"Succeeded" :`, r.Succeeded)
 	for _, resp := range r.Responses {
 		switch v := resp.Response.(type) {
 		case *pb.ResponseOp_ResponseDeleteRange:
-			p.Del((v3.DeleteResponse)(*v.ResponseDeleteRange))
+			p.Del((*v3.DeleteResponse)(v.ResponseDeleteRange))
 		case *pb.ResponseOp_ResponsePut:
-			p.Put((v3.PutResponse)(*v.ResponsePut))
+			p.Put((*v3.PutResponse)(v.ResponsePut))
 		case *pb.ResponseOp_ResponseRange:
-			p.Get((v3.GetResponse)(*v.ResponseRange))
+			p.Get((*v3.GetResponse)(v.ResponseRange))
 		default:
 			fmt.Printf("\"Unknown\" : %q\n", fmt.Sprintf("%+v", v))
 		}
 	}
 }
 
-func (p *fieldsPrinter) Watch(resp v3.WatchResponse) {
+func (p *fieldsPrinter) Watch(resp *v3.WatchResponse) {
 	p.hdr(resp.Header)
 	for _, e := range resp.Events {
 		fmt.Println(`"Type" :`, e.Type)
@@ -110,7 +110,7 @@ func (p *fieldsPrinter) Watch(resp v3.WatchResponse) {
 	}
 }
 
-func (p *fieldsPrinter) Grant(r v3.LeaseGrantResponse) {
+func (p *fieldsPrinter) Grant(r *v3.LeaseGrantResponse) {
 	p.hdr(r.ResponseHeader)
 	if p.isHex {
 		fmt.Printf("\"ID\" : %016x\n", r.ID)
@@ -120,11 +120,11 @@ func (p *fieldsPrinter) Grant(r v3.LeaseGrantResponse) {
 	fmt.Println(`"TTL" :`, r.TTL)
 }
 
-func (p *fieldsPrinter) Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse) {
+func (p *fieldsPrinter) Revoke(id v3.LeaseID, r *v3.LeaseRevokeResponse) {
 	p.hdr(r.Header)
 }
 
-func (p *fieldsPrinter) KeepAlive(r v3.LeaseKeepAliveResponse) {
+func (p *fieldsPrinter) KeepAlive(r *v3.LeaseKeepAliveResponse) {
 	p.hdr(r.ResponseHeader)
 	if p.isHex {
 		fmt.Printf("\"ID\" : %016x\n", r.ID)
@@ -134,7 +134,7 @@ func (p *fieldsPrinter) KeepAlive(r v3.LeaseKeepAliveResponse) {
 	fmt.Println(`"TTL" :`, r.TTL)
 }
 
-func (p *fieldsPrinter) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) {
+func (p *fieldsPrinter) TimeToLive(r *v3.LeaseTimeToLiveResponse, keys bool) {
 	p.hdr(r.ResponseHeader)
 	if p.isHex {
 		fmt.Printf("\"ID\" : %016x\n", r.ID)
@@ -148,7 +148,7 @@ func (p *fieldsPrinter) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) {
 	}
 }
 
-func (p *fieldsPrinter) Leases(r v3.LeaseLeasesResponse) {
+func (p *fieldsPrinter) Leases(r *v3.LeaseLeasesResponse) {
 	p.hdr(r.ResponseHeader)
 	for _, item := range r.Leases {
 		if p.isHex {
@@ -159,7 +159,7 @@ func (p *fieldsPrinter) Leases(r v3.LeaseLeasesResponse) {
 	}
 }
 
-func (p *fieldsPrinter) MemberList(r v3.MemberListResponse) {
+func (p *fieldsPrinter) MemberList(r *v3.MemberListResponse) {
 	p.hdr(r.Header)
 	for _, m := range r.Members {
 		if p.isHex {
@@ -220,7 +220,7 @@ func (p *fieldsPrinter) EndpointHashKV(hs []epHashKV) {
 	}
 }
 
-func (p *fieldsPrinter) Alarm(r v3.AlarmResponse) {
+func (p *fieldsPrinter) Alarm(r *v3.AlarmResponse) {
 	p.hdr(r.Header)
 	for _, a := range r.Alarms {
 		if p.isHex {
@@ -233,8 +233,8 @@ func (p *fieldsPrinter) Alarm(r v3.AlarmResponse) {
 	}
 }
 
-func (p *fieldsPrinter) RoleAdd(role string, r v3.AuthRoleAddResponse) { p.hdr(r.Header) }
-func (p *fieldsPrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
+func (p *fieldsPrinter) RoleAdd(role string, r *v3.AuthRoleAddResponse) { p.hdr(r.Header) }
+func (p *fieldsPrinter) RoleGet(role string, r *v3.AuthRoleGetResponse) {
 	p.hdr(r.Header)
 	for _, p := range r.Perm {
 		fmt.Println(`"PermType" : `, p.PermType.String())
@@ -242,8 +242,8 @@ func (p *fieldsPrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 		fmt.Printf("\"RangeEnd\" : %q\n", string(p.RangeEnd))
 	}
 }
-func (p *fieldsPrinter) RoleDelete(role string, r v3.AuthRoleDeleteResponse) { p.hdr(r.Header) }
-func (p *fieldsPrinter) RoleList(r v3.AuthRoleListResponse) {
+func (p *fieldsPrinter) RoleDelete(role string, r *v3.AuthRoleDeleteResponse) { p.hdr(r.Header) }
+func (p *fieldsPrinter) RoleList(r *v3.AuthRoleListResponse) {
 	p.hdr(r.Header)
 	fmt.Print(`"Roles" :`)
 	for _, r := range r.Roles {
@@ -252,20 +252,20 @@ func (p *fieldsPrinter) RoleList(r v3.AuthRoleListResponse) {
 	fmt.Println()
 }
 
-func (p *fieldsPrinter) RoleGrantPermission(role string, r v3.AuthRoleGrantPermissionResponse) {
+func (p *fieldsPrinter) RoleGrantPermission(role string, r *v3.AuthRoleGrantPermissionResponse) {
 	p.hdr(r.Header)
 }
 
-func (p *fieldsPrinter) RoleRevokePermission(role string, key string, end string, r v3.AuthRoleRevokePermissionResponse) {
+func (p *fieldsPrinter) RoleRevokePermission(role string, key string, end string, r *v3.AuthRoleRevokePermissionResponse) {
 	p.hdr(r.Header)
 }
-func (p *fieldsPrinter) UserAdd(user string, r v3.AuthUserAddResponse)          { p.hdr(r.Header) }
-func (p *fieldsPrinter) UserChangePassword(r v3.AuthUserChangePasswordResponse) { p.hdr(r.Header) }
-func (p *fieldsPrinter) UserGrantRole(user string, role string, r v3.AuthUserGrantRoleResponse) {
+func (p *fieldsPrinter) UserAdd(user string, r *v3.AuthUserAddResponse)          { p.hdr(r.Header) }
+func (p *fieldsPrinter) UserChangePassword(r *v3.AuthUserChangePasswordResponse) { p.hdr(r.Header) }
+func (p *fieldsPrinter) UserGrantRole(user string, role string, r *v3.AuthUserGrantRoleResponse) {
 	p.hdr(r.Header)
 }
 
-func (p *fieldsPrinter) UserRevokeRole(user string, role string, r v3.AuthUserRevokeRoleResponse) {
+func (p *fieldsPrinter) UserRevokeRole(user string, role string, r *v3.AuthUserRevokeRoleResponse) {
 	p.hdr(r.Header)
 }
-func (p *fieldsPrinter) UserDelete(user string, r v3.AuthUserDeleteResponse) { p.hdr(r.Header) }
+func (p *fieldsPrinter) UserDelete(user string, r *v3.AuthUserDeleteResponse) { p.hdr(r.Header) }

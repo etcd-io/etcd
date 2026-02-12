@@ -54,16 +54,18 @@ func assertNumericFieldEqual(t *testing.T, obj map[string]any, key string, want 
 }
 
 func assertHexFieldEqual(t *testing.T, obj map[string]any, key string, want string) {
+	t.Helper()
 	raw, ok := obj[key]
 	require.Truef(t, ok, "missing key %q in map %v", key, obj)
 
 	str, ok := raw.(string)
-	require.Truef(t, ok, "field %q is not a string: %v", key, str)
+	require.Truef(t, ok, "field %q is not a string: %v (%T)", key, raw, raw)
 
 	assert.Equalf(t, want, str, "unexpected value for hex field %q", key)
 }
 
 func assertHeader(t *testing.T, testGroup *testScenario, tt *testCase, got map[string]any) {
+	t.Helper()
 	rawHeader, ok := got[keyHeader]
 	require.Truef(t, ok, "output does not contain %q field: %v", keyHeader, got)
 	header, ok := rawHeader.(map[string]any)
@@ -138,7 +140,7 @@ func TestMemberAdd(t *testing.T) {
 					decoder := json.NewDecoder(&buffer)
 					decoder.UseNumber()
 
-					response := clientv3.MemberAddResponse{
+					response := &clientv3.MemberAddResponse{
 						Header: &pb.ResponseHeader{
 							ClusterId: tt.number,
 							MemberId:  tt.number,
@@ -184,7 +186,7 @@ func TestMemberRemove(t *testing.T) {
 					decoder := json.NewDecoder(&buffer)
 					decoder.UseNumber()
 
-					response := clientv3.MemberRemoveResponse{
+					response := &clientv3.MemberRemoveResponse{
 						Header: &pb.ResponseHeader{
 							ClusterId: tt.number,
 							MemberId:  tt.number,
@@ -224,7 +226,7 @@ func TestMemberUpdate(t *testing.T) {
 					decoder := json.NewDecoder(&buffer)
 					decoder.UseNumber()
 
-					response := clientv3.MemberUpdateResponse{
+					response := &clientv3.MemberUpdateResponse{
 						Header: &pb.ResponseHeader{
 							ClusterId: tt.number,
 							MemberId:  tt.number,
@@ -264,7 +266,7 @@ func TestMemberPromote(t *testing.T) {
 					decoder := json.NewDecoder(&buffer)
 					decoder.UseNumber()
 
-					response := clientv3.MemberPromoteResponse{
+					response := &clientv3.MemberPromoteResponse{
 						Header: &pb.ResponseHeader{
 							ClusterId: tt.number,
 							MemberId:  tt.number,
@@ -304,7 +306,7 @@ func TestMemberList(t *testing.T) {
 					decoder := json.NewDecoder(&buffer)
 					decoder.UseNumber()
 
-					response := clientv3.MemberListResponse{
+					response := &clientv3.MemberListResponse{
 						Header: &pb.ResponseHeader{
 							ClusterId: tt.number,
 							MemberId:  tt.number,

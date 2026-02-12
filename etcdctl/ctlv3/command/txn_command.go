@@ -86,7 +86,7 @@ func txnCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.Txn(*resp)
+	display.Txn(resp)
 }
 
 func promptInteractive(s string) {
