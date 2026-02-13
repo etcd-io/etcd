@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ---
 
-## v3.4.41 (TBC)
+## v3.4.42 (TBC)
+
+---
+
+## v3.4.41 (2026-02-13)
 
 ### Package `clientv3`
 
@@ -12,7 +16,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ### Dependencies
 
-- Compile binaries using [go 1.24.12](https://github.com/etcd-io/etcd/pull/21218).
+- Compile binaries using [go 1.24.13](https://github.com/etcd-io/etcd/pull/21266). This addresses [CVE-2025-61726](https://github.com/advisories/GHSA-gm9r-q53w-2gh4), [CVE-2025-61731](https://github.com/advisories/GHSA-xvqr-69v8-f3gv), and [CVE-2025-61732](https://github.com/advisories/GHSA-8jvr-vh7g-f8gx).
 
 ---
 
