@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.8 (TBC)
+## v3.6.9 (TBC)
+
+---
+
+## v3.6.8 (2026-02-13)
 
 ### etcd server
 
@@ -18,7 +22,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 ### Dependencies
 
 - Bump [golang.org/x/crypto to 0.45.0 to address CVE-2025-47914, and CVE-2025-58181](https://github.com/etcd-io/etcd/pull/21037).
-- Compile binaries using [go 1.24.12](https://github.com/etcd-io/etcd/pull/21216).
+- Compile binaries using [go 1.24.13](https://github.com/etcd-io/etcd/pull/21266). This addresses [CVE-2025-61726](https://github.com/advisories/GHSA-gm9r-q53w-2gh4), [CVE-2025-61731](https://github.com/advisories/GHSA-xvqr-69v8-f3gv), and [CVE-2025-61732](https://github.com/advisories/GHSA-8jvr-vh7g-f8gx).
 
 ---
 
