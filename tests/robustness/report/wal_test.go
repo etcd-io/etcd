@@ -381,7 +381,7 @@ func TestWriteReadWAL(t *testing.T) {
 	tcs := []struct {
 		name           string
 		operations     []batch
-		readAt         walpb.Snapshot
+		readAt         *walpb.Snapshot
 		walReadAll     want
 		readAllEntries want
 	}{
@@ -518,7 +518,7 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 				},
 			},
-			readAt: walpb.Snapshot{Index: new(uint64(3))},
+			readAt: &walpb.Snapshot{Index: new(uint64(3))},
 			walReadAll: want{
 				wantState:   raftpb.HardState{Commit: 5},
 				wantEntries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
@@ -575,7 +575,7 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
 				},
 			},
-			readAt: walpb.Snapshot{Index: new(uint64(4))},
+			readAt: &walpb.Snapshot{Index: new(uint64(4))},
 			walReadAll: want{
 				wantState:   raftpb.HardState{Commit: 6},
 				wantEntries: []raftpb.Entry{{Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
@@ -600,7 +600,7 @@ func TestWriteReadWAL(t *testing.T) {
 					entries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 				},
 			},
-			readAt: walpb.Snapshot{Index: new(uint64(4))},
+			readAt: &walpb.Snapshot{Index: new(uint64(4))},
 			walReadAll: want{
 				wantError:   "snapshot not found",
 				wantState:   raftpb.HardState{Commit: 5},
@@ -624,7 +624,7 @@ func TestWriteReadWAL(t *testing.T) {
 					require.NoError(t, err)
 				}
 				if op.snapshot != nil {
-					err = w.SaveSnapshot(*op.snapshot)
+					err = w.SaveSnapshot(op.snapshot)
 					require.NoError(t, err)
 				}
 			}

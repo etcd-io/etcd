@@ -74,7 +74,7 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 	cli.Close()
 	srv.Close()
 
-	w, err := wal.Open(zap.NewNop(), cfg.Dir+"/member/wal", walpb.Snapshot{})
+	w, err := wal.Open(zap.NewNop(), cfg.Dir+"/member/wal", &walpb.Snapshot{})
 	require.NoError(t, err)
 	defer w.Close()
 

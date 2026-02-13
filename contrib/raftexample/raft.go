@@ -117,7 +117,7 @@ func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, 
 }
 
 func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
-	walSnap := walpb.Snapshot{
+	walSnap := &walpb.Snapshot{
 		Index:     new(snap.Metadata.Index),
 		Term:      new(snap.Metadata.Term),
 		ConfState: &snap.Metadata.ConfState,
@@ -230,7 +230,7 @@ func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 		w.Close()
 	}
 
-	walsnap := walpb.Snapshot{}
+	walsnap := &walpb.Snapshot{}
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = new(snapshot.Metadata.Index), new(snapshot.Metadata.Term)
 	}

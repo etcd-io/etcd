@@ -587,7 +587,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		return nil, err
 	}
 	snapshot := walpb.Snapshot{Index: &commit, Term: &term, ConfState: &confState}
-	return &hardState, w.SaveSnapshot(snapshot)
+	return &hardState, w.SaveSnapshot(&snapshot)
 }
 
 func (s *v3Manager) updateCIndex(commit uint64, term uint64) error {
