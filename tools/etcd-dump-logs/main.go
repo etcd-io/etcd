@@ -114,7 +114,7 @@ and output a hex encoded line of binary for each input line`)
 
 func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, endIndex *uint64, snapfile *string, dataDir string, waldir *string) []raftpb.Entry {
 	var (
-		walsnap  walpb.Snapshot
+		walsnap  = &walpb.Snapshot{}
 		snapshot *raftpb.Snapshot
 		err      error
 	)

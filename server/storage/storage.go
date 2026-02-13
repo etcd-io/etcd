@@ -60,7 +60,7 @@ func NewStorage(lg *zap.Logger, w *wal.WAL, s *snap.Snapshotter) Storage {
 func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	st.mux.RLock()
 	defer st.mux.RUnlock()
-	walsnap := walpb.Snapshot{
+	walsnap := &walpb.Snapshot{
 		Index:     new(snap.Metadata.Index),
 		Term:      new(snap.Metadata.Term),
 		ConfState: &snap.Metadata.ConfState,
@@ -110,7 +110,7 @@ func (st *storage) Sync() error {
 func (st *storage) MinimalEtcdVersion() *semver.Version {
 	st.mux.Lock()
 	defer st.mux.Unlock()
-	walsnap := walpb.Snapshot{}
+	walsnap := &walpb.Snapshot{}
 
 	sn, err := st.s.Load()
 	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
