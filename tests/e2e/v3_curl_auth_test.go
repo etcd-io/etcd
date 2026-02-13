@@ -360,7 +360,7 @@ func testCurlV3AuthRoleManagePermission(cx ctlCtx) {
 	grantPermissionReq, err := json.Marshal(&pb.AuthRoleGrantPermissionRequest{
 		Name: rolename,
 		Perm: &authpb.Permission{
-			PermType: authpb.READ,
+			PermType: authpb.Permission_READ,
 			Key:      []byte("fakeKey"),
 		},
 	})

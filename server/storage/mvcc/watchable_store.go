@@ -476,9 +476,9 @@ func kvsToEvents(lg *zap.Logger, revs, vals [][]byte) (evs []mvccpb.Event) {
 			lg.Panic("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
 		}
 
-		ty := mvccpb.PUT
+		ty := mvccpb.Event_PUT
 		if isTombstone(revs[i]) {
-			ty = mvccpb.DELETE
+			ty = mvccpb.Event_DELETE
 			// patch in mod revision so watchers won't skip
 			kv.ModRevision = BytesToRev(revs[i]).Main
 		}

@@ -186,7 +186,7 @@ func appendNormalIRREnts(ents *[]raftpb.Entry) {
 	irrauthroleget := &etcdserverpb.AuthRoleGetRequest{Role: "role3"}
 
 	perm := &authpb.Permission{
-		PermType: authpb.WRITE,
+		PermType: authpb.Permission_WRITE,
 		Key:      []byte("Keys"),
 		RangeEnd: []byte("RangeEnd"),
 	}

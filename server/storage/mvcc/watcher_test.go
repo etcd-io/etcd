@@ -237,9 +237,9 @@ func TestWatchDeleteRange(t *testing.T) {
 	s.DeleteRange(from, to)
 
 	we := []mvccpb.Event{
-		{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_0"), ModRevision: 5}},
-		{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_1"), ModRevision: 5}},
-		{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_2"), ModRevision: 5}},
+		{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_0"), ModRevision: 5}},
+		{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_1"), ModRevision: 5}},
+		{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_2"), ModRevision: 5}},
 	}
 
 	select {
@@ -426,7 +426,7 @@ func TestWatcherWatchWithFilter(t *testing.T) {
 	defer w.Close()
 
 	filterPut := func(e mvccpb.Event) bool {
-		return e.Type == mvccpb.PUT
+		return e.Type == mvccpb.Event_PUT
 	}
 
 	w.Watch(t.Context(), 0, []byte("foo"), nil, 0, filterPut)

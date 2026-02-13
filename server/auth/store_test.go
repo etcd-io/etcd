@@ -380,7 +380,7 @@ func TestIsOpPermitted(t *testing.T) {
 	}
 
 	perm := &authpb.Permission{
-		PermType: authpb.WRITE,
+		PermType: authpb.Permission_WRITE,
 		Key:      []byte("Keys"),
 		RangeEnd: []byte("RangeEnd"),
 	}
@@ -473,7 +473,7 @@ func TestRoleGrantPermission(t *testing.T) {
 	}
 
 	perm := &authpb.Permission{
-		PermType: authpb.WRITE,
+		PermType: authpb.Permission_WRITE,
 		Key:      []byte("Keys"),
 		RangeEnd: []byte("RangeEnd"),
 	}
@@ -526,7 +526,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "valid range",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      []byte("Keys"),
 				RangeEnd: []byte("RangeEnd"),
 			},
@@ -535,7 +535,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "invalid range: nil key",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      nil,
 				RangeEnd: []byte("RangeEnd"),
 			},
@@ -544,7 +544,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "valid range: single key",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      []byte("Keys"),
 				RangeEnd: nil,
 			},
@@ -553,7 +553,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "valid range: single key",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      []byte("Keys"),
 				RangeEnd: []byte{},
 			},
@@ -562,7 +562,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "invalid range: empty (Key == RangeEnd)",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      []byte("a"),
 				RangeEnd: []byte("a"),
 			},
@@ -571,7 +571,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "invalid range: empty (Key > RangeEnd)",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      []byte("b"),
 				RangeEnd: []byte("a"),
 			},
@@ -580,7 +580,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "invalid range: length of key is 0",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      []byte(""),
 				RangeEnd: []byte("a"),
 			},
@@ -589,7 +589,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "invalid range: length of key is 0",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      []byte(""),
 				RangeEnd: []byte(""),
 			},
@@ -598,7 +598,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "invalid range: length of key is 0",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      []byte(""),
 				RangeEnd: []byte{0x00},
 			},
@@ -607,7 +607,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "valid range: single key permission for []byte{0x00}",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      []byte{0x00},
 				RangeEnd: []byte(""),
 			},
@@ -616,7 +616,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "valid range: \"a\" or larger keys",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      []byte("a"),
 				RangeEnd: []byte{0x00},
 			},
@@ -625,7 +625,7 @@ func TestRoleGrantInvalidPermission(t *testing.T) {
 		{
 			name: "valid range: the entire keys",
 			perm: &authpb.Permission{
-				PermType: authpb.WRITE,
+				PermType: authpb.Permission_WRITE,
 				Key:      []byte{0x00},
 				RangeEnd: []byte{0x00},
 			},
@@ -652,7 +652,7 @@ func TestRootRoleGrantPermission(t *testing.T) {
 	defer tearDown(t)
 
 	perm := &authpb.Permission{
-		PermType: authpb.WRITE,
+		PermType: authpb.Permission_WRITE,
 		Key:      []byte("Keys"),
 		RangeEnd: []byte("RangeEnd"),
 	}
@@ -671,7 +671,7 @@ func TestRootRoleGrantPermission(t *testing.T) {
 
 	// whatever grant permission to root, it always return root permission.
 	expectPerm := &authpb.Permission{
-		PermType: authpb.READWRITE,
+		PermType: authpb.Permission_READWRITE,
 		Key:      []byte{},
 		RangeEnd: []byte{0},
 	}
@@ -689,7 +689,7 @@ func TestRoleRevokePermission(t *testing.T) {
 	}
 
 	perm := &authpb.Permission{
-		PermType: authpb.WRITE,
+		PermType: authpb.Permission_WRITE,
 		Key:      []byte("Keys"),
 		RangeEnd: []byte("RangeEnd"),
 	}
@@ -746,7 +746,7 @@ func TestUserRevokePermission(t *testing.T) {
 	}
 
 	perm := &authpb.Permission{
-		PermType: authpb.WRITE,
+		PermType: authpb.Permission_WRITE,
 		Key:      []byte("WriteKeyBegin"),
 		RangeEnd: []byte("WriteKeyEnd"),
 	}
