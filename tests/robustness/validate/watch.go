@@ -45,8 +45,9 @@ func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, re
 	err := validateWatchError(lg, cfg, reports, replay)
 	if err != nil {
 		lg.Error("Watch validation failed", zap.Duration("duration", time.Since(start)), zap.Error(err))
+	} else {
+		lg.Info("Watch validation success", zap.Duration("duration", time.Since(start)))
 	}
-	lg.Info("Watch validation success", zap.Duration("duration", time.Since(start)))
 	return ResultFromError(err)
 }
 

@@ -64,8 +64,9 @@ func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Opera
 	err := validateSerializableOperationsError(lg, operations, replay)
 	if err != nil {
 		lg.Error("Serializable validation failed", zap.Duration("duration", time.Since(start)), zap.Error(err))
+	} else {
+		lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
 	}
-	lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
 	return ResultFromError(err)
 }
 
