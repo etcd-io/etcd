@@ -222,14 +222,14 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 		}
 	case List:
 		var resp *clientv3.GetResponse
-		resp, err = c.client.Range(ctx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), 0, limit)
+		resp, err = c.client.Range(opCtx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), 0, limit)
 		if resp != nil {
 			c.keyStore.SyncKeys(resp)
 			rev = resp.Header.Revision
 		}
 	case StaleList:
 		var resp *clientv3.GetResponse
-		resp, err = c.client.Range(ctx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), lastRev, limit)
+		resp, err = c.client.Range(opCtx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), lastRev, limit)
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
