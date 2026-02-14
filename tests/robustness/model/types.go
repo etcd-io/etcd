@@ -168,7 +168,7 @@ func (m *MemberID) UnmarshalJSON(data []byte) error {
 type EtcdResponse struct {
 	Txn         *TxnResponse
 	Range       *RangeResponse
-	LeaseGrant  *LeaseGrantReponse
+	LeaseGrant  *LeaseGrantResponse
 	LeaseRevoke *LeaseRevokeResponse
 	Defragment  *DefragmentResponse
 	Compact     *CompactResponse
@@ -203,7 +203,7 @@ type RangeResponse struct {
 	Count int64
 }
 
-type LeaseGrantReponse struct {
+type LeaseGrantResponse struct {
 	LeaseID int64
 }
 type (
