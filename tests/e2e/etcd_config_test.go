@@ -493,6 +493,7 @@ func TestEtcdPeerLocalAddr(t *testing.T) {
 		err := e2e.WaitReadyExpectProc(t.Context(), p, expect)
 		require.NoError(t, err)
 	}
+	panic("oops")
 }
 
 func TestGrpcproxyAndCommonName(t *testing.T) {
