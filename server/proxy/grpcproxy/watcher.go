@@ -17,6 +17,8 @@ package grpcproxy
 import (
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -89,9 +91,8 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		}
 
 		if !w.prevKV {
-			evCopy := *ev
-			evCopy.PrevKv = nil
-			ev = &evCopy
+			ev := proto.Clone(ev).(*mvccpb.Event)
+			ev.PrevKv = nil
 		}
 		events = append(events, ev)
 	}

@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	v3pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/client/v3"
@@ -217,8 +219,7 @@ func (lc *leaseCache) Get(ctx context.Context, op v3.Op) (*v3.GetResponse, bool)
 }
 
 func (lk *leaseKey) get(op v3.Op) *v3.GetResponse {
-	ret := *lk.response
-	ret.Header = copyHeader(ret.Header)
+	ret := (*v3.GetResponse)(proto.Clone((*v3pb.RangeResponse)(lk.response)).(*v3pb.RangeResponse))
 	empty := len(ret.Kvs) == 0 || op.IsCountOnly()
 	empty = empty || (op.MinModRev() > ret.Kvs[0].ModRevision)
 	empty = empty || (op.MaxModRev() != 0 && op.MaxModRev() < ret.Kvs[0].ModRevision)
@@ -227,16 +228,13 @@ func (lk *leaseKey) get(op v3.Op) *v3.GetResponse {
 	if empty {
 		ret.Kvs = nil
 	} else {
-		kv := *ret.Kvs[0]
-		kv.Key = make([]byte, len(kv.Key))
-		copy(kv.Key, ret.Kvs[0].Key)
-		if !op.IsKeysOnly() {
-			kv.Value = make([]byte, len(kv.Value))
-			copy(kv.Value, ret.Kvs[0].Value)
+		kv := ret.Kvs[0]
+		if op.IsKeysOnly() {
+			kv.Value = nil
 		}
-		ret.Kvs = []*mvccpb.KeyValue{&kv}
+		ret.Kvs = []*mvccpb.KeyValue{kv}
 	}
-	return &ret
+	return ret
 }
 
 func (lc *leaseCache) notify(key string) (*leaseKey, <-chan struct{}) {
