@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -180,9 +181,9 @@ func createKV(key, val string, createRev, modRev, ver int64) *mvccpb.KeyValue {
 func dropValue(s []*mvccpb.KeyValue) []*mvccpb.KeyValue {
 	ss := make([]*mvccpb.KeyValue, 0, len(s))
 	for _, kv := range s {
-		clone := *kv
+		clone := proto.Clone(kv).(*mvccpb.KeyValue)
 		clone.Value = nil
-		ss = append(ss, &clone)
+		ss = append(ss, clone)
 	}
 	return ss
 }

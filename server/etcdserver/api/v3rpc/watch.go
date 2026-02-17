@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -588,14 +589,20 @@ func sendFragments(
 		return sendFunc(wr)
 	}
 
-	ow := *wr
-	ow.Events = make([]*mvccpb.Event, 0)
+	originalEvents := wr.Events
+	defer func() {
+		wr.Events = originalEvents
+	}()
+	// make clone cheaper
+	wr.Events = nil
+	ow := proto.Clone(wr).(*pb.WatchResponse)
 	ow.Fragment = true
 
 	var idx int
 	for {
 		cur := ow
-		for _, ev := range wr.Events[idx:] {
+		cur.Events = nil
+		for _, ev := range originalEvents[idx:] {
 			cur.Events = append(cur.Events, ev)
 			if len(cur.Events) > 1 && uint(cur.Size()) >= maxRequestBytes {
 				cur.Events = cur.Events[:len(cur.Events)-1]
@@ -603,11 +610,11 @@ func sendFragments(
 			}
 			idx++
 		}
-		if idx == len(wr.Events) {
+		if idx == len(originalEvents) {
 			// last response has no more fragment
 			cur.Fragment = false
 		}
-		if err := sendFunc(&cur); err != nil {
+		if err := sendFunc(cur); err != nil {
 			return err
 		}
 		if !cur.Fragment {

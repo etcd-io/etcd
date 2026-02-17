@@ -17,6 +17,8 @@ package leasing
 import (
 	"bytes"
 
+	"github.com/gogo/protobuf/proto"
+
 	v3pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	v3 "go.etcd.io/etcd/client/v3"
 )
@@ -97,8 +99,7 @@ func gatherResponseOps(resp []*v3pb.ResponseOp, ops []v3.Op) (ret []v3.Op) {
 }
 
 func copyHeader(hdr *v3pb.ResponseHeader) *v3pb.ResponseHeader {
-	h := *hdr
-	return &h
+	return proto.Clone(hdr).(*v3pb.ResponseHeader)
 }
 
 func closeAll(chs []chan<- struct{}) {
