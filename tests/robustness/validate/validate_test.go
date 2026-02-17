@@ -1551,7 +1551,7 @@ func TestValidateWatch(t *testing.T) {
 			},
 		},
 		{
-			name: "Resumable - missing first matching event - pass",
+			name: "Resumable - missing first matching event - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -1579,7 +1579,7 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeResumable.Error(),
 		},
 		{
-			name: "Resumable - missing first matching event with prefix - pass",
+			name: "Resumable - missing first matching event with prefix - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -1607,7 +1607,7 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeResumable.Error(),
 		},
 		{
-			name: "Resumable - missing first matching event with prefix - pass",
+			name: "Resumable - missing first matching event with prefix - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -1697,7 +1697,7 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeIsCreate.Error(),
 		},
 		{
-			name: "IsCreate - put after delete marked as not created - pass",
+			name: "IsCreate - put after delete marked as not created - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
