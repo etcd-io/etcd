@@ -225,7 +225,7 @@ func (s *watchableStore) syncWatchersLoop() {
 
 	delayTicker := time.NewTicker(watchResyncPeriod)
 	defer delayTicker.Stop()
-	var evs []mvccpb.Event
+	var evs []*mvccpb.Event
 
 	for {
 		s.mu.RLock()
@@ -343,12 +343,12 @@ func (s *watchableStore) moveVictims() (moved int) {
 //  2. iterate over the set to get the minimum revision and remove compacted watchers
 //  3. use minimum revision to get all key-value pairs and send those events to watchers
 //  4. remove synced watchers in set from unsynced group and move to synced group
-func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) {
+func (s *watchableStore) syncWatchers(evs []*mvccpb.Event) (int, []*mvccpb.Event) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if s.unsynced.size() == 0 {
-		return 0, []mvccpb.Event{}
+		return 0, []*mvccpb.Event{}
 	}
 
 	s.store.revMu.RLock()
@@ -414,7 +414,7 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 }
 
 // rangeEventsWithReuse returns events in range [minRev, maxRev), while reusing already provided events.
-func rangeEventsWithReuse(lg *zap.Logger, b backend.Backend, evs []mvccpb.Event, minRev, maxRev int64) []mvccpb.Event {
+func rangeEventsWithReuse(lg *zap.Logger, b backend.Backend, evs []*mvccpb.Event, minRev, maxRev int64) []*mvccpb.Event {
 	if len(evs) == 0 {
 		return rangeEvents(lg, b, minRev, maxRev)
 	}
@@ -446,7 +446,7 @@ func rangeEventsWithReuse(lg *zap.Logger, b backend.Backend, evs []mvccpb.Event,
 }
 
 // rangeEvents returns events in range [minRev, maxRev).
-func rangeEvents(lg *zap.Logger, b backend.Backend, minRev, maxRev int64) []mvccpb.Event {
+func rangeEvents(lg *zap.Logger, b backend.Backend, minRev, maxRev int64) []*mvccpb.Event {
 	if minRev < 0 {
 		lg.Warn("Unexpected negative revision range start", zap.Int64("minRev", minRev))
 		minRev = 0
@@ -469,7 +469,7 @@ func rangeEvents(lg *zap.Logger, b backend.Backend, minRev, maxRev int64) []mvcc
 }
 
 // kvsToEvents gets all events for the watchers from all key-value pairs
-func kvsToEvents(lg *zap.Logger, revs, vals [][]byte) (evs []mvccpb.Event) {
+func kvsToEvents(lg *zap.Logger, revs, vals [][]byte) (evs []*mvccpb.Event) {
 	for i, v := range vals {
 		var kv mvccpb.KeyValue
 		if err := kv.Unmarshal(v); err != nil {
@@ -482,14 +482,14 @@ func kvsToEvents(lg *zap.Logger, revs, vals [][]byte) (evs []mvccpb.Event) {
 			// patch in mod revision so watchers won't skip
 			kv.ModRevision = BytesToRev(revs[i]).Main
 		}
-		evs = append(evs, mvccpb.Event{Kv: &kv, Type: ty})
+		evs = append(evs, &mvccpb.Event{Kv: &kv, Type: ty})
 	}
 	return evs
 }
 
 // notify notifies the fact that given event at the given rev just happened to
 // watchers that watch on the key of the event.
-func (s *watchableStore) notify(rev int64, evs []mvccpb.Event) {
+func (s *watchableStore) notify(rev int64, evs []*mvccpb.Event) {
 	victim := make(watcherBatch)
 	for w, eb := range newWatcherBatch(&s.synced, evs) {
 		if eb.revs != 1 {
@@ -599,7 +599,7 @@ func (w *watcher) send(wr WatchResponse) bool {
 	progressEvent := len(wr.Events) == 0
 
 	if len(w.fcs) != 0 {
-		ne := make([]mvccpb.Event, 0, len(wr.Events))
+		ne := make([]*mvccpb.Event, 0, len(wr.Events))
 		for i := range wr.Events {
 			filtered := false
 			for _, filter := range w.fcs {

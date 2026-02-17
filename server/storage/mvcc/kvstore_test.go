@@ -236,9 +236,7 @@ func TestStoreRange(t *testing.T) {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 		}
 		var retPointers []*mvccpb.KeyValue
-		for i := range ret.KVs {
-			retPointers = append(retPointers, &ret.KVs[i])
-		}
+		retPointers = append(retPointers, ret.KVs...)
 		if w := []*mvccpb.KeyValue{kv}; !protoDeepEqual(t, retPointers, w) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, ret.KVs, w)
 		}
@@ -786,8 +784,8 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		ModRevision:    3,
 		Version:        2,
 	}
-	if !protoDeepEqual(t, &ret.KVs[0], w) {
-		t.Fatalf("range result = %+v, want = %+v", &ret.KVs[0], w)
+	if !protoDeepEqual(t, ret.KVs[0], w) {
+		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
 	}
 	readTx2.End()
 
@@ -803,8 +801,8 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	if !protoDeepEqual(t, &ret.KVs[0], w) {
-		t.Fatalf("range result = %+v, want = %+v", &ret.KVs[0], w)
+	if !protoDeepEqual(t, ret.KVs[0], w) {
+		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
 	}
 	readTx1.End()
 }

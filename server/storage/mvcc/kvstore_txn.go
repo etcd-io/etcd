@@ -96,7 +96,7 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 		limit = len(revpairs)
 	}
 
-	kvs := make([]mvccpb.KeyValue, limit)
+	kvs := make([]*mvccpb.KeyValue, limit)
 	revBytes := NewRevBytes()
 	for i, revpair := range revpairs[:len(kvs)] {
 		select {
@@ -120,12 +120,14 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 				zap.Int("len-values", len(vs)),
 			)
 		}
-		if err := kvs[i].Unmarshal(vs[0]); err != nil {
+		var kv mvccpb.KeyValue
+		if err := kv.Unmarshal(vs[0]); err != nil {
 			tr.s.lg.Fatal(
 				"failed to unmarshal mvccpb.KeyValue",
 				zap.Error(err),
 			)
 		}
+		kvs[i] = &kv
 	}
 	tr.trace.Step("range keys from bolt db")
 	return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
@@ -141,7 +143,7 @@ type storeTxnWrite struct {
 	tx backend.BatchTx
 	// beginRev is the revision where the txn begins; it will write to the next revision.
 	beginRev int64
-	changes  []mvccpb.KeyValue
+	changes  []*mvccpb.KeyValue
 }
 
 func (s *store) Write(trace *traceutil.Trace) TxnWrite {
@@ -152,7 +154,7 @@ func (s *store) Write(trace *traceutil.Trace) TxnWrite {
 		storeTxnCommon: storeTxnCommon{s, tx, 0, 0, trace},
 		tx:             tx,
 		beginRev:       s.currentRev,
-		changes:        make([]mvccpb.KeyValue, 0, 4),
+		changes:        make([]*mvccpb.KeyValue, 0, 4),
 	}
 	return newMetricsTxnWrite(tw)
 }
@@ -231,7 +233,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	tw.trace.Step("marshal mvccpb.KeyValue")
 	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
 	tw.s.kvindex.Put(key, idxRev)
-	tw.changes = append(tw.changes, kv)
+	tw.changes = append(tw.changes, &kv)
 	tw.trace.Step("store kv pair into bolt db")
 
 	if oldLease == leaseID {
@@ -302,7 +304,7 @@ func (tw *storeTxnWrite) delete(key []byte) {
 			zap.Error(err),
 		)
 	}
-	tw.changes = append(tw.changes, kv)
+	tw.changes = append(tw.changes, &kv)
 
 	item := lease.LeaseItem{Key: string(key)}
 	leaseID := tw.s.le.GetLease(item)
@@ -318,4 +320,4 @@ func (tw *storeTxnWrite) delete(key []byte) {
 	}
 }
 
-func (tw *storeTxnWrite) Changes() []mvccpb.KeyValue { return tw.changes }
+func (tw *storeTxnWrite) Changes() []*mvccpb.KeyValue { return tw.changes }

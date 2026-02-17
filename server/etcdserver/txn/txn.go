@@ -273,7 +273,7 @@ func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
 		return compareKV(c, &mvccpb.KeyValue{})
 	}
 	for i := range rr.KVs {
-		if !compareKV(c, &rr.KVs[i]) {
+		if !compareKV(c, rr.KVs[i]) {
 			return false
 		}
 	}
