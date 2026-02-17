@@ -323,7 +323,7 @@ func TestSyncWatchers(t *testing.T) {
 	for i := 0; i < watcherN; i++ {
 		events := (<-w.(*watchStream).ch).Events
 		assert.Len(t, events, 1)
-		assert.Empty(t, cmp.Diff([]mvccpb.Event{
+		assert.Empty(t, cmp.Diff([]*mvccpb.Event{
 			{
 				Type: mvccpb.Event_PUT,
 				Kv: &mvccpb.KeyValue{
@@ -354,7 +354,7 @@ func TestRangeEvents(t *testing.T) {
 	s.Put(foo3, value, lease.NoLease)
 	s.DeleteRange(foo1, foo3) // Deletes "foo1" and "foo2" generating 2 events
 
-	expectEvents := []mvccpb.Event{
+	expectEvents := []*mvccpb.Event{
 		{
 			Type: mvccpb.Event_PUT,
 			Kv: &mvccpb.KeyValue{
@@ -404,7 +404,7 @@ func TestRangeEvents(t *testing.T) {
 	tcs := []struct {
 		minRev       int64
 		maxRev       int64
-		expectEvents []mvccpb.Event
+		expectEvents []*mvccpb.Event
 	}{
 		// maxRev, top to bottom
 		{minRev: -1, maxRev: 6, expectEvents: expectEvents[0:5]},
@@ -606,12 +606,12 @@ func testWatchRestore(t *testing.T, delayBeforeRestore, delayAfterRestore time.D
 	tcs := []struct {
 		name          string
 		startRevision int64
-		wantEvents    []mvccpb.Event
+		wantEvents    []*mvccpb.Event
 	}{
 		{
 			name:          "zero revision",
 			startRevision: 0,
-			wantEvents: []mvccpb.Event{
+			wantEvents: []*mvccpb.Event{
 				{Type: mvccpb.Event_PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
 				{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
 			},
@@ -619,7 +619,7 @@ func testWatchRestore(t *testing.T, delayBeforeRestore, delayAfterRestore time.D
 		{
 			name:          "revision before first write",
 			startRevision: 1,
-			wantEvents: []mvccpb.Event{
+			wantEvents: []*mvccpb.Event{
 				{Type: mvccpb.Event_PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
 				{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
 			},
@@ -627,7 +627,7 @@ func testWatchRestore(t *testing.T, delayBeforeRestore, delayAfterRestore time.D
 		{
 			name:          "revision of first write",
 			startRevision: 2,
-			wantEvents: []mvccpb.Event{
+			wantEvents: []*mvccpb.Event{
 				{Type: mvccpb.Event_PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
 				{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
 			},
@@ -635,14 +635,14 @@ func testWatchRestore(t *testing.T, delayBeforeRestore, delayAfterRestore time.D
 		{
 			name:          "current revision",
 			startRevision: 3,
-			wantEvents: []mvccpb.Event{
+			wantEvents: []*mvccpb.Event{
 				{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
 			},
 		},
 		{
 			name:          "future revision",
 			startRevision: 4,
-			wantEvents:    []mvccpb.Event{},
+			wantEvents:    []*mvccpb.Event{},
 		},
 	}
 	watchers := []WatchStream{}
@@ -669,8 +669,8 @@ func testWatchRestore(t *testing.T, delayBeforeRestore, delayAfterRestore time.D
 	}
 }
 
-func readEventsForSecond(t *testing.T, ws <-chan WatchResponse) []mvccpb.Event {
-	events := []mvccpb.Event{}
+func readEventsForSecond(t *testing.T, ws <-chan WatchResponse) []*mvccpb.Event {
+	events := []*mvccpb.Event{}
 	deadline := time.After(time.Second)
 	for {
 		select {
@@ -773,7 +773,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 
 	ws := []*watcher{{key: k0}, {key: k1}, {key: k2}}
 
-	evs := []mvccpb.Event{
+	evs := []*mvccpb.Event{
 		{
 			Type: mvccpb.Event_PUT,
 			Kv:   &mvccpb.KeyValue{Key: k0, Value: v0},
@@ -790,15 +790,15 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 
 	tests := []struct {
 		sync []*watcher
-		evs  []mvccpb.Event
+		evs  []*mvccpb.Event
 
-		wwe map[*watcher][]mvccpb.Event
+		wwe map[*watcher][]*mvccpb.Event
 	}{
 		// no watcher in sync, some events should return empty wwe
 		{
 			nil,
 			evs,
-			map[*watcher][]mvccpb.Event{},
+			map[*watcher][]*mvccpb.Event{},
 		},
 
 		// one watcher in sync, one event that does not match the key of that
@@ -806,7 +806,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		{
 			[]*watcher{ws[2]},
 			evs[:1],
-			map[*watcher][]mvccpb.Event{},
+			map[*watcher][]*mvccpb.Event{},
 		},
 
 		// one watcher in sync, one event that matches the key of that
@@ -814,7 +814,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		{
 			[]*watcher{ws[1]},
 			evs[1:2],
-			map[*watcher][]mvccpb.Event{
+			map[*watcher][]*mvccpb.Event{
 				ws[1]: evs[1:2],
 			},
 		},
@@ -825,7 +825,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		{
 			[]*watcher{ws[0], ws[2]},
 			evs[2:],
-			map[*watcher][]mvccpb.Event{
+			map[*watcher][]*mvccpb.Event{
 				ws[2]: evs[2:],
 			},
 		},
@@ -835,7 +835,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		{
 			[]*watcher{ws[0], ws[1]},
 			evs[:2],
-			map[*watcher][]mvccpb.Event{
+			map[*watcher][]*mvccpb.Event{
 				ws[0]: evs[:1],
 				ws[1]: evs[1:2],
 			},

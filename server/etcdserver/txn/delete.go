@@ -47,10 +47,7 @@ func deleteRange(ctx context.Context, txnWrite mvcc.TxnWrite, dr *pb.DeleteRange
 			return nil, err
 		}
 		if rr != nil {
-			resp.PrevKvs = make([]*mvccpb.KeyValue, len(rr.KVs))
-			for i := range rr.KVs {
-				resp.PrevKvs[i] = &rr.KVs[i]
-			}
+			resp.PrevKvs = append([]*mvccpb.KeyValue{}, rr.KVs...)
 		}
 	}
 
