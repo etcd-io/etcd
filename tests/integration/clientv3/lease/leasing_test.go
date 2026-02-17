@@ -823,10 +823,10 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 		clientv3.WithPrefix())
 	wresp := <-w
 	c := 0
-	var evs []clientv3.Event
-	for _, ev := range wresp.Events {
-		evs = append(evs, *ev)
-		if ev.Kv.ModRevision == tresp.Header.Revision {
+	var evs []*clientv3.Event
+	for i := range wresp.Events {
+		evs = append(evs, wresp.Events[i])
+		if wresp.Events[i].Kv.ModRevision == tresp.Header.Revision {
 			c++
 		}
 	}

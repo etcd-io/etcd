@@ -780,7 +780,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	wid, _ := w.Watch(t.Context(), 0, []byte("foo"), []byte("fop"), 0)
 
-	wev := []mvccpb.Event{
+	wev := []*mvccpb.Event{
 		{
 			Type: mvccpb.Event_PUT,
 			Kv: &mvccpb.KeyValue{
