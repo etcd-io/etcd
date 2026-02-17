@@ -145,9 +145,13 @@ func TestKVGet(t *testing.T) {
 					withKeysOnly := otc
 					withKeysOnly.name = fmt.Sprintf("%s --keys-only", withKeysOnly.name)
 					withKeysOnly.options.KeysOnly = true
-					wantResponse := *otc.wantResponse
+					wantResponse := &clientv3.GetResponse{
+						Header: otc.wantResponse.Header,
+						More:   otc.wantResponse.More,
+						Count:  otc.wantResponse.Count,
+					}
 					wantResponse.Kvs = dropValue(withKeysOnly.wantResponse.Kvs)
-					withKeysOnly.wantResponse = &wantResponse
+					withKeysOnly.wantResponse = wantResponse
 					testsWithKeysOnly = append(testsWithKeysOnly, withKeysOnly)
 				}
 				for _, tt := range slices.Concat(tests, testsWithKeysOnly) {

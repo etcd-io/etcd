@@ -426,7 +426,7 @@ func (s *store) restore() error {
 
 type revKeyValue struct {
 	key  []byte
-	kv   mvccpb.KeyValue
+	kv   *mvccpb.KeyValue
 	kstr string
 }
 
@@ -491,10 +491,11 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 
 func restoreChunk(lg *zap.Logger, kvc chan<- revKeyValue, keys, vals [][]byte, keyToLease map[string]lease.LeaseID) {
 	for i, key := range keys {
-		rkv := revKeyValue{key: key}
-		if err := rkv.kv.Unmarshal(vals[i]); err != nil {
+		var kv mvccpb.KeyValue
+		if err := kv.Unmarshal(vals[i]); err != nil {
 			lg.Fatal("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
 		}
+		rkv := revKeyValue{key: key, kv: &kv}
 		rkv.kstr = string(rkv.kv.Key)
 		if isTombstone(key) {
 			delete(keyToLease, rkv.kstr)

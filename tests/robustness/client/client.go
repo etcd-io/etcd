@@ -341,7 +341,7 @@ func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) model.WatchRe
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
 	resp := model.WatchResponse{Time: time.Since(baseTime)}
 	for _, event := range r.Events {
-		resp.Events = append(resp.Events, toWatchEvent(*event))
+		resp.Events = append(resp.Events, toWatchEvent(event))
 	}
 	resp.IsProgressNotify = r.IsProgressNotify()
 	resp.Revision = r.Header.Revision
@@ -352,7 +352,7 @@ func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) model.WatchRe
 	return resp
 }
 
-func toWatchEvent(event clientv3.Event) (watch model.WatchEvent) {
+func toWatchEvent(event *clientv3.Event) (watch model.WatchEvent) {
 	watch.Revision = event.Kv.ModRevision
 	watch.Key = string(event.Kv.Key)
 	watch.Value = model.ToValueOrHash(string(event.Kv.Value))

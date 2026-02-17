@@ -311,7 +311,7 @@ func parseEntryNormal(ent raftpb.Entry) (*model.EtcdRequest, error) {
 		}
 		return &request, nil
 	default:
-		panic(fmt.Sprintf("Unhandled raft request: %+v", raftReq))
+		panic(fmt.Sprintf("Unhandled raft request: %+v", raftReq.String()))
 	}
 }
 

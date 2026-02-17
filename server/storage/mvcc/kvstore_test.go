@@ -90,7 +90,7 @@ func TestStorePut(t *testing.T) {
 
 		wrev    Revision
 		wkey    []byte
-		wkv     mvccpb.KeyValue
+		wkv     *mvccpb.KeyValue
 		wputrev Revision
 	}{
 		{
@@ -100,7 +100,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 2},
 			newTestRevBytes(Revision{Main: 2}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -117,7 +117,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 2},
 			newTestRevBytes(Revision{Main: 2}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -134,7 +134,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 3},
 			newTestRevBytes(Revision{Main: 3}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -194,7 +194,7 @@ func TestStorePut(t *testing.T) {
 func TestStoreRange(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	key := newTestRevBytes(Revision{Main: 2})
-	kv := mvccpb.KeyValue{
+	kv := &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("bar"),
 		CreateRevision: 1,
@@ -235,7 +235,11 @@ func TestStoreRange(t *testing.T) {
 		if err != nil {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 		}
-		if w := []mvccpb.KeyValue{kv}; !protoDeepEqual(t, ret.KVs, w) {
+		var retPointers []*mvccpb.KeyValue
+		for i := range ret.KVs {
+			retPointers = append(retPointers, &ret.KVs[i])
+		}
+		if w := []*mvccpb.KeyValue{kv}; !protoDeepEqual(t, retPointers, w) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, ret.KVs, w)
 		}
 		if ret.Rev != wrev {
@@ -775,15 +779,15 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		t.Fatalf("failed to range: %v", err)
 	}
 	// readTx2 should see the result of new write
-	w := mvccpb.KeyValue{
+	w := &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("newBar"),
 		CreateRevision: 2,
 		ModRevision:    3,
 		Version:        2,
 	}
-	if !protoDeepEqual(t, ret.KVs[0], w) {
-		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
+	if !protoDeepEqual(t, &ret.KVs[0], w) {
+		t.Fatalf("range result = %+v, want = %+v", &ret.KVs[0], w)
 	}
 	readTx2.End()
 
@@ -792,15 +796,15 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		t.Fatalf("failed to range: %v", err)
 	}
 	// readTx1 should not see the result of new write
-	w = mvccpb.KeyValue{
+	w = &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("bar"),
 		CreateRevision: 2,
 		ModRevision:    2,
 		Version:        1,
 	}
-	if !protoDeepEqual(t, ret.KVs[0], w) {
-		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
+	if !protoDeepEqual(t, &ret.KVs[0], w) {
+		t.Fatalf("range result = %+v, want = %+v", &ret.KVs[0], w)
 	}
 	readTx1.End()
 }
@@ -864,8 +868,8 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 				return
 			}
 			var result kvs
-			for _, keyValue := range ret.KVs {
-				result = append(result, kv{keyValue.Key, keyValue.Value})
+			for i := range ret.KVs {
+				result = append(result, kv{ret.KVs[i].Key, ret.KVs[i].Value})
 			}
 			if !protoDeepEqual(t, wKVs, result) {
 				t.Errorf("unexpected range result") // too many key value pairs, skip printing them

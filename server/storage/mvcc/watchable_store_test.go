@@ -528,8 +528,8 @@ func TestWatchNoEventLossOnCompact(t *testing.T) {
 			continue
 		}
 		nextRev := watchers[resp.WatchID]
-		for _, ev := range resp.Events {
-			require.Equalf(t, nextRev, ev.Kv.ModRevision, "got event revision %d but want %d for watcher with watch ID %d", ev.Kv.ModRevision, nextRev, resp.WatchID)
+		for i := range resp.Events {
+			require.Equalf(t, nextRev, resp.Events[i].Kv.ModRevision, "got event revision %d but want %d for watcher with watch ID %d", resp.Events[i].Kv.ModRevision, nextRev, resp.WatchID)
 			nextRev++
 		}
 		if nextRev == sImpl.rev()+1 {
@@ -745,8 +745,9 @@ func TestWatchBatchUnsynced(t *testing.T) {
 			eventCount := 0
 			for eventCount < tc.revisions*tc.eventsPerRevision {
 				var revisions []int64
-				for _, e := range (<-w.Chan()).Events {
-					revisions = append(revisions, e.Kv.ModRevision)
+				events := (<-w.Chan()).Events
+				for i := range events {
+					revisions = append(revisions, events[i].Kv.ModRevision)
 					eventCount++
 				}
 				revisionBatches = append(revisionBatches, revisions)
@@ -899,9 +900,9 @@ func TestWatchVictims(t *testing.T) {
 					return
 				case wr := <-w.Chan():
 					evs += len(wr.Events)
-					for _, ev := range wr.Events {
-						if ev.Kv.ModRevision != nextRev {
-							errc <- fmt.Errorf("expected rev=%d, got %d", nextRev, ev.Kv.ModRevision)
+					for i := range wr.Events {
+						if wr.Events[i].Kv.ModRevision != nextRev {
+							errc <- fmt.Errorf("expected rev=%d, got %d", nextRev, wr.Events[i].Kv.ModRevision)
 							return
 						}
 						nextRev++

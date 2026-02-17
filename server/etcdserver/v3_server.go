@@ -162,7 +162,7 @@ func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse
 	defer span.End()
 
 	ctx = context.WithValue(ctx, traceutil.StartTimeKey{}, time.Now())
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Put: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{Put: r})
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 	))
 	defer span.End()
 
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{DeleteRange: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{DeleteRange: r})
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 	}
 
 	ctx = context.WithValue(ctx, traceutil.StartTimeKey{}, time.Now())
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Txn: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{Txn: r})
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +251,7 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 
 	startTime := time.Now()
 	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "compact")
-	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Compaction: r})
+	result, err := s.processInternalRaftRequestOnce(ctx, &pb.InternalRaftRequest{Compaction: r})
 	if result != nil && result.Trace != nil {
 		trace = result.Trace
 		defer func() {
@@ -306,7 +306,7 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 	))
 	defer span.End()
 
-	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseGrant: r})
+	resp, err := s.raftRequestOnce(ctx, &pb.InternalRaftRequest{LeaseGrant: r})
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +332,7 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 	))
 	defer span.End()
 
-	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
+	resp, err := s.raftRequestOnce(ctx, &pb.InternalRaftRequest{LeaseRevoke: r})
 	if err != nil {
 		return nil, err
 	}
@@ -567,7 +567,7 @@ func (s *EtcdServer) waitLeader(ctx context.Context) (*membership.Member, error)
 }
 
 func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmResponse, error) {
-	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{Alarm: r})
+	resp, err := s.raftRequestOnce(ctx, &pb.InternalRaftRequest{Alarm: r})
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +575,7 @@ func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmRe
 }
 
 func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
-	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{AuthEnable: r})
+	resp, err := s.raftRequestOnce(ctx, &pb.InternalRaftRequest{AuthEnable: r})
 	if err != nil {
 		return nil, err
 	}
@@ -583,7 +583,7 @@ func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*
 }
 
 func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthDisable: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthDisable: r})
 	if err != nil {
 		return nil, err
 	}
@@ -591,7 +591,7 @@ func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) 
 }
 
 func (s *EtcdServer) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*pb.AuthStatusResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthStatus: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthStatus: r})
 	if err != nil {
 		return nil, err
 	}
@@ -638,7 +638,7 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 			SimpleToken: st,
 		}
 
-		resp, err = s.raftRequestOnce(ctx, pb.InternalRaftRequest{Authenticate: internalReq})
+		resp, err = s.raftRequestOnce(ctx, &pb.InternalRaftRequest{Authenticate: internalReq})
 		if err != nil {
 			return nil, err
 		}
@@ -662,7 +662,7 @@ func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb
 		r.Password = ""
 	}
 
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserAdd: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthUserAdd: r})
 	if err != nil {
 		return nil, err
 	}
@@ -670,7 +670,7 @@ func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb
 }
 
 func (s *EtcdServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserDelete: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthUserDelete: r})
 	if err != nil {
 		return nil, err
 	}
@@ -687,7 +687,7 @@ func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChang
 		r.Password = ""
 	}
 
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserChangePassword: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthUserChangePassword: r})
 	if err != nil {
 		return nil, err
 	}
@@ -695,7 +695,7 @@ func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChang
 }
 
 func (s *EtcdServer) UserGrantRole(ctx context.Context, r *pb.AuthUserGrantRoleRequest) (*pb.AuthUserGrantRoleResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserGrantRole: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthUserGrantRole: r})
 	if err != nil {
 		return nil, err
 	}
@@ -703,7 +703,7 @@ func (s *EtcdServer) UserGrantRole(ctx context.Context, r *pb.AuthUserGrantRoleR
 }
 
 func (s *EtcdServer) UserGet(ctx context.Context, r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserGet: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthUserGet: r})
 	if err != nil {
 		return nil, err
 	}
@@ -711,7 +711,7 @@ func (s *EtcdServer) UserGet(ctx context.Context, r *pb.AuthUserGetRequest) (*pb
 }
 
 func (s *EtcdServer) UserList(ctx context.Context, r *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserList: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthUserList: r})
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +719,7 @@ func (s *EtcdServer) UserList(ctx context.Context, r *pb.AuthUserListRequest) (*
 }
 
 func (s *EtcdServer) UserRevokeRole(ctx context.Context, r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserRevokeRole: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthUserRevokeRole: r})
 	if err != nil {
 		return nil, err
 	}
@@ -727,7 +727,7 @@ func (s *EtcdServer) UserRevokeRole(ctx context.Context, r *pb.AuthUserRevokeRol
 }
 
 func (s *EtcdServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleAdd: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthRoleAdd: r})
 	if err != nil {
 		return nil, err
 	}
@@ -735,7 +735,7 @@ func (s *EtcdServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb
 }
 
 func (s *EtcdServer) RoleGrantPermission(ctx context.Context, r *pb.AuthRoleGrantPermissionRequest) (*pb.AuthRoleGrantPermissionResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleGrantPermission: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthRoleGrantPermission: r})
 	if err != nil {
 		return nil, err
 	}
@@ -743,7 +743,7 @@ func (s *EtcdServer) RoleGrantPermission(ctx context.Context, r *pb.AuthRoleGran
 }
 
 func (s *EtcdServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleGet: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthRoleGet: r})
 	if err != nil {
 		return nil, err
 	}
@@ -751,7 +751,7 @@ func (s *EtcdServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*pb
 }
 
 func (s *EtcdServer) RoleList(ctx context.Context, r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleList: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthRoleList: r})
 	if err != nil {
 		return nil, err
 	}
@@ -759,7 +759,7 @@ func (s *EtcdServer) RoleList(ctx context.Context, r *pb.AuthRoleListRequest) (*
 }
 
 func (s *EtcdServer) RoleRevokePermission(ctx context.Context, r *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleRevokePermission: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthRoleRevokePermission: r})
 	if err != nil {
 		return nil, err
 	}
@@ -767,14 +767,14 @@ func (s *EtcdServer) RoleRevokePermission(ctx context.Context, r *pb.AuthRoleRev
 }
 
 func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleDelete: r})
+	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{AuthRoleDelete: r})
 	if err != nil {
 		return nil, err
 	}
 	return resp.(*pb.AuthRoleDeleteResponse), nil
 }
 
-func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
+func (s *EtcdServer) raftRequestOnce(ctx context.Context, r *pb.InternalRaftRequest) (proto.Message, error) {
 	result, err := s.processInternalRaftRequestOnce(ctx, r)
 	if err != nil {
 		trace.SpanFromContext(ctx).RecordError(err)
@@ -795,7 +795,7 @@ func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftReque
 	return result.Resp, nil
 }
 
-func (s *EtcdServer) raftRequest(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
+func (s *EtcdServer) raftRequest(ctx context.Context, r *pb.InternalRaftRequest) (proto.Message, error) {
 	return s.raftRequestOnce(ctx, r)
 }
 
@@ -824,7 +824,7 @@ func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) e
 	return nil
 }
 
-func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*apply2.Result, error) {
+func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r *pb.InternalRaftRequest) (*apply2.Result, error) {
 	ai := s.getAppliedIndex()
 	ci := s.getCommittedIndex()
 	if ci > ai+maxGapBetweenApplyAndCommitIndex {
@@ -851,7 +851,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 		data    []byte
 		err     error
 		start   = time.Now()
-		reqType = getRequestType(&r)
+		reqType = getRequestType(r)
 	)
 	defer func() {
 		success := err == nil

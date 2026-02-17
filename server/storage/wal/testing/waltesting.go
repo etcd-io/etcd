@@ -28,7 +28,7 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-func NewTmpWAL(tb testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL, string) {
+func NewTmpWAL(tb testing.TB, reqs []*etcdserverpb.InternalRaftRequest) (*wal.WAL, string) {
 	tb.Helper()
 	dir, err := os.MkdirTemp(tb.TempDir(), "etcd_wal_test")
 	if err != nil {
@@ -61,7 +61,7 @@ func NewTmpWAL(tb testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL
 				Term:  1,
 				Index: 1,
 				Type:  raftpb.EntryNormal,
-				Data:  pbutil.MustMarshal(&req),
+				Data:  pbutil.MustMarshal(req),
 			})
 		}
 		err = w.Save(state, entries)
