@@ -185,7 +185,7 @@ func ctlV3MemberList(cx ctlCtx) error {
 	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
-func getMemberList(cx ctlCtx, serializable bool) (etcdserverpb.MemberListResponse, error) {
+func getMemberList(cx ctlCtx, serializable bool) (*etcdserverpb.MemberListResponse, error) {
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "member", "list")
 	if serializable {
 		cmdArgs = append(cmdArgs, "--consistency", "s")
@@ -193,21 +193,21 @@ func getMemberList(cx ctlCtx, serializable bool) (etcdserverpb.MemberListRespons
 
 	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
-		return etcdserverpb.MemberListResponse{}, err
+		return nil, err
 	}
 	var txt string
 	txt, err = proc.Expect("members")
 	if err != nil {
-		return etcdserverpb.MemberListResponse{}, err
+		return nil, err
 	}
 	if err = proc.Close(); err != nil {
-		return etcdserverpb.MemberListResponse{}, err
+		return nil, err
 	}
 
-	resp := etcdserverpb.MemberListResponse{}
+	resp := &etcdserverpb.MemberListResponse{}
 	dec := json.NewDecoder(strings.NewReader(txt))
-	if err := dec.Decode(&resp); errors.Is(err, io.EOF) {
-		return etcdserverpb.MemberListResponse{}, err
+	if err := dec.Decode(resp); errors.Is(err, io.EOF) {
+		return nil, err
 	}
 	return resp, nil
 }

@@ -108,7 +108,7 @@ func TestMigrate(t *testing.T) {
 		// Overrides which keys should be set (default based on version)
 		overrideKeys  func(tx backend.UnsafeReadWriter)
 		targetVersion semver.Version
-		walEntries    []etcdserverpb.InternalRaftRequest
+		walEntries    []*etcdserverpb.InternalRaftRequest
 
 		expectVersion  *semver.Version
 		expectError    bool
@@ -183,7 +183,7 @@ func TestMigrate(t *testing.T) {
 			name:          "Downgrading v3.6 to v3.5 works as there are no v3.6 wal entries",
 			version:       version.V3_6,
 			targetVersion: version.V3_5,
-			walEntries: []etcdserverpb.InternalRaftRequest{
+			walEntries: []*etcdserverpb.InternalRaftRequest{
 				{Range: &etcdserverpb.RangeRequest{Key: []byte("\x00"), RangeEnd: []byte("\xff")}},
 			},
 			expectVersion: nil,
@@ -192,7 +192,7 @@ func TestMigrate(t *testing.T) {
 			name:          "Downgrading v3.6 to v3.5 fails if there are newer WAL entries",
 			version:       version.V3_6,
 			targetVersion: version.V3_5,
-			walEntries: []etcdserverpb.InternalRaftRequest{
+			walEntries: []*etcdserverpb.InternalRaftRequest{
 				{DowngradeVersionTest: &etcdserverpb.DowngradeVersionTestRequest{Ver: "3.6.0"}},
 			},
 			expectVersion:  &version.V3_6,

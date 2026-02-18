@@ -191,11 +191,11 @@ func (kv *kvPrefix) prefixInterval(key, end []byte) (pfxKey []byte, pfxEnd []byt
 func (kv *kvPrefix) prefixCmps(cs []clientv3.Cmp) []clientv3.Cmp {
 	newCmps := make([]clientv3.Cmp, len(cs))
 	for i := range cs {
-		newCmps[i] = cs[i]
-		pfxKey, endKey := kv.prefixInterval(cs[i].KeyBytes(), cs[i].RangeEnd)
+		newCmps[i] = cs[i].Clone()
+		pfxKey, endKey := kv.prefixInterval(cs[i].KeyBytes(), cs[i].GetCompare().GetRangeEnd())
 		newCmps[i].WithKeyBytes(pfxKey)
-		if len(cs[i].RangeEnd) != 0 {
-			newCmps[i].RangeEnd = endKey
+		if len(cs[i].GetCompare().GetRangeEnd()) != 0 {
+			newCmps[i].GetCompare().RangeEnd = endKey
 		}
 	}
 	return newCmps

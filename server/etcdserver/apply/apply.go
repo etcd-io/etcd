@@ -26,7 +26,7 @@ import (
 
 func Apply(lg *zap.Logger, e *raftpb.Entry, uberApply UberApplier, w wait.Wait, shouldApplyV3 membership.ShouldApplyV3) (ar *Result, id uint64) {
 	var raftReq pb.InternalRaftRequest
-	pbutil.MustUnmarshal(&raftReq, e.Data)
+	pbutil.MustUnmarshalMessage(&raftReq, e.Data)
 	lg.Debug("Apply", zap.Stringer("raftReq", &raftReq))
 
 	id = raftReq.ID

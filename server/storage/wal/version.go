@@ -107,7 +107,7 @@ func visitEntryData(entryType raftpb.EntryType, data []byte, visitor Visitor) er
 	switch entryType {
 	case raftpb.EntryNormal:
 		var raftReq etcdserverpb.InternalRaftRequest
-		if err := pbutil.Unmarshaler(&raftReq).Unmarshal(data); err != nil {
+		if err := proto.Unmarshal(data, &raftReq); err != nil {
 			return err
 		}
 		msg = proto.MessageReflect(&raftReq)

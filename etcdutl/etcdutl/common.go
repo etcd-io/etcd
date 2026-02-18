@@ -43,18 +43,18 @@ func GetLogger() *zap.Logger {
 	return lg
 }
 
-func getLatestWALSnap(lg *zap.Logger, dataDir string) (walpb.Snapshot, error) {
+func getLatestWALSnap(lg *zap.Logger, dataDir string) (*walpb.Snapshot, error) {
 	walPath := datadir.ToWALDir(dataDir)
 	walSnaps, err := wal.ValidSnapshotEntries(lg, walPath)
 	if err != nil {
-		return walpb.Snapshot{}, err
+		return nil, err
 	}
 
 	if len(walSnaps) > 0 {
 		lastIdx := len(walSnaps) - 1
 		return walSnaps[lastIdx], nil
 	}
-	return walpb.Snapshot{}, nil
+	return nil, nil
 }
 
 // SimpleLessor is a simplified implementation of Lessor interface.

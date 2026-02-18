@@ -144,5 +144,5 @@ func validateWAL(cfg Config) (*walpb.Snapshot, *raftpb.HardState, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return &snapshot, hardstate, nil
+	return snapshot, hardstate, nil
 }

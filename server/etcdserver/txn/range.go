@@ -150,7 +150,7 @@ func asembleRangeResponse(rr *mvcc.RangeResult, r *pb.RangeRequest) *pb.RangeRes
 		if r.KeysOnly {
 			rr.KVs[i].Value = nil
 		}
-		resp.Kvs[i] = &rr.KVs[i]
+		resp.Kvs[i] = rr.KVs[i]
 	}
 	return resp
 }
@@ -171,14 +171,14 @@ func pruneKVs(rr *mvcc.RangeResult, isPrunable func(*mvccpb.KeyValue) bool) {
 	j := 0
 	for i := range rr.KVs {
 		rr.KVs[j] = rr.KVs[i]
-		if !isPrunable(&rr.KVs[i]) {
+		if !isPrunable(rr.KVs[i]) {
 			j++
 		}
 	}
 	rr.KVs = rr.KVs[:j]
 }
 
-type kvSort struct{ kvs []mvccpb.KeyValue }
+type kvSort struct{ kvs []*mvccpb.KeyValue }
 
 func (s *kvSort) Swap(i, j int) {
 	t := s.kvs[i]
@@ -190,29 +190,29 @@ func (s *kvSort) Len() int { return len(s.kvs) }
 type kvSortByKey struct{ *kvSort }
 
 func (s *kvSortByKey) Less(i, j int) bool {
-	return bytes.Compare(s.kvs[i].Key, s.kvs[j].Key) < 0
+	return bytes.Compare(s.kvs[i].GetKey(), s.kvs[j].GetKey()) < 0
 }
 
 type kvSortByVersion struct{ *kvSort }
 
 func (s *kvSortByVersion) Less(i, j int) bool {
-	return (s.kvs[i].Version - s.kvs[j].Version) < 0
+	return (s.kvs[i].GetVersion() - s.kvs[j].GetVersion()) < 0
 }
 
 type kvSortByCreate struct{ *kvSort }
 
 func (s *kvSortByCreate) Less(i, j int) bool {
-	return (s.kvs[i].CreateRevision - s.kvs[j].CreateRevision) < 0
+	return (s.kvs[i].GetCreateRevision() - s.kvs[j].GetCreateRevision()) < 0
 }
 
 type kvSortByMod struct{ *kvSort }
 
 func (s *kvSortByMod) Less(i, j int) bool {
-	return (s.kvs[i].ModRevision - s.kvs[j].ModRevision) < 0
+	return (s.kvs[i].GetModRevision() - s.kvs[j].GetModRevision()) < 0
 }
 
 type kvSortByValue struct{ *kvSort }
 
 func (s *kvSortByValue) Less(i, j int) bool {
-	return bytes.Compare(s.kvs[i].Value, s.kvs[j].Value) < 0
+	return bytes.Compare(s.kvs[i].GetValue(), s.kvs[j].GetValue()) < 0
 }

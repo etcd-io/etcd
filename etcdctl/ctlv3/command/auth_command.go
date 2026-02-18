@@ -61,7 +61,7 @@ func authStatusCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.AuthStatus(*result)
+	display.AuthStatus(result)
 }
 
 func newAuthEnableCommand() *cobra.Command {

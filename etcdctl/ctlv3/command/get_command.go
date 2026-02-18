@@ -101,7 +101,7 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 		}
 		dp.valueOnly = true
 	}
-	display.Get(*resp)
+	display.Get(resp)
 }
 
 func getGetOp(args []string) (string, []clientv3.OpOption) {

@@ -174,8 +174,8 @@ func (s *store) LatestRev() int64 {
 
 func validateRevisions(resp clientv3.WatchResponse, latestRev int64) error {
 	if resp.IsProgressNotify() {
-		if resp.Header.Revision < latestRev {
-			return fmt.Errorf("cache: progress notification out of order (progress %d < latest %d)", resp.Header.Revision, latestRev)
+		if resp.Header.GetRevision() < latestRev {
+			return fmt.Errorf("cache: progress notification out of order (progress %d < latest %d)", resp.Header.GetRevision(), latestRev)
 		}
 		return nil
 	}

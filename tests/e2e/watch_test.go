@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -226,7 +227,7 @@ func continuouslyExecuteGetAll(ctx context.Context, t *testing.T, g *errgroup.Gr
 				}
 				respSize := 0
 				for _, kv := range resp.Kvs {
-					respSize += kv.Size()
+					respSize += proto.Size(kv)
 				}
 				mux.Lock()
 				size += respSize

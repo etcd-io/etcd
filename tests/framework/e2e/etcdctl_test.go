@@ -16,24 +16,31 @@ package e2e
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
 )
 
-func Test_addTxnResponse(t *testing.T) {
+func Test_jsonTxnResponse(t *testing.T) {
 	jsonData := `{"header":{"cluster_id":238453183653593855,"member_id":14578408409545168728,"revision":3,"raft_term":2},"succeeded":true,"responses":[{"Response":{"response_range":{"header":{"revision":3},"kvs":[{"key":"a2V5MQ==","create_revision":2,"mod_revision":2,"version":1,"value":"dmFsdWUx"}],"count":1}}},{"Response":{"response_range":{"header":{"revision":3},"kvs":[{"key":"a2V5Mg==","create_revision":3,"mod_revision":3,"version":1,"value":"dmFsdWUy"}],"count":1}}}]}`
-	var resp clientv3.TxnResponse
-	addTxnResponse(&resp, jsonData)
-	err := json.Unmarshal([]byte(jsonData), &resp)
-	if err != nil {
-		t.Errorf("json Unmarshal failed. err: %s", err)
+
+	var jsonTxnResponse command.TxnResponseJSON
+	decoder := json.NewDecoder(strings.NewReader(jsonData))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&jsonTxnResponse); err != nil {
+		t.Fatal(err)
 	}
-	enc, err := json.Marshal(resp)
+
+	pb := jsonTxnResponse.ToProto()
+
+	roundTrippedJSONTxnResponse := command.TxnResponseJSONFromProto(pb)
+	roundTrippedJSONData, err := json.Marshal(roundTrippedJSONTxnResponse)
 	if err != nil {
-		t.Errorf("json Marshal failed. err: %s", err)
+		t.Fatal(err)
 	}
-	if string(enc) != jsonData {
+
+	if jsonData != string(roundTrippedJSONData) {
 		t.Error("could not get original message after encoding")
 	}
 }

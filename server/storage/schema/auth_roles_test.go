@@ -18,8 +18,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/server/v3/auth"
@@ -127,7 +129,7 @@ func TestGetAllRoles(t *testing.T) {
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetAllRoles()
 
-			assert.Equal(t, tc.want, users)
+			assert.Empty(t, cmp.Diff(tc.want, users, protocmp.Transform()))
 		})
 	}
 }
@@ -224,7 +226,7 @@ func TestGetRole(t *testing.T) {
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetRole("role1")
 
-			assert.Equal(t, tc.want, users)
+			assert.Empty(t, cmp.Diff(tc.want, users, protocmp.Transform()))
 		})
 	}
 }

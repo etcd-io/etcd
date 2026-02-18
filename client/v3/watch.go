@@ -46,7 +46,7 @@ const (
 	InvalidWatchID = -1
 )
 
-type Event mvccpb.Event
+type Event = mvccpb.Event
 
 type WatchChan <-chan WatchResponse
 
@@ -89,7 +89,7 @@ type Watcher interface {
 }
 
 type WatchResponse struct {
-	Header pb.ResponseHeader
+	Header *pb.ResponseHeader
 	Events []*Event
 
 	// CompactRevision is the minimum revision the watcher may receive.
@@ -107,16 +107,6 @@ type WatchResponse struct {
 
 	// CancelReason is a reason of canceling watch
 	CancelReason string
-}
-
-// IsCreate returns true if the event tells that the key is newly created.
-func (e *Event) IsCreate() bool {
-	return e.Type == EventTypePut && e.Kv.CreateRevision == e.Kv.ModRevision
-}
-
-// IsModify returns true if the event tells that a new value is put on existing key.
-func (e *Event) IsModify() bool {
-	return e.Type == EventTypePut && e.Kv.CreateRevision != e.Kv.ModRevision
 }
 
 // Err is the error value if this WatchResponse holds an error.
@@ -137,7 +127,7 @@ func (wr *WatchResponse) Err() error {
 
 // IsProgressNotify returns true if the WatchResponse is progress notification.
 func (wr *WatchResponse) IsProgressNotify() bool {
-	return len(wr.Events) == 0 && !wr.Canceled && !wr.Created && wr.CompactRevision == 0 && wr.Header.Revision != 0
+	return len(wr.Events) == 0 && !wr.Canceled && !wr.Created && wr.CompactRevision == 0 && wr.Header.GetRevision() != 0
 }
 
 // watcher implements the Watcher interface
@@ -356,7 +346,7 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 		case <-donec:
 			ok = false
 			if wgs.closeErr != nil {
-				closeCh <- WatchResponse{Canceled: true, closeErr: wgs.closeErr}
+				closeCh <- WatchResponse{Header: &pb.ResponseHeader{}, Canceled: true, closeErr: wgs.closeErr}
 				break
 			}
 			// retry; may have dropped stream from no ctxs
@@ -371,7 +361,7 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 			case <-ctx.Done():
 			case <-donec:
 				if wgs.closeErr != nil {
-					closeCh <- WatchResponse{Canceled: true, closeErr: wgs.closeErr}
+					closeCh <- WatchResponse{Header: &pb.ResponseHeader{}, Canceled: true, closeErr: wgs.closeErr}
 					break
 				}
 				// retry; may have dropped stream from no ctxs
@@ -485,7 +475,7 @@ func (w *watchGRPCStream) closeSubstream(ws *watcherStream) {
 	}
 	// close subscriber's channel
 	if closeErr := w.closeErr; closeErr != nil && ws.initReq.ctx.Err() == nil {
-		go w.sendCloseSubstream(ws, &WatchResponse{Canceled: true, closeErr: w.closeErr})
+		go w.sendCloseSubstream(ws, &WatchResponse{Header: &pb.ResponseHeader{}, Canceled: true, closeErr: w.closeErr})
 	} else if ws.outc != nil {
 		close(ws.outc)
 	}
@@ -712,14 +702,10 @@ func (w *watchGRPCStream) nextResume() *watcherStream {
 
 // dispatchEvent sends a WatchResponse to the appropriate watcher stream
 func (w *watchGRPCStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
-	events := make([]*Event, len(pbresp.Events))
-	for i, ev := range pbresp.Events {
-		events[i] = (*Event)(ev)
-	}
 	// TODO: return watch ID?
 	wr := &WatchResponse{
-		Header:          *pbresp.Header,
-		Events:          events,
+		Header:          pbresp.Header,
+		Events:          pbresp.Events,
 		CompactRevision: pbresp.CompactRevision,
 		Created:         pbresp.Created,
 		Canceled:        pbresp.Canceled,
@@ -843,12 +829,12 @@ func (w *watchGRPCStream) serveSubstream(ws *watcherStream, resumec chan struct{
 					// if wch is disconnected before the Put is issued, then reconnects
 					// after it is committed, it'll miss the Put.
 					if ws.initReq.rev == 0 {
-						nextRev = wr.Header.Revision
+						nextRev = wr.Header.GetRevision()
 					}
 				}
 			} else {
 				// current progress of watch; <= store revision
-				nextRev = wr.Header.Revision + 1
+				nextRev = wr.Header.GetRevision() + 1
 			}
 
 			if len(wr.Events) > 0 {

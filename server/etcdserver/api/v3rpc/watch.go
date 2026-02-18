@@ -25,6 +25,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -445,12 +446,12 @@ func (sws *serverWatchStream) sendLoop() {
 			needPrevKV := sws.prevKV[wresp.WatchID]
 			sws.mu.RUnlock()
 			for i := range evs {
-				events[i] = &evs[i]
+				events[i] = evs[i]
 				if needPrevKV && !IsCreateEvent(evs[i]) {
 					opt := mvcc.RangeOptions{Rev: evs[i].Kv.ModRevision - 1}
 					r, err := sws.watchable.Range(context.TODO(), evs[i].Kv.Key, nil, opt)
 					if err == nil && len(r.KVs) != 0 {
-						events[i].PrevKv = &(r.KVs[0])
+						events[i].PrevKv = r.KVs[0]
 					}
 				}
 			}
@@ -573,8 +574,8 @@ func (sws *serverWatchStream) sendLoop() {
 	}
 }
 
-func IsCreateEvent(e mvccpb.Event) bool {
-	return e.Type == mvccpb.Event_PUT && e.Kv.CreateRevision == e.Kv.ModRevision
+func IsCreateEvent(e *mvccpb.Event) bool {
+	return e.GetType() == mvccpb.Event_PUT && e.GetKv().GetCreateRevision() == e.GetKv().GetModRevision()
 }
 
 func sendFragments(
@@ -584,30 +585,36 @@ func sendFragments(
 ) error {
 	// no need to fragment if total request size is smaller
 	// than max request limit or response contains only one event
-	if uint(wr.Size()) < maxRequestBytes || len(wr.Events) < 2 {
+	if uint(proto.Size(wr)) < maxRequestBytes || len(wr.Events) < 2 {
 		return sendFunc(wr)
 	}
 
-	ow := *wr
-	ow.Events = make([]*mvccpb.Event, 0)
+	originalEvents := wr.Events
+	defer func() {
+		wr.Events = originalEvents
+	}()
+	// make clone cheaper
+	wr.Events = nil
+	ow := proto.Clone(wr).(*pb.WatchResponse)
 	ow.Fragment = true
 
 	var idx int
 	for {
 		cur := ow
-		for _, ev := range wr.Events[idx:] {
+		cur.Events = nil
+		for _, ev := range originalEvents[idx:] {
 			cur.Events = append(cur.Events, ev)
-			if len(cur.Events) > 1 && uint(cur.Size()) >= maxRequestBytes {
+			if len(cur.Events) > 1 && uint(proto.Size(cur)) >= maxRequestBytes {
 				cur.Events = cur.Events[:len(cur.Events)-1]
 				break
 			}
 			idx++
 		}
-		if idx == len(wr.Events) {
+		if idx == len(originalEvents) {
 			// last response has no more fragment
 			cur.Fragment = false
 		}
-		if err := sendFunc(&cur); err != nil {
+		if err := sendFunc(cur); err != nil {
 			return err
 		}
 		if !cur.Fragment {
@@ -632,12 +639,12 @@ func (sws *serverWatchStream) newResponseHeader(rev int64) *pb.ResponseHeader {
 	}
 }
 
-func filterNoDelete(e mvccpb.Event) bool {
-	return e.Type == mvccpb.Event_DELETE
+func filterNoDelete(e *mvccpb.Event) bool {
+	return e.GetType() == mvccpb.Event_DELETE
 }
 
-func filterNoPut(e mvccpb.Event) bool {
-	return e.Type == mvccpb.Event_PUT
+func filterNoPut(e *mvccpb.Event) bool {
+	return e.GetType() == mvccpb.Event_PUT
 }
 
 // FiltersFromRequest returns "mvcc.FilterFunc" from a given watch create request.

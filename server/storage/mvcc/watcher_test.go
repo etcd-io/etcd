@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
@@ -236,7 +235,7 @@ func TestWatchDeleteRange(t *testing.T) {
 
 	s.DeleteRange(from, to)
 
-	we := []mvccpb.Event{
+	we := []*mvccpb.Event{
 		{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_0"), ModRevision: 5}},
 		{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_1"), ModRevision: 5}},
 		{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_2"), ModRevision: 5}},
@@ -244,7 +243,7 @@ func TestWatchDeleteRange(t *testing.T) {
 
 	select {
 	case r := <-w.Chan():
-		if !reflect.DeepEqual(r.Events, we) {
+		if !protoDeepEqual(t, r.Events, we) {
 			t.Errorf("event = %v, want %v", r.Events, we)
 		}
 	case <-time.After(10 * time.Second):
@@ -353,7 +352,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 			id, _ := w.Watch(t.Context(), 0, notTestKey, nil, tc.startRev)
 			w.RequestProgress(id)
 			asssertProgressSent(t, w, id, tc.expectProgressBeforeSync)
-			s.syncWatchers([]mvccpb.Event{})
+			s.syncWatchers([]*mvccpb.Event{})
 			w.RequestProgress(id)
 			asssertProgressSent(t, w, id, tc.expectProgressAfterSync)
 		})
@@ -365,7 +364,7 @@ func asssertProgressSent(t *testing.T, stream WatchStream, id WatchID, expectPro
 	case resp := <-stream.Chan():
 		if expectProgress {
 			wrs := WatchResponse{WatchID: id, Revision: 2}
-			if !reflect.DeepEqual(resp, wrs) {
+			if !protoDeepEqual(t, resp, wrs) {
 				t.Fatalf("got %+v, expect %+v", resp, wrs)
 			}
 		} else {
@@ -403,13 +402,13 @@ func TestWatcherRequestProgressAll(t *testing.T) {
 	default:
 	}
 
-	s.syncWatchers([]mvccpb.Event{})
+	s.syncWatchers([]*mvccpb.Event{})
 
 	w.RequestProgressAll()
 	wrs := WatchResponse{WatchID: clientv3.InvalidWatchID, Revision: 2}
 	select {
 	case resp := <-w.Chan():
-		if !reflect.DeepEqual(resp, wrs) {
+		if !protoDeepEqual(t, resp, wrs) {
 			t.Fatalf("got %+v, expect %+v", resp, wrs)
 		}
 	case <-time.After(time.Second):
@@ -425,8 +424,8 @@ func TestWatcherWatchWithFilter(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	filterPut := func(e mvccpb.Event) bool {
-		return e.Type == mvccpb.Event_PUT
+	filterPut := func(e *mvccpb.Event) bool {
+		return e.GetType() == mvccpb.Event_PUT
 	}
 
 	w.Watch(t.Context(), 0, []byte("foo"), nil, 0, filterPut)

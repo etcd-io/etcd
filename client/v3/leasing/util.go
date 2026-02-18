@@ -17,6 +17,8 @@ package leasing
 import (
 	"bytes"
 
+	"google.golang.org/protobuf/proto"
+
 	v3pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	v3 "go.etcd.io/etcd/client/v3"
 )
@@ -36,26 +38,27 @@ func evalCmp(resp *v3.GetResponse, tcmp v3.Cmp) bool {
 	var result int
 	if len(resp.Kvs) != 0 {
 		kv := resp.Kvs[0]
-		switch tcmp.Target {
+		compare := tcmp.GetCompare()
+		switch compare.GetTarget() {
 		case v3pb.Compare_VALUE:
-			if tv, _ := tcmp.TargetUnion.(*v3pb.Compare_Value); tv != nil {
+			if tv, _ := compare.GetTargetUnion().(*v3pb.Compare_Value); tv != nil {
 				result = bytes.Compare(kv.Value, tv.Value)
 			}
 		case v3pb.Compare_CREATE:
-			if tv, _ := tcmp.TargetUnion.(*v3pb.Compare_CreateRevision); tv != nil {
+			if tv, _ := compare.GetTargetUnion().(*v3pb.Compare_CreateRevision); tv != nil {
 				result = compareInt64(kv.CreateRevision, tv.CreateRevision)
 			}
 		case v3pb.Compare_MOD:
-			if tv, _ := tcmp.TargetUnion.(*v3pb.Compare_ModRevision); tv != nil {
+			if tv, _ := compare.GetTargetUnion().(*v3pb.Compare_ModRevision); tv != nil {
 				result = compareInt64(kv.ModRevision, tv.ModRevision)
 			}
 		case v3pb.Compare_VERSION:
-			if tv, _ := tcmp.TargetUnion.(*v3pb.Compare_Version); tv != nil {
+			if tv, _ := compare.GetTargetUnion().(*v3pb.Compare_Version); tv != nil {
 				result = compareInt64(kv.Version, tv.Version)
 			}
 		}
 	}
-	switch tcmp.Result {
+	switch tcmp.GetCompare().GetResult() {
 	case v3pb.Compare_EQUAL:
 		return result == 0
 	case v3pb.Compare_NOT_EQUAL:
@@ -97,8 +100,7 @@ func gatherResponseOps(resp []*v3pb.ResponseOp, ops []v3.Op) (ret []v3.Op) {
 }
 
 func copyHeader(hdr *v3pb.ResponseHeader) *v3pb.ResponseHeader {
-	h := *hdr
-	return &h
+	return proto.Clone(hdr).(*v3pb.ResponseHeader)
 }
 
 func closeAll(chs []chan<- struct{}) {

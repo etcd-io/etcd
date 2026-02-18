@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -157,7 +158,7 @@ func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt 
 			trace.StartSubTrace(
 				traceutil.Field{Key: "req_type", Value: "put"},
 				traceutil.Field{Key: "key", Value: string(tv.RequestPut.Key)},
-				traceutil.Field{Key: "req_size", Value: tv.RequestPut.Size()})
+				traceutil.Field{Key: "req_size", Value: proto.Size(tv.RequestPut)})
 			prevKV, err := getPrevKV(trace, txnWrite, tv.RequestPut)
 			if err != nil {
 				return 0, fmt.Errorf("applyTxn: failed to get prevKV on put: %w", err)
@@ -270,48 +271,48 @@ func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
 			// nil == empty string in grpc; no way to represent missing value
 			return false
 		}
-		return compareKV(c, mvccpb.KeyValue{})
+		return compareKV(c, &mvccpb.KeyValue{})
 	}
-	for _, kv := range rr.KVs {
-		if !compareKV(c, kv) {
+	for i := range rr.KVs {
+		if !compareKV(c, rr.KVs[i]) {
 			return false
 		}
 	}
 	return true
 }
 
-func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
+func compareKV(c *pb.Compare, ckv *mvccpb.KeyValue) bool {
 	var result int
 	rev := int64(0)
-	switch c.Target {
+	switch c.GetTarget() {
 	case pb.Compare_VALUE:
 		var v []byte
 		if tv, _ := c.TargetUnion.(*pb.Compare_Value); tv != nil {
 			v = tv.Value
 		}
-		result = bytes.Compare(ckv.Value, v)
+		result = bytes.Compare(ckv.GetValue(), v)
 	case pb.Compare_CREATE:
 		if tv, _ := c.TargetUnion.(*pb.Compare_CreateRevision); tv != nil {
 			rev = tv.CreateRevision
 		}
-		result = compareInt64(ckv.CreateRevision, rev)
+		result = compareInt64(ckv.GetCreateRevision(), rev)
 	case pb.Compare_MOD:
 		if tv, _ := c.TargetUnion.(*pb.Compare_ModRevision); tv != nil {
 			rev = tv.ModRevision
 		}
-		result = compareInt64(ckv.ModRevision, rev)
+		result = compareInt64(ckv.GetModRevision(), rev)
 	case pb.Compare_VERSION:
 		if tv, _ := c.TargetUnion.(*pb.Compare_Version); tv != nil {
 			rev = tv.Version
 		}
-		result = compareInt64(ckv.Version, rev)
+		result = compareInt64(ckv.GetVersion(), rev)
 	case pb.Compare_LEASE:
 		if tv, _ := c.TargetUnion.(*pb.Compare_Lease); tv != nil {
 			rev = tv.Lease
 		}
-		result = compareInt64(ckv.Lease, rev)
+		result = compareInt64(ckv.GetLease(), rev)
 	}
-	switch c.Result {
+	switch c.GetResult() {
 	case pb.Compare_EQUAL:
 		return result == 0
 	case pb.Compare_NOT_EQUAL:

@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2026 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build libs
+package mvccpb
 
-// This file implements that pattern:
-// https://go.dev/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
-// for etcd. Thanks to this file 'go mod tidy' does not removes dependencies.
+// IsCreate returns true if the event tells that the key is newly created.
+func (e *Event) IsCreate() bool {
+	return e.GetType() == PUT && e.GetKv().GetCreateRevision() == e.GetKv().GetModRevision()
+}
 
-package libs
+// IsModify returns true if the event tells that a new value is put on existing key.
+func (e *Event) IsModify() bool {
+	return e.GetType() == PUT && e.GetKv().GetCreateRevision() != e.GetKv().GetModRevision()
+}

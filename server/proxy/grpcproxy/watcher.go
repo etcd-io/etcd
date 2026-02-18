@@ -17,6 +17,8 @@ package grpcproxy
 import (
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -44,7 +46,7 @@ type watcher struct {
 	// nextrev is the minimum expected next event revision.
 	nextrev int64
 	// lastHeader has the last header sent over the stream.
-	lastHeader pb.ResponseHeader
+	lastHeader *pb.ResponseHeader
 
 	// wps is the parent.
 	wps *watchProxyStream
@@ -56,19 +58,19 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 	if wr.IsProgressNotify() && !w.progress {
 		return
 	}
-	if w.nextrev > wr.Header.Revision && len(wr.Events) > 0 {
+	if w.nextrev > wr.Header.GetRevision() && len(wr.Events) > 0 {
 		return
 	}
 	if w.nextrev == 0 {
 		// current watch; expect updates following this revision
-		w.nextrev = wr.Header.Revision + 1
+		w.nextrev = wr.Header.GetRevision() + 1
 	}
 
 	events := make([]*mvccpb.Event, 0, len(wr.Events))
 
 	var lastRev int64
 	for i := range wr.Events {
-		ev := (*mvccpb.Event)(wr.Events[i])
+		ev := wr.Events[i]
 		if ev.Kv.ModRevision < w.nextrev {
 			continue
 		}
@@ -79,7 +81,7 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 
 		filtered := false
 		for _, filter := range w.filters {
-			if filter(*ev) {
+			if filter(ev) {
 				filtered = true
 				break
 			}
@@ -89,9 +91,8 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		}
 
 		if !w.prevKV {
-			evCopy := *ev
-			evCopy.PrevKv = nil
-			ev = &evCopy
+			ev := proto.Clone(ev).(*mvccpb.Event)
+			ev.PrevKv = nil
 		}
 		events = append(events, ev)
 	}
@@ -105,9 +106,13 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		return
 	}
 
-	w.lastHeader = wr.Header
+	header := wr.Header
+	if header == nil {
+		header = &pb.ResponseHeader{}
+	}
+	w.lastHeader = header
 	w.post(&pb.WatchResponse{
-		Header:          &wr.Header,
+		Header:          header,
 		Created:         wr.Created,
 		CompactRevision: wr.CompactRevision,
 		Canceled:        wr.Canceled,

@@ -208,7 +208,7 @@ func (op Op) toTxnRequest() *pb.TxnRequest {
 	}
 	cmps := make([]*pb.Compare, len(op.cmps))
 	for i := range op.cmps {
-		cmps[i] = (*pb.Compare)(&op.cmps[i])
+		cmps[i] = op.cmps[i].GetCompare()
 	}
 	return &pb.TxnRequest{Compare: cmps, Success: thenOps, Failure: elseOps}
 }

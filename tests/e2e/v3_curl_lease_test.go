@@ -161,7 +161,7 @@ func gwLeaseRevoke(cx ctlCtx, leaseID int64) string {
 }
 
 func gwKVPutLease(cx ctlCtx, k string, v string, leaseID int64) string {
-	d := pb.PutRequest{Key: []byte(k), Value: []byte(v), Lease: leaseID}
+	d := &pb.PutRequest{Key: []byte(k), Value: []byte(v), Lease: leaseID}
 	s, err := e2e.DataMarshal(d)
 	require.NoErrorf(cx.t, err, "gwKVPutLease: Marshal error")
 	return s

@@ -117,7 +117,7 @@ func roleAddCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.RoleAdd(args[0], *resp)
+	display.RoleAdd(args[0], resp)
 }
 
 // roleDeleteCommandFunc executes the "role delete" command.
@@ -131,7 +131,7 @@ func roleDeleteCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.RoleDelete(args[0], *resp)
+	display.RoleDelete(args[0], resp)
 }
 
 // roleGetCommandFunc executes the "role get" command.
@@ -146,7 +146,7 @@ func roleGetCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.RoleGet(name, *resp)
+	display.RoleGet(name, resp)
 }
 
 // roleListCommandFunc executes the "role list" command.
@@ -160,7 +160,7 @@ func roleListCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.RoleList(*resp)
+	display.RoleList(resp)
 }
 
 // roleGrantPermissionCommandFunc executes the "role grant-permission" command.
@@ -180,7 +180,7 @@ func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.RoleGrantPermission(args[0], *resp)
+	display.RoleGrantPermission(args[0], resp)
 }
 
 // roleRevokePermissionCommandFunc executes the "role revoke-permission" command.
@@ -194,7 +194,7 @@ func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-	display.RoleRevokePermission(args[0], args[1], rangeEnd, *resp)
+	display.RoleRevokePermission(args[0], args[1], rangeEnd, resp)
 }
 
 func permRange(args []string) (string, string) {

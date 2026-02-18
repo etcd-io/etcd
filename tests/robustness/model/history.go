@@ -203,15 +203,18 @@ func (h *AppendableHistory) appendSuccessful(request EtcdRequest, start, end tim
 }
 
 func toEtcdCondition(cmp clientv3.Cmp) (cond EtcdCondition) {
+	c := cmp.GetCompare()
+	result := c.GetResult()
+	target := c.GetTarget()
 	switch {
-	case cmp.Result == etcdserverpb.Compare_EQUAL && cmp.Target == etcdserverpb.Compare_MOD:
+	case result == etcdserverpb.Compare_EQUAL && target == etcdserverpb.Compare_MOD:
 		cond.Key = string(cmp.KeyBytes())
-		cond.ExpectedRevision = cmp.TargetUnion.(*etcdserverpb.Compare_ModRevision).ModRevision
-	case cmp.Result == etcdserverpb.Compare_EQUAL && cmp.Target == etcdserverpb.Compare_VERSION:
-		cond.ExpectedVersion = cmp.TargetUnion.(*etcdserverpb.Compare_Version).Version
+		cond.ExpectedRevision = c.GetTargetUnion().(*etcdserverpb.Compare_ModRevision).ModRevision
+	case result == etcdserverpb.Compare_EQUAL && target == etcdserverpb.Compare_VERSION:
+		cond.ExpectedVersion = c.GetTargetUnion().(*etcdserverpb.Compare_Version).Version
 		cond.Key = string(cmp.KeyBytes())
 	default:
-		panic(fmt.Sprintf("Compare not supported, target: %q, result: %q", cmp.Target, cmp.Result))
+		panic(fmt.Sprintf("Compare not supported, target: %q, result: %q", target, result))
 	}
 	return cond
 }
