@@ -427,7 +427,9 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 		require.Equal(t, rpctypes.ErrNoLeader.Error(), rpctypes.ErrorDesc(err))
 		// Skip metric check in proxy mode - metrics are recorded on the proxy, not the etcd server.
 		if !integration.ThroughProxy {
-			require.Equal(t, prevUnavailableCount+1, getLeaseKeepAliveMetric(t, follower, "Unavailable"))
+			require.Eventually(t, func() bool {
+				return getLeaseKeepAliveMetric(t, follower, "Unavailable") == prevUnavailableCount+1
+			}, 3*time.Second, 100*time.Millisecond)
 		}
 	})
 
@@ -462,7 +464,9 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 			require.ErrorIs(t, err, context.Canceled)
 		} else {
 			require.Equal(t, rpctypes.ErrNoLeader.Error(), rpctypes.ErrorDesc(err))
-			require.Equal(t, prevUnavailableCount+1, getLeaseKeepAliveMetric(t, follower, "Unavailable"))
+			require.Eventually(t, func() bool {
+				return getLeaseKeepAliveMetric(t, follower, "Unavailable") == prevUnavailableCount+1
+			}, 3*time.Second, 100*time.Millisecond)
 		}
 	})
 }
