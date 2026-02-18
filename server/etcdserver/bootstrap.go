@@ -339,14 +339,7 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	}
 	remotes := existingCluster.Members()
 	cl.SetID(types.ID(0), existingCluster.ID())
-    member := cl.MemberByName(cfg.Name)
-    // prevent re-adding learner with empty data-dir
-    if member.IsLearner {
-        return nil, fmt.Errorf(
-            "cannot re-add learner %s with empty data-dir; restore data-dir or re-add after snapshot",
-            member.ID,
-        )
-    }
+	member := cl.MemberByName(cfg.Name)
 	return &bootstrappedCluster{
 		remotes: remotes,
 		cl:      cl,
@@ -428,8 +421,8 @@ func recoverSnapshot(cfg config.ServerConfig, be backend.Backend, beExist bool, 
 		idx := len(walSnaps) - 1
 		snapshot = &raftpb.Snapshot{
 			Metadata: raftpb.SnapshotMetadata{
-				Term:  walSnaps[idx].Term,
-				Index: walSnaps[idx].Index,
+				Term:  walSnaps[idx].GetTerm(),
+				Index: walSnaps[idx].GetIndex(),
 			},
 		}
 		if walSnaps[idx].ConfState != nil {
@@ -634,7 +627,7 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*wal.WAL, *raftpb.HardState, []raftpb.Entry, *raftpb.Snapshot, *snapshotMetadata) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+		walsnap.Index, walsnap.Term = new(snapshot.Metadata.Index), new(snapshot.Metadata.Term)
 	}
 	repaired := false
 	for {
@@ -662,8 +655,8 @@ func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*w
 		}
 		var metadata etcdserverpb.Metadata
 		pbutil.MustUnmarshal(&metadata, wmetadata)
-		id := types.ID(metadata.NodeID)
-		cid := types.ID(metadata.ClusterID)
+		id := types.ID(metadata.GetNodeID())
+		cid := types.ID(metadata.GetClusterID())
 		meta := &snapshotMetadata{clusterID: cid, nodeID: id}
 		return w, &st, ents, snapshot, meta
 	}
@@ -676,8 +669,8 @@ type snapshotMetadata struct {
 func bootstrapNewWAL(cfg config.ServerConfig, cl *bootstrappedCluster) *bootstrappedWAL {
 	metadata := pbutil.MustMarshal(
 		&etcdserverpb.Metadata{
-			NodeID:    uint64(cl.nodeID),
-			ClusterID: uint64(cl.cl.ID()),
+			NodeID:    new(uint64(cl.nodeID)),
+			ClusterID: new(uint64(cl.cl.ID())),
 		},
 	)
 	w, err := wal.Create(cfg.Logger, cfg.WALDir(), metadata)
