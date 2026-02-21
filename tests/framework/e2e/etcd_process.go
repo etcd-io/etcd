@@ -55,6 +55,7 @@ type EtcdProcess interface {
 	Close() error
 	Config() *EtcdServerProcessConfig
 	PeerProxy() proxy.Server
+	PeerForwardProxies() map[int]proxy.Server
 	Failpoints() *BinaryFailpoints
 	LazyFS() *LazyFS
 	Logs() LogsExpect
@@ -70,12 +71,13 @@ type LogsExpect interface {
 }
 
 type EtcdServerProcess struct {
-	cfg        *EtcdServerProcessConfig
-	proc       *expect.ExpectProcess
-	proxy      proxy.Server
-	lazyfs     *LazyFS
-	failpoints *BinaryFailpoints
-	donec      chan struct{} // closed when Interact() terminates
+	cfg                *EtcdServerProcessConfig
+	proc               *expect.ExpectProcess
+	proxy              proxy.Server
+	peerForwardProxies map[int]proxy.Server
+	lazyfs             *LazyFS
+	failpoints         *BinaryFailpoints
+	donec              chan struct{} // closed when Interact() terminates
 }
 
 type EtcdServerProcessConfig struct {
@@ -101,8 +103,17 @@ type EtcdServerProcessConfig struct {
 	GoFailPort          int
 	GoFailClientTimeout time.Duration
 
-	LazyFSEnabled bool
-	Proxy         *proxy.ServerConfig
+	LazyFSEnabled      bool
+	Proxy              *proxy.ServerConfig
+	PeerForwardProxies []PeerForwardProxyConfig
+}
+
+// PeerForwardProxyConfig describes a forward proxy that a member uses
+// to reach a specific remote peer. The proxy listens on ProxyCfg.From
+// and forwards to ProxyCfg.To (the remote peer's receiver proxy).
+type PeerForwardProxyConfig struct {
+	RemoteIdx int
+	ProxyCfg  proxy.ServerConfig
 }
 
 func NewEtcdServerProcess(tb testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
@@ -159,6 +170,24 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 		case <-ep.proxy.Ready():
 		case err := <-ep.proxy.Error():
 			return err
+		}
+	}
+	if len(ep.cfg.PeerForwardProxies) > 0 && ep.peerForwardProxies == nil {
+		ep.peerForwardProxies = make(map[int]proxy.Server)
+		for _, fpc := range ep.cfg.PeerForwardProxies {
+			ep.cfg.lg.Info("starting forward proxy...",
+				zap.String("name", ep.cfg.Name),
+				zap.Int("remote-idx", fpc.RemoteIdx),
+				zap.String("from", fpc.ProxyCfg.From.String()),
+				zap.String("to", fpc.ProxyCfg.To.String()),
+			)
+			p := proxy.NewServer(fpc.ProxyCfg)
+			select {
+			case <-p.Ready():
+			case err := <-p.Error():
+				return err
+			}
+			ep.peerForwardProxies[fpc.RemoteIdx] = p
 		}
 	}
 	if ep.lazyfs != nil {
@@ -229,6 +258,21 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 		if err != nil {
 			return err
 		}
+	}
+	if ep.peerForwardProxies != nil {
+		ep.cfg.lg.Info("stopping forward proxies...", zap.String("name", ep.cfg.Name))
+		for idx, p := range ep.peerForwardProxies {
+			if closeErr := p.Close(); closeErr != nil {
+				ep.cfg.lg.Warn("failed to close forward proxy",
+					zap.String("name", ep.cfg.Name),
+					zap.Int("remote-idx", idx),
+					zap.Error(closeErr))
+				if err == nil {
+					err = closeErr
+				}
+			}
+		}
+		ep.peerForwardProxies = nil
 	}
 	if ep.lazyfs != nil {
 		ep.cfg.lg.Info("stopping lazyfs...", zap.String("name", ep.cfg.Name))
@@ -346,6 +390,10 @@ func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
 
 func (ep *EtcdServerProcess) PeerProxy() proxy.Server {
 	return ep.proxy
+}
+
+func (ep *EtcdServerProcess) PeerForwardProxies() map[int]proxy.Server {
+	return ep.peerForwardProxies
 }
 
 func (ep *EtcdServerProcess) LazyFS() *LazyFS {

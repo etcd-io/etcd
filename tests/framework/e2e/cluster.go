@@ -503,7 +503,52 @@ func (cfg *EtcdProcessClusterConfig) EtcdAllServerProcessConfigs(tb testing.TB) 
 		cfg.SetInitialOrDiscovery(etcdCfgs[i], initialCluster, "new")
 	}
 
+	// Set up forward proxies for outbound peer traffic interception.
+	// Each member gets a forward proxy per remote peer. The proxy listens
+	// locally and forwards to the remote peer's receiver proxy. An env var
+	// ETCD_PEER_PROXY_MAP tells the etcd process to dial forward proxies
+	// instead of the remote peers' advertised addresses.
+	if cfg.PeerProxy && cfg.ClusterSize > 1 {
+		cfg.setupPeerForwardProxies(etcdCfgs)
+	}
+
 	return etcdCfgs
+}
+
+// setupPeerForwardProxies configures forward proxies for each member so that
+// outbound peer connections go through a local proxy that can be blackholed.
+func (cfg *EtcdProcessClusterConfig) setupPeerForwardProxies(etcdCfgs []*EtcdServerProcessConfig) {
+	stride := 5 + cfg.ClusterSize - 1
+	for i := 0; i < cfg.ClusterSize; i++ {
+		var fwdProxies []PeerForwardProxyConfig
+		var proxyMapEntries []string
+		fwdIdx := 0
+		for j := 0; j < cfg.ClusterSize; j++ {
+			if j == i {
+				continue
+			}
+			fwdProxyPort := cfg.BasePort + stride*i + 5 + fwdIdx
+			fwdProxyURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", fwdProxyPort)}
+			remotePeerURL := etcdCfgs[j].PeerURL // remote peer's receiver proxy address
+
+			fwdProxies = append(fwdProxies, PeerForwardProxyConfig{
+				RemoteIdx: j,
+				ProxyCfg: proxy.ServerConfig{
+					Logger: zap.NewNop(),
+					From:   fwdProxyURL,
+					To:     remotePeerURL,
+				},
+			})
+			// Map: remote peer's advertised address -> local forward proxy address
+			proxyMapEntries = append(proxyMapEntries, fmt.Sprintf("%s=%s", remotePeerURL.Host, fwdProxyURL.Host))
+			fwdIdx++
+		}
+		etcdCfgs[i].PeerForwardProxies = fwdProxies
+		if etcdCfgs[i].EnvVars == nil {
+			etcdCfgs[i].EnvVars = make(map[string]string)
+		}
+		etcdCfgs[i].EnvVars["ETCD_PEER_PROXY_MAP"] = strings.Join(proxyMapEntries, ",")
+	}
 }
 
 func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServerProcessConfig, initialCluster []string, initialClusterState string) {
@@ -522,7 +567,19 @@ func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServer
 func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i int) *EtcdServerProcessConfig {
 	var curls []string
 	var curl string
-	port := cfg.BasePort + 5*i
+	// When PeerProxy is enabled, allocate extra ports for forward proxies
+	// (one per remote peer). Port layout per member:
+	//   offset 0: client port
+	//   offset 1: peer listen port (actual)
+	//   offset 2: metrics port
+	//   offset 3: receiver proxy port (advertised peer URL)
+	//   offset 4: clientHTTP port
+	//   offset 5..5+N-2: forward proxy ports (one per remote peer)
+	stride := 5
+	if cfg.PeerProxy {
+		stride = 5 + cfg.ClusterSize - 1
+	}
+	port := cfg.BasePort + stride*i
 	clientPort := port
 	peerPort := port + 1
 	metricsPort := port + 2

@@ -1,0 +1,93 @@
+diff --git a/server/etcdserver/api/rafthttp/util.go b/server/etcdserver/api/rafthttp/util.go
+--- a/server/etcdserver/api/rafthttp/util.go
++++ b/server/etcdserver/api/rafthttp/util.go
+@@ -15,11 +15,13 @@
+ package rafthttp
+
+ import (
++	"context"
+ 	"fmt"
+ 	"io"
+ 	"net"
+ 	"net/http"
+ 	"net/url"
++	"os"
+ 	"strings"
+ 	"time"
+
+@@ -48,7 +50,12 @@
+ 	// It uses timeout transport to pair with remote timeout listeners.
+ 	// It sets no read/write timeout, because message in requests may
+ 	// take long time to write out before reading out the response.
+-	return transport.NewTimeoutTransport(tlsInfo, dialTimeout, 0, 0)
++	tr, err := transport.NewTimeoutTransport(tlsInfo, dialTimeout, 0, 0)
++	if err != nil {
++		return nil, err
++	}
++	applyPeerProxyMap(tr)
++	return tr, nil
+ }
+
+ // newStreamRoundTripper returns a roundTripper used to send stream requests
+@@ -57,9 +64,62 @@
+ // find out broken status, which minimizes the number of messages
+ // sent on broken connection.
+ func newStreamRoundTripper(tlsInfo transport.TLSInfo, dialTimeout time.Duration) (http.RoundTripper, error) {
+-	return transport.NewTimeoutTransport(tlsInfo, dialTimeout, ConnReadTimeout, ConnWriteTimeout)
++	tr, err := transport.NewTimeoutTransport(tlsInfo, dialTimeout, ConnReadTimeout, ConnWriteTimeout)
++	if err != nil {
++		return nil, err
++	}
++	applyPeerProxyMap(tr)
++	return tr, nil
++}
++
++// applyPeerProxyMap checks the ETCD_PEER_PROXY_MAP environment variable and,
++// if set, wraps the transport's DialContext to redirect outbound peer
++// connections through local forward proxies. This enables robustness tests
++// to intercept and blackhole outbound peer traffic per member.
++//
++// The env var format is: "host1:port1=proxyhost1:proxyport1,host2:port2=proxyhost2:proxyport2"
++// When the transport dials a destination matching a key, it connects to the
++// corresponding proxy address instead.
++func applyPeerProxyMap(tr *http.Transport) {
++	proxyMapStr := os.Getenv("ETCD_PEER_PROXY_MAP")
++	if proxyMapStr == "" {
++		return
++	}
++	proxyMap := parsePeerProxyMap(proxyMapStr)
++	if len(proxyMap) == 0 {
++		return
++	}
++	origDialContext := tr.DialContext
++	tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
++		if proxyAddr, ok := proxyMap[addr]; ok {
++			addr = proxyAddr
++		}
++		return origDialContext(ctx, network, addr)
++	}
++}
++
++// parsePeerProxyMap parses the ETCD_PEER_PROXY_MAP format:
++// "dest1=proxy1,dest2=proxy2"
++func parsePeerProxyMap(s string) map[string]string {
++	m := make(map[string]string)
++	for _, entry := range strings.Split(s, ",") {
++		entry = strings.TrimSpace(entry)
++		if entry == "" {
++			continue
++		}
++		parts := strings.SplitN(entry, "=", 2)
++		if len(parts) != 2 {
++			continue
++		}
++		dest := strings.TrimSpace(parts[0])
++		proxy := strings.TrimSpace(parts[1])
++		if dest != "" && proxy != "" {
++			m[dest] = proxy
++		}
++	}
++	return m
+ }
+
+ // createPostRequest creates a HTTP POST request that sends raft message.

@@ -385,6 +385,10 @@ func blackhole(_ context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, _ 
 	t.Logf("Blackholing traffic from and to member %q", member.Config().Name)
 	proxy.BlackholeTx()
 	proxy.BlackholeRx()
+	for _, fwdProxy := range member.PeerForwardProxies() {
+		fwdProxy.BlackholeTx()
+		fwdProxy.BlackholeRx()
+	}
 }
 
 func triggerRaftLoopDeadLock(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, duration time.Duration) {
