@@ -15,10 +15,12 @@
 package integration
 
 import (
+	"io"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zapgrpc"
 	"go.uber.org/zap/zaptest"
@@ -44,6 +46,19 @@ type testOptions struct {
 type failpoint struct {
 	name    string
 	payload string
+}
+
+func init() {
+	// zap logger that writes nowhere (silences gRPC logs)
+	cfg := zap.NewProductionEncoderConfig()
+	core := zapcore.NewCore(
+		zapcore.NewConsoleEncoder(cfg),
+		zapcore.AddSync(io.Discard),
+		zapcore.InfoLevel,
+	)
+	lg := zap.New(core).Named("grpc")
+
+	grpclog.SetLoggerV2(zapgrpc.NewLogger(lg))
 }
 
 func newTestOptions(opts ...TestOption) *testOptions {
@@ -124,7 +139,6 @@ func BeforeTest(t testutil.TB, opts ...TestOption) {
 		revertFunc()
 	})
 
-	grpclog.SetLoggerV2(zapgrpc.NewLogger(zaptest.NewLogger(t).Named("grpc")))
 	insideTestContext = true
 
 	os.Chdir(t.TempDir())
