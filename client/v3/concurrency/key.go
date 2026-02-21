@@ -22,31 +22,63 @@ import (
 	v3 "go.etcd.io/etcd/client/v3"
 )
 
-func waitDelete(ctx context.Context, client *v3.Client, key string, rev int64) error {
+var (
+	ErrLostWatcher            = errors.New("lost watcher waiting for delete")
+	ErrLeaseExpiredDuringWait = errors.New("lease expired during wait")
+)
+
+func waitDelete(ctx context.Context, client *v3.Client, key, leaseKey string, rev int64) error {
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	var wr v3.WatchResponse
 	wch := client.Watch(cctx, key, v3.WithRev(rev))
-	for wr = range wch {
-		for _, ev := range wr.Events {
-			if ev.Type == mvccpb.Event_DELETE {
-				return nil
+	lch := client.Watch(cctx, leaseKey)
+
+	for {
+		select {
+		case wr, ok := <-wch:
+			if !ok {
+				if err := wr.Err(); err != nil {
+					return err
+				}
+				return ErrLostWatcher
 			}
+
+			if err := wr.Err(); err != nil {
+				return err
+			}
+
+			for _, ev := range wr.Events {
+				if ev.Type == mvccpb.Event_DELETE {
+					return nil
+				}
+			}
+		case sr, ok := <-lch:
+			if !ok {
+				if err := sr.Err(); err != nil {
+					return err
+				}
+				return ErrLostWatcher
+			}
+
+			if err := sr.Err(); err != nil {
+				return err
+			}
+
+			for _, ev := range sr.Events {
+				if ev.Type == mvccpb.Event_DELETE {
+					return ErrLeaseExpiredDuringWait
+				}
+			}
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
-	if err := wr.Err(); err != nil {
-		return err
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	return errors.New("lost watcher waiting for delete")
 }
 
 // waitDeletes efficiently waits until all keys matching the prefix and no greater
 // than the create revision are deleted.
-func waitDeletes(ctx context.Context, client *v3.Client, pfx string, maxCreateRev int64) error {
+func waitDeletes(ctx context.Context, client *v3.Client, pfx, leaseKey string, maxCreateRev int64) error {
 	getOpts := append(v3.WithLastCreate(), v3.WithMaxCreateRev(maxCreateRev))
 	for {
 		resp, err := client.Get(ctx, pfx, getOpts...)
@@ -57,7 +89,7 @@ func waitDeletes(ctx context.Context, client *v3.Client, pfx string, maxCreateRe
 			return nil
 		}
 		lastKey := string(resp.Kvs[0].Key)
-		if err = waitDelete(ctx, client, lastKey, resp.Header.Revision); err != nil {
+		if err = waitDelete(ctx, client, lastKey, leaseKey, resp.Header.Revision); err != nil {
 			return err
 		}
 	}
