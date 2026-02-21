@@ -57,6 +57,14 @@ var (
 		ClusterClientCount:             2,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
+	HighClusterClientCountTrafficProfile = Profile{
+		MinimalQPS:                     100,
+		MaximalQPS:                     2000,
+		BurstableQPS:                   2000,
+		MemberClientCount:              6,
+		ClusterClientCount:             6,
+		MaxNonUniqueRequestConcurrency: 3,
+	}
 )
 
 func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, failpointInjected <-chan report.FailpointInjection, clientSet *client.ClientSet) []report.ClientReport {

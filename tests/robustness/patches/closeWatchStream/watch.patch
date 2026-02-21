@@ -1,0 +1,12 @@
+diff --git a/server/etcdserver/api/v3rpc/watch.go b/server/etcdserver/api/v3rpc/watch.go
+--- a/server/etcdserver/api/v3rpc/watch.go
++++ b/server/etcdserver/api/v3rpc/watch.go
+@@ -241,6 +241,8 @@ func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) error
+
+ func (sws *serverWatchStream) recvLoop() error {
+ 	for {
++		// gofail: var closeWatchStream struct{}
++		// return errors.New("closeWatchStream failpoint triggered")
+ 		req, err := sws.gRPCStream.Recv()
+ 		if errors.Is(err, io.EOF) {
+ 			return nil
