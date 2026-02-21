@@ -799,8 +799,8 @@ func (s *EtcdServer) run() {
 		},
 		updateCommittedIndex: func(ci uint64) {
 			cci := s.getCommittedIndex()
-			if ci > cci {
-				s.setCommittedIndex(ci)
+			for ci > cci && !s.committedIndex.CompareAndSwap(cci, ci) {
+				cci = s.getCommittedIndex()
 			}
 		},
 	}
