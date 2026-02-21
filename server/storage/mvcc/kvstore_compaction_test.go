@@ -15,10 +15,15 @@
 package mvcc
 
 import (
+	"fmt"
+	"hash"
+	"hash/crc32"
+	"math/rand"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/pkg/v3/traceutil"
@@ -55,7 +60,7 @@ func TestScheduleCompaction(t *testing.T) {
 			},
 			revs,
 		},
-		// compact at 1 and keeps history two steps earlier
+		// compact at 3 and keeps history two steps earlier
 		{
 			3,
 			map[Revision]struct{}{
@@ -69,7 +74,7 @@ func TestScheduleCompaction(t *testing.T) {
 		b, _ := betesting.NewDefaultTmpBackend(t)
 		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 		fi := newFakeIndex()
-		fi.indexCompactRespc <- tt.keep
+		fi.indexCompactRespc <- indexCompactResp{available: tt.keep, toDelete: nil}
 		s.kvindex = fi
 
 		tx := s.b.BatchTx()
@@ -107,8 +112,16 @@ func TestScheduleCompaction(t *testing.T) {
 }
 
 func TestCompactAllAndRestore(t *testing.T) {
+	testCompactAllAndRestore(t, StoreConfig{})
+}
+
+func TestRangeFreeCompactAllAndRestore(t *testing.T) {
+	testCompactAllAndRestore(t, StoreConfig{CompactionRangeFree: true})
+}
+
+func testCompactAllAndRestore(t *testing.T, cfg StoreConfig) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s0 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s0 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, cfg)
 	defer b.Close()
 
 	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -138,12 +151,147 @@ func TestCompactAllAndRestore(t *testing.T) {
 	if s1.Rev() != rev {
 		t.Errorf("rev = %v, want %v", s1.Rev(), rev)
 	}
-	_, err = s1.Range(t.Context(), []byte("foo"), nil, RangeOptions{})
+	var r *RangeResult
+	r, err = s1.Range(t.Context(), []byte("foo"), nil, RangeOptions{})
 	if err != nil {
 		t.Errorf("unexpect range error %v", err)
 	}
+	if len(r.KVs) > 0 {
+		t.Errorf("kvs = %+v, want empty", r.KVs)
+	}
+
 	err = s1.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestScheduleCompactionRangeFree(t *testing.T) {
+	revs := []Revision{{Main: 1}, {Main: 2}, {Main: 3}}
+
+	tests := []struct {
+		rev   int64
+		del   map[Revision]struct{}
+		wrevs []Revision
+	}{
+		// compact at 1 and discard all history
+		{
+			1,
+			map[Revision]struct{}{
+				{Main: 1}: {},
+			},
+			revs[1:],
+		},
+		// compact at 3 and discard all history
+		{
+			3,
+			map[Revision]struct{}{
+				{Main: 1}: {},
+				{Main: 2}: {},
+				{Main: 3}: {},
+			},
+			nil,
+		},
+		// compact at 1 and keeps history one step earlier
+		{
+			1,
+			nil,
+			revs,
+		},
+		// compact at 3 and keeps history two steps earlier
+		{
+			3,
+			map[Revision]struct{}{
+				{Main: 1}: {},
+			},
+			revs[1:],
+		},
+	}
+	for i, tt := range tests {
+		b, _ := betesting.NewDefaultTmpBackend(t)
+		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		fi := newFakeIndex()
+		fi.indexCompactRespc <- indexCompactResp{available: nil, toDelete: tt.del}
+		s.kvindex = fi
+
+		tx := s.b.BatchTx()
+
+		tx.Lock()
+		for _, rev := range revs {
+			ibytes := NewRevBytes()
+			ibytes = RevToBytes(rev, ibytes)
+			tx.UnsafePut(schema.Key, ibytes, []byte("bar"))
+		}
+		tx.Unlock()
+
+		_, err := s.scheduleCompactionRangeFree(tt.rev, 0)
+		if err != nil {
+			t.Error(err)
+		}
+
+		tx.Lock()
+		for _, rev := range tt.wrevs {
+			ibytes := NewRevBytes()
+			ibytes = RevToBytes(rev, ibytes)
+			keys, _ := tx.UnsafeRange(schema.Key, ibytes, nil, 0)
+			if len(keys) != 1 {
+				t.Errorf("#%d: range on %v = %d, want 1", i, rev, len(keys))
+			}
+		}
+		vals, _ := UnsafeReadFinishedCompact(tx)
+		if !reflect.DeepEqual(vals, tt.rev) {
+			t.Errorf("#%d: finished compact equal %+v, want %+v", i, vals, tt.rev)
+		}
+		tx.Unlock()
+
+		cleanup(s, b)
+	}
+}
+
+func TestRangeFreeCompactionConsistency(t *testing.T) {
+	var compactAndHashKV = func(s *store, h hash.Hash32) (kvhash uint32) {
+		for j := 0; j < 100; j++ {
+			for i := 0; i < 10; i++ {
+				key := []byte(fmt.Sprintf("foo_%d", i))
+				val := []byte(fmt.Sprintf("foo_%03d_%03d", j, i))
+				s.Put(key, val, lease.NoLease)
+			}
+			// random compaction
+			if rand.Float64() > 0.5 {
+				rev := s.Rev()
+				d, _ := s.Compact(traceutil.TODO(), rev)
+				<-d
+			}
+		}
+		// final compaction
+		rev := s.Rev()
+		done, _ := s.Compact(traceutil.TODO(), rev)
+		<-done
+
+		// range all kv
+		r, err := s.Range(t.Context(), []byte("foo"), []byte("g"), RangeOptions{})
+		if err != nil {
+			t.Errorf("unexpect range error %v", err)
+		}
+		// calculate hash
+		for _, item := range r.KVs {
+			h.Write(item.Key)
+			h.Write(item.Value)
+		}
+		return h.Sum32()
+	}
+
+	b0, _ := betesting.NewDefaultTmpBackend(t)
+	s0 := NewStore(zaptest.NewLogger(t), b0, &lease.FakeLessor{}, StoreConfig{})
+	h0 := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+	defer b0.Close()
+	kvHash0 := compactAndHashKV(s0, h0)
+
+	b1, _ := betesting.NewDefaultTmpBackend(t)
+	s1 := NewStore(zaptest.NewLogger(t), b1, &lease.FakeLessor{}, StoreConfig{CompactionRangeFree: true})
+	h1 := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+	defer b1.Close()
+	kvHash1 := compactAndHashKV(s1, h1)
+
+	assert.Equal(t, kvHash0, kvHash1)
 }
