@@ -29,6 +29,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -47,12 +49,25 @@ func NewClient(t *testing.T, cfg Config) (*Client, error) {
 func TestDialCancel(t *testing.T) {
 	testutil.RegisterLeakDetection(t)
 
-	// accept first connection so client is created with dial timeout
-	ln, err := net.Listen("unix", "dialcancel:12345")
+	// Start a real gRPC endpoint with health service so initial dial readiness
+	// check succeeds before switching endpoints below.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	defer ln.Close()
 
-	ep := "unix://dialcancel:12345"
+	srv := grpc.NewServer()
+	healthpb.RegisterHealthServer(srv, health.NewServer())
+	serveDone := make(chan error)
+	go func() {
+		defer close(serveDone)
+		srv.Serve(ln)
+	}()
+	defer func() {
+		srv.Stop()
+		<-serveDone
+	}()
+
+	ep := ln.Addr().String()
 	cfg := Config{
 		Endpoints:   []string{ep},
 		DialTimeout: 30 * time.Second,
@@ -98,17 +113,14 @@ func TestDialTimeout(t *testing.T) {
 
 	wantError := context.DeadlineExceeded
 
-	// grpc.WithBlock to block until connection up or timeout
 	testCfgs := []Config{
 		{
 			Endpoints:   []string{"http://254.0.0.1:12345"},
 			DialTimeout: 2 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		},
 		{
 			Endpoints:   []string{"http://254.0.0.1:12345"},
 			DialTimeout: time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 			Username:    "abc",
 			Password:    "def",
 		},
@@ -137,7 +149,7 @@ func TestDialTimeout(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Errorf("#%d: failed to timeout dial on time", i)
 		case err := <-donec:
-			if err.Error() != wantError.Error() {
+			if !errors.Is(err, wantError) {
 				t.Errorf("#%d: unexpected error '%v', want '%v'", i, err, wantError)
 			}
 		}

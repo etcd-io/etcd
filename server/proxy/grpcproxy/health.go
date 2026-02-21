@@ -40,11 +40,17 @@ func HandleHealth(lg *zap.Logger, mux *http.ServeMux, c *clientv3.Client) {
 
 // HandleProxyHealth registers health handler on '/proxy/health'.
 func HandleProxyHealth(lg *zap.Logger, mux *http.ServeMux, c *clientv3.Client) {
+	HandleProxyHealthWithGetter(lg, mux, func() *clientv3.Client { return c })
+}
+
+// HandleProxyHealthWithGetter registers health handler on '/proxy/health'
+// and resolves the proxy client at request time.
+func HandleProxyHealthWithGetter(lg *zap.Logger, mux *http.ServeMux, getClient func() *clientv3.Client) {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
 	mux.Handle(etcdhttp.PathProxyHealth, etcdhttp.NewHealthHandler(lg, func(ctx context.Context, excludedAlarms etcdhttp.StringSet, serializable bool) etcdhttp.Health {
-		return checkProxyHealth(c)
+		return checkProxyHealth(getClient())
 	}))
 }
 

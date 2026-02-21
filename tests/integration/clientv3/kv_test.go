@@ -780,7 +780,6 @@ func TestKVForLearner(t *testing.T) {
 	cfg := clientv3.Config{
 		Endpoints:   []string{learnerEp},
 		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 	}
 	// this client only has endpoint of the learner member
 	cli, err := integration.NewClient(t, cfg)

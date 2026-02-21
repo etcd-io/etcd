@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
@@ -39,6 +40,8 @@ import (
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -249,16 +252,10 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}()
 
 	client := mustNewClient(lg)
-
-	// The proxy client is used for self-healthchecking.
-	// TODO: The mechanism should be refactored to use internal connection.
-	var proxyClient *clientv3.Client
-	if grpcProxyAdvertiseClientURL != "" {
-		proxyClient = mustNewProxyClient(lg, tlsInfo)
-	}
 	httpClient := mustNewHTTPClient()
 
-	srvhttp, httpl := mustHTTPListener(lg, m, tlsInfo, client, proxyClient)
+	var proxyClient atomic.Pointer[clientv3.Client]
+	srvhttp, httpl := mustHTTPListener(lg, m, tlsInfo, client, proxyClient.Load)
 
 	if err := http2.ConfigureServer(srvhttp, &http2.Server{
 		MaxConcurrentStreams: maxConcurrentStreams,
@@ -270,6 +267,12 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	go func() { errc <- newGRPCProxyServer(lg, client).Serve(grpcl) }()
 	go func() { errc <- srvhttp.Serve(httpl) }()
 	go func() { errc <- m.Serve() }()
+
+	// The proxy client is used for self-healthchecking.
+	// TODO: The mechanism should be refactored to use internal connection.
+	if grpcProxyAdvertiseClientURL != "" {
+		proxyClient.Store(mustNewProxyClient(lg, tlsInfo))
+	}
 	if len(grpcProxyMetricsListenAddr) > 0 {
 		mhttpl := mustMetricsListener(lg, tlsInfo)
 		go func() {
@@ -277,7 +280,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 			grpcproxy.HandleMetrics(mux, httpClient, client.Endpoints())
 			grpcproxy.HandleHealth(lg, mux, client)
 			grpcproxy.HandleProxyMetrics(mux)
-			grpcproxy.HandleProxyHealth(lg, mux, proxyClient)
+			grpcproxy.HandleProxyHealthWithGetter(lg, mux, proxyClient.Load)
 			lg.Info("gRPC proxy server metrics URL serving")
 			herr := http.Serve(mhttpl, mux)
 			if herr != nil {
@@ -550,18 +553,19 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	pb.RegisterAuthServer(server, authp)
 	v3electionpb.RegisterElectionServer(server, electionp)
 	v3lockpb.RegisterLockServer(server, lockp)
+	healthpb.RegisterHealthServer(server, health.NewServer())
 
 	return server
 }
 
-func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c *clientv3.Client, proxy *clientv3.Client) (*http.Server, net.Listener) {
+func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c *clientv3.Client, getProxyClient func() *clientv3.Client) (*http.Server, net.Listener) {
 	httpClient := mustNewHTTPClient()
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/", http.NotFound)
 	grpcproxy.HandleMetrics(httpmux, httpClient, c.Endpoints())
 	grpcproxy.HandleHealth(lg, httpmux, c)
 	grpcproxy.HandleProxyMetrics(httpmux)
-	grpcproxy.HandleProxyHealth(lg, httpmux, proxy)
+	grpcproxy.HandleProxyHealthWithGetter(lg, httpmux, getProxyClient)
 	if grpcProxyEnablePprof {
 		for p, h := range debugutil.PProfHandlers() {
 			httpmux.Handle(p, h)
