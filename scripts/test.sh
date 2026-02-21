@@ -237,30 +237,6 @@ function grpcproxy_e2e_pass {
 
 ################# COVERAGE #####################################################
 
-# pkg_to_coverflag [prefix] [pkgs]
-# produces name of .coverprofile file to be used for tests of this package
-function pkg_to_coverprofileflag {
-  local prefix="${1}"
-  local pkgs="${2}"
-  local pkgs_normalized
-  prefix_normalized=$(echo "${prefix}" | tr "./ " "__+")
-  if [ "${pkgs}" == "./..." ]; then
-    pkgs_normalized="all"
-  else
-    pkgs_normalized=$(echo "${pkgs}" | tr "./ " "__+")
-  fi
-  mkdir -p "${coverdir}/${prefix_normalized}"
-  echo -n "-coverprofile=${coverdir}/${prefix_normalized}/${pkgs_normalized}.coverprofile"
-}
-
-function not_test_packages {
-  for m in $(modules); do
-    if [[ $m =~ .*/etcd/tests/v3 ]]; then continue; fi
-    if [[ $m =~ .*/etcd/v3 ]]; then continue; fi
-    echo "${m}/..."
-  done
-}
-
 # split_dir [dir] [num]
 function split_dir {
   local d="${1}"
@@ -304,18 +280,6 @@ function merge_cov_files {
   done
 }
 
-# merge_cov [coverdir]
-function merge_cov {
-  log_callout "[$(date)] Merging coverage files ..."
-  coverdir="${1}"
-  for d in "${coverdir}"/*/; do
-    d=${d%*/}  # remove the trailing "/"
-    merge_cov_files "${d}" "${d}.coverprofile" &
-  done
-  wait
-  merge_cov_files "${coverdir}" "${coverdir}/all.coverprofile"
-}
-
 # https://docs.codecov.com/docs/unexpected-coverage-changes#reasons-for-indirect-changes
 function cov_pass {
   # shellcheck disable=SC2153
@@ -327,49 +291,44 @@ function cov_pass {
   local coverdir
   coverdir=$(readlink -f "${COVERDIR}")
   mkdir -p "${coverdir}"
-  find "${coverdir}" -print0 -name '*.coverprofile' | xargs -0 rm
+  find "${coverdir}" -name '*.coverprofile' -delete
 
-  local covpkgs
-  covpkgs=$(not_test_packages)
+  local modules=()
+  load_workspace_relative_modules modules
+  local covpkgs=()
+  for module in "${modules[@]}"; do
+    if [[ ! "${module}" =~ ^./tests && ! "${module}" =~ ^./...$ ]]; then
+      covpkgs+=("${module}")
+    fi
+  done
+
   local coverpkg_comma
   coverpkg_comma=$(echo "${covpkgs[@]}" | xargs | tr ' ' ',')
   local gocov_build_flags=("-covermode=set" "-coverpkg=$coverpkg_comma")
 
-  local failed=""
+  local failed=()
 
   log_callout "[$(date)] Collecting coverage from unit tests ..."
-  for m in $(module_dirs); do
-    run_for_module "${m}" go_test "./..." "parallel" "pkg_to_coverprofileflag unit_${m}" -short -timeout=30m \
-       "${gocov_build_flags[@]}" "$@" || failed="$failed unit"
-  done
+  run_go_tests "${modules[@]}" -short -timeout=30m "${gocov_build_flags[@]}" -coverprofile="${coverdir}/unit.coverprofile" "$@" || failed+=("unit")
 
   log_callout "[$(date)] Collecting coverage from integration tests ..."
-  run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration" \
-      -timeout=30m "${gocov_build_flags[@]}" "$@" || failed="$failed integration"
+  run_go_tests "./tests/integration/..." -timeout=30m "${gocov_build_flags[@]}" -coverprofile="${coverdir}/integration.coverprofile" "$@" || failed+=("integration")
   # integration-store-v2
-  run_for_module "tests" go_test "./integration/v2store/..." "keep_going" "pkg_to_coverprofileflag store_v2" \
-      -timeout=5m "${gocov_build_flags[@]}" "$@" || failed="$failed integration_v2"
+  run_go_tests "./tests/integration/v2store/..." -timeout=5m "${gocov_build_flags[@]}" -coverprofile="${coverdir}/integration_v2.coverprofile" "$@" || failed+=("integration_v2")
   # integration_cluster_proxy
-  run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration_cluster_proxy" \
-      -tags cluster_proxy -timeout=30m "${gocov_build_flags[@]}" || failed="$failed integration_cluster_proxy"
+  run_go_tests "./tests/integration/..." -tags cluster_proxy -timeout=30m "${gocov_build_flags[@]}" -coverprofile="${coverdir}/integration_cluster_proxy.coverprofile" "$@" || failed+=("integration_cluster_proxy")
 
   local cover_out_file="${coverdir}/all.coverprofile"
-  merge_cov "${coverdir}"
+  merge_cov_files "${coverdir}" "${cover_out_file}"
 
   # strip out generated files (using GNU-style sed)
   sed --in-place -E "/[.]pb[.](gw[.])?go/d" "${cover_out_file}" || true
 
-  sed --in-place -E "s|go.etcd.io/etcd/api/v3/|api/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/client/v3/|client/v3/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/client/pkg/v3|client/pkg/v3/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/etcdctl/v3/|etcdctl/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/etcdutl/v3/|etcdutl/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/pkg/v3/|pkg/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/server/v3/|server/|g" "${cover_out_file}" || true
+  sed --in-place -E "s|go.etcd.io/etcd/(.*)/v3|\1|g" "${cover_out_file}" || true
 
   # held failures to generate the full coverage file, now fail
-  if [ -n "$failed" ]; then
-    for f in $failed; do
+  if [ "${#failed[@]}" -gt 0 ]; then
+    for f in "${failed[@]}"; do
       log_error "--- FAIL:" "$f"
     done
     log_warning "Despite failures, you can see partial report:"
