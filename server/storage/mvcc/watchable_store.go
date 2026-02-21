@@ -367,7 +367,13 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 	wb := newWatcherBatch(wg, evs)
 	for w := range wg.watchers {
 		if w.minRev < compactionRev {
-			// Skip the watcher that failed to send compacted watch response due to w.ch is full.
+			// watcher is behind compaction revision
+			if w.compacted {
+				// compaction notification was successfully sent in chooseAll;
+				// remove from the original unsynced group
+				s.unsynced.delete(w)
+			}
+			// else: failed to send compacted watch response due to w.ch is full.
 			// Next retry of syncWatchers would try to resend the compacted watch response to w.ch
 			continue
 		}
