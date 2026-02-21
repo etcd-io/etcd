@@ -1636,6 +1636,64 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeResumable.Error(),
 		},
 		{
+			name: "Resumable - first event revision lower than watch request revision - fail",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+								Revision:   3,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+										putWatchEvent("b", "2", 3, true),
+										putWatchEvent("c", "3", 4, true),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
+			},
+			expectError: errBrokeResumable.Error(),
+		},
+		{
+			name: "Resumable - first event revision lower than watch request revision without prefix - fail",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key:      "a",
+								Revision: 3,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+										putWatchEvent("a", "2", 3, false),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+			},
+			expectError: errBrokeResumable.Error(),
+		},
+		{
 			name: "IsCreate - correct IsCreate values - pass",
 			reports: []report.ClientReport{
 				{
