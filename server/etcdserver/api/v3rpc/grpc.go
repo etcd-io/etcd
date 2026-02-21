@@ -44,16 +44,16 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	}
 	chainUnaryInterceptors := []grpc.UnaryServerInterceptor{
 		newLogUnaryInterceptor(s),
-		newUnaryInterceptor(s),
 		grpc_prometheus.UnaryServerInterceptor,
+		newUnaryInterceptor(s),
 	}
 	if interceptor != nil {
 		chainUnaryInterceptors = append(chainUnaryInterceptors, interceptor)
 	}
 
 	chainStreamInterceptors := []grpc.StreamServerInterceptor{
-		newStreamInterceptor(s),
 		grpc_prometheus.StreamServerInterceptor,
+		newStreamInterceptor(s),
 	}
 
 	if s.Cfg.ExperimentalEnableDistributedTracing {
