@@ -48,7 +48,7 @@ func TestDataReports(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			}
-			result := ValidateAndReturnVisualize(zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute)
+			result := ValidateAndReturnVisualize(&flatTimerLogger{lg}, Config{}, reports, persistedRequests, 5*time.Minute)
 			err = result.Error()
 			if err != nil {
 				t.Error(err)
@@ -175,7 +175,7 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
-			result := ValidateAndReturnVisualize(lg, Config{}, tc.reports, tc.persistedRequests, 5*time.Second)
+			result := ValidateAndReturnVisualize(&flatTimerLogger{lg}, Config{}, tc.reports, tc.persistedRequests, 5*time.Second)
 
 			if tc.expectError != "" {
 				require.ErrorContains(t, result.Error(), tc.expectError)
@@ -1978,7 +1978,7 @@ func TestValidateWatch(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			replay := model.NewReplay(tc.persistedRequests)
-			result := validateWatch(zaptest.NewLogger(t), tc.config, tc.reports, replay)
+			result := ResultFromError(validateWatch(zaptest.NewLogger(t), tc.config, tc.reports, replay))
 			if result.Message != tc.expectError {
 				t.Errorf("validateWatch(...), got: %q, want: %q", result.Message, tc.expectError)
 			}
