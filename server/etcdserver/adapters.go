@@ -46,7 +46,8 @@ func (s *serverVersionAdapter) UpdateClusterVersion(version string) {
 }
 
 func (s *serverVersionAdapter) LinearizableReadNotify(ctx context.Context) error {
-	return s.linearizableReadNotify(ctx)
+	_, _, err := s.linearizableReadNotify(ctx)
+	return err
 }
 
 func (s *serverVersionAdapter) DowngradeEnable(ctx context.Context, targetVersion *semver.Version) error {
