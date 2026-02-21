@@ -9,8 +9,9 @@ A PR can have various labels, milestones, reviewers, etc. The detailed list of l
 https://github.com/kubernetes/kubernetes/labels
 
 Following are a few example searches on PR for convenience:
-* [Open PRS for milestone etcd-v3.6](https://github.com/etcd-io/etcd/pulls?utf8=%E2%9C%93&q=is%3Apr+is%3Aopen+milestone%3Aetcd-v3.6)
-* [PRs under investigation](https://github.com/etcd-io/etcd/labels/Investigating)
+
+- [Open PRS for milestone etcd-v3.6](https://github.com/etcd-io/etcd/pulls?utf8=%E2%9C%93&q=is%3Apr+is%3Aopen+milestone%3Aetcd-v3.6)
+- [PRs under investigation](https://github.com/etcd-io/etcd/labels/Investigating)
 
 ## Scope
 
@@ -18,14 +19,15 @@ These guidelines serve as a primary document for managing PRs and review policy 
 
 ## Ensure tests are run
 
-The etcd project use Kubernetes Prow and GitHub Actions to run tests. To ensure all required tests run if a pull request is ready for testing and still has the `needs-ok-to-test` label then please comment on the pull request `/ok-to-test`.
+The etcd project uses Kubernetes Prow and GitHub Actions to run tests. To ensure all required tests run, if a pull request is ready for testing and still has the `needs-ok-to-test` label, then please comment on the pull request `/ok-to-test`.
 
 ## Handle inactive PRs
-Poke PR owner if review comments are not addressed in 15 days. If the PR owner does not reply in 90 days, update the PR with a new commit if possible. If not, inactive PR should be closed after 180 days.
+
+Poke the PR owner if review comments are not addressed in 15 days. If the PR owner does not reply in 90 days, update the PR with a new commit if possible. If not, the inactive PR should be closed after 180 days.
 
 ## Poke reviewer if needed
 
-Reviewers are responsive in a timely fashion, but considering everyone is busy, give them some time after requesting a review if a quick response is not provided. If the response is not provided in 10 days, feel free to contact them via adding a comment in the PR or sending an email or message on Slack.
+Reviewers are generally responsive, but considering everyone is busy, give them some time after requesting a review before following up. If no response is provided in 10 days, feel free to contact them by adding a comment in the PR or sending an email or message on Slack.
 
 ## Verify important labels are in place
 
@@ -41,21 +43,21 @@ PRs should get at least two approvals (/lgtm or GitHub review approval) before m
 
 Notes:
 
-* Approvals should come from a maintainer, reviewer, or submodule owner familiar with the relevant code or area.
-* If there’s disagreement, maintainers should discuss and agree before merging.
+- Approvals should come from a maintainer, reviewer, or submodule owner familiar with the relevant code or area.
+- If there’s disagreement, maintainers should discuss and agree before merging.
 
 ### Exceptions for Less Impactful PRs
 
 For low-risk changes — such as:
 
-* CI workflows
-* Documentation
-* Comments
+- CI workflows
+- Documentation
+- Comments
 
 The rule can be relaxed:
 
-* One approval is generally enough.
+- One approval is generally enough.
 
 However:
 
-* If the author is a maintainer, they should still get approval from another maintainer, reviewer, or submodule owner, even for minor changes.
+- If the author is a maintainer, they should still get approval from another maintainer, reviewer, or submodule owner, even for minor changes.
