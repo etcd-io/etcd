@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.9 (TBC)
 
+### etcd server
+
+- [Ensure the metrics interceptor runs before other interceptors so that metrics remain up to date](https://github.com/etcd-io/etcd/pull/21329)
+
 ---
 
 ## v3.6.8 (2026-02-13)
