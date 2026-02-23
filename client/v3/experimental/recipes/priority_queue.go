@@ -65,7 +65,7 @@ func (q *PriorityQueue) Dequeue() (string, error) {
 		q.client,
 		q.key,
 		resp.Header.Revision,
-		[]mvccpb.Event_EventType{mvccpb.PUT})
+		[]mvccpb.Event_EventType{mvccpb.Event_PUT})
 	if err != nil {
 		return "", err
 	}

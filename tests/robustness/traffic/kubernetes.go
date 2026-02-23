@@ -88,9 +88,9 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
 }
 
-func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopParam) {
+func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam) {
 	kc := kubernetes.Client{Client: &clientv3.Client{KV: p.Client}}
-	s := newStorage()
+	s := p.Storage
 	keyPrefix := "/registry/" + t.resource + "/"
 	g := errgroup.Group{}
 
@@ -134,6 +134,13 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopP
 		}
 	})
 	g.Wait()
+}
+
+func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
+	runWatchLoop(ctx, p, watchLoopConfig{
+		key:           "/registry/" + t.resource + "/",
+		requireLeader: true,
+	})
 }
 
 func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, s *storage, limiter *rate.Limiter, keyPrefix string) error {
@@ -344,7 +351,9 @@ type storage struct {
 	revision    int64
 }
 
-func newStorage() *storage {
+// NewKubernetesStorage creates a new storage instance for tracking Kubernetes resource revisions.
+// This storage is used by Kubernetes traffic to maintain consistency in read and write operations.
+func NewKubernetesStorage() *storage {
 	return &storage{
 		keyRevision: map[string]int64{},
 	}
@@ -359,9 +368,9 @@ func (s *storage) Update(resp clientv3.WatchResponse) {
 		}
 		s.revision = e.Kv.ModRevision
 		switch e.Type {
-		case mvccpb.PUT:
+		case mvccpb.Event_PUT:
 			s.keyRevision[string(e.Kv.Key)] = e.Kv.ModRevision
-		case mvccpb.DELETE:
+		case mvccpb.Event_DELETE:
 			delete(s.keyRevision, string(e.Kv.Key))
 		}
 	}

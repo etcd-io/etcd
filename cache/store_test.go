@@ -281,7 +281,8 @@ func TestStoreApply(t *testing.T) {
 
 			var gotErr error
 			for batchIndex, batch := range test.eventBatches {
-				if err := s.Apply(batch); err != nil {
+				resp := clientv3.WatchResponse{Events: batch}
+				if err := s.Apply(resp); err != nil {
 					gotErr = err
 					if !test.expectErr {
 						t.Fatalf("Apply(batch %d) unexpected error: %v", batchIndex, err)
@@ -397,7 +398,8 @@ func TestRestoreAppendCloneImmutability(t *testing.T) {
 				s.Restore(test.initialKVs, test.initialRev)
 			}
 			if len(test.events) > 0 {
-				if err := s.Apply(test.events); err != nil {
+				resp := clientv3.WatchResponse{Events: test.events}
+				if err := s.Apply(resp); err != nil {
 					t.Fatalf("Apply failed: %v", err)
 				}
 			}

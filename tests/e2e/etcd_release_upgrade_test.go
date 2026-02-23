@@ -208,7 +208,7 @@ func TestClusterUpgradeAfterPromotingMembers(t *testing.T) {
 			}()
 
 			for i := 0; i < tc.snapshot; i++ {
-				err = epc.Etcdctl().Put(ctx, "foo", "bar", config.PutOptions{})
+				_, err = epc.Etcdctl().Put(ctx, "foo", "bar", config.PutOptions{})
 				require.NoError(t, err)
 			}
 
@@ -220,7 +220,7 @@ func TestClusterUpgradeAfterPromotingMembers(t *testing.T) {
 
 			t.Logf("Checking all members are ready to serve client requests")
 			for i := 0; i < clusterSize; i++ {
-				err = epc.Procs[i].Etcdctl().Put(t.Context(), "foo", "bar", config.PutOptions{})
+				_, err = epc.Procs[i].Etcdctl().Put(t.Context(), "foo", "bar", config.PutOptions{})
 				require.NoError(t, err)
 			}
 		})

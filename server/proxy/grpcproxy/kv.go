@@ -26,6 +26,8 @@ import (
 type kvProxy struct {
 	kv    clientv3.KV
 	cache cache.Cache
+	// we want compile errors if new methods are added
+	pb.UnsafeKVServer
 }
 
 func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {

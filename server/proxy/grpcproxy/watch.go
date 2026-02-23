@@ -46,6 +46,9 @@ type watchProxy struct {
 	// kv is used for permission checking
 	kv clientv3.KV
 	lg *zap.Logger
+
+	// we want compile errors if new methods are added
+	pb.UnsafeWatchServer
 }
 
 func NewWatchProxy(ctx context.Context, lg *zap.Logger, c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
@@ -234,6 +237,17 @@ func (wps *watchProxyStream) recvLoop() error {
 		switch uv := req.RequestUnion.(type) {
 		case *pb.WatchRequest_CreateRequest:
 			cr := uv.CreateRequest
+
+			if cr.StartRevision < 0 {
+				wps.watchCh <- &pb.WatchResponse{
+					Header:       &pb.ResponseHeader{},
+					WatchId:      clientv3.InvalidWatchID,
+					Created:      true,
+					Canceled:     true,
+					CancelReason: rpctypes.ErrCompacted.Error(),
+				}
+				continue
+			}
 
 			if err := wps.checkPermissionForWatch(cr.Key, cr.RangeEnd); err != nil {
 				wps.watchCh <- &pb.WatchResponse{

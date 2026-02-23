@@ -50,7 +50,7 @@ func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3
 	ccfg := clientv3.Config{
 		Endpoints:   entpoints,
 		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 	}
 	if tlscfg != nil {
 		ccfg.TLS, err = tlscfg.ClientConfig()

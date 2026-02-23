@@ -4,13 +4,14 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package main
 
 import (
@@ -28,16 +29,11 @@ func Test_readRaw(t *testing.T) {
 	assert.Equal(t,
 		`CRC: 0
 Metadata: 
-Snapshot: 
+Snapshot: index:0 term:0 
 Entry: Term:1 Index:1 Type:EntryConfChange Data:"\010\001\020\000\030\002\"\000" 
 Entry: Term:2 Index:2 Type:EntryConfChange Data:"\010\002\020\001\030\002\"\000" 
 Entry: Term:2 Index:3 Type:EntryConfChange Data:"\010\003\020\002\030\002\"\000" 
 Entry: Term:2 Index:4 Type:EntryConfChange Data:"\010\004\020\003\030\003\"\000" 
-Entry: Term:3 Index:5 Data:"\010\000\022\000\032\006/path0\"\030{\"hey\":\"ho\",\"hi\":[\"yo\"]}(\0012\0008\000@\000H\tP\000X\001`+"`"+`\000h\000p\000x\001\200\001\000\210\001\000" 
-Entry: Term:3 Index:6 Data:"\010\001\022\004QGET\032\006/path1\"\023{\"0\":\"1\",\"2\":[\"3\"]}(\0002\0008\000@\000H\tP\000X\001`+"`"+`\000h\000p\000x\001\200\001\000\210\001\000" 
-Entry: Term:3 Index:7 Data:"\010\002\022\004SYNC\032\006/path2\"\023{\"0\":\"1\",\"2\":[\"3\"]}(\0002\0008\000@\000H\002P\000X\001`+"`"+`\000h\000p\000x\001\200\001\000\210\001\000" 
-Entry: Term:3 Index:8 Data:"\010\003\022\006DELETE\032\006/path3\"\030{\"hey\":\"ho\",\"hi\":[\"yo\"]}(\0002\0008\000@\001H\002P\000X\001`+"`"+`\000h\000p\000x\001\200\001\000\210\001\000" 
-Entry: Term:3 Index:9 Data:"\010\004\022\006RANDOM\032\246\001/path4/superlong/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path\"\030{\"hey\":\"ho\",\"hi\":[\"yo\"]}(\0002\0008\000@\000H\002P\000X\001`+"`"+`\000h\000p\000x\001\200\001\000\210\001\000" 
 Entry: Term:4 Index:10 Data:"\010\005\032\025\n\0011\022\002hi\030\006 \001(\001X\240\234\001h\240\234\001" 
 Entry: Term:5 Index:11 Data:"\010\006\"\020\n\004foo1\022\004bar1\030\0010\001" 
 Entry: Term:6 Index:12 Data:"\010\007*\010\n\0010\022\0019\030\001" 

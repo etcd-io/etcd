@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2025 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package intf
 
-import (
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-)
+type Plugin interface {
+	// Name returns the name of the plugin
+	Name() string
+	// Diagnose performs diagnosis and returns the result. If it fails
+	// to do the diagnosis for any reason, it gets the detailed reason
+	// included in the diagnosis result.
+	Diagnose() any
+}
 
-type RequestV2 pb.Request
-
-func (r *RequestV2) String() string {
-	rpb := pb.Request(*r)
-	return rpb.String()
+// FailedResult is the result returned by a plugin if it fails to
+// perform the diagnosis for any reason.
+type FailedResult struct {
+	Name   string `json:"name"`
+	Reason string `json:"reason"`
 }

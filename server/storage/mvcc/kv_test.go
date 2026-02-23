@@ -783,7 +783,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	wev := []mvccpb.Event{
 		{
-			Type: mvccpb.PUT,
+			Type: mvccpb.Event_PUT,
 			Kv: &mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
@@ -794,7 +794,7 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 		},
 		{
-			Type: mvccpb.PUT,
+			Type: mvccpb.Event_PUT,
 			Kv: &mvccpb.KeyValue{
 				Key:            []byte("foo1"),
 				Value:          []byte("bar1"),
@@ -805,7 +805,7 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 		},
 		{
-			Type: mvccpb.PUT,
+			Type: mvccpb.Event_PUT,
 			Kv: &mvccpb.KeyValue{
 				Key:            []byte("foo1"),
 				Value:          []byte("bar11"),

@@ -180,17 +180,17 @@ func TestLoadNewestSnap(t *testing.T) {
 		},
 		{
 			name:              "loadnewestavailable-newest",
-			availableWALSnaps: []walpb.Snapshot{{Index: 0, Term: 0}, {Index: 1, Term: 1}, {Index: 5, Term: 1}},
+			availableWALSnaps: []walpb.Snapshot{{Index: new(uint64(0)), Term: new(uint64(0))}, {Index: new(uint64(1)), Term: new(uint64(1))}, {Index: new(uint64(5)), Term: new(uint64(1))}},
 			expected:          &newSnap,
 		},
 		{
 			name:              "loadnewestavailable-newest-unsorted",
-			availableWALSnaps: []walpb.Snapshot{{Index: 5, Term: 1}, {Index: 1, Term: 1}, {Index: 0, Term: 0}},
+			availableWALSnaps: []walpb.Snapshot{{Index: new(uint64(5)), Term: new(uint64(1))}, {Index: new(uint64(1)), Term: new(uint64(1))}, {Index: new(uint64(0)), Term: new(uint64(0))}},
 			expected:          &newSnap,
 		},
 		{
 			name:              "loadnewestavailable-previous",
-			availableWALSnaps: []walpb.Snapshot{{Index: 0, Term: 0}, {Index: 1, Term: 1}},
+			availableWALSnaps: []walpb.Snapshot{{Index: new(uint64(0)), Term: new(uint64(0))}, {Index: new(uint64(1)), Term: new(uint64(1))}},
 			expected:          testSnap,
 		},
 	}

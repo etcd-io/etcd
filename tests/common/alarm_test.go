@@ -41,12 +41,13 @@ func TestAlarm(t *testing.T) {
 	testutils.ExecuteUntil(ctx, t, func() {
 		// test small put still works
 		smallbuf := strings.Repeat("a", 64)
-		require.NoErrorf(t, cc.Put(ctx, "1st_test", smallbuf, config.PutOptions{}), "alarmTest: put kv error")
+		_, err := cc.Put(ctx, "1st_test", smallbuf, config.PutOptions{})
+		require.NoErrorf(t, err, "alarmTest: put kv error")
 
 		// write some chunks to fill up the database
 		buf := strings.Repeat("b", os.Getpagesize())
 		for {
-			if err := cc.Put(ctx, "2nd_test", buf, config.PutOptions{}); err != nil {
+			if _, err = cc.Put(ctx, "2nd_test", buf, config.PutOptions{}); err != nil {
 				require.ErrorContains(t, err, "etcdserver: mvcc: database space exceeded")
 				break
 			}
@@ -57,7 +58,7 @@ func TestAlarm(t *testing.T) {
 		require.NoErrorf(t, err, "alarmTest: Alarm error")
 
 		// check that Put is rejected when alarm is on
-		if err = cc.Put(ctx, "3rd_test", smallbuf, config.PutOptions{}); err != nil {
+		if _, err = cc.Put(ctx, "3rd_test", smallbuf, config.PutOptions{}); err != nil {
 			require.ErrorContains(t, err, "etcdserver: mvcc: database space exceeded")
 		}
 
@@ -90,7 +91,7 @@ func TestAlarm(t *testing.T) {
 		}
 
 		// put one more key below quota
-		err = cc.Put(ctx, "4th_test", smallbuf, config.PutOptions{})
+		_, err = cc.Put(ctx, "4th_test", smallbuf, config.PutOptions{})
 		require.NoError(t, err)
 	})
 }

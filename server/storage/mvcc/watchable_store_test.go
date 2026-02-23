@@ -323,7 +323,7 @@ func TestSyncWatchers(t *testing.T) {
 		assert.Len(t, events, 1)
 		assert.Equal(t, []mvccpb.Event{
 			{
-				Type: mvccpb.PUT,
+				Type: mvccpb.Event_PUT,
 				Kv: &mvccpb.KeyValue{
 					Key:            testKey,
 					CreateRevision: 2,
@@ -354,7 +354,7 @@ func TestRangeEvents(t *testing.T) {
 
 	expectEvents := []mvccpb.Event{
 		{
-			Type: mvccpb.PUT,
+			Type: mvccpb.Event_PUT,
 			Kv: &mvccpb.KeyValue{
 				Key:            foo1,
 				CreateRevision: 2,
@@ -364,7 +364,7 @@ func TestRangeEvents(t *testing.T) {
 			},
 		},
 		{
-			Type: mvccpb.PUT,
+			Type: mvccpb.Event_PUT,
 			Kv: &mvccpb.KeyValue{
 				Key:            foo2,
 				CreateRevision: 3,
@@ -374,7 +374,7 @@ func TestRangeEvents(t *testing.T) {
 			},
 		},
 		{
-			Type: mvccpb.PUT,
+			Type: mvccpb.Event_PUT,
 			Kv: &mvccpb.KeyValue{
 				Key:            foo3,
 				CreateRevision: 4,
@@ -384,14 +384,14 @@ func TestRangeEvents(t *testing.T) {
 			},
 		},
 		{
-			Type: mvccpb.DELETE,
+			Type: mvccpb.Event_DELETE,
 			Kv: &mvccpb.KeyValue{
 				Key:         foo1,
 				ModRevision: 5,
 			},
 		},
 		{
-			Type: mvccpb.DELETE,
+			Type: mvccpb.Event_DELETE,
 			Kv: &mvccpb.KeyValue{
 				Key:         foo2,
 				ModRevision: 5,
@@ -405,13 +405,14 @@ func TestRangeEvents(t *testing.T) {
 		expectEvents []mvccpb.Event
 	}{
 		// maxRev, top to bottom
-		{minRev: 2, maxRev: 6, expectEvents: expectEvents[0:5]},
-		{minRev: 2, maxRev: 5, expectEvents: expectEvents[0:3]},
-		{minRev: 2, maxRev: 4, expectEvents: expectEvents[0:2]},
-		{minRev: 2, maxRev: 3, expectEvents: expectEvents[0:1]},
-		{minRev: 2, maxRev: 2, expectEvents: expectEvents[0:0]},
+		{minRev: -1, maxRev: 6, expectEvents: expectEvents[0:5]},
+		{minRev: -1, maxRev: 5, expectEvents: expectEvents[0:3]},
+		{minRev: -1, maxRev: 4, expectEvents: expectEvents[0:2]},
+		{minRev: -1, maxRev: 3, expectEvents: expectEvents[0:1]},
+		{minRev: -1, maxRev: 2, expectEvents: expectEvents[0:0]},
 
 		// minRev, bottom to top
+		{minRev: -1, maxRev: 6, expectEvents: expectEvents[0:5]},
 		{minRev: 2, maxRev: 6, expectEvents: expectEvents[0:5]},
 		{minRev: 3, maxRev: 6, expectEvents: expectEvents[1:5]},
 		{minRev: 4, maxRev: 6, expectEvents: expectEvents[2:5]},
@@ -607,31 +608,31 @@ func testWatchRestore(t *testing.T, delayBeforeRestore, delayAfterRestore time.D
 			name:          "zero revision",
 			startRevision: 0,
 			wantEvents: []mvccpb.Event{
-				{Type: mvccpb.PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
-				{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
+				{Type: mvccpb.Event_PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
+				{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
 			},
 		},
 		{
-			name:          "revsion before first write",
+			name:          "revision before first write",
 			startRevision: 1,
 			wantEvents: []mvccpb.Event{
-				{Type: mvccpb.PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
-				{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
+				{Type: mvccpb.Event_PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
+				{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
 			},
 		},
 		{
 			name:          "revision of first write",
 			startRevision: 2,
 			wantEvents: []mvccpb.Event{
-				{Type: mvccpb.PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
-				{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
+				{Type: mvccpb.Event_PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
+				{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
 			},
 		},
 		{
 			name:          "current revision",
 			startRevision: 3,
 			wantEvents: []mvccpb.Event{
-				{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
+				{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
 			},
 		},
 		{
@@ -769,15 +770,15 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 
 	evs := []mvccpb.Event{
 		{
-			Type: mvccpb.PUT,
+			Type: mvccpb.Event_PUT,
 			Kv:   &mvccpb.KeyValue{Key: k0, Value: v0},
 		},
 		{
-			Type: mvccpb.PUT,
+			Type: mvccpb.Event_PUT,
 			Kv:   &mvccpb.KeyValue{Key: k1, Value: v1},
 		},
 		{
-			Type: mvccpb.PUT,
+			Type: mvccpb.Event_PUT,
 			Kv:   &mvccpb.KeyValue{Key: k2, Value: v2},
 		},
 	}

@@ -1,11 +1,12 @@
-ARG GO_VERSION=1.25.1
 ARG ARCH=amd64
+ARG GO_IMAGE_TAG
 
-FROM golang:$GO_VERSION AS build
+FROM golang:$GO_IMAGE_TAG AS build
 
 # cloning etcd
 ARG REF=main
 RUN git clone --depth=1 https://github.com/etcd-io/etcd.git --branch=${REF} /etcd
+RUN go env -w GOTOOLCHAIN="go$(cat .go-version)"
 
 # inject assertions in place of gofail
 WORKDIR /etcd/server
@@ -44,12 +45,17 @@ RUN go install github.com/myitcv/gobin@v0.0.14
 RUN if [ -d "vendor" ]; then go mod vendor; fi
 
 # The instrumentation adds code and packages. Need go mod tidy for all modules before building
-RUN for d in server etcdutl etcdctl; do (cd ${d} && go mod tidy || true); done
+RUN for d in server etcdutl etcdctl; do \
+      (cd ${d} && go mod tidy || true); \
+    done
+
 # The instrumentation also adds a new main file which clashes with dummy.go found in non release-3.4 branches
 RUN if [ -f "dummy.go" ]; then sed -i 's/package main_test/package main/' dummy.go; fi
-RUN CGO_ENABLED=1 make build
+RUN CGO_ENABLED=1 GO_GCFLAGS="all=-N -l" make build
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 FROM ubuntu:24.04
+COPY --from=build /go/bin/dlv /bin/dlv
 COPY --from=build /etcd_instrumented/ /etcd
 # Move symbols to /symbols directory https://antithesis.com/docs/instrumentation/#symbolization
 RUN mv  /etcd/symbols /symbols

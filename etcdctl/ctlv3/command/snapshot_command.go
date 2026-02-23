@@ -37,7 +37,7 @@ var snapshotExample = util.Normalize(`
 	# Get snapshot from given address with certificates
 	etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/etcd/ca.crt --cert=/etc/etcd/etcd.crt --key=/etc/etcd/etcd.key snapshot save /backup/etcd-snapshot.db
 
-	# Get snapshot wih certain user and password
+	# Get snapshot with certain user and password
 	etcdctl --user=root --password=password123 snapshot save /backup/etcd-snapshot.db
 
 	# Get snapshot from given address with timeout

@@ -1,0 +1,181 @@
+{
+	"input": {
+		"endpoints": [
+			"http://127.0.0.1:2379"
+		],
+		"useClusterEndpoints": true,
+		"dial-timeout": 2000000000,
+		"command-timeout": 5000000000,
+		"keep-alive-time": 2000000000,
+		"keep-alive-timeout": 5000000000,
+		"insecure": true,
+		"insecure-discovery": true,
+		"db-quota-bytes": 2147483648
+	},
+	"results": [
+		{
+			"name": "membershipChecker",
+			"memberList": {
+				"header": {
+					"cluster_id": 17237436991929493444,
+					"member_id": 9372538179322589801,
+					"raft_term": 2
+				},
+				"members": [
+					{
+						"ID": 9372538179322589801,
+						"name": "infra1",
+						"peerURLs": [
+							"http://127.0.0.1:12380"
+						],
+						"clientURLs": [
+							"http://127.0.0.1:2379"
+						]
+					},
+					{
+						"ID": 10501334649042878790,
+						"name": "infra2",
+						"peerURLs": [
+							"http://127.0.0.1:22380"
+						],
+						"clientURLs": [
+							"http://127.0.0.1:22379"
+						]
+					},
+					{
+						"ID": 18249187646912138824,
+						"name": "infra3",
+						"peerURLs": [
+							"http://127.0.0.1:32380"
+						],
+						"clientURLs": [
+							"http://127.0.0.1:32379"
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "epStatusChecker",
+			"summary": [
+				"Successful"
+			],
+			"epStatusList": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"epStatus": {
+						"header": {
+							"cluster_id": 17237436991929493444,
+							"member_id": 9372538179322589801,
+							"revision": 1,
+							"raft_term": 2
+						},
+						"version": "3.5.9",
+						"dbSize": 98304,
+						"leader": 18249187646912138824,
+						"raftIndex": 8,
+						"raftTerm": 2,
+						"raftAppliedIndex": 8,
+						"dbSizeInUse": 98304
+					}
+				},
+				{
+					"endpoint": "http://127.0.0.1:22379",
+					"epStatus": {
+						"header": {
+							"cluster_id": 17237436991929493444,
+							"member_id": 10501334649042878790,
+							"revision": 1,
+							"raft_term": 2
+						},
+						"version": "3.5.9",
+						"dbSize": 98304,
+						"leader": 18249187646912138824,
+						"raftIndex": 8,
+						"raftTerm": 2,
+						"raftAppliedIndex": 8,
+						"dbSizeInUse": 98304
+					}
+				},
+				{
+					"endpoint": "http://127.0.0.1:32379",
+					"epStatus": {
+						"header": {
+							"cluster_id": 17237436991929493444,
+							"member_id": 18249187646912138824,
+							"revision": 1,
+							"raft_term": 2
+						},
+						"version": "3.5.9",
+						"dbSize": 98304,
+						"leader": 18249187646912138824,
+						"raftIndex": 8,
+						"raftTerm": 2,
+						"raftAppliedIndex": 8,
+						"dbSizeInUse": 98304
+					}
+				}
+			]
+		},
+		{
+			"name": "serializableReadChecker",
+			"summary": "Successful",
+			"readResponses": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"took": "686.5µs"
+				},
+				{
+					"endpoint": "http://127.0.0.1:22379",
+					"took": "1.129291ms"
+				},
+				{
+					"endpoint": "http://127.0.0.1:32379",
+					"took": "1.034625ms"
+				}
+			]
+		},
+		{
+			"name": "linearizableReadChecker",
+			"summary": "Successful",
+			"readResponses": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"took": "1.286333ms"
+				},
+				{
+					"endpoint": "http://127.0.0.1:22379",
+					"took": "890.417µs"
+				},
+				{
+					"endpoint": "http://127.0.0.1:32379",
+					"took": "1.257791ms"
+				}
+			]
+		},
+		{
+			"name": "metricsChecker",
+			"summary": [
+				"Successful"
+			],
+			"epMetricsList": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"took": "3.752625ms",
+					"epMetrics": {
+						"etcd_disk_backend_commit_duration_seconds_bucket": [
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.001\"} 0"
+						],
+						"etcd_disk_wal_fsync_duration_seconds_bucket": [
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.001\"} 0"
+						],
+						"etcd_network_peer_round_trip_time_seconds_bucket": [
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0001\"} 2"
+						],
+						"process_resident_memory_bytes": null
+					}
+				}
+			]
+		}
+		]
+}

@@ -294,7 +294,7 @@ func authSetupUsers(t *testing.T, auth pb.AuthClient, users []user) {
 		}
 
 		perm := &authpb.Permission{
-			PermType: authpb.READWRITE,
+			PermType: authpb.Permission_READWRITE,
 			Key:      []byte(user.key),
 			RangeEnd: []byte(user.end),
 		}

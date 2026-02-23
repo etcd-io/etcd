@@ -15,10 +15,11 @@
 package cache
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
-	"github.com/google/btree"
+	"k8s.io/utils/third_party/forked/golang/btree"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -37,7 +38,7 @@ type store struct {
 }
 
 func newStore(degree int, historyCapacity int) *store {
-	tree := btree.New(degree)
+	tree := btree.New[*kvItem](degree, kvItemLess)
 	return &store{
 		degree:  degree,
 		latest:  snapshot{rev: 0, tree: tree},
@@ -54,8 +55,8 @@ func newKVItem(kv *mvccpb.KeyValue) *kvItem {
 	return &kvItem{key: string(kv.Key), kv: kv}
 }
 
-func (a *kvItem) Less(b btree.Item) bool {
-	return a.key < b.(*kvItem).key
+func kvItemLess(a, b *kvItem) bool {
+	return a.key < b.key
 }
 
 func (s *store) Get(startKey, endKey []byte, rev int64) ([]*mvccpb.KeyValue, int64, error) {
@@ -92,6 +93,10 @@ func (s *store) getSnapshot(rev int64) (*snapshot, int64, error) {
 		targetSnapshot = snap
 		return false
 	})
+	// If s.history < rev < s.latest.rev serve latest.
+	if targetSnapshot == nil {
+		targetSnapshot = &s.latest
+	}
 
 	return targetSnapshot, s.latest.rev, nil
 }
@@ -101,7 +106,7 @@ func (s *store) Restore(kvs []*mvccpb.KeyValue, rev int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.latest.tree = btree.New(s.degree)
+	s.latest.tree = btree.New[*kvItem](s.degree, kvItemLess)
 	for _, kv := range kvs {
 		s.latest.tree.ReplaceOrInsert(newKVItem(kv))
 	}
@@ -110,14 +115,36 @@ func (s *store) Restore(kvs []*mvccpb.KeyValue, rev int64) {
 	s.history.Append(newClonedSnapshot(rev, s.latest.tree))
 }
 
-func (s *store) Apply(events []*clientv3.Event) error {
+func (s *store) Apply(resp clientv3.WatchResponse) error {
+	if resp.Canceled {
+		return errors.New("canceled")
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	if err := validateRevisions(events, s.latest.rev); err != nil {
+	if err := validateRevisions(resp, s.latest.rev); err != nil {
 		return err
 	}
 
+	switch {
+	case resp.IsProgressNotify():
+		s.applyProgressNotifyLocked(resp.Header.Revision)
+		return nil
+	case len(resp.Events) != 0:
+		return s.applyEventsLocked(resp.Events)
+	default:
+		return nil
+	}
+}
+
+func (s *store) applyProgressNotifyLocked(revision int64) {
+	if s.latest.rev == 0 {
+		return
+	}
+	s.latest.rev = revision
+}
+
+func (s *store) applyEventsLocked(events []*clientv3.Event) error {
 	for i := 0; i < len(events); {
 		rev := events[i].Kv.ModRevision
 
@@ -125,7 +152,7 @@ func (s *store) Apply(events []*clientv3.Event) error {
 			ev := events[i]
 			switch ev.Type {
 			case clientv3.EventTypeDelete:
-				if removed := s.latest.tree.Delete(&kvItem{key: string(ev.Kv.Key)}); removed == nil {
+				if _, ok := s.latest.tree.Delete(&kvItem{key: string(ev.Kv.Key)}); !ok {
 					return fmt.Errorf("cache: delete non-existent key %s", string(ev.Kv.Key))
 				}
 			case clientv3.EventTypePut:
@@ -145,7 +172,14 @@ func (s *store) LatestRev() int64 {
 	return s.latest.rev
 }
 
-func validateRevisions(events []*clientv3.Event, latestRev int64) error {
+func validateRevisions(resp clientv3.WatchResponse, latestRev int64) error {
+	if resp.IsProgressNotify() {
+		if resp.Header.Revision < latestRev {
+			return fmt.Errorf("cache: progress notification out of order (progress %d < latest %d)", resp.Header.Revision, latestRev)
+		}
+		return nil
+	}
+	events := resp.Events
 	if len(events) == 0 {
 		return nil
 	}

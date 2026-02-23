@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/coreos/go-semver/semver"
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/reflect/protoreflect"

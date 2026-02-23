@@ -51,6 +51,9 @@ type watchServer struct {
 	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
 	ag        AuthGetter
+
+	// we want compile errors if new methods are added
+	pb.UnsafeWatchServer
 }
 
 // NewWatchServer returns a new watch server.
@@ -272,6 +275,22 @@ func (sws *serverWatchStream) recvLoop() error {
 				// support  >= key queries
 				creq.RangeEnd = []byte{}
 			}
+			if creq.StartRevision < 0 {
+				wr := &pb.WatchResponse{
+					Header:       sws.newResponseHeader(sws.watchStream.Rev()),
+					WatchId:      clientv3.InvalidWatchID,
+					Canceled:     true,
+					Created:      true,
+					CancelReason: rpctypes.ErrCompacted.Error(),
+				}
+
+				select {
+				case sws.ctrlStream <- wr:
+					continue
+				case <-sws.closec:
+					return nil
+				}
+			}
 
 			err := sws.isWatchPermitted(creq)
 			if err != nil {
@@ -416,6 +435,7 @@ func (sws *serverWatchStream) sendLoop() {
 				return
 			}
 
+			start := time.Now()
 			// TODO: evs is []mvccpb.Event type
 			// either return []*mvccpb.Event from the mvcc package
 			// or define protocol buffer with []mvccpb.Event.
@@ -486,11 +506,15 @@ func (sws *serverWatchStream) sendLoop() {
 			}
 			sws.mu.Unlock()
 
+			totalDur := time.Since(start)
+			watchSendLoopWatchStreamDuration.Observe(totalDur.Seconds())
+			watchSendLoopWatchStreamDurationPerEvent.Observe(totalDur.Seconds() / float64(len(evs)))
+
 		case c, ok := <-sws.ctrlStream:
 			if !ok {
 				return
 			}
-
+			start := time.Now()
 			if err := sws.gRPCStream.Send(c); err != nil {
 				if isClientCtxErr(sws.gRPCStream.Context().Err(), err) {
 					sws.lg.Debug("failed to send watch control response to gRPC stream", zap.Error(err))
@@ -528,7 +552,11 @@ func (sws *serverWatchStream) sendLoop() {
 				delete(pending, wid)
 			}
 
+			watchSendLoopControlStreamDuration.Observe(time.Since(start).Seconds())
+
 		case <-progressTicker.C:
+			start := time.Now()
+
 			sws.mu.Lock()
 			for id, ok := range sws.progress {
 				if ok {
@@ -537,6 +565,7 @@ func (sws *serverWatchStream) sendLoop() {
 				sws.progress[id] = true
 			}
 			sws.mu.Unlock()
+			watchSendLoopProgressDuration.Observe(time.Since(start).Seconds())
 
 		case <-sws.closec:
 			return
@@ -545,7 +574,7 @@ func (sws *serverWatchStream) sendLoop() {
 }
 
 func IsCreateEvent(e mvccpb.Event) bool {
-	return e.Type == mvccpb.PUT && e.Kv.CreateRevision == e.Kv.ModRevision
+	return e.Type == mvccpb.Event_PUT && e.Kv.CreateRevision == e.Kv.ModRevision
 }
 
 func sendFragments(
@@ -604,11 +633,11 @@ func (sws *serverWatchStream) newResponseHeader(rev int64) *pb.ResponseHeader {
 }
 
 func filterNoDelete(e mvccpb.Event) bool {
-	return e.Type == mvccpb.DELETE
+	return e.Type == mvccpb.Event_DELETE
 }
 
 func filterNoPut(e mvccpb.Event) bool {
-	return e.Type == mvccpb.PUT
+	return e.Type == mvccpb.Event_PUT
 }
 
 // FiltersFromRequest returns "mvcc.FilterFunc" from a given watch create request.

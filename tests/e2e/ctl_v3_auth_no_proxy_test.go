@@ -113,7 +113,7 @@ func TestCtlV3AuthCertCNWithWithConcurrentOperation(t *testing.T) {
 			key := fmt.Sprintf("key-%d", i)
 			value := fmt.Sprintf("value-%d", i)
 
-			if err := epcClient.Put(ctx, key, value, config.PutOptions{}); err != nil {
+			if _, err := epcClient.Put(ctx, key, value, config.PutOptions{}); err != nil {
 				errs <- fmt.Errorf("failed to put key %q: %w", key, err)
 				break
 			}

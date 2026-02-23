@@ -27,12 +27,12 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/mirror"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestMirrorSync_Authenticated(t *testing.T) {
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	initialClient := clus.Client(0)
@@ -54,11 +54,11 @@ func TestMirrorSync_Authenticated(t *testing.T) {
 	cfg := clientv3.Config{
 		Endpoints:   initialClient.Endpoints(),
 		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		Username:    "syncer",
 		Password:    "syncfoo",
 	}
-	syncClient, err := integration2.NewClient(t, cfg)
+	syncClient, err := integration.NewClient(t, cfg)
 	require.NoError(t, err)
 	defer syncClient.Close()
 

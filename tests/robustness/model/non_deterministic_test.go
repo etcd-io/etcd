@@ -544,6 +544,11 @@ func TestModelResponseMatch(t *testing.T) {
 			expectMatch: false,
 		},
 		{
+			resp1:       putResponseWithMemberID(2, 1),
+			resp2:       putResponseWithMemberID(2, 2),
+			expectMatch: true,
+		},
+		{
 			resp1:       failedResponse(errors.New("failed request")),
 			resp2:       MaybeEtcdResponse{Persisted: true},
 			expectMatch: true,

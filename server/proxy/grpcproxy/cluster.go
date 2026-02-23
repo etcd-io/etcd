@@ -45,6 +45,9 @@ type clusterProxy struct {
 
 	umu  sync.RWMutex
 	umap map[string]endpoints.Endpoint
+
+	// we want compile errors if new methods are added
+	pb.UnsafeClusterServer
 }
 
 // NewClusterProxy takes optional prefix to fetch grpc-proxy member endpoints.
@@ -143,7 +146,7 @@ func (cp *clusterProxy) membersFromUpdates() ([]*pb.Member, error) {
 	defer cp.umu.RUnlock()
 	mbs := make([]*pb.Member, 0, len(cp.umap))
 	for _, upt := range cp.umap {
-		m, err := decodeMeta(fmt.Sprint(upt.Metadata))
+		m, err := decodeMeta(fmt.Sprint(upt.Metadata)) //nolint:staticcheck // TODO: remove for a supported version
 		if err != nil {
 			return nil, err
 		}

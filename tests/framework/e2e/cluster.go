@@ -16,7 +16,6 @@ package e2e
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"maps"
@@ -834,19 +833,21 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 		return fmt.Errorf("failed to find member ID: %w", err)
 	}
 
+	sleepDuration := 500 * time.Millisecond
+	maxRetries := int((2 * etcdserver.HealthInterval) / sleepDuration)
 	memberRemoved := false
-	for i := 0; i < 10; i++ {
+	for i := 0; i < maxRetries; i++ {
 		_, err := memberCtl.MemberRemove(ctx, memberID)
 		if err != nil && strings.Contains(err.Error(), "member not found") {
 			memberRemoved = true
 			break
 		}
 
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(sleepDuration)
 	}
 
 	if !memberRemoved {
-		return errors.New("failed to remove member after 10 tries")
+		return fmt.Errorf("failed to remove member after %d tries", maxRetries)
 	}
 
 	epc.lg.Info("successfully removed member", zap.String("acurl", proc.Config().ClientURL))

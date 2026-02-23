@@ -13,16 +13,16 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@3a9db7e6a41a89f618792c92c0e97cc736e1b13f #v10.0.0
+      - uses: actions/stale@997185467fa4f803885201cee163a9f38240193d #v10.1.1
         with:
-          days-until-stale: 90
-          days-until-close: 21
+          days-before-stale: 90
+          days-before-close: 21
           stale-issue-label: 'stale'
           stale-pr-label: 'stale'
-          exempt-labels: 'stage/tracked,help wanted'
-          exempt-projects: false
-          exempt-milestones: false
-          exempt-assignees: false
+          exempt-issue-labels: 'stage/tracked,help wanted'
+          exempt-pr-labels: 'stage/tracked,help wanted'
+          exempt-milestones: ''
+          exempt-assignees: ''
           stale-issue-message: 'This issue has been automatically marked as stale because it has not had recent activity. It will be closed after 21 days if no further activity occurs. Thank you for your contributions.'
           stale-pr-message: 'This pull request has been automatically marked as stale because it has not had recent activity. It will be closed after 21 days if no further activity occurs. Thank you for your contributions.'
           close-issue-message: ''

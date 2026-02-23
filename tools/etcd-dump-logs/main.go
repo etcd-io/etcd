@@ -28,7 +28,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"go.uber.org/zap"
 
@@ -127,7 +126,8 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		if *startIndex > 0 {
 			*startIndex--
 		}
-		walsnap.Index = *startIndex
+		index := *startIndex
+		walsnap.Index = &index
 	} else {
 		if *snapfile == "" {
 			ss := snap.New(lg, snapDir(dataDir))
@@ -138,7 +138,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 
 		switch {
 		case err == nil:
-			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+			walsnap.Index, walsnap.Term = new(snapshot.Metadata.Index), new(snapshot.Metadata.Term)
 			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
 
 			confStateJSON, merr := json.Marshal(snapshot.Metadata.ConfState)
@@ -200,8 +200,8 @@ func snapDir(dataDir string) string { return filepath.Join(dataDir, "member", "s
 func parseWALMetadata(b []byte) (id, cid types.ID) {
 	var metadata etcdserverpb.Metadata
 	pbutil.MustUnmarshal(&metadata, b)
-	id = types.ID(metadata.NodeID)
-	cid = types.ID(metadata.ClusterID)
+	id = types.ID(metadata.GetNodeID())
+	cid = types.ID(metadata.GetClusterID())
 	return id, cid
 }
 
@@ -211,15 +211,6 @@ func genIDSlice(a []uint64) []types.ID {
 		ids[i] = types.ID(id)
 	}
 	return ids
-}
-
-// excerpt replaces middle part with ellipsis and returns a double-quoted
-// string safely escaped with Go syntax.
-func excerpt(str string, pre, suf int) string {
-	if pre+suf > len(str) {
-		return fmt.Sprintf("%q", str)
-	}
-	return fmt.Sprintf("%q...%q", str[:pre], str[len(str)-suf:])
 }
 
 type EntryFilter func(e raftpb.Entry) (bool, string)
@@ -236,9 +227,8 @@ func passInternalRaftRequest(entry raftpb.Entry) (bool, string) {
 }
 
 func passUnknownNormal(entry raftpb.Entry) (bool, string) {
-	var rr1 etcdserverpb.Request
 	var rr2 etcdserverpb.InternalRaftRequest
-	return (entry.Type == raftpb.EntryNormal) && (rr1.Unmarshal(entry.Data) != nil) && (rr2.Unmarshal(entry.Data) != nil), "UnknownNormal"
+	return (entry.Type == raftpb.EntryNormal) && (rr2.Unmarshal(entry.Data) != nil), "UnknownNormal"
 }
 
 func passIRRRange(entry raftpb.Entry) (bool, string) {
@@ -282,9 +272,8 @@ func passIRRLeaseCheckpoint(entry raftpb.Entry) (bool, string) {
 }
 
 func passRequest(entry raftpb.Entry) (bool, string) {
-	var rr1 etcdserverpb.Request
 	var rr2 etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr1.Unmarshal(entry.Data) == nil && rr2.Unmarshal(entry.Data) != nil, "Request"
+	return entry.Type == raftpb.EntryNormal && rr2.Unmarshal(entry.Data) != nil, "Request"
 }
 
 type EntryPrinter func(e raftpb.Entry)
@@ -316,23 +305,6 @@ func printConfChange(entry raftpb.Entry) {
 		fmt.Print("\t???")
 	} else {
 		fmt.Printf("\tmethod=%s id=%s", r.Type, types.ID(r.NodeID))
-	}
-}
-
-func printRequest(entry raftpb.Entry) {
-	var r etcdserverpb.Request
-	if err := r.Unmarshal(entry.Data); err == nil {
-		fmt.Printf("%4d\t%10d\tnorm", entry.Term, entry.Index)
-		switch r.Method {
-		case "":
-			fmt.Print("\tnoop")
-		case methodSync:
-			fmt.Printf("\tmethod=SYNC time=%q", time.Unix(0, r.Time).UTC())
-		case methodQGet, methodDelete:
-			fmt.Printf("\tmethod=%s path=%s", r.Method, excerpt(r.Path, 64, 64))
-		default:
-			fmt.Printf("\tmethod=%s path=%s val=%s", r.Method, excerpt(r.Path, 64, 64), excerpt(r.Val, 128, 0))
-		}
 	}
 }
 
@@ -378,7 +350,6 @@ func listEntriesType(entrytype string, streamdecoder string, ents []raftpb.Entry
 	entryFilters := evaluateEntrytypeFlag(entrytype)
 	printerMap := map[string]EntryPrinter{
 		"InternalRaftRequest": printInternalRaftRequest,
-		"Request":             printRequest,
 		"ConfigChange":        printConfChange,
 		"UnknownNormal":       printUnknownNormal,
 	}

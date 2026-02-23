@@ -4,7 +4,53 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.6 (TBA)
+## v3.6.9 (TBC)
+
+---
+
+## v3.6.8 (2026-02-13)
+
+### etcd server
+
+- [Postpone removal of the --max-snapshots flag from v3.7 to v3.8](https://github.com/etcd-io/etcd/pull/21161)
+- [Revoke the deprecation of the `--snapshot-count` flag](https://github.com/etcd-io/etcd/pull/21163)
+
+### Package `clientv3`
+
+- [Remove the use of grpc-go's Metadata field](https://github.com/etcd-io/etcd/pull/21241)
+
+### Dependencies
+
+- Bump [golang.org/x/crypto to 0.45.0 to address CVE-2025-47914, and CVE-2025-58181](https://github.com/etcd-io/etcd/pull/21037).
+- Compile binaries using [go 1.24.13](https://github.com/etcd-io/etcd/pull/21266). This addresses [CVE-2025-61726](https://github.com/advisories/GHSA-gm9r-q53w-2gh4), [CVE-2025-61731](https://github.com/advisories/GHSA-xvqr-69v8-f3gv), and [CVE-2025-61732](https://github.com/advisories/GHSA-8jvr-vh7g-f8gx).
+
+---
+
+## v3.6.7 (2025-12-17)
+
+### etcd server
+
+- [Print token fingerprint instead of the original tokens in log messages](https://github.com/etcd-io/etcd/pull/20941)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.11](https://github.com/etcd-io/etcd/pull/20998).
+
+---
+
+## v3.6.6 (2025-11-11)
+
+### etcd server
+
+- [Reject watch request with -1 revision to prevent invalid resync behavior on uncompacted etcd](https://github.com/etcd-io/etcd/pull/20707)
+- [Change the TLS handshake 'EOF' errors to DEBUG not to spam logs](https://github.com/etcd-io/etcd/pull/20749)
+- Fix [endpoint status not retuning the correct storage quota](https://github.com/etcd-io/etcd/pull/20790)
+- Fix [`--force-new-cluster can't clean up learners after creating snapshot`](https://github.com/etcd-io/etcd/pull/20896)
+- Fix [duplicate metrics collector registration that caused warning messages](https://github.com/etcd-io/etcd/pull/20905)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.10](https://github.com/etcd-io/etcd/pull/20901).
 
 ---
 

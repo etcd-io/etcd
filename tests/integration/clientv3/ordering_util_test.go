@@ -23,15 +23,15 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/ordering"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestEndpointSwitchResolvesViolation ensures
 // - ErrNoGreaterRev error is returned from partitioned member when it has stale revision
 // - no more error after partition recovers
 func TestEndpointSwitchResolvesViolation(t *testing.T) {
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	eps := []string{
 		clus.Members[0].GRPCURL,
@@ -39,7 +39,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 		clus.Members[2].GRPCURL,
 	}
 	cfg := clientv3.Config{Endpoints: []string{clus.Members[0].GRPCURL}}
-	cli, err := integration2.NewClient(t, cfg)
+	cli, err := integration.NewClient(t, cfg)
 	require.NoError(t, err)
 	defer cli.Close()
 
@@ -87,8 +87,8 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 
 // TestUnresolvableOrderViolation ensures ErrNoGreaterRev error is returned when available members only have stale revisions
 func TestUnresolvableOrderViolation(t *testing.T) {
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 5, UseBridge: true})
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 5, UseBridge: true})
 	defer clus.Terminate(t)
 	cfg := clientv3.Config{
 		Endpoints: []string{
@@ -99,7 +99,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 			clus.Members[4].GRPCURL,
 		},
 	}
-	cli, err := integration2.NewClient(t, cfg)
+	cli, err := integration.NewClient(t, cfg)
 	require.NoError(t, err)
 	defer cli.Close()
 	eps := cli.Endpoints()

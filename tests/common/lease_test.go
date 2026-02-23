@@ -132,7 +132,7 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 				leaseResp, err := cc.Grant(ctx, 2)
 				require.NoError(t, err)
 
-				err = cc.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: leaseResp.ID})
+				_, err = cc.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: leaseResp.ID})
 				require.NoError(t, err)
 
 				getResp, err := cc.Get(ctx, "foo", config.GetOptions{})
@@ -143,7 +143,7 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 				// back to follower and ignores the lease revoking.
 				// The new leader will restart TTL counting. If so,
 				// we should call time.Sleep again and wait for revoking.
-				// It can't avoid flakey but reduce flakey possiblility.
+				// It can't avoid flakey but reduce flakey possibility.
 				for i := 0; i < 3; i++ {
 					currentLeader := clus.WaitLeader(t)
 					t.Logf("[%d] current leader index %d", i, currentLeader)
@@ -192,7 +192,7 @@ func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 				// back to follower and ignores the lease revoking.
 				// The new leader will restart TTL counting. If so,
 				// we should call time.Sleep again and wait for revoking.
-				// It can't avoid flakey but reduce flakey possiblility.
+				// It can't avoid flakey but reduce flakey possibility.
 				for i := 0; i < 3; i++ {
 					currentLeader := clus.WaitLeader(t)
 					t.Logf("[%d] current leader index %d", i, currentLeader)
@@ -230,7 +230,7 @@ func TestLeaseGrantRevoke(t *testing.T) {
 				leaseResp, err := cc.Grant(ctx, 20)
 				require.NoError(t, err)
 
-				err = cc.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: leaseResp.ID})
+				_, err = cc.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: leaseResp.ID})
 				require.NoError(t, err)
 
 				getResp, err := cc.Get(ctx, "foo", config.GetOptions{})

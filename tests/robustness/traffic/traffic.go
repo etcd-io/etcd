@@ -24,11 +24,11 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
-	"go.etcd.io/etcd/tests/v3/robustness/options"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
@@ -36,9 +36,10 @@ import (
 var (
 	DefaultLeaseTTL         int64 = 7200
 	RequestTimeout                = 200 * time.Millisecond
-	WatchTimeout                  = time.Second
+	WatchTimeout                  = 500 * time.Millisecond
 	MultiOpTxnOpCount             = 4
 	DefaultCompactionPeriod       = 200 * time.Millisecond
+	DefaultRevisionOffset         = int64(100)
 
 	LowTraffic = Profile{
 		MinimalQPS:                     100,
@@ -73,6 +74,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	finish := make(chan struct{})
 
 	keyStore := NewKeyStore(10, "key")
+	kubernetesStorage := NewKubernetesStorage()
 
 	lg.Info("Start traffic")
 	startTime := time.Since(clientSet.BaseTime())
@@ -85,13 +87,14 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.RunTrafficLoop(ctx, RunTrafficLoopParam{
+			traffic.RunKeyValueLoop(ctx, RunTrafficLoopParam{
 				Client:                             c,
 				QPSLimiter:                         limiter,
 				IDs:                                clientSet.IdentityProvider(),
 				LeaseIDStorage:                     lm,
 				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
 				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
 				Finish:                             finish,
 			})
 		}(c)
@@ -105,16 +108,53 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.RunTrafficLoop(ctx, RunTrafficLoopParam{
+			traffic.RunKeyValueLoop(ctx, RunTrafficLoopParam{
 				Client:                             c,
 				QPSLimiter:                         limiter,
 				IDs:                                clientSet.IdentityProvider(),
 				LeaseIDStorage:                     lm,
 				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
 				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
 				Finish:                             finish,
 			})
 		}(c)
+	}
+	if !profile.ForbidRunWatchLoop {
+		for i := range profile.MemberClientCount {
+			wg.Add(1)
+			c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
+			require.NoError(t, nerr)
+			go func(c *client.RecordingClient) {
+				defer wg.Done()
+				defer c.Close()
+				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
+					Client:     c,
+					QPSLimiter: limiter,
+					KeyStore:   keyStore,
+					Storage:    kubernetesStorage,
+					Finish:     finish,
+					Logger:     lg,
+				})
+			}(c)
+		}
+		for range profile.ClusterClientCount {
+			wg.Add(1)
+			c, nerr := clientSet.NewClient(endpoints)
+			require.NoError(t, nerr)
+			go func(c *client.RecordingClient) {
+				defer wg.Done()
+				defer c.Close()
+				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
+					Client:     c,
+					QPSLimiter: limiter,
+					KeyStore:   keyStore,
+					Storage:    kubernetesStorage,
+					Finish:     finish,
+					Logger:     lg,
+				})
+			}(c)
+		}
 	}
 	if !profile.ForbidCompaction {
 		wg.Add(1)
@@ -296,7 +336,7 @@ type Profile struct {
 	ClusterClientCount             int
 	ForbidCompaction               bool
 	CompactPeriod                  time.Duration
-	options.BackgroundWatchConfig
+	ForbidRunWatchLoop             bool
 }
 
 func (p Profile) WithoutCompaction() Profile {
@@ -309,13 +349,8 @@ func (p Profile) WithCompactionPeriod(cp time.Duration) Profile {
 	return p
 }
 
-func (p Profile) WithBackgroundWatchConfigInterval(interval time.Duration) Profile {
-	p.BackgroundWatchConfig.Interval = interval
-	return p
-}
-
-func (p Profile) WithBackgroundWatchConfigRevisionOffset(offset int64) Profile {
-	p.BackgroundWatchConfig.RevisionOffset = offset
+func (p Profile) WithoutWatchLoop() Profile {
+	p.ForbidRunWatchLoop = true
 	return p
 }
 
@@ -326,6 +361,7 @@ type RunTrafficLoopParam struct {
 	LeaseIDStorage                     identity.LeaseIDStorage
 	NonUniqueRequestConcurrencyLimiter ConcurrencyLimiter
 	KeyStore                           *keyStore
+	Storage                            *storage
 	Finish                             <-chan struct{}
 }
 
@@ -335,10 +371,76 @@ type RunCompactLoopParam struct {
 	Finish <-chan struct{}
 }
 
+type RunWatchLoopParam struct {
+	Client     *client.RecordingClient
+	QPSLimiter *rate.Limiter
+	// TODO: merge 2 key stores into 1
+	KeyStore *keyStore
+	Storage  *storage
+	Finish   <-chan struct{}
+	Logger   *zap.Logger
+}
+
 type Traffic interface {
-	RunTrafficLoop(ctx context.Context, param RunTrafficLoopParam)
+	RunKeyValueLoop(ctx context.Context, param RunTrafficLoopParam)
+	RunWatchLoop(ctx context.Context, param RunWatchLoopParam)
 	RunCompactLoop(ctx context.Context, param RunCompactLoopParam)
 	ExpectUniqueRevision() bool
+}
+
+func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-p.Finish:
+			return
+		default:
+		}
+		err := p.QPSLimiter.Wait(ctx)
+		if err != nil {
+			return
+		}
+		// Client.get may fail when the blackhole is injected.
+		// We suppress logging for these expected failures to avoid polluting the logs.
+		_ = runWatch(ctx, p, cfg)
+	}
+}
+
+func runWatch(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) error {
+	getCtx, getCancel := context.WithTimeout(ctx, RequestTimeout)
+	defer getCancel()
+
+	resp, err := p.Client.Get(getCtx, cfg.key)
+	if err != nil {
+		return err
+	}
+	rev := resp.Header.Revision + DefaultRevisionOffset
+
+	watchCtx, watchCancel := context.WithTimeout(ctx, WatchTimeout)
+	defer watchCancel()
+
+	if cfg.requireLeader {
+		watchCtx = clientv3.WithRequireLeader(watchCtx)
+	}
+	w := p.Client.Watch(watchCtx, cfg.key, rev, true, true, true)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-p.Finish:
+			return nil
+		case _, ok := <-w:
+			if !ok {
+				return nil
+			}
+		}
+	}
+}
+
+type watchLoopConfig struct {
+	key           string
+	requireLeader bool
 }
 
 func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []string, cs *client.ClientSet) error {

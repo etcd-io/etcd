@@ -1,4 +1,4 @@
-// Copyright 2017 The etcd Lockors
+// Copyright 2017 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@ import (
 
 type lockProxy struct {
 	lockClient v3lockpb.LockClient
+	// we want compile errors if new methods are added
+	v3lockpb.UnsafeLockServer
 }
 
 func NewLockProxy(client *clientv3.Client) v3lockpb.LockServer {

@@ -29,8 +29,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
-	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	ptestutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -40,7 +38,6 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
-	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -52,12 +49,9 @@ import (
 	"go.etcd.io/etcd/pkg/v3/wait"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/config"
-	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
@@ -67,7 +61,6 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
-	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -83,8 +76,6 @@ func TestApplyRepeat(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -101,7 +92,6 @@ func TestApplyRepeat(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -150,97 +140,6 @@ type uberApplierMock struct{}
 
 func (uberApplierMock) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *apply2.Result {
 	return &apply2.Result{}
-}
-
-// TestV2SetMemberAttributes validates support of hybrid v3.5 cluster which still uses v2 request.
-// TODO: Remove in v3.7
-func TestV2SetMemberAttributes(t *testing.T) {
-	be, _ := betesting.NewDefaultTmpBackend(t)
-	defer betesting.Close(t, be)
-	cl := newTestClusterWithBackend(t, []*membership.Member{{ID: 1}}, be)
-
-	cfg := config.ServerConfig{
-		ServerFeatureGate: features.NewDefaultServerFeatureGate("test", nil),
-	}
-
-	srv := &EtcdServer{
-		lgMu:         new(sync.RWMutex),
-		lg:           zaptest.NewLogger(t),
-		v2store:      mockstore.NewRecorder(),
-		cluster:      cl,
-		consistIndex: cindex.NewConsistentIndex(be),
-		w:            wait.New(),
-		Cfg:          cfg,
-	}
-	as, err := v3alarm.NewAlarmStore(srv.lg, schema.NewAlarmBackend(srv.lg, be))
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv.alarmStore = as
-	srv.uberApply = srv.NewUberApplier()
-
-	req := pb.Request{
-		Method: "PUT",
-		ID:     1,
-		Path:   membership.MemberAttributesStorePath(1),
-		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:2379"]}`,
-	}
-	data, err := proto.Marshal(&req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv.applyEntryNormal(&raftpb.Entry{
-		Data: data,
-	}, membership.ApplyV2storeOnly)
-	w := membership.Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:2379"}}
-	if g := cl.Member(1).Attributes; !reflect.DeepEqual(g, w) {
-		t.Errorf("attributes = %v, want %v", g, w)
-	}
-}
-
-// TestV2SetClusterVersion validates support of hybrid v3.5 cluster which still uses v2 request.
-// TODO: Remove in v3.7
-func TestV2SetClusterVersion(t *testing.T) {
-	be, _ := betesting.NewDefaultTmpBackend(t)
-	defer betesting.Close(t, be)
-	cl := newTestClusterWithBackend(t, []*membership.Member{}, be)
-	cl.SetVersion(semver.New("3.4.0"), api.UpdateCapability, membership.ApplyBoth)
-	cfg := config.ServerConfig{
-		ServerFeatureGate: features.NewDefaultServerFeatureGate("test", nil),
-	}
-
-	srv := &EtcdServer{
-		lgMu:         new(sync.RWMutex),
-		lg:           zaptest.NewLogger(t),
-		v2store:      mockstore.NewRecorder(),
-		cluster:      cl,
-		consistIndex: cindex.NewConsistentIndex(be),
-		w:            wait.New(),
-		Cfg:          cfg,
-	}
-	as, err := v3alarm.NewAlarmStore(srv.lg, schema.NewAlarmBackend(srv.lg, be))
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv.alarmStore = as
-	srv.uberApply = srv.NewUberApplier()
-
-	req := pb.Request{
-		Method: "PUT",
-		ID:     1,
-		Path:   membership.StoreClusterVersionKey(),
-		Val:    "3.5.0",
-	}
-	data, err := proto.Marshal(&req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv.applyEntryNormal(&raftpb.Entry{
-		Data: data,
-	}, membership.ApplyV2storeOnly)
-	if g := cl.Version(); !reflect.DeepEqual(*g, version.V3_5) {
-		t.Errorf("attributes = %v, want %v", *g, version.V3_5)
-	}
 }
 
 func TestApplyConfStateWithRestart(t *testing.T) {
@@ -322,8 +221,15 @@ func TestApplyConfStateWithRestart(t *testing.T) {
 		t.Errorf("actions don't match\n got  %+v\n want %+v", got, want)
 	}
 
-	t.Log("Simulating etcd restart by clearing v2 store")
-	srv.cluster.SetStore(v2store.New())
+	t.Log("Simulating etcd restart by clearing v3 store")
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	t.Cleanup(func() {
+		betesting.Close(t, be)
+	})
+	lg := zaptest.NewLogger(t)
+	srv.cluster.SetBackend(schema.NewMembershipBackend(lg, be))
+	srv.beHooks = serverstorage.NewBackendHooks(lg, srv.consistIndex)
+	srv.consistIndex.SetBackend(be)
 
 	t.Log("Reapplying same entries after restart")
 	srv.apply(entries, &confState, nil)
@@ -346,7 +252,6 @@ func newServer(t *testing.T, recorder *nodeRecorder) *EtcdServer {
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.cluster.SetBackend(schema.NewMembershipBackend(lg, be))
-	srv.cluster.SetStore(v2store.New())
 	srv.beHooks = serverstorage.NewBackendHooks(lg, srv.consistIndex)
 	srv.r.transport = newNopTransporter()
 	srv.w = mockwait.NewNop()
@@ -360,7 +265,6 @@ func TestApplyConfChangeError(t *testing.T) {
 
 	cl := membership.NewCluster(lg)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
-	cl.SetStore(v2store.New())
 
 	for i := 1; i <= 4; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
@@ -454,7 +358,6 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 
 	cl := membership.NewCluster(lg)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
-	cl.SetStore(v2store.New())
 
 	for i := 1; i <= 3; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
@@ -504,7 +407,6 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	defer betesting.Close(t, be)
 
 	cl := membership.NewCluster(zaptest.NewLogger(t))
-	cl.SetStore(v2store.New())
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
@@ -592,7 +494,6 @@ func realisticRaftNode(lg *zap.Logger, id uint64, snap *raftpb.Snapshot) *raftNo
 func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	cl := membership.NewCluster(lg)
-	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -661,7 +562,6 @@ func TestSnapshotDisk(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
@@ -712,7 +612,6 @@ func TestSnapshotMemory(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
@@ -750,7 +649,6 @@ func TestSnapshotOrdering(t *testing.T) {
 
 	lg := zaptest.NewLogger(t)
 	n := newNopReadyNode()
-	st := v2store.New()
 	cl := membership.NewCluster(lg)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -786,7 +684,6 @@ func TestSnapshotOrdering(t *testing.T) {
 		lg:           lg,
 		Cfg:          cfg,
 		r:            *r,
-		v2store:      st,
 		snapshotter:  snap.New(lg, snapdir),
 		cluster:      cl,
 		consistIndex: ci,
@@ -848,9 +745,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 
 	lg := zaptest.NewLogger(t)
 	n := newNopReadyNode()
-	st := v2store.New()
 	cl := membership.NewCluster(lg)
-	cl.SetStore(st)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
@@ -880,7 +775,6 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 			ServerFeatureGate:      features.NewDefaultServerFeatureGate("test", lg),
 		},
 		r:                 *r,
-		v2store:           st,
 		snapshotter:       snap.New(lg, testdir),
 		cluster:           cl,
 		consistIndex:      ci,
@@ -957,8 +851,6 @@ func TestAddMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(st)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -974,7 +866,6 @@ func TestAddMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -1003,8 +894,6 @@ func TestAddMember(t *testing.T) {
 func TestProcessIgnoreMismatchMessage(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(st)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -1030,7 +919,6 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 		lg:           lg,
 		memberID:     1,
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -1061,8 +949,6 @@ func TestRemoveMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -1079,7 +965,6 @@ func TestRemoveMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -1112,8 +997,6 @@ func TestUpdateMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(st)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
@@ -1127,7 +1010,6 @@ func TestUpdateMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -1505,17 +1387,6 @@ func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange
 
 func newTestCluster(tb testing.TB) *membership.RaftCluster {
 	return membership.NewCluster(zaptest.NewLogger(tb))
-}
-
-func newTestClusterWithBackend(tb testing.TB, membs []*membership.Member, be backend.Backend) *membership.RaftCluster {
-	lg := zaptest.NewLogger(tb)
-	c := membership.NewCluster(lg)
-	c.SetStore(v2store.New())
-	c.SetBackend(schema.NewMembershipBackend(lg, be))
-	for _, m := range membs {
-		c.AddMember(m, true)
-	}
-	return c
 }
 
 type nopTransporter struct{}

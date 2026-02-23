@@ -96,18 +96,14 @@ fuzz:
 
 # Static analysis
 .PHONY: verify
-verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
-	verify-govet verify-license-header verify-mod-tidy \
+verify: verify-bom verify-lint verify-dep verify-shellcheck verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
-	verify-govet-shadow verify-markdown-marker verify-go-versions
+	verify-markdown-marker verify-go-versions verify-gomodguard \
+	verify-go-workspace verify-grpc-experimental
 
 .PHONY: fix
-fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive
-	./scripts/fix.sh
-
-.PHONY: verify-gofmt
-verify-gofmt:
-	PASSES="gofmt" ./scripts/test.sh
+fix: fix-mod-tidy fix-bom fix-lint fix-yamllint sync-toolchain-directive \
+	update-go-workspace fix-shell-ws
 
 .PHONY: verify-bom
 verify-bom:
@@ -126,32 +122,28 @@ verify-lint: install-golangci-lint
 	PASSES="lint" ./scripts/test.sh
 
 .PHONY: fix-lint
-fix-lint:
+fix-lint: install-golangci-lint
 	PASSES="lint_fix" ./scripts/test.sh
 
 .PHONY: verify-shellcheck
 verify-shellcheck:
 	PASSES="shellcheck" ./scripts/test.sh
 
-.PHONY: verify-goword
-verify-goword:
-	PASSES="goword" ./scripts/test.sh
-
-.PHONY: verify-govet
-verify-govet:
-	PASSES="govet" ./scripts/test.sh
-
-.PHONY: verify-license-header
-verify-license-header:
-	PASSES="license_header" ./scripts/test.sh
-
 .PHONY: verify-mod-tidy
 verify-mod-tidy:
 	PASSES="mod_tidy" ./scripts/test.sh
 
+.PHONY: fix-mod-tidy
+fix-mod-tidy:
+	./scripts/fix/mod-tidy.sh
+
 .PHONY: verify-shellws
 verify-shellws:
 	PASSES="shellws" ./scripts/test.sh
+
+.PHONY: fix-shell-ws
+fix-shell-ws:
+	./scripts/fix/shell_ws.sh
 
 .PHONY: verify-proto-annotations
 verify-proto-annotations:
@@ -175,22 +167,13 @@ else
 	yamllint --config-file tools/.yamllint .
 endif
 
-.PHONY: verify-govet-shadow
-verify-govet-shadow:
-	PASSES="govet_shadow" ./scripts/test.sh
-
 .PHONY: verify-markdown-marker
 verify-markdown-marker:
 	PASSES="markdown_marker" ./scripts/test.sh
 
-YAMLFMT_VERSION = $(shell cd tools/mod && go list -m -f '{{.Version}}' github.com/google/yamlfmt)
-
 .PHONY: fix-yamllint
 fix-yamllint:
-ifeq (, $(shell command -v yamlfmt))
-	$(shell go install github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_VERSION))
-endif
-	yamlfmt -conf tools/.yamlfmt .
+	./scripts/fix/yamllint.sh
 
 .PHONY: run-govulncheck
 run-govulncheck:
@@ -233,6 +216,18 @@ clean:
 verify-go-versions:
 	./scripts/verify_go_versions.sh
 
+.PHONY: verify-gomodguard
+verify-gomodguard:
+	PASSES="gomodguard" ./scripts/test.sh
+
+.PHONY: verify-go-workspace
+verify-go-workspace:
+	PASSES="go_workspace" ./scripts/test.sh
+
+.PHONY: verify-grpc-experimental
+verify-grpc-experimental:
+	./scripts/verify_grpc_experimental.sh
+
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
 	./scripts/sync_go_toolchain_directive.sh
@@ -240,3 +235,7 @@ sync-toolchain-directive:
 .PHONY: markdown-diff-lint
 markdown-diff-lint:
 	./scripts/markdown_diff_lint.sh
+
+.PHONY: update-go-workspace
+update-go-workspace:
+	./scripts/update_go_workspace.sh

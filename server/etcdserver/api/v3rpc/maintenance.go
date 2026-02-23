@@ -32,6 +32,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
+	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -88,6 +89,9 @@ type maintenanceServer struct {
 	cg     ConfigGetter
 
 	healthNotifier notifier
+
+	// we want compile errors if new methods are added
+	pb.UnsafeMaintenanceServer
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer, healthNotifier notifier) pb.MaintenanceServer {
@@ -269,6 +273,9 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 		IsLearner:        ms.cs.IsLearner(),
 		DbSizeQuota:      ms.cg.Config().QuotaBackendBytes,
 		DowngradeInfo:    &pb.DowngradeInfo{Enabled: false},
+	}
+	if resp.DbSizeQuota == 0 {
+		resp.DbSizeQuota = storage.DefaultQuotaBytes
 	}
 	if storageVersion := ms.vs.GetStorageVersion(); storageVersion != nil {
 		resp.StorageVersion = storageVersion.String()

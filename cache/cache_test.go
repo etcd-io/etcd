@@ -36,153 +36,153 @@ func TestCacheWatchAtomicOrderedDelivery(t *testing.T) {
 		{
 			name: "single_event",
 			sentBatches: [][]*clientv3.Event{
-				{event(mvccpb.PUT, "/a", 5)},
+				{event(mvccpb.Event_PUT, "/a", 5)},
 			},
 			wantBatch: []*clientv3.Event{
-				event(mvccpb.PUT, "/a", 5),
+				event(mvccpb.Event_PUT, "/a", 5),
 			},
 		},
 		{
 			name: "same_revision_batch",
 			sentBatches: [][]*clientv3.Event{
 				{
-					event(mvccpb.PUT, "/a", 10),
-					event(mvccpb.PUT, "/b", 10),
+					event(mvccpb.Event_PUT, "/a", 10),
+					event(mvccpb.Event_PUT, "/b", 10),
 				},
 			},
 			wantBatch: []*clientv3.Event{
-				event(mvccpb.PUT, "/a", 10),
-				event(mvccpb.PUT, "/b", 10),
+				event(mvccpb.Event_PUT, "/a", 10),
+				event(mvccpb.Event_PUT, "/b", 10),
 			},
 		},
 		{
 			name: "mixed_revisions_in_single_response",
 			sentBatches: [][]*clientv3.Event{
 				{
-					event(mvccpb.PUT, "/a", 11),
-					event(mvccpb.PUT, "/b", 11),
-					event(mvccpb.PUT, "/c", 12),
+					event(mvccpb.Event_PUT, "/a", 11),
+					event(mvccpb.Event_PUT, "/b", 11),
+					event(mvccpb.Event_PUT, "/c", 12),
 				},
 			},
 			wantBatch: []*clientv3.Event{
-				event(mvccpb.PUT, "/a", 11),
-				event(mvccpb.PUT, "/b", 11),
-				event(mvccpb.PUT, "/c", 12),
+				event(mvccpb.Event_PUT, "/a", 11),
+				event(mvccpb.Event_PUT, "/b", 11),
+				event(mvccpb.Event_PUT, "/c", 12),
 			},
 		},
 		{
 			name: "mixed_event_types_same_revision",
 			sentBatches: [][]*clientv3.Event{
 				{
-					event(mvccpb.PUT, "/x", 5),
-					event(mvccpb.PUT, "/y", 6),
-					event(mvccpb.DELETE, "/x", 6),
+					event(mvccpb.Event_PUT, "/x", 5),
+					event(mvccpb.Event_PUT, "/y", 6),
+					event(mvccpb.Event_DELETE, "/x", 6),
 				},
 			},
 			wantBatch: []*clientv3.Event{
-				event(mvccpb.PUT, "/x", 5),
-				event(mvccpb.PUT, "/y", 6),
-				event(mvccpb.DELETE, "/x", 6),
+				event(mvccpb.Event_PUT, "/x", 5),
+				event(mvccpb.Event_PUT, "/y", 6),
+				event(mvccpb.Event_DELETE, "/x", 6),
 			},
 		},
 		{
 			name: "all_events_in_one_response",
 			sentBatches: [][]*clientv3.Event{
 				{
-					event(mvccpb.PUT, "/a", 2),
-					event(mvccpb.PUT, "/b", 2),
-					event(mvccpb.PUT, "/c", 3),
-					event(mvccpb.PUT, "/d", 4),
-					event(mvccpb.PUT, "/e", 4),
-					event(mvccpb.PUT, "/f", 5),
-					event(mvccpb.PUT, "/g", 6),
-					event(mvccpb.PUT, "/h", 6),
-					event(mvccpb.PUT, "/i", 7),
-					event(mvccpb.PUT, "/j", 7),
+					event(mvccpb.Event_PUT, "/a", 2),
+					event(mvccpb.Event_PUT, "/b", 2),
+					event(mvccpb.Event_PUT, "/c", 3),
+					event(mvccpb.Event_PUT, "/d", 4),
+					event(mvccpb.Event_PUT, "/e", 4),
+					event(mvccpb.Event_PUT, "/f", 5),
+					event(mvccpb.Event_PUT, "/g", 6),
+					event(mvccpb.Event_PUT, "/h", 6),
+					event(mvccpb.Event_PUT, "/i", 7),
+					event(mvccpb.Event_PUT, "/j", 7),
 				},
 			},
 			wantBatch: []*clientv3.Event{
-				event(mvccpb.PUT, "/a", 2),
-				event(mvccpb.PUT, "/b", 2),
-				event(mvccpb.PUT, "/c", 3),
-				event(mvccpb.PUT, "/d", 4),
-				event(mvccpb.PUT, "/e", 4),
-				event(mvccpb.PUT, "/f", 5),
-				event(mvccpb.PUT, "/g", 6),
-				event(mvccpb.PUT, "/h", 6),
-				event(mvccpb.PUT, "/i", 7),
-				event(mvccpb.PUT, "/j", 7),
+				event(mvccpb.Event_PUT, "/a", 2),
+				event(mvccpb.Event_PUT, "/b", 2),
+				event(mvccpb.Event_PUT, "/c", 3),
+				event(mvccpb.Event_PUT, "/d", 4),
+				event(mvccpb.Event_PUT, "/e", 4),
+				event(mvccpb.Event_PUT, "/f", 5),
+				event(mvccpb.Event_PUT, "/g", 6),
+				event(mvccpb.Event_PUT, "/h", 6),
+				event(mvccpb.Event_PUT, "/i", 7),
+				event(mvccpb.Event_PUT, "/j", 7),
 			},
 		},
 		{
 			name: "one_revision_group_per_response",
 			sentBatches: [][]*clientv3.Event{
-				{event(mvccpb.PUT, "/a", 2), event(mvccpb.PUT, "/b", 2)},
-				{event(mvccpb.PUT, "/c", 3)},
-				{event(mvccpb.PUT, "/d", 4), event(mvccpb.PUT, "/e", 4)},
-				{event(mvccpb.PUT, "/f", 5)},
-				{event(mvccpb.PUT, "/g", 6), event(mvccpb.PUT, "/h", 6)},
-				{event(mvccpb.PUT, "/i", 7), event(mvccpb.PUT, "/j", 7)},
+				{event(mvccpb.Event_PUT, "/a", 2), event(mvccpb.Event_PUT, "/b", 2)},
+				{event(mvccpb.Event_PUT, "/c", 3)},
+				{event(mvccpb.Event_PUT, "/d", 4), event(mvccpb.Event_PUT, "/e", 4)},
+				{event(mvccpb.Event_PUT, "/f", 5)},
+				{event(mvccpb.Event_PUT, "/g", 6), event(mvccpb.Event_PUT, "/h", 6)},
+				{event(mvccpb.Event_PUT, "/i", 7), event(mvccpb.Event_PUT, "/j", 7)},
 			},
 			wantBatch: []*clientv3.Event{
-				event(mvccpb.PUT, "/a", 2),
-				event(mvccpb.PUT, "/b", 2),
-				event(mvccpb.PUT, "/c", 3),
-				event(mvccpb.PUT, "/d", 4),
-				event(mvccpb.PUT, "/e", 4),
-				event(mvccpb.PUT, "/f", 5),
-				event(mvccpb.PUT, "/g", 6),
-				event(mvccpb.PUT, "/h", 6),
-				event(mvccpb.PUT, "/i", 7),
-				event(mvccpb.PUT, "/j", 7),
+				event(mvccpb.Event_PUT, "/a", 2),
+				event(mvccpb.Event_PUT, "/b", 2),
+				event(mvccpb.Event_PUT, "/c", 3),
+				event(mvccpb.Event_PUT, "/d", 4),
+				event(mvccpb.Event_PUT, "/e", 4),
+				event(mvccpb.Event_PUT, "/f", 5),
+				event(mvccpb.Event_PUT, "/g", 6),
+				event(mvccpb.Event_PUT, "/h", 6),
+				event(mvccpb.Event_PUT, "/i", 7),
+				event(mvccpb.Event_PUT, "/j", 7),
 			},
 		},
 		{
 			name: "two_revision_groups_per_response",
 			sentBatches: [][]*clientv3.Event{
-				{event(mvccpb.PUT, "/a", 2), event(mvccpb.PUT, "/b", 2), event(mvccpb.PUT, "/c", 3)},
-				{event(mvccpb.PUT, "/d", 4), event(mvccpb.PUT, "/e", 4), event(mvccpb.PUT, "/f", 5)},
-				{event(mvccpb.PUT, "/g", 6), event(mvccpb.PUT, "/h", 6)},
-				{event(mvccpb.PUT, "/i", 7), event(mvccpb.PUT, "/j", 7)},
+				{event(mvccpb.Event_PUT, "/a", 2), event(mvccpb.Event_PUT, "/b", 2), event(mvccpb.Event_PUT, "/c", 3)},
+				{event(mvccpb.Event_PUT, "/d", 4), event(mvccpb.Event_PUT, "/e", 4), event(mvccpb.Event_PUT, "/f", 5)},
+				{event(mvccpb.Event_PUT, "/g", 6), event(mvccpb.Event_PUT, "/h", 6)},
+				{event(mvccpb.Event_PUT, "/i", 7), event(mvccpb.Event_PUT, "/j", 7)},
 			},
 			wantBatch: []*clientv3.Event{
-				event(mvccpb.PUT, "/a", 2),
-				event(mvccpb.PUT, "/b", 2),
-				event(mvccpb.PUT, "/c", 3),
-				event(mvccpb.PUT, "/d", 4),
-				event(mvccpb.PUT, "/e", 4),
-				event(mvccpb.PUT, "/f", 5),
-				event(mvccpb.PUT, "/g", 6),
-				event(mvccpb.PUT, "/h", 6),
-				event(mvccpb.PUT, "/i", 7),
-				event(mvccpb.PUT, "/j", 7),
+				event(mvccpb.Event_PUT, "/a", 2),
+				event(mvccpb.Event_PUT, "/b", 2),
+				event(mvccpb.Event_PUT, "/c", 3),
+				event(mvccpb.Event_PUT, "/d", 4),
+				event(mvccpb.Event_PUT, "/e", 4),
+				event(mvccpb.Event_PUT, "/f", 5),
+				event(mvccpb.Event_PUT, "/g", 6),
+				event(mvccpb.Event_PUT, "/h", 6),
+				event(mvccpb.Event_PUT, "/i", 7),
+				event(mvccpb.Event_PUT, "/j", 7),
 			},
 		},
 		{
 			name: "three_revision_groups_per_response",
 			sentBatches: [][]*clientv3.Event{
 				{
-					event(mvccpb.PUT, "/a", 2), event(mvccpb.PUT, "/b", 2),
-					event(mvccpb.PUT, "/c", 3),
-					event(mvccpb.PUT, "/d", 4), event(mvccpb.PUT, "/e", 4),
+					event(mvccpb.Event_PUT, "/a", 2), event(mvccpb.Event_PUT, "/b", 2),
+					event(mvccpb.Event_PUT, "/c", 3),
+					event(mvccpb.Event_PUT, "/d", 4), event(mvccpb.Event_PUT, "/e", 4),
 				},
 				{
-					event(mvccpb.PUT, "/f", 5),
-					event(mvccpb.PUT, "/g", 6), event(mvccpb.PUT, "/h", 6),
-					event(mvccpb.PUT, "/i", 7), event(mvccpb.PUT, "/j", 7),
+					event(mvccpb.Event_PUT, "/f", 5),
+					event(mvccpb.Event_PUT, "/g", 6), event(mvccpb.Event_PUT, "/h", 6),
+					event(mvccpb.Event_PUT, "/i", 7), event(mvccpb.Event_PUT, "/j", 7),
 				},
 			},
 			wantBatch: []*clientv3.Event{
-				event(mvccpb.PUT, "/a", 2),
-				event(mvccpb.PUT, "/b", 2),
-				event(mvccpb.PUT, "/c", 3),
-				event(mvccpb.PUT, "/d", 4),
-				event(mvccpb.PUT, "/e", 4),
-				event(mvccpb.PUT, "/f", 5),
-				event(mvccpb.PUT, "/g", 6),
-				event(mvccpb.PUT, "/h", 6),
-				event(mvccpb.PUT, "/i", 7),
-				event(mvccpb.PUT, "/j", 7),
+				event(mvccpb.Event_PUT, "/a", 2),
+				event(mvccpb.Event_PUT, "/b", 2),
+				event(mvccpb.Event_PUT, "/c", 3),
+				event(mvccpb.Event_PUT, "/d", 4),
+				event(mvccpb.Event_PUT, "/e", 4),
+				event(mvccpb.Event_PUT, "/f", 5),
+				event(mvccpb.Event_PUT, "/g", 6),
+				event(mvccpb.Event_PUT, "/h", 6),
+				event(mvccpb.Event_PUT, "/i", 7),
+				event(mvccpb.Event_PUT, "/j", 7),
 			},
 		},
 	}
@@ -440,7 +440,6 @@ func TestCacheCompactionResync(t *testing.T) {
 	mw.errorCompacted(10)
 
 	waitUntil(t, time.Second, 10*time.Millisecond, func() bool { return !cache.Ready() })
-	start := time.Now()
 
 	ctxGet, cancelGet := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancelGet()
@@ -456,25 +455,19 @@ func TestCacheCompactionResync(t *testing.T) {
 	}
 
 	t.Log("Phase 3: resync after compaction")
+	mw.resetRegistered()
 	mw.triggerCreatedNotify()
-	if err = cache.WaitReady(t.Context()); err != nil {
-		t.Fatalf("second WaitReady: %v", err)
-	}
-	elapsed := time.Since(start)
-	if elapsed > time.Second {
-		t.Fatalf("cache was unready for %v; want:  < 1 s", elapsed)
-	}
-
+	<-mw.registered
 	expectSnapshotRev := int64(20)
-	expectedWatchStart := secondSnapshot.Header.Revision + 1
-	if gotWatchStart := mw.lastStartRev; gotWatchStart != expectedWatchStart {
-		t.Errorf("Watch started at rev=%d; want %d", gotWatchStart, expectedWatchStart)
+	ctxResync, cancelResync := context.WithTimeout(t.Context(), time.Second)
+	defer cancelResync()
+	if err = cache.WaitForRevision(ctxResync, expectSnapshotRev); err != nil {
+		t.Fatalf("cache failed to resync to rev=%d within 1s: %v", expectSnapshotRev, err)
 	}
 
-	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
-	defer cancel()
-	if err = cache.WaitForRevision(ctx, expectSnapshotRev); err != nil {
-		t.Fatalf("cache never reached rev=%d: %v", expectSnapshotRev, err)
+	expectedWatchStart := secondSnapshot.Header.Revision + 1
+	if gotWatchStart := mw.getLastStartRev(); gotWatchStart != expectedWatchStart {
+		t.Errorf("Watch started at rev=%d; want %d", gotWatchStart, expectedWatchStart)
 	}
 
 	gotSnapshot, err := cache.Get(t.Context(), "foo", clientv3.WithSerializable())
@@ -560,12 +553,26 @@ func (m *mockWatcher) recordStartRev(rev int64) {
 	m.lastStartRev = rev
 }
 
+func (m *mockWatcher) getLastStartRev() int64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.lastStartRev
+}
+
 func (m *mockWatcher) signalRegistration() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	select {
 	case <-m.registered:
 	default:
 		close(m.registered)
 	}
+}
+
+func (m *mockWatcher) resetRegistered() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.registered = make(chan struct{})
 }
 
 func (m *mockWatcher) streamResponses(ctx context.Context, out chan<- clientv3.WatchResponse) {

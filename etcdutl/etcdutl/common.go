@@ -15,19 +15,22 @@
 package etcdutl
 
 import (
-	"errors"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/server/v3/lease"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
-	"go.etcd.io/raft/v3/raftpb"
 )
+
+// FlockTimeout is the duration to wait to obtain a file lock on db file.
+var FlockTimeout time.Duration
 
 func GetLogger() *zap.Logger {
 	config := logutil.DefaultZapLoggerConfig
@@ -41,30 +44,62 @@ func GetLogger() *zap.Logger {
 }
 
 func getLatestWALSnap(lg *zap.Logger, dataDir string) (walpb.Snapshot, error) {
-	snapshot, err := getLatestV2Snapshot(lg, dataDir)
+	walPath := datadir.ToWALDir(dataDir)
+	walSnaps, err := wal.ValidSnapshotEntries(lg, walPath)
 	if err != nil {
 		return walpb.Snapshot{}, err
 	}
 
-	var walsnap walpb.Snapshot
-	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+	if len(walSnaps) > 0 {
+		lastIdx := len(walSnaps) - 1
+		return walSnaps[lastIdx], nil
 	}
-	return walsnap, nil
+	return walpb.Snapshot{}, nil
 }
 
-func getLatestV2Snapshot(lg *zap.Logger, dataDir string) (*raftpb.Snapshot, error) {
-	walPath := datadir.ToWALDir(dataDir)
-	walSnaps, err := wal.ValidSnapshotEntries(lg, walPath)
-	if err != nil {
-		return nil, err
-	}
-
-	ss := snap.New(lg, datadir.ToSnapDir(dataDir))
-	snapshot, err := ss.LoadNewestAvailable(walSnaps)
-	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
-		return nil, err
-	}
-
-	return snapshot, nil
+// SimpleLessor is a simplified implementation of Lessor interface.
+// Used by etcdutl tools to simulate Lessor behavior without full lease management
+type SimpleLessor struct {
+	LeaseSet map[lease.LeaseID]struct{}
 }
+
+var _ lease.Lessor = (*SimpleLessor)(nil)
+
+func (sl *SimpleLessor) SetRangeDeleter(dr lease.RangeDeleter) {}
+
+func (sl *SimpleLessor) SetCheckpointer(cp lease.Checkpointer) {}
+
+func (sl *SimpleLessor) Grant(id lease.LeaseID, ttl int64) (*lease.Lease, error) {
+	sl.LeaseSet[id] = struct{}{}
+	return nil, nil
+}
+
+func (sl *SimpleLessor) Revoke(id lease.LeaseID) error { return nil }
+
+func (sl *SimpleLessor) Checkpoint(id lease.LeaseID, remainingTTL int64) error { return nil }
+
+func (sl *SimpleLessor) Attach(id lease.LeaseID, items []lease.LeaseItem) error { return nil }
+
+func (sl *SimpleLessor) GetLease(item lease.LeaseItem) lease.LeaseID            { return 0 }
+func (sl *SimpleLessor) Detach(id lease.LeaseID, items []lease.LeaseItem) error { return nil }
+
+func (sl *SimpleLessor) Promote(extend time.Duration) {}
+
+func (sl *SimpleLessor) Demote() {}
+
+func (sl *SimpleLessor) Renew(id lease.LeaseID) (int64, error) { return 10, nil }
+
+func (sl *SimpleLessor) Lookup(id lease.LeaseID) *lease.Lease {
+	if _, ok := sl.LeaseSet[id]; ok {
+		return &lease.Lease{ID: id}
+	}
+	return nil
+}
+
+func (sl *SimpleLessor) Leases() []*lease.Lease { return nil }
+
+func (sl *SimpleLessor) ExpiredLeasesC() <-chan []*lease.Lease { return nil }
+
+func (sl *SimpleLessor) Recover(b backend.Backend, rd lease.RangeDeleter) {}
+
+func (sl *SimpleLessor) Stop() {}

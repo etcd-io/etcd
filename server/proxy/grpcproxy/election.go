@@ -1,4 +1,4 @@
-// Copyright 2017 The etcd Lockors
+// Copyright 2017 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@ import (
 
 type electionProxy struct {
 	electionClient v3electionpb.ElectionClient
+	// we want compile errors if new methods are added
+	v3electionpb.UnsafeElectionServer
 }
 
 func NewElectionProxy(client *clientv3.Client) v3electionpb.ElectionServer {

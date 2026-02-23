@@ -15,7 +15,7 @@
 
 function install_golangci_lint() {
     echo "Installing golangci-lint ${GOLANGCI_LINT_VERSION}"
-    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "${GOPATH}/bin" "${GOLANGCI_LINT_VERSION}"
+    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" "${GOLANGCI_LINT_VERSION}"
 }
 
 GOLANGCI_LINT_VERSION=$(cd tools/mod && go list -m -f '{{.Version}}' github.com/golangci/golangci-lint/v2)
@@ -27,7 +27,7 @@ if [ -z "$GOLANGCI_LINT_PRESENT" ]; then
     install_golangci_lint
     exit 0
 fi
-GOLANGCI_LINT_INSTALLED=v$(golangci-lint version | grep -oP 'version \K[0-9.]+')
+GOLANGCI_LINT_INSTALLED=v$(golangci-lint version | grep -Eo 'version [0-9.]+'  | grep -Eo '[0-9.]+')
 
 if [ "$GOLANGCI_LINT_VERSION" != "$GOLANGCI_LINT_INSTALLED" ]; then
     echo "different golangci-lint version installed: $GOLANGCI_LINT_INSTALLED"

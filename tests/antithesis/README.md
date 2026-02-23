@@ -1,4 +1,56 @@
-This directory enables integration of Antithesis with etcd. There are 4 containers running in this system: 3 that make up an etcd cluster (etcd0, etcd1, etcd2) and one that "[makes the system go](https://antithesis.com/docs/getting_started/basic_test_hookup/)" (client).
+# etcd Antithesis tests
+
+This document describes the etcd test integration with [Antithesis].
+Antithesis provides a testing platform that allows you to explore edge cases, race conditions, and rare
+bugs that are difficult or impossible to reproduce in a normal environment.
+
+[Antithesis]: https://antithesis.com/
+
+## Robustness vs Antithesis tests
+
+[Antithesis] runs the robustness tests inside their
+[deterministic simulation testing](https://antithesis.com/resources/deterministic_simulation_testing/)
+environment and [fault injection](https://antithesis.com/docs/environment/fault_injection/).
+
+For more details on robustness tests, see the [robustness directory](../robustness).
+
+## Antithesis Setup
+
+The setup consists of a 3-node etcd cluster and a client container, orchestrated
+via [Docker Compose](https://antithesis.com/docs/getting_started/setup/).
+
+During the etcd Antithesis test suite the etcd server is built with the following patches:
+
+* **Critical code locations**: We replace etcd `gofail` comments (which signify
+  code locations important for failure injection in robustness tests) with
+  Antithesis `assert.Reachable`. This guides Antithesis to explore the
+  execution space around these points.
+* **Assertions**: We change etcd `verify` package assertions to Antithesis
+  `assert.Always`, encouraging the platform to try and break those assertions.
+* **Instrumentation**: The etcd binary is instrumented using
+  `antithesis-go-instrumentor` to enable coverage tracking and feedback for
+  the Antithesis platform.
+
+The Antithesis etcd tests configure the
+[Test Composer](https://antithesis.com/docs/test_templates/test_composer_reference/)
+in the following way:
+
+* **`entrypoint`**:
+  * Waits for all etcd nodes to be healthy.
+  * Emits the `setup_complete` message to Antithesis to start the testing phase.
+* **`singleton_driver_traffic`**:
+  * Generates robustness test traffic against the cluster while faults are injected.
+  * Runs as a [Singleton Driver Command], meaning it is the only one generating traffic.
+  * All generated traffic is saved as an operation history and stored on a shared volume.
+* **`finally_validation`**:
+  * Runs as a [Finally Command], meaning it is the last to run, with failure injection disabled.
+  * Reads the history of operations and validates them using the robustness test validation logic.
+  * Results of robustness tests are executed as Antithesis `assert.Always` assertions.
+  * Similar to robustness tests, it emits a visualization of the operations
+    history to an HTML file that is uploaded to the Antithesis platform.
+
+[Singleton Driver Command]: https://antithesis.com/docs/test_templates/test_composer_reference/#singleton-driver
+[Finally Command]: https://antithesis.com/docs/test_templates/test_composer_reference/#finally-command
 
 # Running tests with docker compose
 

@@ -484,6 +484,60 @@ func TestRebaseHistory(t *testing.T) {
 	}
 }
 
+func TestFull(t *testing.T) {
+	tests := []struct {
+		name         string
+		capacity     int
+		numAppends   int
+		expectedFull bool
+	}{
+		{
+			name:         "empty_buffer",
+			capacity:     3,
+			numAppends:   0,
+			expectedFull: false,
+		},
+		{
+			name:         "partially_filled",
+			capacity:     5,
+			numAppends:   3,
+			expectedFull: false,
+		},
+		{
+			name:         "exactly_at_capacity",
+			capacity:     3,
+			numAppends:   3,
+			expectedFull: true,
+		},
+		{
+			name:         "beyond_capacity_wrapping",
+			capacity:     3,
+			numAppends:   5,
+			expectedFull: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			rb := newRingBuffer(tt.capacity, func(batch []*clientv3.Event) int64 { return batch[0].Kv.ModRevision })
+
+			for i := 1; i <= tt.numAppends; i++ {
+				batch, err := makeEventBatch(int64(i), "k", 1)
+				if err != nil {
+					t.Fatalf("makeEventBatch(%d, k, 1) failed: %v", i, err)
+				}
+				rb.Append(batch)
+			}
+
+			if got := rb.full(); got != tt.expectedFull {
+				t.Fatalf("full()=%t, want=%t (capacity=%d, appends=%d)",
+					got, tt.expectedFull, tt.capacity, tt.numAppends)
+			}
+		})
+	}
+}
+
 func setupRingBuffer(t *testing.T, capacity int, revs []int64) *ringBuffer[[]*clientv3.Event] {
 	rb := newRingBuffer(capacity, func(batch []*clientv3.Event) int64 { return batch[0].Kv.ModRevision })
 	for _, r := range revs {

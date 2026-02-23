@@ -32,7 +32,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/server/v3/embed"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestSaveSnapshotFilePermissions ensures that the snapshot is saved with
@@ -74,7 +74,7 @@ func newEmbedConfig(t *testing.T) *embed.Config {
 	clusterN := 1
 	urls := newEmbedURLs(clusterN * 2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
-	cfg := integration2.NewEmbedConfig(t, "default")
+	cfg := integration.NewEmbedConfig(t, "default")
 	cfg.ClusterState = "new"
 	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = cURLs, cURLs
 	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = pURLs, pURLs
@@ -99,7 +99,7 @@ func createSnapshotFile(t *testing.T, cfg *embed.Config, kvs []kv) (version stri
 	}
 
 	ccfg := clientv3.Config{Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}}
-	cli, err := integration2.NewClient(t, ccfg)
+	cli, err := integration.NewClient(t, ccfg)
 	require.NoError(t, err)
 	defer cli.Close()
 	for i := range kvs {

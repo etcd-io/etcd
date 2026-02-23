@@ -5,4 +5,5 @@ aliases:
     - siyuanfoundation # Siyuan Zhang <sizhang@google.com> <physicsbug@gmail.com>
   sig-etcd-tech-leads:
     - ahrtr            # Benjamin Wang <benjamin.ahrtr@gmail.com> <benjamin.wang@broadcom.com>
+    - fuweid           # Wei Fu <fuweid89@gmail.com>
     - serathius        # Marek Siarkowicz <siarkowicz@google.com> <marek.siarkowicz@gmail.com>
