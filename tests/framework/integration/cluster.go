@@ -744,7 +744,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 }
 
 func memberLogger(t testutil.TB, name string) (*zap.Logger, *testutils.LogObserver) {
-	level := zapcore.ErrorLevel
+	level := zapcore.InfoLevel
 	if os.Getenv("CLUSTER_DEBUG") != "" {
 		level = zapcore.DebugLevel
 	}
