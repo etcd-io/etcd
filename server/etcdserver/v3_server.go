@@ -239,7 +239,7 @@ func (s *EtcdServer) rangeStream(ctx context.Context, r *pb.RangeRequest, rs pb.
 	if err != nil {
 		return err
 	}
-	var count int64 = int64(len(resp.Kvs))
+	count := int64(len(resp.Kvs))
 	if r.Revision == 0 {
 		r.Revision = resp.Header.Revision
 	}

@@ -216,6 +216,10 @@ func (c *RecordingClient) Defragment(ctx context.Context) (*clientv3.DefragmentR
 	return resp, err
 }
 
+func (c *RecordingClient) GetStream(ctx context.Context, key string, opts ...clientv3.OpOption) (clientv3.GetStreamResponse, error) {
+	return c.client.GetStream(ctx, key, opts...)
+}
+
 func (c *RecordingClient) Compact(ctx context.Context, rev int64, _ ...clientv3.CompactOption) (*clientv3.CompactResponse, error) {
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()

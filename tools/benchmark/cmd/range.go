@@ -27,7 +27,6 @@ import (
 	"google.golang.org/grpc"
 
 	etcdserverpb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/report"
 )
@@ -123,7 +122,7 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 						bar.Increment()
 						continue
 					}
-					_, err = clientv3.RangeStreamToRangeResponse(stream)
+					_, err = v3.RangeStreamToRangeResponse(stream)
 				} else {
 					_, err = kv.Range(context.Background(), request, callOpts...)
 				}

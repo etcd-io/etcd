@@ -639,6 +639,10 @@ func (s *kvStub) Txn(ctx context.Context) clientv3.Txn {
 	return nil
 }
 
+func (s *kvStub) GetStream(ctx context.Context, key string, opts ...clientv3.OpOption) (clientv3.GetStreamResponse, error) {
+	panic("not implemented")
+}
+
 func event(eventType mvccpb.Event_EventType, key string, rev int64) *clientv3.Event {
 	return &clientv3.Event{
 		Type: eventType,
