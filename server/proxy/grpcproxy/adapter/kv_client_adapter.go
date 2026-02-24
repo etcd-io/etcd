@@ -70,5 +70,5 @@ func (s *rs2rcClientStream) Recv() (*pb.RangeStreamResponse, error) {
 type rs2rcServerStream struct{ chanServerStream }
 
 func (s *rs2rcServerStream) Send(r *pb.RangeStreamResponse) error {
-	return s.SendMsg(r)
+	return s.SendMsg(r) //nolint:staticcheck
 }
