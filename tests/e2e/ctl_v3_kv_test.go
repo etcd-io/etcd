@@ -96,26 +96,10 @@ func getFormatTest(cx ctlCtx) {
 	}
 }
 
-func ctlV3Put(cx ctlCtx, key, value, leaseID string, flags ...string) error {
-	skipValue := false
-	skipLease := false
-	for _, f := range flags {
-		if f == "--ignore-value" {
-			skipValue = true
-		}
-		if f == "--ignore-lease" {
-			skipLease = true
-		}
-	}
-	cmdArgs := append(cx.PrefixArgs(), "put", key)
-	if !skipValue {
-		cmdArgs = append(cmdArgs, value)
-	}
-	if leaseID != "" && !skipLease {
+func ctlV3Put(cx ctlCtx, key, value, leaseID string) error {
+	cmdArgs := append(cx.PrefixArgs(), "put", key, value)
+	if leaseID != "" {
 		cmdArgs = append(cmdArgs, "--lease", leaseID)
-	}
-	if len(flags) != 0 {
-		cmdArgs = append(cmdArgs, flags...)
 	}
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "OK"})
 }
