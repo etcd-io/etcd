@@ -26,7 +26,13 @@ import (
 type RangeOptions struct {
 	Limit int64
 	Rev   int64
+	// Count indicates that only the count of keys in the range should be
+	// returned, without any key-value data.
 	Count bool
+	// CountTotal indicates that the total count of keys in the range should
+	// be computed even when Limit restricts the number of returned keys.
+	// When false and Limit is set, the index walk stops early at Limit.
+	CountTotal bool
 }
 
 type RangeResult struct {

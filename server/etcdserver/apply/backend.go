@@ -56,7 +56,7 @@ func (a *applierV3backend) DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRan
 }
 
 func (a *applierV3backend) Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.Range(context.TODO(), a.options.Logger, a.options.KV, r)
+	return mvcctxn.Range(context.TODO(), a.options.Logger, a.options.KV, r, true)
 }
 
 func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
