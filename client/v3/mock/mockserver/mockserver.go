@@ -186,6 +186,10 @@ func (m *mockKVServer) Txn(context.Context, *pb.TxnRequest) (*pb.TxnResponse, er
 	return &pb.TxnResponse{}, nil
 }
 
+func (m *mockKVServer) RangeStream(*pb.RangeRequest, grpc.ServerStreamingServer[pb.RangeStreamResponse]) error {
+	return nil
+}
+
 func (m *mockKVServer) Compact(context.Context, *pb.CompactionRequest) (*pb.CompactionResponse, error) {
 	return &pb.CompactionResponse{}, nil
 }
