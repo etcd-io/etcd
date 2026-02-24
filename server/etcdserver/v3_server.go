@@ -148,7 +148,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 	}
 
-	get := func() { resp, _, err = txn.Range(ctx, s.Logger(), s.KV(), r) }
+	get := func() { resp, _, err = txn.Range(ctx, s.Logger(), s.KV(), r, true) }
 	if serr := s.doSerialize(ctx, chk, get); serr != nil {
 		err = serr
 		return nil, err
@@ -198,7 +198,7 @@ func (s *EtcdServer) RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer)
 
 func (s *EtcdServer) rangeStream(ctx context.Context, r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error {
 	if r.SortOrder != pb.RangeRequest_NONE || (r.SortOrder != pb.RangeRequest_ASCEND && r.SortTarget != pb.RangeRequest_KEY) || r.MaxModRevision != 0 || r.MinModRevision != 0 || r.MinCreateRevision != 0 || r.MaxCreateRevision != 0 {
-		resp, _, err := txn.Range(ctx, s.Logger(), s.KV(), r)
+		resp, _, err := txn.Range(ctx, s.Logger(), s.KV(), r, true)
 		if err != nil {
 			return err
 		}
@@ -215,7 +215,7 @@ func (s *EtcdServer) rangeStream(ctx context.Context, r *pb.RangeRequest, rs pb.
 	if r.Limit > totalLimit {
 		r.Limit = totalLimit
 	}
-	resp, _, err := txn.Range(ctx, s.Logger(), s.KV(), r)
+	resp, _, err := txn.Range(ctx, s.Logger(), s.KV(), r, false)
 	if err != nil {
 		return err
 	}
@@ -261,7 +261,7 @@ func (s *EtcdServer) rangeStream(ctx context.Context, r *pb.RangeRequest, rs pb.
 			r.Limit = totalLimit - count
 		}
 
-		resp, _, err = txn.Range(ctx, s.Logger(), s.KV(), r)
+		resp, _, err = txn.Range(ctx, s.Logger(), s.KV(), r, false)
 		if err != nil {
 			return err
 		}

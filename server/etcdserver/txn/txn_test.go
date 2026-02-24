@@ -268,7 +268,7 @@ func TestCheckRange(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			_, _, err := Range(ctx, zaptest.NewLogger(t), s, tc.op.GetRequestRange())
+			_, _, err := Range(ctx, zaptest.NewLogger(t), s, tc.op.GetRequestRange(), true)
 
 			gotErr := ""
 			if err != nil {
