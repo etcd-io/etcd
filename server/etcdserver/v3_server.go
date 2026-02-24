@@ -215,17 +215,21 @@ func (s *EtcdServer) rangeStream(ctx context.Context, r *pb.RangeRequest, rs pb.
 	if r.Limit > totalLimit {
 		r.Limit = totalLimit
 	}
-	resp, _, err := txn.Range(ctx, s.Logger(), s.KV(), r, false)
+	// Use countTotal=true for the first call to get the correct total count
+	// of matching keys. Subsequent calls use countTotal=false since we already
+	// have the total.
+	resp, _, err := txn.Range(ctx, s.Logger(), s.KV(), r, true)
 	if err != nil {
 		return err
 	}
+	totalCount := resp.Count
 	// TODO: Send only if responses of size MaxRequestBytes size
 	if !resp.More || int64(len(resp.Kvs)) == totalLimit {
 		return rs.Send(&pb.RangeStreamResponse{
 			RangeResponse: &pb.RangeResponse{
 				Header: &pb.ResponseHeader{Revision: resp.Header.Revision},
 				More:   resp.More,
-				Count:  resp.Count,
+				Count:  totalCount,
 				Kvs:    resp.Kvs,
 			},
 		})
@@ -270,7 +274,7 @@ func (s *EtcdServer) rangeStream(ctx context.Context, r *pb.RangeRequest, rs pb.
 			return rs.Send(&pb.RangeStreamResponse{
 				RangeResponse: &pb.RangeResponse{
 					More:  resp.More,
-					Count: count + resp.Count,
+					Count: totalCount,
 					Kvs:   resp.Kvs,
 				},
 			})
