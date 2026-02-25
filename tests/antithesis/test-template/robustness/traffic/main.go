@@ -38,8 +38,7 @@ import (
 )
 
 var (
-	DefaultWatchInterval  = 250 * time.Millisecond
-	DefaultRevisionOffset = int64(100)
+	DefaultWatchInterval = 250 * time.Millisecond
 
 	profile = traffic.Profile{
 		MinimalQPS:                     100,
@@ -183,6 +182,10 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 		}(c)
 	}
 	if !profile.ForbidRunWatchLoop {
+		revisionOffset := traffic.DefaultRevisionOffset
+		if profile.RevisionOffset != 0 {
+			revisionOffset = profile.RevisionOffset
+		}
 		for i := range profile.MemberClientCount {
 			c := connect(clientSet, []string{hosts[i%len(hosts)]})
 			wg.Add(1)
@@ -190,12 +193,13 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 				defer wg.Done()
 				defer c.Close()
 				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-					Client:     c,
-					QPSLimiter: limiter,
-					KeyStore:   keyStore,
-					Storage:    kubernetesStorage,
-					Finish:     finish,
-					Logger:     lg,
+					Client:         c,
+					QPSLimiter:     limiter,
+					KeyStore:       keyStore,
+					Storage:        kubernetesStorage,
+					Finish:         finish,
+					Logger:         lg,
+					RevisionOffset: revisionOffset,
 				})
 			}(c)
 		}
@@ -206,12 +210,13 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 				defer wg.Done()
 				defer c.Close()
 				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-					Client:     c,
-					QPSLimiter: limiter,
-					KeyStore:   keyStore,
-					Storage:    kubernetesStorage,
-					Finish:     finish,
-					Logger:     lg,
+					Client:         c,
+					QPSLimiter:     limiter,
+					KeyStore:       keyStore,
+					Storage:        kubernetesStorage,
+					Finish:         finish,
+					Logger:         lg,
+					RevisionOffset: revisionOffset,
 				})
 			}(c)
 		}
