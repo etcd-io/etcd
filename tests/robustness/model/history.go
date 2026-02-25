@@ -490,7 +490,7 @@ func leaseGrantResponse(revision int64) MaybeEtcdResponse {
 }
 
 func leaseGrantResponseWithMemberID(revision int64, memberID MemberID) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseGrant: &LeaseGrantReponse{}, Revision: revision, MemberID: memberID}}
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseGrant: &LeaseGrantResponse{}, Revision: revision, MemberID: memberID}}
 }
 
 func leaseRevokeRequest(leaseID int64) EtcdRequest {

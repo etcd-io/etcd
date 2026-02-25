@@ -220,14 +220,14 @@ func (s EtcdState) stepLeaseGrant(request EtcdRequest) (EtcdState, MaybeEtcdResp
 	newState := s.DeepCopy()
 	// Empty LeaseID means the request failed and client didn't get response. Ignore it as client cannot use lease without knowing its id.
 	if request.LeaseGrant.LeaseID == 0 {
-		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantReponse{}}}
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantResponse{}}}
 	}
 	lease := EtcdLease{
 		LeaseID: request.LeaseGrant.LeaseID,
 		Keys:    map[string]struct{}{},
 	}
 	newState.Leases[request.LeaseGrant.LeaseID] = lease
-	return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantReponse{}}}
+	return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantResponse{}}}
 }
 
 func (s EtcdState) stepLeaseRevoke(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
