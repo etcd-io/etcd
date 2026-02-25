@@ -15,9 +15,12 @@
 package transport
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"math/big"
@@ -32,6 +35,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+
+	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 )
 
 func createSelfCert(t *testing.T) (*TLSInfo, error) {
@@ -673,4 +678,434 @@ func TestNewListenerWithACRLFile(t *testing.T) {
 			wg.Wait()
 		})
 	}
+}
+
+// TestServerConfig_ReloadTrustedCA_WithAllowedCN tests that when both ReloadTrustedCA
+// and AllowedCN are configured, client connections are properly verified.
+// This is a regression test for the bug where VerifyPeerCertificate from baseConfig()
+// would fail because verifiedChains is nil with RequireAnyClientCert.
+func TestServerConfig_ReloadTrustedCA_WithAllowedCN(t *testing.T) {
+	// Generate a test CA
+	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	caSerial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	require.NoError(t, err)
+
+	caTemplate := &x509.Certificate{
+		SerialNumber:          caSerial,
+		Subject:               pkix.Name{Organization: []string{"Test CA"}},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour),
+		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		BasicConstraintsValid: true,
+	}
+
+	caCertDER, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, &caKey.PublicKey, caKey)
+	require.NoError(t, err)
+
+	caCert, err := x509.ParseCertificate(caCertDER)
+	require.NoError(t, err)
+
+	// Helper to generate a certificate with a specific CN
+	generateCertWithCN := func(cn string, isServer bool) (certPEM, keyPEM []byte) {
+		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
+		serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+		require.NoError(t, err)
+
+		template := &x509.Certificate{
+			SerialNumber:          serial,
+			Subject:               pkix.Name{CommonName: cn},
+			NotBefore:             time.Now(),
+			NotAfter:              time.Now().Add(time.Hour),
+			IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+			DNSNames:              []string{"localhost"},
+			BasicConstraintsValid: true,
+		}
+
+		if isServer {
+			template.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature
+			template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
+		} else {
+			template.KeyUsage = x509.KeyUsageDigitalSignature
+			template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
+		}
+
+		certDER, err := x509.CreateCertificate(rand.Reader, template, caCert, &key.PublicKey, caKey)
+		require.NoError(t, err)
+
+		certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+
+		keyDER, err := x509.MarshalPKCS8PrivateKey(key)
+		require.NoError(t, err)
+		keyPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})
+
+		return certPEM, keyPEM
+	}
+
+	// Write CA to temp file
+	tmpDir := t.TempDir()
+	caFile := filepath.Join(tmpDir, "ca.crt")
+	caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertDER})
+	require.NoError(t, os.WriteFile(caFile, caPEM, 0600))
+
+	// Generate server cert
+	serverCertPEM, serverKeyPEM := generateCertWithCN("server", true)
+	serverCertFile := filepath.Join(tmpDir, "server.crt")
+	serverKeyFile := filepath.Join(tmpDir, "server.key")
+	require.NoError(t, os.WriteFile(serverCertFile, serverCertPEM, 0600))
+	require.NoError(t, os.WriteFile(serverKeyFile, serverKeyPEM, 0600))
+
+	// Generate client cert with valid CN
+	validClientCertPEM, validClientKeyPEM := generateCertWithCN("valid-client", false)
+	validClientCertFile := filepath.Join(tmpDir, "valid-client.crt")
+	validClientKeyFile := filepath.Join(tmpDir, "valid-client.key")
+	require.NoError(t, os.WriteFile(validClientCertFile, validClientCertPEM, 0600))
+	require.NoError(t, os.WriteFile(validClientKeyFile, validClientKeyPEM, 0600))
+
+	// Generate client cert with wrong CN
+	wrongClientCertPEM, wrongClientKeyPEM := generateCertWithCN("wrong-client", false)
+	wrongClientCertFile := filepath.Join(tmpDir, "wrong-client.crt")
+	wrongClientKeyFile := filepath.Join(tmpDir, "wrong-client.key")
+	require.NoError(t, os.WriteFile(wrongClientCertFile, wrongClientCertPEM, 0600))
+	require.NoError(t, os.WriteFile(wrongClientKeyFile, wrongClientKeyPEM, 0600))
+
+	tests := []struct {
+		name           string
+		clientCertFile string
+		clientKeyFile  string
+		expectAccept   bool
+	}{
+		{
+			name:           "valid CN should be accepted",
+			clientCertFile: validClientCertFile,
+			clientKeyFile:  validClientKeyFile,
+			expectAccept:   true,
+		},
+		{
+			name:           "wrong CN should be rejected",
+			clientCertFile: wrongClientCertFile,
+			clientKeyFile:  wrongClientKeyFile,
+			expectAccept:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create CAReloader
+			caReloader, err := tlsutil.NewCAReloader([]string{caFile}, zaptest.NewLogger(t))
+			require.NoError(t, err)
+			caReloader.WithInterval(100 * time.Millisecond)
+			caReloader.Start()
+			t.Cleanup(func() { caReloader.Stop() })
+
+			// Create server TLSInfo with CAReloader and AllowedCN
+			tlsInfo := TLSInfo{
+				CertFile:       serverCertFile,
+				KeyFile:        serverKeyFile,
+				TrustedCAFile:  caFile,
+				ClientCertAuth: true,
+				CAReloader:     caReloader,
+				AllowedCN:      "valid-client",
+				Logger:         zaptest.NewLogger(t),
+			}
+
+			ln, err := NewListener("127.0.0.1:0", "https", &tlsInfo)
+			require.NoError(t, err)
+			t.Cleanup(func() { ln.Close() })
+
+			// Setup client TLS config
+			clientCert, err := tls.LoadX509KeyPair(tt.clientCertFile, tt.clientKeyFile)
+			require.NoError(t, err)
+
+			rootCAs := x509.NewCertPool()
+			rootCAs.AddCert(caCert)
+
+			clientTLSConfig := &tls.Config{
+				Certificates: []tls.Certificate{clientCert},
+				RootCAs:      rootCAs,
+				ServerName:   "127.0.0.1",
+			}
+
+			// Try to connect
+			chConnErr := make(chan error, 1)
+			go func() {
+				conn, err := tls.Dial("tcp", ln.Addr().String(), clientTLSConfig)
+				if err != nil {
+					chConnErr <- err
+					return
+				}
+				// Try handshake explicitly
+				err = conn.Handshake()
+				conn.Close()
+				chConnErr <- err
+			}()
+
+			chAcceptErr := make(chan error, 1)
+			chAcceptConn := make(chan net.Conn, 1)
+			go func() {
+				conn, err := ln.Accept()
+				if err != nil {
+					chAcceptErr <- err
+					return
+				}
+				// Force handshake on server side
+				tlsConn := conn.(*tls.Conn)
+				if err := tlsConn.Handshake(); err != nil {
+					conn.Close()
+					chAcceptErr <- err
+					return
+				}
+				chAcceptConn <- conn
+			}()
+
+			timer := time.NewTimer(5 * time.Second)
+			defer timer.Stop()
+
+			select {
+			case conn := <-chAcceptConn:
+				conn.Close()
+				if !tt.expectAccept {
+					t.Error("expected connection to be rejected, but it was accepted")
+				}
+			case err := <-chAcceptErr:
+				if tt.expectAccept {
+					t.Errorf("expected connection to be accepted, but got error: %v", err)
+				}
+			case err := <-chConnErr:
+				if tt.expectAccept && err != nil {
+					t.Errorf("expected connection to succeed, but client got error: %v", err)
+				}
+				// If we don't expect accept and client got error, that's fine
+			case <-timer.C:
+				t.Error("timed out waiting for connection result")
+			}
+		})
+	}
+}
+
+// TestServerConfig_ReloadTrustedCA_WithAllowedCN_DynamicReload tests that dynamic
+// CA reloading works correctly when AllowedCN is also configured. This verifies
+// that after the CA file is updated, new connections are verified against the
+// updated CA pool while still enforcing the AllowedCN constraint.
+func TestServerConfig_ReloadTrustedCA_WithAllowedCN_DynamicReload(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Helper to generate a CA
+	generateCA := func(name string) (*ecdsa.PrivateKey, *x509.Certificate, []byte) {
+		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
+		serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+		require.NoError(t, err)
+
+		template := &x509.Certificate{
+			SerialNumber:          serial,
+			Subject:               pkix.Name{CommonName: name},
+			NotBefore:             time.Now(),
+			NotAfter:              time.Now().Add(time.Hour),
+			IsCA:                  true,
+			KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+			BasicConstraintsValid: true,
+		}
+
+		certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+		require.NoError(t, err)
+
+		cert, err := x509.ParseCertificate(certDER)
+		require.NoError(t, err)
+
+		certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+		return key, cert, certPEM
+	}
+
+	// Helper to generate a client cert signed by a CA with a specific CN
+	generateClientCert := func(caKey *ecdsa.PrivateKey, caCert *x509.Certificate, cn string) (certFile, keyFile string) {
+		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
+		serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+		require.NoError(t, err)
+
+		template := &x509.Certificate{
+			SerialNumber:          serial,
+			Subject:               pkix.Name{CommonName: cn},
+			NotBefore:             time.Now(),
+			NotAfter:              time.Now().Add(time.Hour),
+			KeyUsage:              x509.KeyUsageDigitalSignature,
+			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+			IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+			BasicConstraintsValid: true,
+		}
+
+		certDER, err := x509.CreateCertificate(rand.Reader, template, caCert, &key.PublicKey, caKey)
+		require.NoError(t, err)
+
+		certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+		keyDER, err := x509.MarshalPKCS8PrivateKey(key)
+		require.NoError(t, err)
+		keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})
+
+		certPath := filepath.Join(tmpDir, cn+"-"+caCert.Subject.CommonName+".crt")
+		keyPath := filepath.Join(tmpDir, cn+"-"+caCert.Subject.CommonName+".key")
+		require.NoError(t, os.WriteFile(certPath, certPEM, 0600))
+		require.NoError(t, os.WriteFile(keyPath, keyPEM, 0600))
+
+		return certPath, keyPath
+	}
+
+	// Helper to attempt a TLS connection - returns error if either client or server handshake fails
+	tryConnect := func(ln net.Listener, clientCertFile, clientKeyFile string, rootCAs *x509.CertPool) error {
+		clientCert, err := tls.LoadX509KeyPair(clientCertFile, clientKeyFile)
+		require.NoError(t, err)
+
+		clientTLSConfig := &tls.Config{
+			Certificates: []tls.Certificate{clientCert},
+			RootCAs:      rootCAs,
+			ServerName:   "127.0.0.1",
+		}
+
+		chClientErr := make(chan error, 1)
+		chServerErr := make(chan error, 1)
+
+		// Client goroutine
+		go func() {
+			conn, err := tls.Dial("tcp", ln.Addr().String(), clientTLSConfig)
+			if err != nil {
+				chClientErr <- err
+				return
+			}
+			conn.Close()
+			chClientErr <- nil
+		}()
+
+		// Server goroutine - capture handshake error
+		go func() {
+			conn, err := ln.Accept()
+			if err != nil {
+				chServerErr <- err
+				return
+			}
+			tlsConn := conn.(*tls.Conn)
+			err = tlsConn.Handshake()
+			conn.Close()
+			chServerErr <- err
+		}()
+
+		// Wait for both client and server to complete
+		var clientErr, serverErr error
+		for i := 0; i < 2; i++ {
+			select {
+			case clientErr = <-chClientErr:
+			case serverErr = <-chServerErr:
+			case <-time.After(5 * time.Second):
+				return errors.New("connection timed out")
+			}
+		}
+
+		// Return either error (server rejection should trigger error on both sides)
+		if serverErr != nil {
+			return serverErr
+		}
+		return clientErr
+	}
+
+	// Generate CA1 and CA2
+	ca1Key, ca1Cert, ca1PEM := generateCA("CA1")
+	ca2Key, ca2Cert, ca2PEM := generateCA("CA2")
+
+	// Generate server cert (signed by CA1, will be used throughout)
+	serverKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	serverSerial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	require.NoError(t, err)
+	serverTemplate := &x509.Certificate{
+		SerialNumber:          serverSerial,
+		Subject:               pkix.Name{CommonName: "server"},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+		BasicConstraintsValid: true,
+	}
+	serverCertDER, err := x509.CreateCertificate(rand.Reader, serverTemplate, ca1Cert, &serverKey.PublicKey, ca1Key)
+	require.NoError(t, err)
+	serverCertPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: serverCertDER})
+	serverKeyDER, err := x509.MarshalPKCS8PrivateKey(serverKey)
+	require.NoError(t, err)
+	serverKeyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: serverKeyDER})
+
+	serverCertFile := filepath.Join(tmpDir, "server.crt")
+	serverKeyFile := filepath.Join(tmpDir, "server.key")
+	require.NoError(t, os.WriteFile(serverCertFile, serverCertPEM, 0600))
+	require.NoError(t, os.WriteFile(serverKeyFile, serverKeyPEM, 0600))
+
+	// Generate client certs
+	ca1ValidCertFile, ca1ValidKeyFile := generateClientCert(ca1Key, ca1Cert, "valid-client")
+	ca2ValidCertFile, ca2ValidKeyFile := generateClientCert(ca2Key, ca2Cert, "valid-client")
+
+	// Write initial CA file (CA1 only)
+	caFile := filepath.Join(tmpDir, "ca.crt")
+	require.NoError(t, os.WriteFile(caFile, ca1PEM, 0600))
+
+	// Create CAReloader
+	caReloader, err := tlsutil.NewCAReloader([]string{caFile}, zaptest.NewLogger(t))
+	require.NoError(t, err)
+	caReloader.WithInterval(50 * time.Millisecond) // Fast reload for testing
+	caReloader.Start()
+	t.Cleanup(func() { caReloader.Stop() })
+
+	// Create server TLSInfo with CAReloader and AllowedCN
+	tlsInfo := TLSInfo{
+		CertFile:       serverCertFile,
+		KeyFile:        serverKeyFile,
+		TrustedCAFile:  caFile,
+		ClientCertAuth: true,
+		CAReloader:     caReloader,
+		AllowedCN:      "valid-client",
+		Logger:         zaptest.NewLogger(t),
+	}
+
+	ln, err := NewListener("127.0.0.1:0", "https", &tlsInfo)
+	require.NoError(t, err)
+	t.Cleanup(func() { ln.Close() })
+
+	// Client needs to trust CA1 initially (for server cert verification)
+	clientRootCAs := x509.NewCertPool()
+	clientRootCAs.AddCert(ca1Cert)
+
+	// Phase 1: Connect with CA1-signed client cert - should succeed
+	err = tryConnect(ln, ca1ValidCertFile, ca1ValidKeyFile, clientRootCAs)
+	require.NoError(t, err, "Phase 1: CA1-signed client with valid CN should be accepted")
+	t.Log("Phase 1: CA1-signed client accepted")
+
+	// Phase 2: Update CA file to include both CA1 and CA2
+	combinedCAPEM := append(ca1PEM, ca2PEM...)
+	require.NoError(t, os.WriteFile(caFile, combinedCAPEM, 0600))
+
+	// Wait for CA reload (need to wait longer than reload interval to ensure reload happens)
+	time.Sleep(150 * time.Millisecond)
+
+	// Phase 2: Connect with CA2-signed client cert - should now succeed
+	err = tryConnect(ln, ca2ValidCertFile, ca2ValidKeyFile, clientRootCAs)
+	require.NoError(t, err, "Phase 2: CA2-signed client with valid CN should be accepted after reload")
+	t.Log("Phase 2: CA2-signed client accepted after CA file updated to [CA1+CA2]")
+
+	// Phase 3: Update CA file to CA2 only (remove CA1)
+	require.NoError(t, os.WriteFile(caFile, ca2PEM, 0600))
+	t.Log("Phase 3: CA file updated, waiting for reload...")
+
+	// Wait for CA reload - use 3x the reload interval to be safe
+	time.Sleep(200 * time.Millisecond)
+
+	// Phase 3: CA1-signed client should now be rejected
+	// This is the critical test for the fix - verifying that dynamic CA reload
+	// works correctly with AllowedCN configured
+	err = tryConnect(ln, ca1ValidCertFile, ca1ValidKeyFile, clientRootCAs)
+	require.Error(t, err, "Phase 3: CA1-signed client should be rejected after CA1 removed from trust bundle")
+	t.Log("Phase 3: CA1-signed client correctly rejected - dynamic CA reload with AllowedCN works!")
 }

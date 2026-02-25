@@ -226,6 +226,12 @@ Security:
     Minimum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3.
   --tls-max-version ''
     Maximum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3 (empty will be auto-populated by Go).
+  --peer-tls-reload-ca 'false'
+    Enable dynamic reloading of peer trusted CA certificates.
+  --client-tls-reload-ca 'false'
+    Enable dynamic reloading of client trusted CA certificates.
+  --tls-ca-reload-interval '10s'
+    Interval for checking CA file changes when CA reload is enabled.
 
 Auth:
   --auth-token 'simple'
