@@ -259,7 +259,7 @@ func validatePrevKV(lg *zap.Logger, replay *model.EtcdReplay, report report.Clie
 		}
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
-				// Get state state just before the current event.
+				// Get state just before the current event.
 				state, err2 := replay.StateForRevision(event.Revision - 1)
 				if err2 != nil {
 					panic(err2)
@@ -291,7 +291,7 @@ func validateIsCreate(lg *zap.Logger, replay *model.EtcdReplay, report report.Cl
 	for _, op := range report.Watch {
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
-				// Get state state just before the current event.
+				// Get state just before the current event.
 				state, err2 := replay.StateForRevision(event.Revision - 1)
 				if err2 != nil {
 					panic(err2)
