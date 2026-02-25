@@ -1467,6 +1467,114 @@ func TestValidateWatch(t *testing.T) {
 			},
 		},
 		{
+			name: "Reliable - event below requested watch revision with prefix - fail",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+								Revision:   100,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+										putWatchEvent("b", "2", 3, true),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+			},
+			expectError: errBrokeReliable.Error(),
+		},
+		{
+			name: "Reliable - event below requested watch revision - fail",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key:      "a",
+								Revision: 100,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+			},
+			expectError: errBrokeReliable.Error(),
+		},
+		{
+			name: "Reliable - events at and above requested watch revision with prefix - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+								Revision:   2,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+										putWatchEvent("b", "2", 3, true),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+			},
+			expectError: "",
+		},
+		{
+			name: "Reliable - events at and above requested watch revision - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key:      "a",
+								Revision: 2,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+			},
+			expectError: "",
+		},
+		{
 			name: "Resumable - watch revision from middle event - pass",
 			reports: []report.ClientReport{
 				{

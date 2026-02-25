@@ -219,7 +219,23 @@ func validateReliable(lg *zap.Logger, replay *model.EtcdReplay, report report.Cl
 			}
 		}
 		if !reflect.DeepEqual(wantEvents, gotEvents) {
-			lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID))
+			fields := []zap.Field{
+				zap.String("guarantee", "reliable"),
+				zap.Int("client", report.ClientID),
+			}
+			if watch.Request.Revision > 0 {
+				for _, event := range gotEvents {
+					if event.Revision < watch.Request.Revision {
+						fields = append(fields,
+							zap.String("detail", "received event below requested watch revision"),
+							zap.Int64("event-revision", event.Revision),
+							zap.Int64("request-revision", watch.Request.Revision),
+						)
+						break
+					}
+				}
+			}
+			lg.Error("Broke watch guarantee", fields...)
 			// Directly print to console to avoid escaping newline.
 			fmt.Print(cmp.Diff(wantEvents, gotEvents))
 			err = errBrokeReliable
