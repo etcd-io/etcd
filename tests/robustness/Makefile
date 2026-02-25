@@ -75,6 +75,11 @@ test-robustness-issue19179: /tmp/etcd-v3.5.17-failpoints/bin
 	GO_TEST_FLAGS='-v -run=TestRobustnessRegression/Issue19179 -count 200 -failfast --bin-dir=/tmp/etcd-v3.5.17-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \
 	  echo "Failed to reproduce" || echo "Successful reproduction"
 
+.PHONY: test-robustness-issue20221-notification
+test-robustness-issue20221-notification: /tmp/etcd-bc47e771-failpoints/bin
+	GO_TEST_FLAGS='-v -run=TestRobustnessRegression/Issue20221 -count 100 -failfast --bin-dir=/tmp/etcd-bc47e771-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \
+	 echo "Failed to reproduce" || echo "Successful reproduction"
+
 # Etcd API usage by Kubernetes
 
 .PHONY: k8s-coverage
@@ -125,6 +130,17 @@ $(GOPATH)/bin/gofail: $(REPOSITORY_ROOT)/tools/mod/go.mod $(REPOSITORY_ROOT)/too
 	mkdir -p /tmp/etcd-v3.6.0-failpoints/
 	cd /tmp/etcd-v3.6.0-failpoints/; \
 	  git clone --depth 1 --branch main https://github.com/etcd-io/etcd.git .; \
+	  $(MAKE) gofail-enable; \
+	  $(MAKE) build;
+
+/tmp/etcd-bc47e771-failpoints/bin: $(GOPATH)/bin/gofail
+	rm -rf /tmp/etcd-bc47e771-failpoints/
+	mkdir -p /tmp/etcd-bc47e771-failpoints/
+	cd /tmp/etcd-bc47e771-failpoints/; \
+	  git init; \
+	  git remote add origin https://github.com/etcd-io/etcd.git; \
+	  git fetch --depth 1 origin bc47e7711664ec5557c5ae528d0d02175ea6e166; \
+	  git checkout FETCH_HEAD; \
 	  $(MAKE) gofail-enable; \
 	  $(MAKE) build;
 
