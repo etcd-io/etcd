@@ -29,9 +29,22 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
+	"go.etcd.io/etcd/tests/v3/robustness/random"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
+
+type Range struct {
+	Min int64
+	Max int64
+}
+
+func (r Range) Rand() int64 {
+	if r.Min == r.Max {
+		return r.Min
+	}
+	return random.RandRange(r.Min, r.Max+1)
+}
 
 var (
 	DefaultLeaseTTL         int64 = 7200
@@ -65,9 +78,9 @@ var (
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 	WatchDefault = Watch{
-		MemberClientCount:  6,
-		ClusterClientCount: 2,
-		RevisionOffset:     100,
+		MemberClientCount:   6,
+		ClusterClientCount:  2,
+		RevisionOffsetRange: Range{Min: -100, Max: 100},
 	}
 	CompactionDefault = Compaction{
 		Period: 200 * time.Millisecond,
@@ -147,6 +160,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				defer wg.Done()
 				defer c.Close()
 				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
+					Config:     *profile.Watch,
 					Client:     c,
 					QPSLimiter: limiter,
 					KeyStore:   keyStore,
@@ -164,6 +178,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				defer wg.Done()
 				defer c.Close()
 				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
+					Config:     *profile.Watch,
 					Client:     c,
 					QPSLimiter: limiter,
 					KeyStore:   keyStore,
@@ -360,9 +375,9 @@ type KeyValue struct {
 }
 
 type Watch struct {
-	MemberClientCount  int
-	ClusterClientCount int
-	RevisionOffset     int64
+	MemberClientCount   int
+	ClusterClientCount  int
+	RevisionOffsetRange Range
 }
 
 type Compaction struct {
@@ -431,7 +446,7 @@ func runWatch(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) err
 	if err != nil {
 		return err
 	}
-	rev := resp.Header.Revision + p.Config.RevisionOffset
+	rev := resp.Header.Revision + p.Config.RevisionOffsetRange.Rand()
 
 	watchCtx, watchCancel := context.WithTimeout(ctx, WatchTimeout)
 	defer watchCancel()
