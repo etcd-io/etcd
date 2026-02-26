@@ -1,0 +1,50 @@
+---
+name: Auto Add ok-to-test to Cherry Pick Bot Pull Requests
+permissions: read-all
+
+on:
+  pull_request_target:
+    types:
+    - assigned
+    branches:
+    - release-3.6
+    - release-3.5
+    - release-3.4
+
+jobs:
+  approve:
+    name: Approve ok-to-test
+    if: ${{ github.event.pull_request.user.login == 'ivanvc' && !contains(github.event.pull_request.labels.*.name, 'ok-to-test') }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+    - name: Checkout main branch
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: main
+    - name: Check PR assignee
+      id: check
+      run: |
+        ASSIGNEE="${{ github.event.assignee.login }}"
+        ALIAS_CHECK=$(yq '.aliases | [.sig-etcd-chairs,.sig-etcd-tech-leads].[].[] | select(. == env(ASSIGNEE))' OWNERS_ALIASES)
+        OWNERS_CHECK=$(yq '[.approvers,.reviewers].[].[] | select(. == env(ASSIGNEE))' OWNERS)
+
+        if [ -n "$ALIAS_CHECK" ] || [ -n "$OWNERS_CHECK" ]; then
+          echo "authorized=true" >> $GITHUB_OUTPUT
+        else
+          echo "authorized=false" >> $GITHUB_OUTPUT
+        fi
+    - name: Update PR
+      if: steps.check.outputs.authorized == 'true'
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        debug: ${{ secrets.ACTIONS_RUNNER_DEBUG == 'true' }}
+        script: |
+         github.issues.addLabels({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: ['ok-to-test']
+          });
