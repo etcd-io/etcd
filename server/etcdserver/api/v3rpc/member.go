@@ -78,9 +78,14 @@ func (cs *ClusterServer) MemberRemove(ctx context.Context, r *pb.MemberRemoveReq
 }
 
 func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateRequest) (*pb.MemberUpdateResponse, error) {
+	urls, err := types.NewURLs(r.PeerURLs)
+	if err != nil {
+		return nil, rpctypes.ErrGRPCMemberBadURLs
+	}
+
 	m := membership.Member{
 		ID:             types.ID(r.ID),
-		RaftAttributes: membership.RaftAttributes{PeerURLs: r.PeerURLs},
+		RaftAttributes: membership.RaftAttributes{PeerURLs: urls.StringSlice()},
 	}
 	membs, err := cs.server.UpdateMember(ctx, m)
 	if err != nil {
