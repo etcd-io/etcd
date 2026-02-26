@@ -1730,8 +1730,8 @@ func TestRequestCurrentIndex_LeaderChangedRace(t *testing.T) {
 		},
 	}
 	s.memberID = 1
-	s.lead.Store(1)
-	s.term.Store(2)
+	s.lead = 1
+	s.term = 2
 
 	s.r = raftNode{
 		raftNodeConfig: raftNodeConfig{
