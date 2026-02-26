@@ -321,8 +321,13 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 		)
 		return info, err
 	}
-	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	certOut.Close()
+	if err = pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+		certOut.Close()
+		return info, err
+	}
+	if err = certOut.Close(); err != nil {
+		return info, err
+	}
 
 	info.Logger.Info("created cert file", zap.String("path", certPath))
 
@@ -339,8 +344,13 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 		)
 		return info, err
 	}
-	pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: b})
-	keyOut.Close()
+	if err = pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: b}); err != nil {
+		keyOut.Close()
+		return info, err
+	}
+	if err = keyOut.Close(); err != nil {
+		return info, err
+	}
 	info.Logger.Info("created key file", zap.String("path", keyPath))
 	return SelfCert(lg, dirpath, hosts, selfSignedCertValidity)
 }

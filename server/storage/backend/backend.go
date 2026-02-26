@@ -413,13 +413,15 @@ func (b *backend) Hash(ignores func(bucketName, keyName []byte) bool) (uint32, e
 				return fmt.Errorf("cannot get hash of bucket %s", next)
 			}
 			h.Write(next)
-			b.ForEach(func(k, v []byte) error {
+			if err := b.ForEach(func(k, v []byte) error {
 				if ignores != nil && !ignores(next, k) {
 					h.Write(k)
 					h.Write(v)
 				}
 				return nil
-			})
+			}); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
