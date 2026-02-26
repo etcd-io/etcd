@@ -16,6 +16,7 @@ package etcdserver
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -2230,5 +2231,49 @@ func TestIsActive(t *testing.T) {
 		}
 
 		require.Equal(t, tc.expectActive, s.isActive())
+	}
+}
+
+func TestRequestCurrentIndex_LeaderChangedRace(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+
+	s := &EtcdServer{
+		lgMu:     new(sync.RWMutex),
+		lg:       lg,
+		stopping: make(chan struct{}),
+		Cfg: config.ServerConfig{
+			TickMs:        100,
+			ElectionTicks: 10,
+		},
+	}
+
+	s.r = raftNode{
+		raftNodeConfig: raftNodeConfig{
+			Node: newNodeNop(),
+		},
+		readStateC: make(chan raft.ReadState, 1),
+	}
+
+	requestID := uint64(12345)
+	requestIDBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(requestIDBytes, requestID)
+
+	leaderChangedNotifier := make(chan struct{})
+	close(leaderChangedNotifier)
+
+	for i := 0; i < 100; i++ {
+		s.r.readStateC <- raft.ReadState{
+			Index:      100,
+			RequestCtx: requestIDBytes,
+		}
+		index, err := s.requestCurrentIndex(leaderChangedNotifier, requestID)
+		require.ErrorIs(t, err, ErrLeaderChanged)
+		require.Equal(t, uint64(0), index)
+
+		// Clear the readStateC channel for the next iteration,
+		select {
+		case <-s.r.readStateC:
+		default:
+		}
 	}
 }

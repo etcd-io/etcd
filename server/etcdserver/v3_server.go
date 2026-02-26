@@ -885,6 +885,13 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 	for {
 		select {
 		case rs := <-s.r.readStateC:
+			// Check again if leader changed as when multiple channels are ready, select picks randomly.
+			select {
+			case <-leaderChangedNotifier:
+				readIndexFailed.Inc()
+				return 0, ErrLeaderChanged
+			default:
+			}
 			requestIdBytes := uint64ToBigEndianBytes(requestId)
 			gotOwnResponse := bytes.Equal(rs.RequestCtx, requestIdBytes)
 			if !gotOwnResponse {
