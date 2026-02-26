@@ -137,7 +137,7 @@ func TestGrpcProxyTLSVersions(t *testing.T) {
 	}()
 
 	var (
-		node1ClientURL = epc.Procs[0].Config().ClientHttpUrl
+		node1ClientURL = epc.Procs[0].Config().Acurl
 		proxyClientURL = "127.0.0.1:42379"
 	)
 
@@ -149,13 +149,30 @@ func TestGrpcProxyTLSVersions(t *testing.T) {
 		"--endpoints-auto-sync-interval", "1s",
 		"--cert-file", e2e.CertPath2,
 		"--key-file", e2e.PrivateKeyPath2,
+		"--trusted-ca-file", e2e.CaPath,
 		"--tls-min-version", "TLS1.2",
 		"--tls-max-version", "TLS1.3",
 	}, nil)
 	require.NoError(t, err)
 	defer proxyProc.Stop()
 
-	_, err = proxyProc.Expect("listening for gRPC proxy client requests")
+	_, err = proxyProc.Expect("started gRPC proxy")
+	require.NoError(t, err)
+
+	curlProc, err := e2e.SpawnCmd([]string{
+		"curl",
+		"--http1.1",
+		"--fail",
+		"--verbose",
+		"--cacert", e2e.CaPath,
+		"--cert", e2e.CertPath2,
+		"--key", e2e.PrivateKeyPath2,
+		"--max-time", "10",
+		"https://" + proxyClientURL + "/proxy/health",
+	}, nil)
+	require.NoError(t, err)
+
+	_, err = curlProc.Expect(`"health":"true"`)
 	require.NoError(t, err)
 }
 
