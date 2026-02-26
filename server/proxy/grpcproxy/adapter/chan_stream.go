@@ -168,15 +168,9 @@ func newPipeStream(ctx context.Context, ssHandler func(chanServerStream) error) 
 			case <-cctx.Done():
 			}
 		}
-		// Send io.EOF as a message instead of closing the channel.
-		// Closing would race with concurrent SendMsg calls from
-		// bidirectional streaming handlers (e.g. LeaseKeepAlive's
-		// sendLoop). Two concurrent sends are safe; send+close is not.
-		select {
-		case srv.sendc <- io.EOF:
-		case <-sctx.Done():
-		case <-cctx.Done():
-		}
+		// TODO: closing may race with concurrent SendMsg calls from
+		// bidirectional streaming handlers that spawn background senders.
+		close(srv.sendc)
 		scancel()
 		ccancel()
 	}()
