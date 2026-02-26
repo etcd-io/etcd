@@ -89,35 +89,13 @@ func GetStreamToGetResponse(stream GetStreamResponse) (*GetResponse, error) {
 		if r.Err != nil {
 			return nil, r.Err
 		}
-		r := r.RangeStreamResponse.RangeResponse
-		if r.Header != nil {
-			if r.Header.ClusterId != 0 {
-				resp.Header.ClusterId = r.Header.ClusterId
-			}
-			if r.Header.MemberId != 0 {
-				resp.Header.MemberId = r.Header.MemberId
-			}
-			if r.Header.RaftTerm != 0 {
-				resp.Header.RaftTerm = r.Header.RaftTerm
-			}
-			if r.Header.Revision != 0 {
-				resp.Header.Revision = r.Header.Revision
-			}
-		}
-		if r.Count != 0 {
-			resp.Count = r.Count
-		}
-		if r.More {
-			resp.More = true
-		}
-		resp.Kvs = append(resp.Kvs, r.Kvs...)
+		mergeRangeStreamChunk((*pb.RangeResponse)(resp), r.RangeStreamResponse.RangeResponse)
 	}
 	return resp, nil
 }
 
 func RangeStreamToRangeResponse(c pb.KV_RangeStreamClient) (*pb.RangeResponse, error) {
 	resp := &pb.RangeResponse{Header: &pb.ResponseHeader{}}
-
 	for {
 		r, err := c.Recv()
 		if err != nil {
@@ -126,28 +104,34 @@ func RangeStreamToRangeResponse(c pb.KV_RangeStreamClient) (*pb.RangeResponse, e
 			}
 			return resp, nil
 		}
-		if r.RangeResponse.Header != nil {
-			if r.RangeResponse.Header.ClusterId != 0 {
-				resp.Header.ClusterId = r.RangeResponse.Header.ClusterId
-			}
-			if r.RangeResponse.Header.MemberId != 0 {
-				resp.Header.MemberId = r.RangeResponse.Header.MemberId
-			}
-			if r.RangeResponse.Header.RaftTerm != 0 {
-				resp.Header.RaftTerm = r.RangeResponse.Header.RaftTerm
-			}
-			if r.RangeResponse.Header.Revision != 0 {
-				resp.Header.Revision = r.RangeResponse.Header.Revision
-			}
-		}
-		if r.RangeResponse.Count != 0 {
-			resp.Count = r.RangeResponse.Count
-		}
-		if r.RangeResponse.More {
-			resp.More = true
-		}
-		resp.Kvs = append(resp.Kvs, r.RangeResponse.Kvs...)
+		mergeRangeStreamChunk(resp, r.RangeResponse)
 	}
+}
+
+// mergeRangeStreamChunk merges a single RangeStream chunk into an accumulator.
+// Non-zero header fields, Count, and More overwrite; Kvs are appended.
+func mergeRangeStreamChunk(dst *pb.RangeResponse, src *pb.RangeResponse) {
+	if src.Header != nil {
+		if src.Header.ClusterId != 0 {
+			dst.Header.ClusterId = src.Header.ClusterId
+		}
+		if src.Header.MemberId != 0 {
+			dst.Header.MemberId = src.Header.MemberId
+		}
+		if src.Header.RaftTerm != 0 {
+			dst.Header.RaftTerm = src.Header.RaftTerm
+		}
+		if src.Header.Revision != 0 {
+			dst.Header.Revision = src.Header.Revision
+		}
+	}
+	if src.Count != 0 {
+		dst.Count = src.Count
+	}
+	if src.More {
+		dst.More = true
+	}
+	dst.Kvs = append(dst.Kvs, src.Kvs...)
 }
 
 type OpResponse struct {
