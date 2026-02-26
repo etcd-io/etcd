@@ -253,9 +253,7 @@ func (s *EtcdServer) rangeStream(ctx context.Context, r *pb.RangeRequest, rs pb.
 
 		if resp.Size() < int(s.Cfg.MaxRequestBytes)/2 {
 			r.Limit *= 2
-		}
-		if resp.Size() > int(s.Cfg.MaxRequestBytes)*2 {
-			r.Limit *= 3
+		} else if resp.Size() > int(s.Cfg.MaxRequestBytes)*2 {
 			r.Limit /= 2
 		}
 		if r.Limit == 0 {
