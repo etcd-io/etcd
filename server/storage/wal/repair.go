@@ -83,6 +83,11 @@ func Repair(lg *zap.Logger, dirpath string) bool {
 				return false
 			}
 
+			if err = fileutil.Fsync(bf); err != nil {
+				lg.Warn("failed to fsync backup", zap.String("path", brokenName), zap.Error(err))
+				return false
+			}
+
 			if err = f.Truncate(lastOffset); err != nil {
 				lg.Warn("failed to truncate", zap.String("path", f.Name()), zap.Error(err))
 				return false
