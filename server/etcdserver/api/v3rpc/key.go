@@ -64,7 +64,7 @@ func (s *kvServer) RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer) e
 		},
 	}
 	s.hdr.fill(resp.RangeResponse.Header)
-	// Revision will be send later
+	// Revision will be sent later
 	resp.RangeResponse.Header.Revision = 0
 	err := rs.Send(resp)
 	if err != nil {
