@@ -49,10 +49,13 @@ type tracingExporter struct {
 }
 
 func newTracingExporter(ctx context.Context, cfg *Config) (*tracingExporter, error) {
-	exporter, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithInsecure(),
+	opts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint(cfg.DistributedTracingAddress),
-	)
+	}
+	if cfg.DistributedTracingInsecure {
+		opts = append(opts, otlptracegrpc.WithInsecure())
+	}
+	exporter, err := otlptracegrpc.New(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}

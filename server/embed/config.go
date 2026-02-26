@@ -399,6 +399,10 @@ type Config struct {
 	// DistributedTracingSamplingRatePerMillion is the number of samples to collect per million spans.
 	// Defaults to 0.
 	DistributedTracingSamplingRatePerMillion int `json:"distributed-tracing-sampling-rate"`
+	// DistributedTracingInsecure disables transport security for the tracing
+	// exporter's gRPC connection. Defaults to true for backward compatibility.
+	// Set to false when the OpenTelemetry Collector endpoint requires TLS.
+	DistributedTracingInsecure bool `json:"distributed-tracing-insecure"`
 
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
@@ -562,8 +566,9 @@ func NewConfig() *Config {
 		MemoryMlock:        false,
 		MaxLearners:        membership.DefaultMaxLearners,
 
-		DistributedTracingAddress:     DefaultDistributedTracingAddress,
-		DistributedTracingServiceName: DefaultDistributedTracingServiceName,
+		DistributedTracingAddress:      DefaultDistributedTracingAddress,
+		DistributedTracingServiceName:  DefaultDistributedTracingServiceName,
+		DistributedTracingInsecure:     true,
 
 		CompactHashCheckTime: DefaultCompactHashCheckTime,
 
@@ -733,6 +738,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&cfg.DistributedTracingServiceName, "distributed-tracing-service-name", cfg.DistributedTracingServiceName, "Configures service name for distributed tracing to be used to define service name for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag). 'etcd' is the default service name. Use the same service name for all instances of etcd.")
 	fs.StringVar(&cfg.DistributedTracingServiceInstanceID, "distributed-tracing-instance-id", "", "Configures service instance ID for distributed tracing to be used to define service instance ID key for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag). There is no default value set. This ID must be unique per etcd instance.")
 	fs.IntVar(&cfg.DistributedTracingSamplingRatePerMillion, "distributed-tracing-sampling-rate", 0, "Number of samples to collect per million spans for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag).")
+	fs.BoolVar(&cfg.DistributedTracingInsecure, "distributed-tracing-insecure", true, "Disable transport security for the distributed tracing exporter's gRPC connection. Set to false when the OpenTelemetry Collector requires TLS.")
 
 	// auth
 	fs.StringVar(&cfg.AuthToken, "auth-token", cfg.AuthToken, "Specify auth token specific options.")
