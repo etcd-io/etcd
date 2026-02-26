@@ -36,6 +36,7 @@ For more details on Antithesis integration, see the [antithesis directory](../an
 | Watch on future revision returns notifications [#20221]                      | Jun 2025 | v3.4 or earlier | Robustness, after covering connection to multiple members |                              |                                   |
 | Watch on future revision returns old events [#20221]                         | Jun 2025 | v3.4 or earlier | Antithesis, after covering connection to multiple members |                              |                                   |
 | Panic from db page expected to be 5 [#20271]                                 | Jul 2025 | v3.4 or earlier | Antithesis                                                |                              |                                   |
+| Stale reads caused by process pausing [#20418]                               | Jul 2025 | v3.1            | Antithesis                                                |                              |                                   |
 
 [c272ade]: https://github.com/etcd-io/etcd/tree/c272adec29afaa69f08b7458422c53b8978c7af1
 [a438759]: https://github.com/etcd-io/etcd/tree/a438759bf0bcafce851fae1a84a8511452b6b704
@@ -54,6 +55,7 @@ For more details on Antithesis integration, see the [antithesis directory](../an
 [#20221]: https://github.com/etcd-io/etcd/issues/20221
 [#18055]: https://github.com/etcd-io/etcd/issues/18055
 [#20271]: https://github.com/etcd-io/etcd/issues/20271
+[#20418]: https://github.com/etcd-io/etcd/issues/20418
 
 ## Maintaining Bug Reproducibility During Non-Trivial Changes
 
