@@ -16,36 +16,36 @@ All comparisons relative to **Stream (count once)**.
 | Mode | Latency | Client Mem | Server Mem | Throughput |
 |---|---|---|---|---|
 | Stream (count once) | 0.10s | 38 MB | 52 MB | 117 MB/s |
-| Single-shot unary | 1.0x | 1.4x more | 2.1x more | 1.0x |
-| Paginated unary (10k) | 1.5x slower | 1.0x | 1.0x | 1.3x lower |
-| Stream (count always) | 1.3x slower | 1.0x | 1.0x | 1.3x lower |
+| Single-shot unary | 0.10s | 54 MB (1.4x worse) | 110 MB (2.1x worse) | 114 MB/s |
+| Paginated unary (10k) | 0.15s (1.5x worse) | 38 MB | 52 MB | 90 MB/s (1.3x worse) |
+| Stream (count always) | 0.13s (1.3x worse) | 39 MB | 51 MB | 88 MB/s (1.3x worse) |
 
 ### 500k keys (~50 MB total data)
 
 | Mode | Latency | Client Mem | Server Mem | Throughput |
 |---|---|---|---|---|
 | Stream (count once) | 0.64s | 141 MB | 190 MB | 98 MB/s |
-| Single-shot unary | 0.9x | 1.8x more | 2.6x more | 1.0x |
-| Paginated unary (10k) | 2.6x slower | 1.0x | 0.9x | 2.9x lower |
-| Stream (count always) | 3.0x slower | 1.0x | 0.9x | 2.9x lower |
+| Single-shot unary | 0.60s | 253 MB (1.8x worse) | 498 MB (2.6x worse) | 98 MB/s |
+| Paginated unary (10k) | 1.68s (2.6x worse) | 140 MB | 179 MB | 33 MB/s (2.9x worse) |
+| Stream (count always) | 1.95s (3.0x worse) | 141 MB | 175 MB | 34 MB/s (2.9x worse) |
 
 ### 1M keys (~100 MB total data)
 
 | Mode | Latency | Client Mem | Server Mem | Throughput |
 |---|---|---|---|---|
 | Stream (count once) | 1.37s | 271 MB | 348 MB | 90 MB/s |
-| Single-shot unary | 1.0x | 1.8x more | 2.9x more | 1.0x |
-| Paginated unary (10k) | 4.0x slower | 1.0x | 1.0x | 4.2x lower |
-| Stream (count always) | 4.9x slower | 1.0x | 0.9x | 4.8x lower |
+| Single-shot unary | 1.39s | 494 MB (1.8x worse) | 1000 MB (2.9x worse) | 89 MB/s |
+| Paginated unary (10k) | 5.44s (4.0x worse) | 269 MB | 339 MB | 22 MB/s (4.2x worse) |
+| Stream (count always) | 6.78s (4.9x worse) | 270 MB | 329 MB | 19 MB/s (4.8x worse) |
 
 ### 2M keys (~200 MB total data)
 
 | Mode | Latency | Throughput |
 |---|---|---|
 | Stream (count once) | 2.76s | 86 MB/s |
-| Single-shot unary | 1.0x | 1.0x |
-| Paginated unary (10k) | 7.0x slower | 6.9x lower |
-| Stream (count always) | 8.4x slower | 8.4x lower |
+| Single-shot unary | 2.79s | 85 MB/s |
+| Paginated unary (10k) | 19.21s (7.0x worse) | 12 MB/s (6.9x worse) |
+| Stream (count always) | 23.27s (8.4x worse) | 10 MB/s (8.4x worse) |
 
 ## Large values (10k keys x 100KB values, ~1 GB total data)
 
@@ -54,14 +54,14 @@ All comparisons relative to **Stream (count once)**.
 | Mode | Latency | Client Mem | Server Mem | Throughput |
 |---|---|---|---|---|
 | Stream (count once) | 0.48s | 1.01 GB | 1.03 GB | 1.99 GB/s |
-| Single-shot unary | 2.9x slower | 2.9x more | 2.4x more | 2.8x lower |
+| Single-shot unary | 1.38s (2.9x worse) | 2.92 GB (2.9x worse) | 2.47 GB (2.4x worse) | 710 MB/s (2.8x worse) |
 
 ### 5 clients, 50 iterations
 
 | Mode | P50 Latency | P90 Latency | Client Mem | Server Mem | Throughput |
 |---|---|---|---|---|---|
 | Stream | 1.81s | 8.33s | 5.01 GB | 1.06 GB | 383 MB/s |
-| Single-shot | 15.6x slower | 5.1x slower | 2.8x more | 15.8x more | 10.5x lower |
+| Single-shot | 28.30s (15.6x worse) | 42.12s (5.1x worse) | 13.91 GB (2.8x worse) | 16.78 GB (15.8x worse) | 37 MB/s (10.5x worse) |
 
 With concurrent clients and large values, single-shot collapses: 5 in-flight ~1 GB responses overwhelm both client and server memory, causing GC thrashing. Stream stays comfortable at ~1 GB server memory since chunks are sent and freed incrementally.
 
