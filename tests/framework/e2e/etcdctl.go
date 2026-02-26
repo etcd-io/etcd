@@ -24,8 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -53,7 +51,6 @@ func NewEtcdctl(cfg ClientConfig, endpoints []string, opts ...config.ClientOptio
 		client, err := clientv3.New(clientv3.Config{
 			Endpoints:   ctl.endpoints,
 			DialTimeout: 5 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 			Username:    ctl.authConfig.Username,
 			Password:    ctl.authConfig.Password,
 			Token:       ctl.authConfig.Token,
@@ -86,6 +83,13 @@ func WithEndpoints(endpoints []string) config.ClientOption {
 	return func(c any) {
 		ctl := c.(*EtcdctlV3)
 		ctl.endpoints = endpoints
+	}
+}
+
+func WithDialTimeout(tio time.Duration) config.ClientOption {
+	return func(c any) {
+		ctl := c.(*EtcdctlV3)
+		ctl.cfg.DialTimeout = tio
 	}
 }
 
@@ -417,6 +421,9 @@ func (ctl *EtcdctlV3) flags() map[string]string {
 		fmap["auth-jwt-token"] = ctl.authConfig.Token
 	} else if !ctl.authConfig.Empty() {
 		fmap["user"] = ctl.authConfig.Username + ":" + ctl.authConfig.Password
+	}
+	if ctl.cfg.DialTimeout != 0 {
+		fmap["dial-timeout"] = ctl.cfg.DialTimeout.String()
 	}
 	return fmap
 }

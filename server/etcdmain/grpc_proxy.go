@@ -383,9 +383,6 @@ func newProxyClientCfg(lg *zap.Logger, eps []string, tls *transport.TLSInfo) (*c
 		Endpoints:   eps,
 		DialTimeout: 5 * time.Second,
 		Logger:      lg,
-		DialOptions: []grpc.DialOption{
-			grpc.WithBlock(), //nolint:staticcheck // TODO: remove for a supported version
-		},
 	}
 	if tls != nil {
 		clientTLS, err := tls.ClientConfig()

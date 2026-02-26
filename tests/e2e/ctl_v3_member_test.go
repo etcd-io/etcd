@@ -141,7 +141,9 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 			default:
 			}
 
-			mresp, merr := epc.Etcdctl().MemberList(ctx, true)
+			// Defailt timeout is 2s. We need to set a longer
+			// timeout here to make sure we can get the response.
+			mresp, merr := epc.Etcdctl(e2e.WithDialTimeout(5*time.Second)).MemberList(ctx, true)
 			if merr != nil {
 				continue
 			}

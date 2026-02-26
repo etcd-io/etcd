@@ -73,8 +73,8 @@ type Config struct {
 	RejectOldCluster bool `json:"reject-old-cluster"`
 
 	// DialOptions is a list of dial options for the grpc client (e.g., for interceptors).
-	// For example, pass "grpc.WithBlock()" to block until the underlying connection is up.
-	// Without this, Dial returns immediately and connecting the server happens in background.
+	// Note that grpc.NewClient ignores options that are specific to grpc.Dial such as
+	// "grpc.WithBlock()". Use DialTimeout to bound client initialization time.
 	DialOptions []grpc.DialOption
 
 	// Context is the default client context; it can be used to cancel grpc dial out and
