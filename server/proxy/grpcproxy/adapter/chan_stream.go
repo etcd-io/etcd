@@ -148,8 +148,8 @@ func (s *chanStream) RecvMsg(m any) error {
 }
 
 func newPipeStream(ctx context.Context, ssHandler func(chanServerStream) error) chanClientStream {
-	// ch1 is buffered so server can send error on close
-	ch1, ch2 := make(chan any, 1), make(chan any)
+	// ch1 is buffered so server can send error + EOF on close
+	ch1, ch2 := make(chan any, 2), make(chan any)
 	headerc, trailerc := make(chan metadata.MD, 1), make(chan metadata.MD, 1)
 
 	cctx, ccancel := context.WithCancel(ctx)
@@ -168,9 +168,15 @@ func newPipeStream(ctx context.Context, ssHandler func(chanServerStream) error) 
 			case <-cctx.Done():
 			}
 		}
-		// TODO: closing may race with concurrent SendMsg calls from
-		// bidirectional streaming handlers that spawn background senders.
-		close(srv.sendc)
+		// Send io.EOF as a message instead of closing the channel.
+		// Closing would race with concurrent SendMsg calls from
+		// bidirectional streaming handlers (e.g. LeaseKeepAlive's
+		// sendLoop). Two concurrent sends are safe; send+close is not.
+		select {
+		case srv.sendc <- io.EOF:
+		case <-sctx.Done():
+		case <-cctx.Done():
+		}
 		scancel()
 		ccancel()
 	}()
