@@ -581,9 +581,10 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 
 	if w.tail() != nil {
 		// create encoder (chain crc with the decoder), enable appending
-		w.encoder, err = newFileEncoder(w.tail().File, w.decoder.LastCRC())
-		if err != nil {
-			return nil, state, nil, err
+		var encoderErr error
+		w.encoder, encoderErr = newFileEncoder(w.tail().File, w.decoder.LastCRC())
+		if encoderErr != nil {
+			return nil, state, nil, encoderErr
 		}
 	}
 	w.decoder = nil
