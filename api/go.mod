@@ -7,7 +7,7 @@ toolchain go1.26.0
 require (
 	github.com/coreos/go-semver v0.3.1
 	github.com/golang/protobuf v1.5.4
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.8
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/genproto/googleapis/api v0.0.0-20260209200024-4cfbd4190f57
 	google.golang.org/grpc v1.79.1

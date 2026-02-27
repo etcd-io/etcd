@@ -11,7 +11,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golangci/golangci-lint/v2 v2.10.1
 	github.com/google/yamlfmt v0.21.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.8
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0
 	github.com/ryancurrah/gomodguard v1.4.1
 	go.etcd.io/gofail v0.2.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
