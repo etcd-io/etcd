@@ -9,8 +9,8 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.6
 	github.com/dustin/go-humanize v1.0.1
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/spf13/cobra v1.9.1
-	github.com/spf13/pflag v1.0.6
+	github.com/spf13/cobra v1.10.2
+	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/etcd/api/v3 v3.6.8
 	go.etcd.io/etcd/client/pkg/v3 v3.6.8
@@ -18,7 +18,7 @@ require (
 	go.etcd.io/etcd/pkg/v3 v3.6.8
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.9.0
-	google.golang.org/grpc v1.71.1
+	google.golang.org/grpc v1.75.0
 )
 
 require (
@@ -37,12 +37,12 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250303144028-a0af3efb3deb // indirect
-	google.golang.org/protobuf v1.36.5 // indirect
+	golang.org/x/text v0.32.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250818200422-3122310a409c // indirect
+	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
