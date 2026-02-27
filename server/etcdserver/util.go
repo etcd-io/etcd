@@ -81,8 +81,10 @@ func longestConnected(tp rafthttp.Transporter, membs []types.ID) (types.ID, bool
 }
 
 type notifier struct {
-	c   chan struct{}
-	err error
+	c         chan struct{}
+	err       error
+	readIndex uint64
+	requestID uint64
 }
 
 func newNotifier() *notifier {
@@ -91,7 +93,9 @@ func newNotifier() *notifier {
 	}
 }
 
-func (nc *notifier) notify(err error) {
+func (nc *notifier) notify(err error, readIndex, requestID uint64) {
 	nc.err = err
+	nc.readIndex = readIndex
+	nc.requestID = requestID
 	close(nc.c)
 }

@@ -123,7 +123,9 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 	var lg raft.Logger
 	if cfg.lg != nil {
 		lg = NewRaftLoggerZap(cfg.lg)
+		lg.Info("raft logger created", zap.Any("logger", lg))
 	} else {
+		panic("raft logger is nil")
 		lcfg := logutil.DefaultZapLoggerConfig
 		var err error
 		lg, err = NewRaftLogger(&lcfg)
@@ -183,18 +185,30 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				r.tick()
 			case rd := <-r.Ready():
 				if rd.SoftState != nil {
-					newLeader := rd.SoftState.Lead != raft.None && rh.getLead() != rd.SoftState.Lead
+					oldLead := rh.getLead()
+					newLead := rd.SoftState.Lead
+					newLeader := newLead != raft.None && oldLead != newLead
 					if newLeader {
 						leaderChanges.Inc()
 					}
 
-					if rd.SoftState.Lead == raft.None {
+					if newLead == raft.None {
 						hasLeader.Set(0)
 					} else {
 						hasLeader.Set(1)
 					}
 
-					rh.updateLead(rd.SoftState.Lead)
+					if oldLead != newLead {
+						r.lg.Info(
+							"raft leader changed",
+							zap.String("local-member-id", r.raftNodeConfig.transport.(*rafthttp.Transport).ID.String()),
+							zap.String("old-leader-id", fmt.Sprintf("%x", oldLead)),
+							zap.String("new-leader-id", fmt.Sprintf("%x", newLead)),
+							zap.Uint64("term", rd.HardState.Term),
+						)
+					}
+
+					rh.updateLead(newLead)
 					islead = rd.RaftState == raft.StateLeader
 					if islead {
 						isLeader.Set(1)

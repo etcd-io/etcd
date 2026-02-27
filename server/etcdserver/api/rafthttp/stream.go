@@ -117,6 +117,7 @@ type streamWriter struct {
 	localID types.ID
 	peerID  types.ID
 
+	tr     *Transport
 	status *peerStatus
 	fs     *stats.FollowerStats
 	r      Raft
@@ -133,13 +134,14 @@ type streamWriter struct {
 
 // startStreamWriter creates a streamWrite and starts a long running go-routine that accepts
 // messages and writes to the attached outgoing connection.
-func startStreamWriter(lg *zap.Logger, local, id types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft) *streamWriter {
+func startStreamWriter(lg *zap.Logger, local, id types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft, tr *Transport) *streamWriter {
 	w := &streamWriter{
 		lg: lg,
 
 		localID: local,
 		peerID:  id,
 
+		tr:     tr,
 		status: status,
 		fs:     fs,
 		r:      r,
@@ -201,6 +203,7 @@ func (cw *streamWriter) run() {
 			heartbeatc, msgc = nil, nil
 
 		case m := <-msgc:
+			cw.tr.maybeLog(m, cw.peerID, cw.lg, "send")
 			err := enc.encode(&m)
 			if err == nil {
 				unflushed += m.Size()
@@ -497,6 +500,11 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			cr.mu.Unlock()
 			return err
 		}
+
+		// DEBUG: Attach arrival time immediately after decoding
+		m.ArrivalTime = time.Now()
+
+		cr.tr.maybeLog(m, cr.peerID, cr.lg, "receive")
 
 		// gofail: var raftDropHeartbeat struct{}
 		// continue labelRaftDropHeartbeat

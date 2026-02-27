@@ -137,6 +137,11 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(len(b)))
 
+	// DEBUG: Attach arrival time
+	m.ArrivalTime = time.Now()
+
+	h.tr.(*Transport).maybeLog(m, types.ID(m.From), h.lg, "receive")
+
 	if err := h.r.Process(context.TODO(), m); err != nil {
 		var writerErr writerToResponse
 		switch {
@@ -234,6 +239,9 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		snapshotReceiveFailures.WithLabelValues(from).Inc()
 		return
 	}
+
+	// DEBUG: Attach arrival time
+	m.ArrivalTime = time.Now()
 
 	msgSize := m.Size()
 	receivedBytes.WithLabelValues(from).Add(float64(msgSize))

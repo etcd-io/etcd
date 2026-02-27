@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"encoding/binary"
 	"net/http"
 	"reflect"
 	"testing"
@@ -202,5 +203,42 @@ func TestTransportErrorc(t *testing.T) {
 	case <-errorc:
 	case <-time.After(1 * time.Second):
 		t.Fatalf("cannot receive error from errorc")
+	}
+}
+
+func TestTransportLogging(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	tr := &Transport{
+		ID:     types.ID(1),
+		Logger: lg,
+	}
+
+	data := make([]byte, 8)
+	binary.BigEndian.PutUint64(data, 12345)
+
+	msgs := []raftpb.Message{
+		{
+			Type:    raftpb.MsgReadIndex,
+			From:    1,
+			To:      2,
+			Term:    1,
+			Index:   10,
+			Commit:  5,
+			Entries: []raftpb.Entry{{Data: data}},
+		},
+		{
+			Type:    raftpb.MsgReadIndexResp,
+			From:    2,
+			To:      1,
+			Term:    1,
+			Index:   10,
+			Commit:  5,
+			Entries: []raftpb.Entry{{Data: data}},
+		},
+		{Type: raftpb.MsgApp, From: 2, To: 1, Term: 2, Index: 11, Commit: 6},
+	}
+
+	for _, m := range msgs {
+		tr.maybeLog(m, types.ID(m.To), lg, "send")
 	}
 }

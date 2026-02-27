@@ -8,6 +8,7 @@ import (
 	io "io"
 	math "math"
 	math_bits "math/bits"
+	time "time"
 
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/golang/protobuf/proto"
@@ -432,6 +433,9 @@ type Message struct {
 	// to respond and who to respond to when the work associated with a message
 	// is complete. Populated for MsgStorageAppend and MsgStorageApply messages.
 	Responses []Message `protobuf:"bytes,14,rep,name=responses" json:"responses"`
+
+	// DEBUG: Track when the message was received from the network
+	ArrivalTime time.Time `protobuf:"-" json:"-"`
 }
 
 func (m *Message) Reset()         { *m = Message{} }

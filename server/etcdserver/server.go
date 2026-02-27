@@ -691,7 +691,7 @@ func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	defer cancel()
 
 	// serve with linearized downgrade info
-	if err := h.server.linearizableReadNotify(ctx); err != nil {
+	if _, _, err := h.server.linearizableReadNotify(ctx); err != nil {
 		http.Error(w, fmt.Sprintf("failed linearized read: %v", err),
 			http.StatusInternalServerError)
 		return
@@ -924,7 +924,7 @@ func (s *EtcdServer) ensureLeadership() bool {
 
 	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
 	defer cancel()
-	if err := s.linearizableReadNotify(ctx); err != nil {
+	if _, _, err := s.linearizableReadNotify(ctx); err != nil {
 		lg.Warn("Failed to check current member's leadership",
 			zap.Error(err))
 		return false
@@ -1965,6 +1965,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 	if ar == nil {
 		return
 	}
+	ar.Index = e.Index
 
 	if !errorspkg.Is(ar.Err, errors.ErrNoSpace) || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
 		s.w.Trigger(id, ar)

@@ -96,6 +96,7 @@ func (p *pipeline) handle() {
 	for {
 		select {
 		case m := <-p.msgc:
+			p.tr.maybeLog(m, p.peerID, p.tr.Logger, "send")
 			start := time.Now()
 			err := p.post(pbutil.MustMarshal(&m))
 			end := time.Now()

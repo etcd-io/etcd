@@ -113,6 +113,7 @@ type Result struct {
 	// Compaction requests.
 	Physc <-chan struct{}
 	Trace *traceutil.Trace
+	Index uint64
 }
 
 type applyFunc func(*pb.InternalRaftRequest, membership.ShouldApplyV3) *Result

@@ -39,7 +39,7 @@ import (
 // to streamWriter. After that, streamWriter can use it to send messages
 // continuously, and closes it when stopped.
 func TestStreamWriterAttachOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
+	sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{}, &Transport{})
 	// the expected initial state of streamWriter is not working
 	if _, ok := sw.writec(); ok {
 		t.Errorf("initial working status = %v, want false", ok)
@@ -91,7 +91,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 // TestStreamWriterAttachBadOutgoingConn tests that streamWriter with bad
 // outgoingConn will close the outgoingConn and fall back to non-working status.
 func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
+	sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{}, &Transport{})
 	defer sw.stop()
 	wfc := newFakeWriteFlushCloser(errors.New("blah"))
 	sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
@@ -303,7 +303,7 @@ func TestStream(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
-		sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
+		sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{}, &Transport{})
 		defer sw.stop()
 		h.sw = sw
 

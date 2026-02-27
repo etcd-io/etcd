@@ -17,6 +17,7 @@ package raft
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math"
@@ -24,6 +25,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"go.etcd.io/raft/v3/confchange"
 	"go.etcd.io/raft/v3/quorum"
@@ -457,7 +459,7 @@ func newRaft(c *Config) *raft {
 		logger:                      c.Logger,
 		checkQuorum:                 c.CheckQuorum,
 		preVote:                     c.PreVote,
-		readOnly:                    newReadOnly(c.ReadOnlyOption),
+		readOnly:                    newReadOnly(c.Logger, c.ReadOnlyOption),
 		disableProposalForwarding:   c.DisableProposalForwarding,
 		disableConfChangeValidation: c.DisableConfChangeValidation,
 		stepDownOnRemoval:           c.StepDownOnRemoval,
@@ -809,7 +811,7 @@ func (r *raft) reset(term uint64) {
 
 	r.pendingConfIndex = 0
 	r.uncommittedSize = 0
-	r.readOnly = newReadOnly(r.readOnly.option)
+	r.readOnly = newReadOnly(r.logger, r.readOnly.option)
 }
 
 func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
@@ -1090,6 +1092,11 @@ func (r *raft) Step(m pb.Message) error {
 	case m.Term == 0:
 		// local message
 	case m.Term > r.Term:
+		// DEBUG: Detect Term Jumps
+		if !m.ArrivalTime.IsZero() {
+			delay := time.Since(m.ArrivalTime)
+			r.logger.Warningf("TERM_JUMP: Received message %s from %x with higher term %d (current %d). Delay was %v", m.Type, m.From, m.Term, r.Term, delay)
+		}
 		if m.Type == pb.MsgVote || m.Type == pb.MsgPreVote {
 			force := bytes.Equal(m.Context, []byte(campaignTransfer))
 			inLease := r.checkQuorum && r.lead != None && r.electionElapsed < r.electionTimeout
@@ -1593,12 +1600,34 @@ func stepLeader(r *raft, m pb.Message) error {
 			return nil
 		}
 
-		if r.trk.Voters.VoteResult(r.readOnly.recvAck(m.From, m.Context)) != quorum.VoteWon {
+		// DEBUG: Log the ReadIndex confirmation source and its delay
+		var delay time.Duration
+		if !m.ArrivalTime.IsZero() {
+			delay = time.Since(m.ArrivalTime)
+			readRequestId := uint64(0)
+			if len(m.Context) == 8 {
+				readRequestId = binary.BigEndian.Uint64(m.Context)
+			}
+			r.logger.Infof("READ_INDEX_DEBUG: Received MsgHeartbeatResp (acting as ReadIndex ACK) from %x, Term %d, delay %v, read-request-id: %v", m.From, m.Term, delay, readRequestId)
+		}
+
+		if r.trk.Voters.VoteResult(r.readOnly.recvAck(m.From, m.Context, m.Commit, m.Term)) != quorum.VoteWon {
 			return nil
 		}
 
 		rss := r.readOnly.advance(m)
 		for _, rs := range rss {
+			if !m.ArrivalTime.IsZero() {
+				queueDuration := time.Since(rs.queuedAt)
+				if delay > queueDuration {
+					readRequestId := uint64(0)
+					if len(rs.req.Entries) > 0 && len(rs.req.Entries[0].Data) == 8 {
+						readRequestId = binary.BigEndian.Uint64(rs.req.Entries[0].Data)
+					}
+					r.logger.Warningf("STALE_READ_DETECTED: MsgHeartbeatResp delay (%v) > queue duration (%v) for read-request-id %v", delay, queueDuration, readRequestId)
+				}
+			}
+
 			if resp := r.responseToReadIndexReq(rs.req, rs.index); resp.To != None {
 				r.send(resp)
 			}
@@ -1767,6 +1796,15 @@ func stepFollower(r *raft, m pb.Message) error {
 		if len(m.Entries) != 1 {
 			r.logger.Errorf("%x invalid format of MsgReadIndexResp from %x, entries count: %d", r.id, m.From, len(m.Entries))
 			return nil
+		}
+		// DEBUG: Log the ReadIndex confirmation source and its delay
+		if !m.ArrivalTime.IsZero() {
+			delay := time.Since(m.ArrivalTime)
+			readRequestId := uint64(0)
+			if len(m.Entries[0].Data) == 8 {
+				readRequestId = binary.BigEndian.Uint64(m.Entries[0].Data)
+			}
+			r.logger.Infof("READ_INDEX_DEBUG: Received MsgReadIndexResp from %x for index %d, Term %d, delay %v, read-request-id: %v", m.From, m.Index, m.Term, delay, readRequestId)
 		}
 		r.readStates = append(r.readStates, ReadState{Index: m.Index, RequestCtx: m.Entries[0].Data})
 	}
@@ -2140,17 +2178,23 @@ func releasePendingReadIndexMessages(r *raft) {
 }
 
 func sendMsgReadIndexResponse(r *raft, m pb.Message) {
+	var readRequestId uint64
+	if len(m.Entries) > 0 && len(m.Entries[0].Data) == 8 {
+		readRequestId = binary.BigEndian.Uint64(m.Entries[0].Data)
+	}
 	// thinking: use an internally defined context instead of the user given context.
 	// We can express this in terms of the term and index instead of a user-supplied value.
 	// This would allow multiple reads to piggyback on the same message.
 	switch r.readOnly.option {
 	// If more than the local vote is needed, go through a full broadcast.
 	case ReadOnlySafe:
+		r.logger.Infof("sendMsgReadIndexResponse: ReadOnlySafe read-request-id: %v read-index: %v read-term: %v raft-term: %v", readRequestId, r.raftLog.committed, m.Term, r.Term)
 		r.readOnly.addRequest(r.raftLog.committed, m)
 		// The local node automatically acks the request.
-		r.readOnly.recvAck(r.id, m.Entries[0].Data)
+		r.readOnly.recvAck(r.id, m.Entries[0].Data, m.Commit, m.Term)
 		r.bcastHeartbeatWithCtx(m.Entries[0].Data)
 	case ReadOnlyLeaseBased:
+		r.logger.Infof("sendMsgReadIndexResponse: ReadOnlyLeaseBased read-request-id: %v read-index: %v read-term: %v raft-term: %v", readRequestId, r.raftLog.committed, m.Term, r.Term)
 		if resp := r.responseToReadIndexReq(m, r.raftLog.committed); resp.To != None {
 			r.send(resp)
 		}

@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -135,12 +134,19 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		requestDurationSec.WithLabelValues("Range", strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
 	}(time.Now())
 
+	clientReqID := s.reqIDGen.Next()
+	s.Logger().Info("Range: client request started",
+		zap.Uint64("client-request-id", clientReqID),
+		zap.Uint64("server-commited-index", s.CommittedIndex()),
+		zap.Uint64("server-applied-index", s.AppliedIndex()))
 	if !r.Serializable {
-		err = s.linearizableReadNotify(ctx)
+		var readIndex, readIndexID uint64
+		readIndex, readIndexID, err = s.linearizableReadNotify(ctx)
 		trace.Step("agreement among raft nodes before linearized reading")
 		if err != nil {
 			return nil, err
 		}
+		s.Logger().Info("Range: linearizable read confirmed", zap.Uint64("client-request-id", clientReqID), zap.Uint64("read-index", readIndex), zap.Uint64("read-request-id", readIndexID))
 	}
 	chk := func(ai *auth.AuthInfo) error {
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
@@ -151,6 +157,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		err = serr
 		return nil, err
 	}
+	s.Logger().Info("Range: client request completed", zap.Uint64("client-request-id", clientReqID), zap.Int64("revision", resp.Header.Revision))
 	return resp, err
 }
 
@@ -161,12 +168,16 @@ func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse
 	))
 	defer span.End()
 
+	clientReqID := s.reqIDGen.Next()
+	s.Logger().Info("Put: client request started", zap.Uint64("client-request-id", clientReqID))
 	ctx = context.WithValue(ctx, traceutil.StartTimeKey{}, time.Now())
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Put: r})
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.PutResponse), nil
+	putResp := resp.Resp.(*pb.PutResponse)
+	s.Logger().Info("Put: client request completed", zap.Uint64("client-request-id", clientReqID), zap.Int64("revision", putResp.Header.Revision), zap.Uint64("commited-index", resp.Index))
+	return putResp, nil
 }
 
 func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
@@ -177,11 +188,15 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 	))
 	defer span.End()
 
+	clientReqID := s.reqIDGen.Next()
+	s.Logger().Info("DeleteRange: client request started", zap.Uint64("client-request-id", clientReqID))
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{DeleteRange: r})
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.DeleteRangeResponse), nil
+	delResp := resp.Resp.(*pb.DeleteRangeResponse)
+	s.Logger().Info("DeleteRange: client request completed", zap.Uint64("client-request-id", clientReqID), zap.Int64("revision", delResp.Header.Revision), zap.Uint64("commited-index", resp.Index))
+	return delResp, nil
 }
 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
@@ -205,11 +220,15 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 	)
 	if readOnly {
 		if !txn.IsTxnSerializable(r) {
-			err := s.linearizableReadNotify(ctx)
+			clientReqID := s.reqIDGen.Next()
+			s.Logger().Info("Txn: client request started", zap.Uint64("client-request-id", clientReqID))
+
+			readIndex, readIndexID, err := s.linearizableReadNotify(ctx)
 			trace.Step("agreement among raft nodes before linearized reading")
 			if err != nil {
 				return nil, err
 			}
+			s.Logger().Info("Txn: linearizable read confirmed", zap.Uint64("client-request-id", clientReqID), zap.Uint64("read-index", readIndex), zap.Uint64("read-request-id", readIndexID))
 		}
 		var resp *pb.TxnResponse
 		var err error
@@ -233,12 +252,16 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		return resp, err
 	}
 
+	clientReqID := s.reqIDGen.Next()
+	s.Logger().Info("Txn: client request started", zap.Uint64("client-request-id", clientReqID))
 	ctx = context.WithValue(ctx, traceutil.StartTimeKey{}, time.Now())
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Txn: r})
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.TxnResponse), nil
+	txnResp := resp.Resp.(*pb.TxnResponse)
+	s.Logger().Info("Txn: client request completed", zap.Uint64("client-request-id", clientReqID), zap.Int64("revision", txnResp.Header.Revision), zap.Uint64("commited-index", resp.Index))
+	return txnResp, nil
 }
 
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
@@ -310,7 +333,7 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.LeaseGrantResponse), nil
+	return resp.Resp.(*pb.LeaseGrantResponse), nil
 }
 
 func (s *EtcdServer) waitAppliedIndex() error {
@@ -336,7 +359,7 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.LeaseRevokeResponse), nil
+	return resp.Resp.(*pb.LeaseRevokeResponse), nil
 }
 
 func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error) {
@@ -571,7 +594,7 @@ func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmRe
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AlarmResponse), nil
+	return resp.Resp.(*pb.AlarmResponse), nil
 }
 
 func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
@@ -579,7 +602,7 @@ func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthEnableResponse), nil
+	return resp.Resp.(*pb.AuthEnableResponse), nil
 }
 
 func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error) {
@@ -587,7 +610,7 @@ func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) 
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthDisableResponse), nil
+	return resp.Resp.(*pb.AuthDisableResponse), nil
 }
 
 func (s *EtcdServer) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*pb.AuthStatusResponse, error) {
@@ -595,13 +618,18 @@ func (s *EtcdServer) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthStatusResponse), nil
+	return resp.Resp.(*pb.AuthStatusResponse), nil
 }
 
 func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	if err := s.linearizableReadNotify(ctx); err != nil {
+	clientReqID := s.reqIDGen.Next()
+	s.Logger().Info("Authenticate: client request started", zap.Uint64("client-request-id", clientReqID))
+
+	readIndex, readIndexID, err := s.linearizableReadNotify(ctx)
+	if err != nil {
 		return nil, err
 	}
+	s.Logger().Info("Authenticate: linearizable read confirmed", zap.Uint64("client-request-id", clientReqID), zap.Uint64("read-index", readIndex), zap.Uint64("read-request-id", readIndexID))
 
 	lg := s.Logger()
 
@@ -612,7 +640,7 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 		}
 	}()
 
-	var resp proto.Message
+	var resp *apply2.Result
 	for {
 		checkedRevision, err := s.AuthStore().CheckPassword(r.Name, r.Password)
 		if err != nil {
@@ -649,7 +677,7 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 		lg.Info("revision when password checked became stale; retrying")
 	}
 
-	return resp.(*pb.AuthenticateResponse), nil
+	return resp.Resp.(*pb.AuthenticateResponse), nil
 }
 
 func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
@@ -666,7 +694,7 @@ func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthUserAddResponse), nil
+	return resp.Resp.(*pb.AuthUserAddResponse), nil
 }
 
 func (s *EtcdServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
@@ -674,7 +702,7 @@ func (s *EtcdServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthUserDeleteResponse), nil
+	return resp.Resp.(*pb.AuthUserDeleteResponse), nil
 }
 
 func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
@@ -691,7 +719,7 @@ func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChang
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthUserChangePasswordResponse), nil
+	return resp.Resp.(*pb.AuthUserChangePasswordResponse), nil
 }
 
 func (s *EtcdServer) UserGrantRole(ctx context.Context, r *pb.AuthUserGrantRoleRequest) (*pb.AuthUserGrantRoleResponse, error) {
@@ -699,7 +727,7 @@ func (s *EtcdServer) UserGrantRole(ctx context.Context, r *pb.AuthUserGrantRoleR
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthUserGrantRoleResponse), nil
+	return resp.Resp.(*pb.AuthUserGrantRoleResponse), nil
 }
 
 func (s *EtcdServer) UserGet(ctx context.Context, r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
@@ -707,7 +735,7 @@ func (s *EtcdServer) UserGet(ctx context.Context, r *pb.AuthUserGetRequest) (*pb
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthUserGetResponse), nil
+	return resp.Resp.(*pb.AuthUserGetResponse), nil
 }
 
 func (s *EtcdServer) UserList(ctx context.Context, r *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error) {
@@ -715,7 +743,7 @@ func (s *EtcdServer) UserList(ctx context.Context, r *pb.AuthUserListRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthUserListResponse), nil
+	return resp.Resp.(*pb.AuthUserListResponse), nil
 }
 
 func (s *EtcdServer) UserRevokeRole(ctx context.Context, r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
@@ -723,7 +751,7 @@ func (s *EtcdServer) UserRevokeRole(ctx context.Context, r *pb.AuthUserRevokeRol
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthUserRevokeRoleResponse), nil
+	return resp.Resp.(*pb.AuthUserRevokeRoleResponse), nil
 }
 
 func (s *EtcdServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
@@ -731,7 +759,7 @@ func (s *EtcdServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthRoleAddResponse), nil
+	return resp.Resp.(*pb.AuthRoleAddResponse), nil
 }
 
 func (s *EtcdServer) RoleGrantPermission(ctx context.Context, r *pb.AuthRoleGrantPermissionRequest) (*pb.AuthRoleGrantPermissionResponse, error) {
@@ -739,7 +767,7 @@ func (s *EtcdServer) RoleGrantPermission(ctx context.Context, r *pb.AuthRoleGran
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthRoleGrantPermissionResponse), nil
+	return resp.Resp.(*pb.AuthRoleGrantPermissionResponse), nil
 }
 
 func (s *EtcdServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error) {
@@ -747,7 +775,7 @@ func (s *EtcdServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*pb
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthRoleGetResponse), nil
+	return resp.Resp.(*pb.AuthRoleGetResponse), nil
 }
 
 func (s *EtcdServer) RoleList(ctx context.Context, r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error) {
@@ -755,7 +783,7 @@ func (s *EtcdServer) RoleList(ctx context.Context, r *pb.AuthRoleListRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthRoleListResponse), nil
+	return resp.Resp.(*pb.AuthRoleListResponse), nil
 }
 
 func (s *EtcdServer) RoleRevokePermission(ctx context.Context, r *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error) {
@@ -763,7 +791,7 @@ func (s *EtcdServer) RoleRevokePermission(ctx context.Context, r *pb.AuthRoleRev
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthRoleRevokePermissionResponse), nil
+	return resp.Resp.(*pb.AuthRoleRevokePermissionResponse), nil
 }
 
 func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
@@ -771,10 +799,10 @@ func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthRoleDeleteResponse), nil
+	return resp.Resp.(*pb.AuthRoleDeleteResponse), nil
 }
 
-func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
+func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*apply2.Result, error) {
 	result, err := s.processInternalRaftRequestOnce(ctx, r)
 	if err != nil {
 		trace.SpanFromContext(ctx).RecordError(err)
@@ -792,10 +820,10 @@ func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftReque
 		result.Trace.InsertStep(0, applyStart, "process raft request")
 		result.Trace.LogIfLong(traceThreshold)
 	}
-	return result.Resp, nil
+	return result, nil
 }
 
-func (s *EtcdServer) raftRequest(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
+func (s *EtcdServer) raftRequest(ctx context.Context, r pb.InternalRaftRequest) (*apply2.Result, error) {
 	return s.raftRequestOnce(ctx, r)
 }
 
@@ -986,6 +1014,9 @@ func (s *EtcdServer) linearizableReadLoop() {
 		// to propagate the trace from Txn or Range.
 		_, trace := traceutil.EnsureTrace(context.Background(), s.Logger(), "linearizableReadLoop")
 
+		// Log the start of the request
+		s.Logger().Info("linearizableReadLoop: start request", zap.Uint64("read-request-id", requestID))
+
 		nextnr := newNotifier()
 		s.readMu.Lock()
 		nr := s.readNotifier
@@ -997,7 +1028,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 			return
 		}
 		if err != nil {
-			nr.notify(err)
+			nr.notify(err, 0, 0)
 			continue
 		}
 
@@ -1016,7 +1047,8 @@ func (s *EtcdServer) linearizableReadLoop() {
 			}
 		}
 		// unblock all l-reads requested at indices before confirmedIndex
-		nr.notify(nil)
+		s.Logger().Info("linearizableReadLoop: confirmed request", zap.Uint64("read-request-id", requestID), zap.Uint64("confirmed-index", confirmedIndex), zap.Uint64("server-term", s.getTerm()), zap.Uint64("server-applied-index", s.getAppliedIndex()), zap.Uint64("server-committed-index", s.getCommittedIndex()))
+		nr.notify(nil, confirmedIndex, requestID)
 		trace.Step("applied index is now lower than readState.Index")
 
 		trace.LogAllStepsIfLong(traceThreshold)
@@ -1034,6 +1066,8 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 	}
 
 	lg := s.Logger()
+	lg.Info("requestCurrentIndex: sent ReadIndex request", zap.Uint64("read-request-id", requestID))
+
 	errorTimer := time.NewTimer(s.Cfg.ReqTimeout())
 	defer errorTimer.Stop()
 	retryTimer := time.NewTimer(readIndexRetryTime)
@@ -1048,6 +1082,7 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 			select {
 			case <-leaderChangedNotifier:
 				readIndexFailed.Inc()
+				lg.Warn("requestCurrentIndex: leader changed, retrying", zap.Uint64("read-request-id", requestID))
 				return 0, errors.ErrLeaderChanged
 			default:
 			}
@@ -1062,20 +1097,22 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 				}
 				lg.Warn(
 					"ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader",
-					zap.Uint64("sent-request-id", requestID),
+					zap.Uint64("read-request-id", requestID),
 					zap.Uint64("received-request-id", responseID),
 				)
 				slowReadIndex.Inc()
 				continue
 			}
+			lg.Info("requestCurrentIndex: received ReadIndex response", zap.Uint64("read-request-id", requestID), zap.Uint64("read-index", rs.Index))
 			return rs.Index, nil
 		case <-leaderChangedNotifier:
 			readIndexFailed.Inc()
+			lg.Warn("requestCurrentIndex: leader changed, retrying", zap.Uint64("read-request-id", requestID))
 			// return a retryable error.
 			return 0, errors.ErrLeaderChanged
 		case <-firstCommitInTermNotifier:
 			firstCommitInTermNotifier = s.firstCommitInTerm.Receive()
-			lg.Info("first commit in current term: resending ReadIndex request")
+			lg.Info("first commit in current term: resending ReadIndex request", zap.Uint64("read-request-id", requestID))
 			err := s.sendReadIndex(requestID)
 			if err != nil {
 				return 0, err
@@ -1085,7 +1122,7 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 		case <-retryTimer.C:
 			lg.Warn(
 				"waiting for ReadIndex response took too long, retrying",
-				zap.Uint64("sent-request-id", requestID),
+				zap.Uint64("read-request-id", requestID),
 				zap.Duration("retry-timeout", readIndexRetryTime),
 			)
 			err := s.sendReadIndex(requestID)
@@ -1098,6 +1135,7 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 			lg.Warn(
 				"timed out waiting for read index response (local node might have slow network)",
 				zap.Duration("timeout", s.Cfg.ReqTimeout()),
+				zap.Uint64("read-request-id", requestID),
 			)
 			slowReadIndex.Inc()
 			return 0, errors.ErrTimeout
@@ -1132,10 +1170,11 @@ func (s *EtcdServer) sendReadIndex(requestIndex uint64) error {
 }
 
 func (s *EtcdServer) LinearizableReadNotify(ctx context.Context) error {
-	return s.linearizableReadNotify(ctx)
+	_, _, err := s.linearizableReadNotify(ctx)
+	return err
 }
 
-func (s *EtcdServer) linearizableReadNotify(ctx context.Context) error {
+func (s *EtcdServer) linearizableReadNotify(ctx context.Context) (uint64, uint64, error) {
 	s.readMu.RLock()
 	nc := s.readNotifier
 	s.readMu.RUnlock()
@@ -1149,11 +1188,11 @@ func (s *EtcdServer) linearizableReadNotify(ctx context.Context) error {
 	// wait for read state notification
 	select {
 	case <-nc.c:
-		return nc.err
+		return nc.readIndex, nc.requestID, nc.err
 	case <-ctx.Done():
-		return ctx.Err()
+		return 0, 0, ctx.Err()
 	case <-s.done:
-		return errors.ErrStopped
+		return 0, 0, errors.ErrStopped
 	}
 }
 

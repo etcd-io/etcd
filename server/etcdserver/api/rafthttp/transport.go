@@ -16,6 +16,7 @@ package rafthttp
 
 import (
 	"context"
+	"encoding/binary"
 	"net/http"
 	"sync"
 	"time"
@@ -130,6 +131,37 @@ type Transport struct {
 	streamProber   probing.Prober
 }
 
+func (t *Transport) maybeLog(m raftpb.Message, remote types.ID, lg *zap.Logger, direction string) {
+	if lg == nil {
+		panic("logger is nil")
+	}
+
+	var readRequestId uint64
+	switch m.Type {
+	case raftpb.MsgBeat, raftpb.MsgHeartbeat, raftpb.MsgHeartbeatResp:
+		if len(m.Context) == 8 {
+			readRequestId = binary.BigEndian.Uint64(m.Context)
+		}
+	case raftpb.MsgReadIndex, raftpb.MsgReadIndexResp:
+		if len(m.Entries) > 0 && len(m.Entries[0].Data) == 8 {
+			readRequestId = binary.BigEndian.Uint64(m.Entries[0].Data)
+		}
+	case raftpb.MsgApp, raftpb.MsgAppResp:
+	default:
+		return
+	}
+	lg.Info(
+		"Communication",
+		zap.String("direction", direction),
+		zap.String("message-type", m.Type.String()),
+		zap.String("local-member-id", t.ID.String()),
+		zap.String("remote-peer-id", remote.String()),
+		zap.Uint64("term", m.Term),
+		zap.Uint64("index", m.Index),
+		zap.Uint64("commit", m.Commit),
+		zap.Uint64("read-request-id", readRequestId),
+	)
+}
 func (t *Transport) Start() error {
 	var err error
 	t.streamRt, err = newStreamRoundTripper(t.TLSInfo, t.DialTimeout)

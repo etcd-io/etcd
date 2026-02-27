@@ -14,7 +14,13 @@
 
 package raft
 
-import pb "go.etcd.io/raft/v3/raftpb"
+import (
+	"time"
+
+	"encoding/binary"
+
+	pb "go.etcd.io/raft/v3/raftpb"
+)
 
 // ReadState provides state for read only query.
 // It's caller's responsibility to call ReadIndex first before getting
@@ -34,16 +40,19 @@ type readIndexStatus struct {
 	// this becomes performance sensitive enough (doubtful), quorum.VoteResult
 	// can change to an API that is closer to that of CommittedIndex.
 	acks map[uint64]bool
+	queuedAt time.Time
 }
 
 type readOnly struct {
+	logger Logger
 	option           ReadOnlyOption
 	pendingReadIndex map[string]*readIndexStatus
 	readIndexQueue   []string
 }
 
-func newReadOnly(option ReadOnlyOption) *readOnly {
+func newReadOnly(logger Logger, option ReadOnlyOption) *readOnly {
 	return &readOnly{
+		logger:           logger,
 		option:           option,
 		pendingReadIndex: make(map[string]*readIndexStatus),
 	}
@@ -55,22 +64,29 @@ func newReadOnly(option ReadOnlyOption) *readOnly {
 // `m` is the original read only request message from the local or remote node.
 func (ro *readOnly) addRequest(index uint64, m pb.Message) {
 	s := string(m.Entries[0].Data)
+	var readRequestId uint64
+	if len(m.Entries[0].Data) == 8 {
+		readRequestId = binary.BigEndian.Uint64(m.Entries[0].Data)
+	}
 	if _, ok := ro.pendingReadIndex[s]; ok {
+		ro.logger.Infof("readOnly.addRequest: duplicate read request, read-request-id: %v read-index: %v read-term: %v", readRequestId, index, m.Term)
 		return
 	}
-	ro.pendingReadIndex[s] = &readIndexStatus{index: index, req: m, acks: make(map[uint64]bool)}
+	ro.pendingReadIndex[s] = &readIndexStatus{index: index, req: m, acks: make(map[uint64]bool), queuedAt: time.Now()}
 	ro.readIndexQueue = append(ro.readIndexQueue, s)
+	ro.logger.Infof("readOnly.addRequest: queued read request, read-request-id: %v queue-index: %v read-index: %v read-term: %v", readRequestId, len(ro.readIndexQueue)-1, index, m.Term)
 }
 
 // recvAck notifies the readonly struct that the raft state machine received
 // an acknowledgment of the heartbeat that attached with the read only request
 // context.
-func (ro *readOnly) recvAck(id uint64, context []byte) map[uint64]bool {
+func (ro *readOnly) recvAck(id uint64, context []byte, commit uint64, term uint64) map[uint64]bool {
 	rs, ok := ro.pendingReadIndex[string(context)]
 	if !ok {
 		return nil
 	}
-
+	readRequestId := binary.BigEndian.Uint64(context)
+	ro.logger.Infof("readOnly.recvAck: received read request ack, read-request-id: %v read-index: %v message-index: %v message-term: %v", readRequestId, rs.index, commit, term)
 	rs.acks[id] = true
 	return rs.acks
 }
@@ -87,6 +103,12 @@ func (ro *readOnly) advance(m pb.Message) []*readIndexStatus {
 	ctx := string(m.Context)
 	var rss []*readIndexStatus
 
+	readRequestId := uint64(0)
+	if len(m.Context) == 8 {
+		readRequestId = binary.BigEndian.Uint64(m.Context)
+	}
+	
+	ro.logger.Infof("readOnly.advance: advancing read request queue, read-request-id: %v message-index: %v message-term: %v", readRequestId, m.Commit, m.Term)
 	for _, okctx := range ro.readIndexQueue {
 		i++
 		rs, ok := ro.pendingReadIndex[okctx]
@@ -102,7 +124,13 @@ func (ro *readOnly) advance(m pb.Message) []*readIndexStatus {
 
 	if found {
 		ro.readIndexQueue = ro.readIndexQueue[i:]
-		for _, rs := range rss {
+		for j, rs := range rss {
+
+			readRequestId := uint64(0)
+			if len(rs.req.Entries[0].Data) == 8 {
+				readRequestId = binary.BigEndian.Uint64(rs.req.Entries[0].Data)
+			}
+			ro.logger.Infof("readOnly.advance: dequeue read request, read-index: %v read-request-id: %v queue-index: %v message-index: %v message-term: %v read-request-term: %v", rs.index, readRequestId, j, m.Commit, m.Term, rs.req.Term)
 			delete(ro.pendingReadIndex, string(rs.req.Entries[0].Data))
 		}
 		return rss

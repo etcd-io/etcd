@@ -17,6 +17,7 @@ package raft
 import (
 	"context"
 	"errors"
+	"time"
 
 	pb "go.etcd.io/raft/v3/raftpb"
 )
@@ -395,6 +396,13 @@ func (n *node) run() {
 			if IsResponseMsg(m.Type) && !IsLocalMsgTarget(m.From) && r.trk.Progress[m.From] == nil {
 				// Filter out response message from unknown From.
 				break
+			}
+			// DEBUG: Log the time spent in the queue
+			if !m.ArrivalTime.IsZero() {
+				delay := time.Since(m.ArrivalTime)
+				if delay > 50*time.Millisecond { // Threshold for a "stalled" packet
+					r.logger.Warningf("Inbox Latency: processed %s from %x with Term %d after %v delay", m.Type, m.From, m.Term, delay)
+				}
 			}
 			r.Step(m)
 		case cc := <-n.confc:
