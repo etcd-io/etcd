@@ -10,6 +10,7 @@ replace (
 	go.etcd.io/etcd/client/v3 => ../client/v3
 	go.etcd.io/etcd/pkg/v3 => ../pkg
 	go.etcd.io/etcd/server/v3 => ../server
+	go.etcd.io/raft/v3 => ../raft
 )
 
 require (
