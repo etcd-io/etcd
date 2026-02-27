@@ -174,3 +174,30 @@ func TestModelDescribe(t *testing.T) {
 		assert.Equal(t, tc.expectDescribe, NonDeterministicModel.DescribeOperation(tc.req, tc.resp))
 	}
 }
+
+func TestDescribeOperationMetadata(t *testing.T) {
+	tcs := []struct {
+		resp           MaybeEtcdResponse
+		expectDescribe string
+	}{
+		{
+			resp:           MaybeEtcdResponse{},
+			expectDescribe: "",
+		},
+		{
+			resp:           MaybeEtcdResponse{EtcdResponse: EtcdResponse{MemberID: 1}},
+			expectDescribe: "member: 1",
+		},
+		{
+			resp:           MaybeEtcdResponse{EtcdResponse: EtcdResponse{MemberID: 100}},
+			expectDescribe: "member: 64",
+		},
+		{
+			resp:           MaybeEtcdResponse{EtcdResponse: EtcdResponse{MemberID: 255}},
+			expectDescribe: "member: ff",
+		},
+	}
+	for _, tc := range tcs {
+		assert.Equal(t, tc.expectDescribe, DescribeOperationMetadata(tc.resp))
+	}
+}

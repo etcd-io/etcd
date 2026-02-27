@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+
+	"go.etcd.io/etcd/client/pkg/v3/types"
 )
 
 func describeEtcdResponse(request EtcdRequest, response MaybeEtcdResponse) string {
@@ -256,6 +258,13 @@ func describeRangeResponse(request RangeOptions, response RangeResponse) string 
 		return "nil"
 	}
 	return describeValueOrHash(response.KVs[0].Value)
+}
+
+func DescribeOperationMetadata(response MaybeEtcdResponse) string {
+	if response.MemberID != 0 {
+		return fmt.Sprintf("memberID: %s", types.ID(response.MemberID).String())
+	}
+	return ""
 }
 
 func describeValueOrHash(value ValueOrHash) string {

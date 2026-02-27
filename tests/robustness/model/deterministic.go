@@ -52,6 +52,12 @@ var DeterministicModel = porcupine.Model{
 	DescribeOperation: func(in, out any) string {
 		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), MaybeEtcdResponse{EtcdResponse: out.(EtcdResponse)}))
 	},
+	DescribeOperationMetadata: func(info any) string {
+		if info == nil {
+			return ""
+		}
+		return DescribeOperationMetadata(MaybeEtcdResponse{EtcdResponse: info.(EtcdResponse)})
+	},
 	DescribeState: func(st any) string {
 		data, err := json.MarshalIndent(st, "", "  ")
 		if err != nil {

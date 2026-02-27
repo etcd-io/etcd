@@ -41,6 +41,12 @@ var NonDeterministicModel = porcupine.Model{
 	DescribeOperation: func(in, out any) string {
 		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(MaybeEtcdResponse)))
 	},
+	DescribeOperationMetadata: func(info any) string {
+		if info == nil {
+			return ""
+		}
+		return DescribeOperationMetadata(info.(MaybeEtcdResponse))
+	},
 	DescribeState: func(st any) string {
 		etcdStates := st.(nonDeterministicState)
 		desc := make([]string, 0, len(etcdStates))
