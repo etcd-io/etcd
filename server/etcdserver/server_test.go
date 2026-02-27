@@ -1577,42 +1577,14 @@ func TestAddFeatureGateMetrics(t *testing.T) {
 }
 
 func TestRequestCurrentIndex_LeaderChangedRace(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-
-	s := &EtcdServer{
-		lgMu:              new(sync.RWMutex),
-		lg:                lg,
-		stopping:          make(chan struct{}),
-		firstCommitInTerm: notify.NewNotifier(),
-		Cfg: config.ServerConfig{
-			TickMs:        100,
-			ElectionTicks: 10,
-		},
-	}
-	s.memberID = 1
-	s.lead.Store(1)
-	s.term.Store(2)
-
-	s.r = raftNode{
-		raftNodeConfig: raftNodeConfig{
-			Node: newNodeNop(),
-		},
-		readStateC: make(chan raft.ReadState, 1),
-	}
-
-	requestID := uint64(12345)
-	requestIDBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(requestIDBytes, requestID)
-
-	leaderChangedNotifier := make(chan struct{})
-	close(leaderChangedNotifier)
+	s, _ := setupTestRequestCurrentIndex(t)
 
 	for i := 0; i < 100; i++ {
-		s.r.readStateC <- raft.ReadState{
-			Index:      100,
-			RequestCtx: requestIDBytes,
-		}
-		index, err := s.requestCurrentIndex(leaderChangedNotifier, requestID)
+		s.r.readStateC <- raft.ReadState{Index: 100}
+		leaderChangedNotifier := s.leaderChanged.Receive()
+		s.leaderChanged.Notify()
+
+		index, err := s.requestCurrentIndex(leaderChangedNotifier)
 		require.ErrorIs(t, err, errors.ErrLeaderChanged)
 		require.Equal(t, uint64(0), index)
 
@@ -1622,4 +1594,179 @@ func TestRequestCurrentIndex_LeaderChangedRace(t *testing.T) {
 		default:
 		}
 	}
+}
+
+func TestRequestCurrentIndex_UniqueRequestID(t *testing.T) {
+	s, mockRaft := setupTestRequestCurrentIndex(t)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.requestCurrentIndex(s.leaderChanged.Receive())
+	}()
+
+	require.Eventually(t, func() bool {
+		return len(mockRaft.getRequests()) >= 2
+	}, time.Second, 100*time.Millisecond)
+
+	s.leaderChanged.Notify()
+	wg.Wait()
+
+	seen := make(map[uint64]bool)
+	for _, id := range mockRaft.getRequests() {
+		require.Falsef(t, seen[id], "Found duplicate request ID: %d", id)
+		seen[id] = true
+	}
+}
+
+func TestRequestCurrentIndex_Success(t *testing.T) {
+	s, mockRaft := setupTestRequestCurrentIndex(t)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var index uint64
+	var err error
+	go func() {
+		defer wg.Done()
+		index, err = s.requestCurrentIndex(s.leaderChanged.Receive())
+	}()
+
+	require.Eventually(t, func() bool {
+		return len(mockRaft.getRequests()) == 1
+	}, time.Second, 100*time.Millisecond)
+
+	reqID := mockRaft.getRequests()[0]
+	reqIDBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(reqIDBytes, reqID)
+
+	s.r.readStateC <- raft.ReadState{
+		Index:      100,
+		RequestCtx: reqIDBytes,
+	}
+
+	wg.Wait()
+
+	require.NoError(t, err)
+	require.Equal(t, uint64(100), index)
+	require.Lenf(t, mockRaft.getRequests(), 1, "Expected exactly 1 ReadIndex request")
+}
+
+func TestRequestCurrentIndex_WrongRequestID(t *testing.T) {
+	s, mockRaft := setupTestRequestCurrentIndex(t)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var index uint64
+	var err error
+	go func() {
+		defer wg.Done()
+		index, err = s.requestCurrentIndex(s.leaderChanged.Receive())
+	}()
+
+	require.Eventually(t, func() bool {
+		return len(mockRaft.getRequests()) == 1
+	}, time.Second, 10*time.Millisecond)
+
+	wrongReqIDBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(wrongReqIDBytes, 99999)
+
+	s.r.readStateC <- raft.ReadState{
+		Index:      100,
+		RequestCtx: wrongReqIDBytes,
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	requests := mockRaft.getRequests()
+	require.Lenf(t, requests, 1, "Expected exactly 1 ReadIndex request")
+
+	reqID := requests[0]
+	reqIDBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(reqIDBytes, reqID)
+
+	s.r.readStateC <- raft.ReadState{
+		Index:      99,
+		RequestCtx: reqIDBytes,
+	}
+	wg.Wait()
+
+	require.NoError(t, err)
+	require.Equal(t, uint64(99), index)
+	require.Lenf(t, mockRaft.getRequests(), 1, "Expected exactly 1 ReadIndex request")
+}
+
+func TestRequestCurrentIndex_DelayedResponse(t *testing.T) {
+	s, mockRaft := setupTestRequestCurrentIndex(t)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var index uint64
+	var err error
+	go func() {
+		defer wg.Done()
+		index, err = s.requestCurrentIndex(s.leaderChanged.Receive())
+	}()
+
+	require.Eventually(t, func() bool {
+		return len(mockRaft.getRequests()) >= 3
+	}, 2*time.Second, 100*time.Millisecond)
+	requests := mockRaft.getRequests()
+
+	reqID := requests[1]
+	reqIDBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(reqIDBytes, reqID)
+
+	select {
+	case s.r.readStateC <- raft.ReadState{
+		Index:      100,
+		RequestCtx: reqIDBytes,
+	}:
+	case <-time.After(time.Second):
+		t.Fatal("timed out sending read state")
+	}
+	wg.Wait()
+
+	require.NoError(t, err)
+	require.Equal(t, uint64(100), index)
+}
+
+func setupTestRequestCurrentIndex(t *testing.T) (*EtcdServer, *testRaftNode) {
+	mockRaft := &testRaftNode{}
+	s := &EtcdServer{
+		lgMu:              new(sync.RWMutex),
+		lg:                zaptest.NewLogger(t),
+		reqIDGen:          idutil.NewGenerator(0, time.Time{}),
+		firstCommitInTerm: notify.NewNotifier(),
+		leaderChanged:     notify.NewNotifier(),
+		r: raftNode{
+			raftNodeConfig: raftNodeConfig{
+				Node: mockRaft,
+			},
+			readStateC: make(chan raft.ReadState, 1),
+		},
+	}
+	return s, mockRaft
+}
+
+type testRaftNode struct {
+	raft.Node
+	mu                sync.Mutex
+	readIndexRequests []uint64
+}
+
+func (m *testRaftNode) ReadIndex(ctx context.Context, rctx []byte) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(rctx) == 8 {
+		m.readIndexRequests = append(m.readIndexRequests, binary.BigEndian.Uint64(rctx))
+	}
+	return nil
+}
+
+func (m *testRaftNode) getRequests() []uint64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	res := make([]uint64, len(m.readIndexRequests))
+	copy(res, m.readIndexRequests)
+	return res
 }
