@@ -332,7 +332,10 @@ func (le *lessor) Revoke(id LeaseID) error {
 		return ErrLeaseNotFound
 	}
 
-	defer close(l.revokec)
+	// Signal that revocation has started. This must happen while holding
+	// le.mu so that Renew's revokec check (also under le.mu) is ordered
+	// with respect to this close.
+	close(l.revokec)
 	// unlock before doing external work
 	le.mu.Unlock()
 
@@ -447,6 +450,14 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 	if l == nil {
 		le.mu.Unlock()
 		return -1, ErrLeaseNotFound
+	}
+	// Check if Revoke() has started. revokec is closed under le.mu in
+	// Revoke(), so this check is properly ordered.
+	select {
+	case <-l.revokec:
+		le.mu.Unlock()
+		return -1, ErrLeaseNotFound
+	default:
 	}
 	l.refresh(0)
 	item := &LeaseWithTime{id: l.ID, time: l.expiry}
