@@ -350,6 +350,8 @@ func (le *lessor) Revoke(id LeaseID) error {
 		txn.DeleteRange([]byte(key), nil)
 	}
 
+	// gofail: var afterLeaseRevokeDeleteKeys struct{}
+
 	le.mu.Lock()
 	defer le.mu.Unlock()
 	delete(le.leaseMap, l.ID)
