@@ -77,6 +77,14 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 
 	cache.demux = NewDemux(internalCtx, &cache.waitGroup, cfg.HistoryWindowSize, cfg.ResyncInterval)
 
+	if cfg.MetricsMux != nil {
+		path := cfg.MetricsPath
+		if path == "" {
+			path = DefaultMetricsPath
+		}
+		HandleMetrics(cfg.MetricsMux, path)
+	}
+
 	cache.waitGroup.Add(1)
 	go func() {
 		defer cache.waitGroup.Done()
