@@ -66,7 +66,7 @@ func Argify(s string) []string {
 		}
 		if args[i][0] == '\'' {
 			// 'single-quoted string'
-			args[i] = args[i][1 : len(args)-1]
+			args[i] = args[i][1 : len(args[i])-1]
 		} else if args[i][0] == '"' {
 			// "double quoted string"
 			if _, err := fmt.Sscanf(args[i], "%q", &args[i]); err != nil {
