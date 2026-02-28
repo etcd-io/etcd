@@ -31,10 +31,11 @@ var ErrNotReady = fmt.Errorf("cache: store not ready")
 // The store keeps a bounded history of snapshots using ringBuffer so that
 // reads at historical revisions can be served until they fall out of the window.
 type store struct {
-	mu      sync.RWMutex
-	degree  int
-	latest  snapshot              // latest is the mutable working snapshot
-	history ringBuffer[*snapshot] // history stores immutable cloned snapshots
+	mu       sync.RWMutex
+	degree   int
+	keyCount int64                 // number of keys in the latest tree
+	latest   snapshot              // latest is the mutable working snapshot
+	history  ringBuffer[*snapshot] // history stores immutable cloned snapshots
 }
 
 func newStore(degree int, historyCapacity int) *store {
@@ -112,7 +113,11 @@ func (s *store) Restore(kvs []*mvccpb.KeyValue, rev int64) {
 	}
 	s.history.RebaseHistory()
 	s.latest.rev = rev
+	s.keyCount = int64(len(kvs))
 	s.history.Append(newClonedSnapshot(rev, s.latest.tree))
+
+	storeKeysTotal.Set(float64(s.keyCount))
+	storeLatestRevision.Set(float64(rev))
 }
 
 func (s *store) Apply(resp clientv3.WatchResponse) error {
@@ -142,6 +147,7 @@ func (s *store) applyProgressNotifyLocked(revision int64) {
 		return
 	}
 	s.latest.rev = revision
+	storeLatestRevision.Set(float64(revision))
 }
 
 func (s *store) applyEventsLocked(events []*clientv3.Event) error {
@@ -155,7 +161,11 @@ func (s *store) applyEventsLocked(events []*clientv3.Event) error {
 				if _, ok := s.latest.tree.Delete(&kvItem{key: string(ev.Kv.Key)}); !ok {
 					return fmt.Errorf("cache: delete non-existent key %s", string(ev.Kv.Key))
 				}
+				s.keyCount--
 			case clientv3.EventTypePut:
+				if _, ok := s.latest.tree.Get(newKVItem(ev.Kv)); !ok {
+					s.keyCount++
+				}
 				s.latest.tree.ReplaceOrInsert(newKVItem(ev.Kv))
 			}
 			i++
@@ -163,6 +173,9 @@ func (s *store) applyEventsLocked(events []*clientv3.Event) error {
 		s.latest.rev = rev
 		s.history.Append(newClonedSnapshot(rev, s.latest.tree))
 	}
+
+	storeKeysTotal.Set(float64(s.keyCount))
+	storeLatestRevision.Set(float64(s.latest.rev))
 	return nil
 }
 

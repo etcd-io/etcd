@@ -89,7 +89,15 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 // Watch registers a cache-backed watcher for a given key or prefix.
 // It returns a WatchChan that streams WatchResponses containing events.
 func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan {
+	startTime := time.Now()
+	result := "success"
+	defer func() {
+		watchTotal.WithLabelValues(result).Inc()
+		watchDurationSeconds.Observe(time.Since(startTime).Seconds())
+	}()
+
 	if err := c.WaitReady(ctx); err != nil {
+		result = "error"
 		emptyWatchChan := make(chan clientv3.WatchResponse)
 		close(emptyWatchChan)
 		return emptyWatchChan
@@ -100,6 +108,7 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 
 	pred, err := c.validateWatch(key, op)
 	if err != nil {
+		result = "error"
 		ch := make(chan clientv3.WatchResponse, 1)
 		ch <- clientv3.WatchResponse{Canceled: true, CancelReason: err.Error()}
 		close(ch)
@@ -145,15 +154,25 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 	return responseChan
 }
 
-func (c *Cache) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+func (c *Cache) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (_ *clientv3.GetResponse, err error) {
+	startTime := time.Now()
+	defer func() {
+		result := "success"
+		if err != nil {
+			result = "error"
+		}
+		getTotal.WithLabelValues(result).Inc()
+		getDurationSeconds.Observe(time.Since(startTime).Seconds())
+	}()
+
 	if c.store.LatestRev() == 0 {
-		if err := c.WaitReady(ctx); err != nil {
+		if err = c.WaitReady(ctx); err != nil {
 			return nil, err
 		}
 	}
 	op := clientv3.OpGet(key, opts...)
 
-	if _, err := c.validateGet(key, op); err != nil {
+	if _, err = c.validateGet(key, op); err != nil {
 		return nil, err
 	}
 
