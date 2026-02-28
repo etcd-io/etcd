@@ -17,7 +17,6 @@ package cache
 import (
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -84,7 +83,7 @@ func TestDemuxMetricsRegisterUnregister(t *testing.T) {
 
 	d.Register(w1, 0)
 	require.InEpsilon(t, 1, testutil.ToFloat64(demuxActiveWatchers), 0.01)
-	require.Equal(t, float64(0), testutil.ToFloat64(demuxLaggingWatchers))
+	require.InDelta(t, 0, testutil.ToFloat64(demuxLaggingWatchers), 0)
 
 	d.Register(w2, 0)
 	require.InEpsilon(t, 2, testutil.ToFloat64(demuxActiveWatchers), 0.01)
@@ -93,7 +92,7 @@ func TestDemuxMetricsRegisterUnregister(t *testing.T) {
 	require.InEpsilon(t, 1, testutil.ToFloat64(demuxActiveWatchers), 0.01)
 
 	d.Unregister(w2)
-	require.Equal(t, float64(0), testutil.ToFloat64(demuxActiveWatchers))
+	require.InDelta(t, 0, testutil.ToFloat64(demuxActiveWatchers), 0)
 }
 
 func TestDemuxMetricsLaggingWatcher(t *testing.T) {
@@ -104,11 +103,11 @@ func TestDemuxMetricsLaggingWatcher(t *testing.T) {
 	w := newWatcher(4, nil)
 	d.Register(w, 5)
 
-	require.Equal(t, float64(0), testutil.ToFloat64(demuxActiveWatchers))
+	require.InDelta(t, 0, testutil.ToFloat64(demuxActiveWatchers), 0)
 	require.InEpsilon(t, 1, testutil.ToFloat64(demuxLaggingWatchers), 0.01)
 
 	d.Unregister(w)
-	require.Equal(t, float64(0), testutil.ToFloat64(demuxLaggingWatchers))
+	require.InDelta(t, 0, testutil.ToFloat64(demuxLaggingWatchers), 0)
 }
 
 func TestDemuxMetricsBroadcastUpdatesHistorySize(t *testing.T) {
@@ -155,7 +154,7 @@ func TestDemuxMetricsBroadcastOverflowPromotesToLagging(t *testing.T) {
 		Events: []*clientv3.Event{makePutEvent("/b", "2", 6)},
 	})
 	require.NoError(t, err)
-	require.Equal(t, float64(0), testutil.ToFloat64(demuxActiveWatchers))
+	require.InDelta(t, 0, testutil.ToFloat64(demuxActiveWatchers), 0)
 	require.InEpsilon(t, 1, testutil.ToFloat64(demuxLaggingWatchers), 0.01)
 
 	d.Unregister(w)
@@ -177,9 +176,9 @@ func TestDemuxMetricsPurge(t *testing.T) {
 
 	d.Purge()
 
-	require.Equal(t, float64(0), testutil.ToFloat64(demuxActiveWatchers))
-	require.Equal(t, float64(0), testutil.ToFloat64(demuxLaggingWatchers))
-	require.Equal(t, float64(0), testutil.ToFloat64(demuxHistorySize))
+	require.InDelta(t, 0, testutil.ToFloat64(demuxActiveWatchers), 0)
+	require.InDelta(t, 0, testutil.ToFloat64(demuxLaggingWatchers), 0)
+	require.InDelta(t, 0, testutil.ToFloat64(demuxHistorySize), 0)
 }
 
 func TestHandleMetricsEndpoint(t *testing.T) {
@@ -203,7 +202,7 @@ func TestHandleMetricsEndpoint(t *testing.T) {
 		"etcd_cache_demux_lagging_watchers",
 		"etcd_cache_demux_history_size",
 	} {
-		require.True(t, strings.Contains(body, want), "expected %q in metrics output", want)
+		require.Containsf(t, body, want, "expected %q in metrics output", want)
 	}
 }
 
@@ -216,7 +215,7 @@ func TestHandleMetricsCustomPath(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.True(t, strings.Contains(rec.Body.String(), "etcd_cache_store_keys_total"))
+	require.Contains(t, rec.Body.String(), "etcd_cache_store_keys_total")
 }
 
 func progressNotify(rev int64) clientv3.WatchResponse {
