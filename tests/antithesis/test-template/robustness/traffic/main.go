@@ -80,7 +80,7 @@ func main() {
 		}
 	}()
 
-	lg.Info("Start traffic generation", zap.Duration("duration", duration))
+	lg.Info("Start traffic generation", zap.Duration("duration", duration), zap.String("base-time", baseTime.UTC().Format("2006-01-02T15:04:05.000000Z0700")))
 	r.Client, err = runTraffic(ctx, lg, tf, hosts, baseTime, duration)
 	if err != nil {
 		lg.Error("Failed to generate traffic")
