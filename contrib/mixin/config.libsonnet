@@ -11,7 +11,7 @@
     // that are about an etcd cluster as a whole. For example, if etcd
     // instances are deployed on K8s, you will likely want to change
     // this to 'instance, pod'.
-    etcd_instance_labels: 'instance',
+    etcd_instance_labels: 'instance,pod',
     // scrape_interval_seconds is the global scrape interval which can be
     // used to dynamically adjust rate windows as a function of the interval.
     scrape_interval_seconds: 30,
