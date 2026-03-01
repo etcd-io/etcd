@@ -22,7 +22,7 @@ tests:
         exp_alerts:
           - exp_labels:
               job: etcd
-              severity: warning
+              severity: critical
             exp_annotations:
               description: 'etcd cluster "etcd": members are down (3).'
               summary: etcd cluster members are down.
@@ -35,8 +35,8 @@ tests:
               job: etcd
               severity: critical
             exp_annotations:
-              description: 'etcd cluster "etcd": insufficient members (1).'
-              summary: etcd cluster has insufficient number of members.
+              description: "etcd cluster \"etcd\": is reporting fewer instances are available than are needed (1). When etcd does not have a majority of instances available the Kubernetes APIs will reject read and write requests and operations that preserve the health of workloads cannot be performed. This can occur when multiple control plane nodes are powered off or are unable to connect to each other via the network. Check that all control plane nodes are powered on and that network connections between each machine are functional."
+              summary: "etcd is reporting that a majority of instances are unavailable."
       - eval_time: 15m
         alertname: etcdInsufficientMembers
         exp_alerts:
@@ -44,8 +44,8 @@ tests:
               job: etcd
               severity: critical
             exp_annotations:
-              description: 'etcd cluster "etcd": insufficient members (0).'
-              summary: etcd cluster has insufficient number of members.
+              description: "etcd cluster \"etcd\": is reporting fewer instances are available than are needed (0). When etcd does not have a majority of instances available the Kubernetes APIs will reject read and write requests and operations that preserve the health of workloads cannot be performed. This can occur when multiple control plane nodes are powered off or are unable to connect to each other via the network. Check that all control plane nodes are powered on and that network connections between each machine are functional."
+              summary: "etcd is reporting that a majority of instances are unavailable."
   - interval: 1m
     input_series:
       - series: up{job="etcd",instance="10.10.10.0"}
@@ -60,7 +60,7 @@ tests:
         exp_alerts:
           - exp_labels:
               job: etcd
-              severity: warning
+              severity: critical
             exp_annotations:
               description: 'etcd cluster "etcd": members are down (3).'
               summary: etcd cluster members are down.
@@ -78,40 +78,26 @@ tests:
         exp_alerts:
           - exp_labels:
               job: etcd
-              severity: warning
+              severity: critical
             exp_annotations:
               description: 'etcd cluster "etcd": members are down (1).'
               summary: etcd cluster members are down.
   - interval: 1m
     input_series:
-      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}
-        values: 0 0 2 0 0 1 0 0 0 0 0 0 0 0 0 0
-      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.1"}
-        values: 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0
-      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.2"}
-        values: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      - series: etcd_server_is_leader{job="etcd"}
+        values: 0 0 1 0 0 1 0 1 0 1 0 1 1 0 1 0 1 0 1 0 1 0
     alert_rule_test:
-      - eval_time: 10m
+      - eval_time: 5m
+        alertname: etcdHighNumberOfLeaderChanges
+      - eval_time: 15m
         alertname: etcdHighNumberOfLeaderChanges
         exp_alerts:
           - exp_labels:
               job: etcd
               severity: warning
             exp_annotations:
-              description: 'etcd cluster "etcd": 4 leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.'
+              description: 'etcd cluster "etcd": 9 leader changes within the last 10 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.'
               summary: etcd cluster has high number of leader changes.
-  - interval: 1m
-    input_series:
-      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}
-        values: 0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0
-      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.1"}
-        values: 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0
-      - series: etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.2"}
-        values: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-    alert_rule_test:
-      - eval_time: 10m
-        alertname: etcdHighNumberOfLeaderChanges
-        exp_alerts:
   - interval: 1m
     input_series:
       - series: etcd_mvcc_db_total_size_in_bytes{job="etcd",instance="10.10.10.0"}
