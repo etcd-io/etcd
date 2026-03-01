@@ -121,6 +121,10 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 		}(c)
 	}
 	if !profile.ForbidRunWatchLoop {
+		revisionOffset := DefaultRevisionOffset
+		if profile.RevisionOffset != 0 {
+			revisionOffset = profile.RevisionOffset
+		}
 		for i := range profile.MemberClientCount {
 			wg.Add(1)
 			c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
@@ -129,12 +133,13 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				defer wg.Done()
 				defer c.Close()
 				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-					Client:     c,
-					QPSLimiter: limiter,
-					KeyStore:   keyStore,
-					Storage:    kubernetesStorage,
-					Finish:     finish,
-					Logger:     lg,
+					Client:         c,
+					QPSLimiter:     limiter,
+					KeyStore:       keyStore,
+					Storage:        kubernetesStorage,
+					Finish:         finish,
+					Logger:         lg,
+					RevisionOffset: revisionOffset,
 				})
 			}(c)
 		}
@@ -146,12 +151,13 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				defer wg.Done()
 				defer c.Close()
 				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-					Client:     c,
-					QPSLimiter: limiter,
-					KeyStore:   keyStore,
-					Storage:    kubernetesStorage,
-					Finish:     finish,
-					Logger:     lg,
+					Client:         c,
+					QPSLimiter:     limiter,
+					KeyStore:       keyStore,
+					Storage:        kubernetesStorage,
+					Finish:         finish,
+					Logger:         lg,
+					RevisionOffset: revisionOffset,
 				})
 			}(c)
 		}
@@ -337,6 +343,7 @@ type Profile struct {
 	ForbidCompaction               bool
 	CompactPeriod                  time.Duration
 	ForbidRunWatchLoop             bool
+	RevisionOffset                 int64
 }
 
 func (p Profile) WithoutCompaction() Profile {
@@ -351,6 +358,11 @@ func (p Profile) WithCompactionPeriod(cp time.Duration) Profile {
 
 func (p Profile) WithoutWatchLoop() Profile {
 	p.ForbidRunWatchLoop = true
+	return p
+}
+
+func (p Profile) WithRevisionOffset(offset int64) Profile {
+	p.RevisionOffset = offset
 	return p
 }
 
@@ -375,10 +387,11 @@ type RunWatchLoopParam struct {
 	Client     *client.RecordingClient
 	QPSLimiter *rate.Limiter
 	// TODO: merge 2 key stores into 1
-	KeyStore *keyStore
-	Storage  *storage
-	Finish   <-chan struct{}
-	Logger   *zap.Logger
+	KeyStore       *keyStore
+	Storage        *storage
+	Finish         <-chan struct{}
+	Logger         *zap.Logger
+	RevisionOffset int64
 }
 
 type Traffic interface {
@@ -415,7 +428,7 @@ func runWatch(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) err
 	if err != nil {
 		return err
 	}
-	rev := resp.Header.Revision + DefaultRevisionOffset
+	rev := resp.Header.Revision + p.RevisionOffset
 
 	watchCtx, watchCancel := context.WithTimeout(ctx, WatchTimeout)
 	defer watchCancel()
