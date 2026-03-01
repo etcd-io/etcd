@@ -30,6 +30,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
+	"go.etcd.io/etcd/server/v3/etcdserver/requestid"
 	"go.etcd.io/raft/v3"
 )
 
@@ -77,6 +78,8 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 
 func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		requestID := s.RequestID()
+		ctx = requestid.NewContext(ctx, requestID)
 		lg := s.Logger()
 		debug := lg.Core().Enabled(zap.DebugLevel)
 		if debug {
@@ -106,12 +109,14 @@ func logUnaryRequest(ctx context.Context, log func(msg string, fields ...zap.Fie
 	if ok {
 		remote = peerInfo.Addr.String()
 	}
+	requestID := requestid.FromContext(ctx)
 	var size int
 	if msg, ok := req.(Sizer); ok {
 		size = msg.Size()
 	}
 	fields := []zap.Field{
-		zap.String("method", info.FullMethod),
+		zap.String("method", info.FullMethod),	
+		zap.Uint64("request_id", requestID),
 		zap.String("remote", remote),
 		zap.Int("size", size),
 	}
@@ -164,6 +169,7 @@ func logUnaryResponseStats(ctx context.Context, log func(msg string, fields ...z
 		zap.String("method", info.FullMethod),
 		zap.Duration("duration", duration),
 		zap.Int("size", size),
+		zap.Uint64("request_id", requestid.FromContext(ctx)),
 	)
 	switch _resp := resp.(type) {
 	case *pb.RangeResponse:

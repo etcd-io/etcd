@@ -36,6 +36,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
+	"go.etcd.io/etcd/server/v3/etcdserver/requestid"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -830,9 +831,15 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 	if ci > ai+maxGapBetweenApplyAndCommitIndex {
 		return nil, errors.ErrTooManyRequests
 	}
+	lg := s.Logger()
+	requestID := requestid.FromContext(ctx)
+	if requestID == 0 {
+		lg.Warn("request ID not found in context, log correlation might not work, generating new")
+		requestID = s.reqIDGen.Next()
+	}
 
 	r.Header = &pb.RequestHeader{
-		ID: s.reqIDGen.Next(),
+		ID: requestID,
 	}
 
 	// check authinfo if it is not InternalAuthenticateRequest
@@ -877,6 +884,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 	defer cancel()
 
 	span := trace.SpanFromContext(ctx)
+	lg.Debug("Send raft proposal", zap.String("request_type", reqType), zap.Uint64("request_id", requestID))
 	span.AddEvent("Send raft proposal")
 	err = s.r.Propose(cctx, data)
 	if err != nil {
@@ -890,6 +898,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 	select {
 	case x := <-ch:
 		span.AddEvent("Receive raft result")
+		lg.Debug("Receive raft result", zap.String("request_type", reqType), zap.Uint64("request_id", requestID))
 		return x.(*apply2.Result), nil
 	case <-cctx.Done():
 		proposalsFailed.Inc()
@@ -997,7 +1006,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 			return
 		}
 		if err != nil {
-			nr.notify(err)
+			nr.notify(err, requestID)
 			continue
 		}
 
@@ -1016,7 +1025,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 			}
 		}
 		// unblock all l-reads requested at indices before confirmedIndex
-		nr.notify(nil)
+		nr.notify(nil, requestID)
 		trace.Step("applied index is now lower than readState.Index")
 
 		trace.LogAllStepsIfLong(traceThreshold)
@@ -1149,6 +1158,8 @@ func (s *EtcdServer) linearizableReadNotify(ctx context.Context) error {
 	// wait for read state notification
 	select {
 	case <-nc.c:
+		requestID := requestid.FromContext(ctx)
+		s.Logger().Debug("linearizable read notify", zap.Uint64("read-index-id", nc.readIndexID), zap.Uint64("request-id", requestID))
 		return nc.err
 	case <-ctx.Done():
 		return ctx.Err()
