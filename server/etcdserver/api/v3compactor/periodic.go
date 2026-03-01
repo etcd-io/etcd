@@ -30,9 +30,10 @@ import (
 // Periodic compacts the log by purging revisions older than
 // the configured retention time.
 type Periodic struct {
-	lg     *zap.Logger
-	clock  clockwork.Clock
-	period time.Duration
+	lg       *zap.Logger
+	clock    clockwork.Clock
+	period   time.Duration
+	interval time.Duration
 
 	rg RevGetter
 	c  Compactable
@@ -48,13 +49,14 @@ type Periodic struct {
 
 // newPeriodic creates a new instance of Periodic compactor that purges
 // the log older than h Duration.
-func newPeriodic(lg *zap.Logger, clock clockwork.Clock, h time.Duration, rg RevGetter, c Compactable) *Periodic {
+func newPeriodic(lg *zap.Logger, clock clockwork.Clock, h time.Duration, interval time.Duration, rg RevGetter, c Compactable) *Periodic {
 	pc := &Periodic{
-		lg:     lg,
-		clock:  clock,
-		period: h,
-		rg:     rg,
-		c:      c,
+		lg:       lg,
+		clock:    clock,
+		period:   h,
+		interval: interval,
+		rg:       rg,
+		c:        c,
 	}
 	// revs won't be longer than the retentions.
 	pc.revs = make([]int64, 0, pc.getRetentions())
@@ -162,11 +164,15 @@ func (pc *Periodic) Run() {
 	}()
 }
 
+// if static interval is provided, compact every x duration.
 // if given compaction period x is <1-hour, compact every x duration.
 // (e.g. --auto-compaction-mode 'periodic' --auto-compaction-retention='10m', then compact every 10-minute)
 // if given compaction period x is >1-hour, compact every hour.
 // (e.g. --auto-compaction-mode 'periodic' --auto-compaction-retention='2h', then compact every 1-hour)
 func (pc *Periodic) getCompactInterval() time.Duration {
+	if pc.interval != 0 {
+		return pc.interval
+	}
 	itv := pc.period
 	if itv > time.Hour {
 		itv = time.Hour

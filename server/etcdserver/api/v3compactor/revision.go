@@ -34,6 +34,7 @@ type Revision struct {
 
 	clock     clockwork.Clock
 	retention int64
+	interval  time.Duration
 
 	rg RevGetter
 	c  Compactable
@@ -47,19 +48,22 @@ type Revision struct {
 
 // newRevision creates a new instance of Revisonal compactor that purges
 // the log older than retention revisions from the current revision.
-func newRevision(lg *zap.Logger, clock clockwork.Clock, retention int64, rg RevGetter, c Compactable) *Revision {
+func newRevision(lg *zap.Logger, clock clockwork.Clock, retention int64, interval time.Duration, rg RevGetter, c Compactable) *Revision {
+	// default revision interval to 5 minutes
+	if interval == 0 {
+		interval = time.Minute * 5
+	}
 	rc := &Revision{
 		lg:        lg,
 		clock:     clock,
 		retention: retention,
+		interval:  interval,
 		rg:        rg,
 		c:         c,
 	}
 	rc.ctx, rc.cancel = context.WithCancel(context.Background())
 	return rc
 }
-
-const revInterval = 5 * time.Minute
 
 // Run runs revision-based compactor.
 func (rc *Revision) Run() {
@@ -69,7 +73,7 @@ func (rc *Revision) Run() {
 			select {
 			case <-rc.ctx.Done():
 				return
-			case <-rc.clock.After(revInterval):
+			case <-rc.clock.After(rc.interval):
 				rc.mu.Lock()
 				p := rc.paused
 				rc.mu.Unlock()
@@ -103,7 +107,7 @@ func (rc *Revision) Run() {
 					"failed auto revision compaction",
 					zap.Int64("revision", rev),
 					zap.Int64("revision-compaction-retention", rc.retention),
-					zap.Duration("retry-interval", revInterval),
+					zap.Duration("retry-interval", rc.interval),
 					zap.Error(err),
 				)
 			}
