@@ -16,12 +16,11 @@ package adapter
 
 import (
 	"context"
+	"io"
 	"maps"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 )
 
 // chanServerStream implements grpc.ServerStream with a chanStream
@@ -121,7 +120,7 @@ func (s *chanStream) RecvMsg(m any) error {
 		select {
 		case msg, ok := <-s.recvc:
 			if !ok {
-				return status.Error(codes.Canceled, "the client connection is closing")
+				return io.EOF
 			}
 			if err, ok := msg.(error); ok {
 				return err
@@ -130,17 +129,27 @@ func (s *chanStream) RecvMsg(m any) error {
 			return nil
 		case <-s.ctx.Done():
 		}
-		if len(s.recvc) == 0 {
-			// prioritize any pending recv messages over canceled context
-			break
+		// Context is done. Do one non-blocking read to prioritize a
+		// pending message or channel closure (EOF) over the context error.
+		select {
+		case msg, ok := <-s.recvc:
+			if !ok {
+				return io.EOF
+			}
+			if err, ok := msg.(error); ok {
+				return err
+			}
+			*v = msg
+			return nil
+		default:
+			return s.ctx.Err()
 		}
 	}
-	return s.ctx.Err()
 }
 
 func newPipeStream(ctx context.Context, ssHandler func(chanServerStream) error) chanClientStream {
-	// ch1 is buffered so server can send error on close
-	ch1, ch2 := make(chan any, 1), make(chan any)
+	// ch1 is buffered so server can send error + EOF on close
+	ch1, ch2 := make(chan any, 2), make(chan any)
 	headerc, trailerc := make(chan metadata.MD, 1), make(chan metadata.MD, 1)
 
 	cctx, ccancel := context.WithCancel(ctx)
@@ -158,6 +167,15 @@ func newPipeStream(ctx context.Context, ssHandler func(chanServerStream) error) 
 			case <-sctx.Done():
 			case <-cctx.Done():
 			}
+		}
+		// Send io.EOF as a message instead of closing the channel.
+		// Closing would race with concurrent SendMsg calls from
+		// bidirectional streaming handlers (e.g. LeaseKeepAlive's
+		// sendLoop). Two concurrent sends are safe; send+close is not.
+		select {
+		case srv.sendc <- io.EOF:
+		case <-sctx.Done():
+		case <-cctx.Done():
 		}
 		scancel()
 		ccancel()

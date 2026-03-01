@@ -147,7 +147,7 @@ func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt 
 				traceutil.Field{Key: "req_type", Value: "range"},
 				traceutil.Field{Key: "range_begin", Value: string(tv.RequestRange.Key)},
 				traceutil.Field{Key: "range_end", Value: string(tv.RequestRange.RangeEnd)})
-			resp, err := executeRange(ctx, lg, txnWrite, tv.RequestRange)
+			resp, err := executeRange(ctx, lg, txnWrite, tv.RequestRange, true)
 			if err != nil {
 				return 0, fmt.Errorf("applyTxn: failed Range: %w", err)
 			}

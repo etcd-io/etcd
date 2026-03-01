@@ -237,7 +237,7 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 		{100, 3, kvs},
 	}
 	for i, tt := range tests {
-		r, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Limit: tt.limit})
+		r, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Limit: tt.limit, CountTotal: true})
 		if err != nil {
 			t.Fatalf("#%d: range error (%v)", i, err)
 		}
