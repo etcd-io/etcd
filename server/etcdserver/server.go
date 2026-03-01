@@ -2464,3 +2464,7 @@ func addFeatureGateMetrics(fg featuregate.FeatureGate, guageVec *prometheus.Gaug
 		guageVec.With(prometheus.Labels{"name": string(feature), "stage": string(featureSpec.PreRelease)}).Set(metricVal)
 	}
 }
+
+func (s *EtcdServer) RequestID() uint64 {
+	return s.reqIDGen.Next()
+}

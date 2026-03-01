@@ -30,6 +30,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
+	"go.etcd.io/etcd/server/v3/etcdserver/requestid"
 	"go.etcd.io/raft/v3"
 )
 
@@ -77,139 +78,117 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 
 func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		requestID := s.RequestID()
+		ctx = requestid.NewContext(ctx, requestID)
+		lg := s.Logger()
+		debug := lg.Core().Enabled(zap.DebugLevel)
+		if debug {
+			logUnaryRequest(ctx, lg.Debug, info, req)
+		}
+
 		startTime := time.Now()
 		resp, err := handler(ctx, req)
-		lg := s.Logger()
-		if lg != nil { // acquire stats if debug level is enabled or RequestInfo is expensive
-			defer logUnaryRequestStats(ctx, lg, s.Cfg.WarningUnaryRequestDuration, info, startTime, req, resp)
+		duration := time.Since(startTime)
+
+		if duration > s.Cfg.WarningUnaryRequestDuration {
+			var fields []zap.Field
+			if !debug {
+				fields = requestLogFields(req)
+			}
+			logUnaryResponseStats(ctx, lg.Warn, duration, info, startTime, resp, fields...)
+		} else if debug {
+			logUnaryResponseStats(ctx, lg.Debug, duration, info, startTime, resp)
 		}
 		return resp, err
 	}
 }
 
-func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, warnLatency time.Duration, info *grpc.UnaryServerInfo, startTime time.Time, req any, resp any) {
-	duration := time.Since(startTime)
-	var enabledDebugLevel, expensiveRequest bool
-	if lg.Core().Enabled(zap.DebugLevel) {
-		enabledDebugLevel = true
-	}
-	if duration > warnLatency {
-		expensiveRequest = true
-	}
-	if !enabledDebugLevel && !expensiveRequest {
-		return
-	}
-	remote := "No remote client info."
+func logUnaryRequest(ctx context.Context, log func(msg string, fields ...zap.Field), info *grpc.UnaryServerInfo, req any) {
+	remote := ""
 	peerInfo, ok := peer.FromContext(ctx)
 	if ok {
 		remote = peerInfo.Addr.String()
 	}
-	responseType := info.FullMethod
-	var reqCount, respCount int64
-	var reqSize, respSize int
-	var reqContent string
+	requestID := requestid.FromContext(ctx)
+	var size int
+	if msg, ok := req.(Sizer); ok {
+		size = msg.Size()
+	}
+	fields := []zap.Field{
+		zap.String("method", info.FullMethod),	
+		zap.Uint64("request_id", requestID),
+		zap.String("remote", remote),
+		zap.Int("size", size),
+	}
+	fields = append(fields, requestLogFields(req)...)
+	log("request", fields...)
+}
+
+type Sizer interface {
+	Size() int
+}
+
+func requestLogFields(req any) []zap.Field {
+	fields := []zap.Field{}
+	switch _req := req.(type) {
+	case *pb.RangeRequest:
+		fields = append(fields,
+			zap.String("range_begin", string(_req.GetKey())),
+			zap.String("range_end", string(_req.GetRangeEnd())),
+			zap.Int64("range_revision", _req.GetRevision()),
+			zap.Int64("range_limit", _req.GetLimit()),
+			zap.Bool("range_count_only", _req.GetCountOnly()),
+			zap.Bool("range_keys_only", _req.GetKeysOnly()),
+		)
+	case *pb.PutRequest:
+		fields = append(fields,
+			zap.String("put_key", string(_req.GetKey())),
+		)
+	case *pb.DeleteRangeRequest:
+		fields = append(fields,
+			zap.String("delete_range_begin", string(_req.GetKey())),
+			zap.String("delete_range_end", string(_req.GetRangeEnd())),
+		)
+	case *pb.TxnRequest:
+		fields = append(fields,
+			zap.Int("txn_compare_len", len(_req.GetCompare())),
+			zap.Int("txn_success_len", len(_req.GetSuccess())),
+			zap.Int("txn_failure_len", len(_req.GetFailure())),
+		)
+	default:
+	}
+	return fields
+}
+
+func logUnaryResponseStats(ctx context.Context, log func(msg string, fields ...zap.Field), duration time.Duration, info *grpc.UnaryServerInfo, startTime time.Time, resp any, fields ...zap.Field) {
+	var size int
+	if msg, ok := resp.(Sizer); ok {
+		size = msg.Size()
+	}
+	fields = append(fields,
+		zap.String("method", info.FullMethod),
+		zap.Duration("duration", duration),
+		zap.Int("size", size),
+		zap.Uint64("request_id", requestid.FromContext(ctx)),
+	)
 	switch _resp := resp.(type) {
 	case *pb.RangeResponse:
-		_req, ok := req.(*pb.RangeRequest)
-		if ok {
-			reqCount = 0
-			reqSize = _req.Size()
-			reqContent = _req.String()
-		}
-		if _resp != nil {
-			respCount = _resp.GetCount()
-			respSize = _resp.Size()
-		}
+		fields = append(fields,
+			zap.Int("size", _resp.Size()),
+			zap.Int64("count", _resp.GetCount()),
+		)
 	case *pb.PutResponse:
-		_req, ok := req.(*pb.PutRequest)
-		if ok {
-			reqCount = 1
-			reqSize = _req.Size()
-			reqContent = pb.NewLoggablePutRequest(_req).String()
-			// redact value field from request content, see PR #9821
-		}
-		if _resp != nil {
-			respCount = 0
-			respSize = _resp.Size()
-		}
+		fields = append(fields,
+			zap.Int("size", _resp.Size()),
+		)
 	case *pb.DeleteRangeResponse:
-		_req, ok := req.(*pb.DeleteRangeRequest)
-		if ok {
-			reqCount = 0
-			reqSize = _req.Size()
-			reqContent = _req.String()
-		}
-		if _resp != nil {
-			respCount = _resp.GetDeleted()
-			respSize = _resp.Size()
-		}
+		fields = append(fields,
+			zap.Int64("delete_range_deleted", _resp.GetDeleted()),
+		)
 	case *pb.TxnResponse:
-		_req, ok := req.(*pb.TxnRequest)
-		if ok && _resp != nil {
-			if _resp.GetSucceeded() { // determine the 'actual' count and size of request based on success or failure
-				reqCount = int64(len(_req.GetSuccess()))
-				reqSize = 0
-				for _, r := range _req.GetSuccess() {
-					reqSize += r.Size()
-				}
-			} else {
-				reqCount = int64(len(_req.GetFailure()))
-				reqSize = 0
-				for _, r := range _req.GetFailure() {
-					reqSize += r.Size()
-				}
-			}
-			reqContent = pb.NewLoggableTxnRequest(_req).String()
-			// redact value field from request content, see PR #9821
-		}
-		if _resp != nil {
-			respCount = 0
-			respSize = _resp.Size()
-		}
 	default:
-		reqCount = -1
-		reqSize = -1
-		respCount = -1
-		respSize = -1
 	}
-
-	if enabledDebugLevel {
-		logGenericRequestStats(lg, startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent)
-	} else if expensiveRequest {
-		logExpensiveRequestStats(lg, startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent)
-	}
-}
-
-func logGenericRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
-	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string,
-) {
-	lg.Debug("request stats",
-		zap.Time("start time", startTime),
-		zap.Duration("time spent", duration),
-		zap.String("remote", remote),
-		zap.String("response type", responseType),
-		zap.Int64("request count", reqCount),
-		zap.Int("request size", reqSize),
-		zap.Int64("response count", respCount),
-		zap.Int("response size", respSize),
-		zap.String("request content", reqContent),
-	)
-}
-
-func logExpensiveRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
-	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string,
-) {
-	lg.Warn("request stats",
-		zap.Time("start time", startTime),
-		zap.Duration("time spent", duration),
-		zap.String("remote", remote),
-		zap.String("response type", responseType),
-		zap.Int64("request count", reqCount),
-		zap.Int("request size", reqSize),
-		zap.Int64("response count", respCount),
-		zap.Int("response size", respSize),
-		zap.String("request content", reqContent),
-	)
+	log("response", fields...)
 }
 
 func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor {
