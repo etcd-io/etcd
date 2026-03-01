@@ -173,6 +173,12 @@ func checkVersionCompatibility(name string, server, minCluster *semver.Version) 
 ) {
 	localServer = semver.Must(semver.NewVersion(version.Version))
 	localMinCluster = semver.Must(semver.NewVersion(version.MinClusterVersion))
+	if server == nil {
+		return localServer, localMinCluster, fmt.Errorf("remote server version is nil: remote[%s]", name)
+	}
+	if minCluster == nil {
+		return localServer, localMinCluster, fmt.Errorf("remote min cluster version is nil: remote[%s]", name)
+	}
 	if compareMajorMinorVersion(server, localMinCluster) == -1 {
 		return localServer, localMinCluster, fmt.Errorf("remote version is too low: remote[%s]=%s, local=%s", name, server, localServer)
 	}
