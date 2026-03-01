@@ -59,9 +59,38 @@ func New(lg *zap.Logger, dir string) *Snapshotter {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
+
 	return &Snapshotter{
 		lg:  lg,
 		dir: dir,
+	}
+}
+
+// Clean up stale broken snapshot files left behind by crashes during snapshot creation.
+// Keep only the most recent broken snapshot to avoid unbounded disk usage.
+func cleanupBrokenSnapshots(dir string, keep int, lg *zap.Logger) {
+	files, err := filepath.Glob(filepath.Join(dir, "*.snap.broken"))
+	if err != nil {
+		lg.Warn("failed to list broken snapshots", zap.Error(err))
+		return
+	}
+	if len(files) <= keep {
+		return
+	}
+
+	sort.Slice(files, func(i, j int) bool {
+		fi, err1 := os.Stat(files[i])
+		fj, err2 := os.Stat(files[j])
+		if err1 != nil || err2 != nil {
+			return files[i] > files[j] // fallback deterministic order
+		}
+		return fi.ModTime().After(fj.ModTime())
+	})
+
+	for _, f := range files[keep:] {
+		if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
+			lg.Warn("failed to remove broken snapshot", zap.String("path", f), zap.Error(err))
+		}
 	}
 }
 
@@ -85,18 +114,26 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 	}
 	snapMarshallingSec.Observe(time.Since(start).Seconds())
 
-	spath := filepath.Join(s.dir, fname)
+	finalPath := filepath.Join(s.dir, fname)
+	tmpPath := finalPath + ".tmp"
 
 	fsyncStart := time.Now()
-	err = pioutil.WriteAndSyncFile(spath, d, 0o666)
+	err = pioutil.WriteAndSyncFile(tmpPath, d, 0o666)
 	snapFsyncSec.Observe(time.Since(fsyncStart).Seconds())
 
 	if err != nil {
-		s.lg.Warn("failed to write a snap file", zap.String("path", spath), zap.Error(err))
-		rerr := os.Remove(spath)
-		if rerr != nil {
-			s.lg.Warn("failed to remove a broken snap file", zap.String("path", spath), zap.Error(rerr))
-		}
+		s.lg.Warn("failed to write a temp snap file", zap.String("path", tmpPath), zap.Error(err))
+		_ = os.Remove(tmpPath)
+		return err
+	}
+
+	if err := os.Rename(tmpPath, finalPath); err != nil {
+		s.lg.Warn("failed to rename temp snap file",
+			zap.String("tmp-path", tmpPath),
+			zap.String("final-path", finalPath),
+			zap.Error(err),
+		)
+		_ = os.Remove(tmpPath)
 		return err
 	}
 
