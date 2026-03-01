@@ -40,6 +40,9 @@ var (
 	MemberReplace          Failpoint = memberReplace{}
 	MemberDowngrade        Failpoint = memberDowngrade{}
 	MemberDowngradeUpgrade Failpoint = memberDowngradeUpgrade{}
+	ClusterScaleOutAndIn   Failpoint = &scalingMember{
+		scalingTarget: 2,
+	}
 )
 
 type memberReplace struct{}
@@ -303,4 +306,40 @@ func patchArgs(args []string, flag, newValue string) error {
 		}
 	}
 	return fmt.Errorf("--%s flag not found", flag)
+}
+
+type scalingMember struct {
+	scalingTarget int
+}
+
+func (f *scalingMember) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
+	// scaling in
+	cfgs := make([]*e2e.EtcdServerProcessConfig, 0, f.scalingTarget)
+	for i := range f.scalingTarget {
+		proc := clus.Procs[i]
+		cfgs = append(cfgs, proc.Config())
+		err := clus.CloseProc(ctx, func(p e2e.EtcdProcess) bool {
+			return p.Config().ClientURL == proc.Config().ClientURL
+		})
+		if err != nil {
+			return nil, err
+		}
+		time.Sleep(etcdserver.HealthInterval)
+	}
+	for i := range f.scalingTarget {
+		err := clus.StartNewProcFromConfig(ctx, t, cfgs[i])
+		if err != nil {
+			return nil, err
+		}
+		time.Sleep(etcdserver.HealthInterval)
+	}
+	return nil, nil
+}
+
+func (f *scalingMember) Name() string {
+	return "ScalingMember"
+}
+
+func (f *scalingMember) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess, profile traffic.Profile) bool {
+	return config.ClusterSize >= 3
 }
