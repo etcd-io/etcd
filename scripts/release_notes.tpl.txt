@@ -2,51 +2,42 @@ Please check out [CHANGELOG](https://github.com/etcd-io/etcd/blob/main/CHANGELOG
 
 For installation guides, please check out [play.etcd.io](http://play.etcd.io) and [operating etcd](https://etcd.io/docs/v${RELEASE_VERSION_MAJOR_MINOR}/op-guide/). Latest support status for common architectures and operating systems can be found at [supported platforms](https://etcd.io/docs/v${RELEASE_VERSION_MAJOR_MINOR}/op-guide/supported-platform/).
 
-###### Linux
+###### Linux, macOS (Darwin)
 
 ```sh
-ETCD_VER=${RELEASE_VERSION}
+#!/bin/sh
 
+ETCD_VERSION="${RELEASE_VERSION}"
 # choose either URL
-GOOGLE_URL=https://storage.googleapis.com/etcd
-GITHUB_URL=https://github.com/etcd-io/etcd/releases/download
-DOWNLOAD_URL=${GOOGLE_URL}
+GOOGLE_URL='https://storage.googleapis.com/etcd'
+GITHUB_URL='https://github.com/etcd-io/etcd/releases/download'
+DOWNLOAD_URL="${GOOGLE_URL}"
 
-rm -f /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
-rm -rf /tmp/etcd-download-test && mkdir -p /tmp/etcd-download-test
+uname_lower="$(printf '%s' "$(uname)" | tr '[:upper:]' '[:lower:]')"
+name='etcd-'"${ETCD_VERSION}"'-'"${uname_lower}"'-'"${ARCH_ALT}"
+archive="${name}"
+is_tar=1
+case "${uname_lower}" in
+  'darwin'|'windows')
+    is_tar=0;
+    archive="${archive}"'.zip' ;;
+  *) archive="${archive}"'.tar.gz' ;;
+esac
 
-curl -L ${DOWNLOAD_URL}/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz -o /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
-tar xzvf /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz -C /tmp/etcd-download-test --strip-components=1 --no-same-owner
-rm -f /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
-
-/tmp/etcd-download-test/etcd --version
-/tmp/etcd-download-test/etcdctl version
-/tmp/etcd-download-test/etcdutl version
-
-# start a local etcd server
-/tmp/etcd-download-test/etcd
-
-# write,read to etcd
-/tmp/etcd-download-test/etcdctl --endpoints=localhost:2379 put foo bar
-/tmp/etcd-download-test/etcdctl --endpoints=localhost:2379 get foo
-```
-
-###### macOS (Darwin)
-
-```sh
-ETCD_VER=${RELEASE_VERSION}
-
-# choose either URL
-GOOGLE_URL=https://storage.googleapis.com/etcd
-GITHUB_URL=https://github.com/etcd-io/etcd/releases/download
-DOWNLOAD_URL=${GOOGLE_URL}
-
-rm -f /tmp/etcd-${ETCD_VER}-darwin-amd64.zip
-rm -rf /tmp/etcd-download-test && mkdir -p /tmp/etcd-download-test
-
-curl -L ${DOWNLOAD_URL}/${ETCD_VER}/etcd-${ETCD_VER}-darwin-amd64.zip -o /tmp/etcd-${ETCD_VER}-darwin-amd64.zip
-unzip /tmp/etcd-${ETCD_VER}-darwin-amd64.zip -d /tmp && rm -f /tmp/etcd-${ETCD_VER}-darwin-amd64.zip
-mv /tmp/etcd-${ETCD_VER}-darwin-amd64/* /tmp/etcd-download-test && rm -rf mv /tmp/etcd-${ETCD_VER}-darwin-amd64
+rm -rf '/tmp/'"${archive}" '/tmp/etcd-download-test'
+mkdir -p '/tmp/etcd-download-test'
+curl -L "${DOWNLOAD_URL}"'/'"${ETCD_VERSION}"'/'"${archive}" -o '/tmp/'"${archive}"
+if [ "${is_tar}" -eq 1 ]; then
+  tar xzvf '/tmp/'"${archive}" -C '/tmp/etcd-download-test' --strip-components=1
+else
+  unzip '/tmp/'"${archive}" -d '/tmp'
+  d='/tmp/'"${name}"
+  set +f
+  mv "${d}"'/'* '/tmp/etcd-download-test'
+  set -f
+  rm -r "${d}"
+fi
+rm -f '/tmp/'"${archive}"
 
 /tmp/etcd-download-test/etcd --version
 /tmp/etcd-download-test/etcdctl version
