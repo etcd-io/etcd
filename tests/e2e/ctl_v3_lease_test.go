@@ -145,8 +145,3 @@ func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 	}
 	return proc.Stop()
 }
-
-func ctlV3LeaseRevoke(cx ctlCtx, leaseID string) error {
-	cmdArgs := append(cx.PrefixArgs(), "lease", "revoke", leaseID)
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: fmt.Sprintf("lease %s revoked", leaseID)})
-}

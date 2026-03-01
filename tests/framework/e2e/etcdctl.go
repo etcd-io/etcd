@@ -227,9 +227,16 @@ func parseFieldsGetResponse(lines []string) (*clientv3.GetResponse, error) {
 func (ctl *EtcdctlV3) Put(ctx context.Context, key, value string, opts config.PutOptions) (*clientv3.PutResponse, error) {
 	resp := clientv3.PutResponse{}
 	args := []string{}
-	args = append(args, "put", key, value)
-	if opts.LeaseID != 0 {
+	if opts.IgnoreValue {
+		args = append(args, "put", key, "--ignore-value")
+	} else {
+		args = append(args, "put", key, value)
+	}
+	if opts.LeaseID != 0 && !opts.IgnoreLease {
 		args = append(args, "--lease", strconv.FormatInt(int64(opts.LeaseID), 16))
+	}
+	if opts.IgnoreLease {
+		args = append(args, "--ignore-lease")
 	}
 	if opts.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", opts.Timeout))
