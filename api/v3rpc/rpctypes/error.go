@@ -68,6 +68,7 @@ var (
 	ErrGRPCPermissionNotGiven   = status.Error(codes.InvalidArgument, "etcdserver: permission not given")
 	ErrGRPCPermissionDenied     = status.Error(codes.PermissionDenied, "etcdserver: permission denied")
 	ErrGRPCRoleNotGranted       = status.Error(codes.FailedPrecondition, "etcdserver: role is not granted to the user")
+	ErrGRPCRootRoleNotGranted   = status.Error(codes.FailedPrecondition, "etcdserver: permission denied, root role is not granted to current user")
 	ErrGRPCPermissionNotGranted = status.Error(codes.FailedPrecondition, "etcdserver: permission is not granted to the role")
 	ErrGRPCAuthNotEnabled       = status.Error(codes.FailedPrecondition, "etcdserver: authentication is not enabled")
 	ErrGRPCInvalidAuthToken     = status.Error(codes.Unauthenticated, "etcdserver: invalid auth token")
@@ -138,6 +139,7 @@ var (
 		ErrorDesc(ErrGRPCAuthFailed):           ErrGRPCAuthFailed,
 		ErrorDesc(ErrGRPCPermissionDenied):     ErrGRPCPermissionDenied,
 		ErrorDesc(ErrGRPCRoleNotGranted):       ErrGRPCRoleNotGranted,
+		ErrorDesc(ErrGRPCRootRoleNotGranted):   ErrGRPCRootRoleNotGranted,
 		ErrorDesc(ErrGRPCPermissionNotGranted): ErrGRPCPermissionNotGranted,
 		ErrorDesc(ErrGRPCAuthNotEnabled):       ErrGRPCAuthNotEnabled,
 		ErrorDesc(ErrGRPCInvalidAuthToken):     ErrGRPCInvalidAuthToken,
@@ -205,6 +207,7 @@ var (
 	ErrAuthFailed           = Error(ErrGRPCAuthFailed)
 	ErrPermissionDenied     = Error(ErrGRPCPermissionDenied)
 	ErrRoleNotGranted       = Error(ErrGRPCRoleNotGranted)
+	ErrRootRoleNotGranted   = Error(ErrGRPCRootRoleNotGranted)
 	ErrPermissionNotGranted = Error(ErrGRPCPermissionNotGranted)
 	ErrAuthNotEnabled       = Error(ErrGRPCAuthNotEnabled)
 	ErrInvalidAuthToken     = Error(ErrGRPCInvalidAuthToken)
