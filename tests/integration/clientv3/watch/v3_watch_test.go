@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -37,6 +38,15 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 	gofail "go.etcd.io/gofail/runtime"
 )
+
+func getMetricVal(t *testing.T, member *integration.Member, metricName string) int64 {
+	t.Helper()
+	metricVal, err := member.Metric(metricName)
+	require.NoError(t, err)
+	val, err := strconv.ParseInt(metricVal, 10, 64)
+	require.NoErrorf(t, err, "failed to parse metric %q value %q", metricName, metricVal)
+	return val
+}
 
 // TestV3WatchFromCurrentRevision tests Watch APIs from current revision.
 func TestV3WatchFromCurrentRevision(t *testing.T) {
@@ -1368,19 +1378,141 @@ func TestV3WatchCancellation(t *testing.T) {
 	// Wait a little for cancellations to take hold
 	time.Sleep(3 * time.Second)
 
-	minWatches, err := clus.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
-	require.NoError(t, err)
-
-	var expected string
+	minWatches := getMetricVal(t, clus.Members[0], "etcd_debugging_mvcc_watcher_total")
+	var expected int64
 	if integration.ThroughProxy {
 		// grpc proxy has additional 2 watches open
-		expected = "3"
+		expected = 3
 	} else {
-		expected = "1"
+		expected = 1
 	}
 
 	if minWatches != expected {
-		t.Fatalf("expected %s watch, got %s", expected, minWatches)
+		t.Fatalf("expected %d watch, got %d", expected, minWatches)
+	}
+}
+
+func TestV3WatchCancellationStorm(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+
+	member := clus.Members[0]
+	// Use the in-process client because the connection is not guarded by
+	// gRPC's backpressure flow control and thus vulnerable.
+	cli := member.ServerClient
+
+	keyPrefix := "mykey"
+	uniqueKeys := make([]string, 10)
+	for i := range uniqueKeys {
+		uniqueKeys[i] = fmt.Sprintf("%s-%d", keyPrefix, i)
+	}
+
+	var writeWG sync.WaitGroup
+	writeWG.Add(1)
+	go func() {
+		defer writeWG.Done()
+
+		i := 0
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			key := uniqueKeys[i%len(uniqueKeys)]
+			_, err := cli.Put(ctx, key, "")
+			if err != nil {
+				return
+			}
+			i++
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+
+	type watcherInfo struct {
+		key    string
+		ch     clientv3.WatchChan
+		cancel context.CancelFunc
+	}
+
+	// Create many watchers and then cancel most of them in a burst.
+	numTotalWatchers := getMetricVal(t, member, "etcd_debugging_mvcc_watcher_total")
+	const totalWatchers = 500
+	const remainWatchers = 20
+	watchers := make([]watcherInfo, 0, totalWatchers)
+	for i := 0; i < totalWatchers; i++ {
+		watcherCtx, watcherCancel := context.WithCancel(ctx)
+		key := uniqueKeys[i%len(uniqueKeys)]
+		ch := cli.Watch(watcherCtx, key)
+		watchers = append(watchers, watcherInfo{key: key, ch: ch, cancel: watcherCancel})
+	}
+
+	require.Eventuallyf(t, func() bool {
+		total := getMetricVal(t, member, "etcd_debugging_mvcc_watcher_total")
+		return total >= totalWatchers+numTotalWatchers
+	}, 10*time.Second, 100*time.Millisecond,
+		"expected the cluster to create %d watchers", totalWatchers,
+	)
+
+	// Pick a probe watcher that we will not cancel (it will get stuck watching later).
+	probeWatcher := watchers[len(watchers)-1]
+	received := canRecvWatchEvent(t, probeWatcher.ch, probeWatcher.key)
+	require.Truef(t, received, "watcher should be able to receive events before the cancellation burst")
+	for i := 0; i < totalWatchers-remainWatchers; i++ {
+		watchers[i].cancel()
+	}
+
+	received = canRecvWatchEvent(t, probeWatcher.ch, probeWatcher.key)
+	require.Falsef(t, received, "deadlock was not reproduced and the probe watcher unexpectedly received events after cancel storm")
+	numSlowWatchers := getMetricVal(t, member, "etcd_debugging_mvcc_slow_watcher_total")
+	numPendingEvents := getMetricVal(t, member, "etcd_debugging_mvcc_pending_events_total")
+	numTotalWatchers = getMetricVal(t, member, "etcd_debugging_mvcc_watcher_total")
+	require.Positivef(t, numSlowWatchers, "expected some slow watchers")
+	require.Positivef(t, numPendingEvents, "expected some pending events")
+	require.Equal(t, numTotalWatchers, numSlowWatchers, "all watchers should become slow watchers now")
+
+	const numNewWatchers = 50
+	newWatchers := make([]watcherInfo, 0, numNewWatchers)
+	for i := 0; i < numNewWatchers; i++ {
+		t.Logf("creating new watcher %d", i)
+		watcherCtx, watcherCancel := context.WithCancel(ctx)
+		key := uniqueKeys[i%len(uniqueKeys)]
+		ch := cli.Watch(watcherCtx, key)
+		newWatchers = append(newWatchers, watcherInfo{key: key, ch: ch, cancel: watcherCancel})
+	}
+	numCreatedWatchers := numTotalWatchers - getMetricVal(t, member, "etcd_debugging_mvcc_watcher_total")
+	require.Zero(t, numCreatedWatchers, "expecting no new watchers successfully created")
+
+	cancel()
+	writeWG.Wait()
+}
+
+func canRecvWatchEvent(t *testing.T, watcherCh clientv3.WatchChan, watchKey string) bool {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	for {
+		select {
+		case resp, ok := <-watcherCh:
+			if !ok {
+				return false
+			}
+			if len(resp.Events) == 0 {
+				// This can happen for progress notifications; just keep waiting.
+				continue
+			}
+			for _, event := range resp.Events {
+				require.Equal(t, watchKey, string(event.Kv.Key))
+			}
+			return true
+		case <-ctx.Done():
+			return false
+		}
 	}
 }
 
@@ -1405,19 +1537,17 @@ func TestV3WatchCloseCancelRace(t *testing.T) {
 	// Wait a little for cancellations to take hold
 	time.Sleep(3 * time.Second)
 
-	minWatches, err := clus.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
-	require.NoError(t, err)
-
-	var expected string
+	minWatches := getMetricVal(t, clus.Members[0], "etcd_debugging_mvcc_watcher_total")
+	var expected int64
 	if integration.ThroughProxy {
 		// grpc proxy has additional 2 watches open
-		expected = "2"
+		expected = 2
 	} else {
-		expected = "0"
+		expected = 0
 	}
 
 	if minWatches != expected {
-		t.Fatalf("expected %s watch, got %s", expected, minWatches)
+		t.Fatalf("expected %d watch, got %d", expected, minWatches)
 	}
 }
 
