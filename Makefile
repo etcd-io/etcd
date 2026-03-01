@@ -230,7 +230,7 @@ verify-grpc-experimental:
 
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
-	./scripts/sync_go_toolchain_directive.sh
+	./scripts/fix/sync-toolchain-directive.sh
 
 .PHONY: markdown-diff-lint
 markdown-diff-lint:
