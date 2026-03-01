@@ -198,6 +198,7 @@ func (h *AppendableHistory) appendSuccessful(request EtcdRequest, start, end tim
 		Call:     start.Nanoseconds(),
 		Output:   response,
 		Return:   end.Nanoseconds(),
+		Metadata: response,
 	}
 	h.append(op)
 }
@@ -300,12 +301,14 @@ func (h *AppendableHistory) AppendCompact(rev int64, start, end time.Duration, r
 }
 
 func (h *AppendableHistory) appendFailed(request EtcdRequest, start, end time.Duration, err error) {
+	resp := failedResponse(err)
 	op := porcupine.Operation{
 		ClientId: h.streamID,
 		Input:    request,
 		Call:     start.Nanoseconds(),
-		Output:   failedResponse(err),
+		Output:   resp,
 		Return:   end.Nanoseconds(),
+		Metadata: resp,
 	}
 	isRead := request.IsRead()
 	if !isRead {

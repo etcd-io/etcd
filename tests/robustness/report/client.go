@@ -169,6 +169,7 @@ func loadKeyValueOperations(path string) (operations []porcupine.Operation, err 
 			Call:     operation.Call,
 			Output:   operation.Output,
 			Return:   operation.Return,
+			Metadata: operation.Output,
 		})
 	}
 	return operations, nil
