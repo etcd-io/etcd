@@ -29,6 +29,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 - Allow setting JWT directly by users, see https://github.com/etcd-io/etcd/pull/16803 and https://github.com/etcd-io/etcd/pull/20747.
 - [Function etcdClientDebugLevel is renamed to ClientLogLevel and made it public](https://github.com/etcd-io/etcd/pull/20006)
+- [Add a timeout for concurrent session creation](https://github.com/etcd-io/etcd/pull/16385)
 
 ### Package `pkg`
 

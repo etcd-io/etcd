@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 
@@ -26,6 +27,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/verify"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	gofail "go.etcd.io/gofail/runtime"
 )
 
@@ -125,6 +127,26 @@ func BeforeTest(t testutil.TB, opts ...TestOption) {
 	insideTestContext = true
 
 	os.Chdir(t.TempDir())
+}
+
+func ClientGRPCLoggerObserver(t testutil.TB) *testutils.LogObserver {
+	level := zapcore.InfoLevel
+
+	obCore, logOb := testutils.NewLogObserver(level)
+
+	options := zaptest.WrapOptions(
+		zap.WrapCore(func(oldCore zapcore.Core) zapcore.Core {
+			return zapcore.NewTee(oldCore, obCore)
+		}),
+	)
+
+	grpcLogger.Set(
+		zapgrpc.NewLogger(
+			zaptest.NewLogger(t, zaptest.Level(level), options).
+				Named("grpc-observer"),
+		),
+	)
+	return logOb
 }
 
 func assertInTestContext(t testutil.TB) {
