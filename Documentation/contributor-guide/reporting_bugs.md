@@ -8,7 +8,7 @@ To make the bug report accurate and easy to understand, please try to create bug
 
 - Reproducible. Include the steps to reproduce the problem. We understand some issues might be hard to reproduce, please include the steps that might lead to the problem. If possible, please attach the affected etcd data dir and stack trace to the bug report.
 
-- Isolated. Please try to isolate and reproduce the bug with minimum dependencies. It would significantly slow down the speed to fix a bug if too many dependencies are involved in a bug report. Debugging external systems that rely on etcd is out of scope, but we are happy to provide guidance in the right direction or help with using etcd itself.
+- Isolated. Please try to isolate and reproduce the bug with minimum dependencies. It would significantly slow down bug fixes if too many dependencies are involved in a bug report. Debugging external systems that rely on etcd is out of scope, but we are happy to provide guidance in the right direction or help with using etcd itself.
 
 - Unique. Do not duplicate existing bug reports.
 
@@ -22,19 +22,19 @@ We might ask for further information to locate a bug. A duplicated bug report wi
 
 ### How to get a stack trace
 
-``` bash
+```bash
 $ kill -QUIT $PID
 ```
 
 ### How to get the etcd version
 
-``` bash
+```bash
 $ etcd --version
 ```
 
 ### How to get etcd configuration and log when it runs as systemd service ‘etcd2.service’
 
-``` bash
+```bash
 $ sudo systemctl cat etcd2
 $ sudo journalctl -u etcd2
 ```

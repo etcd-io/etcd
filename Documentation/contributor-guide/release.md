@@ -24,7 +24,7 @@ All release version numbers follow the format of [semantic versioning 2.0.0](htt
 
 - Ensure the relevant [milestone](https://github.com/etcd-io/etcd/milestones) on GitHub is complete. All referenced issues should be closed or moved elsewhere.
 - Ensure the latest [upgrade documentation](https://etcd.io/docs/next/upgrades) is available.
-- Bump [hardcoded MinClusterVerion in the repository](https://github.com/etcd-io/etcd/blob/v3.4.15/version/version.go#L29), if necessary.
+  -- Bump [hardcoded MinClusterVersion in the repository](https://github.com/etcd-io/etcd/blob/v3.4.15/version/version.go#L29), if necessary.
 - Add feature capability maps for the new version, if necessary.
 
 ### Patch version release
@@ -32,11 +32,11 @@ All release version numbers follow the format of [semantic versioning 2.0.0](htt
 - To request a backport, developers submit cherry-pick PRs targeting the release branch. The commits should not include merge commits. The commits should be restricted to bug fixes and security patches.
 - The cherrypick PRs should target the appropriate release branch (`base:release-<major>-<minor>`). The k8s infra cherry pick robot `/cherrypick <branch>` PR chatops command may be used to automatically generate cherrypick PRs.
 - The release patch manager reviews the cherrypick PRs. Please discuss carefully what is backported to the patch release. Each patch release should be strictly better than its predecessor.
-- The release patch manager will cherry-pick these commits starting from the oldest one into stable branch.
+- The release patch manager will cherry-pick these commits starting from the oldest one into the stable branch.
 
 ## Write a release note
 
-- Write an introduction for the new release. For example, what major bug we fix, what new features we introduce, or what performance improvement we make.
+- Write an introduction for the new release. For example, what major bugs were fixed, what new features were introduced, or what performance improvements were made.
 - Put `[GH XXXX]` at the head of the change line to reference the Pull Request that introduces the change. Moreover, add a link on it to jump to the Pull Request.
 - Find PRs with the `release-note` label and explain them in the `NEWS` file, as a straightforward summary of changes for end-users.
 
@@ -55,11 +55,12 @@ The etcd project aims to release a new patch version if any of the following con
 
 There are some prerequisites, which should be done before the release process. These are one-time operations,
 which don't need to be executed before releasing each version.
+
 1. Generate a GPG key and add it to your GitHub account. Refer to the links on [settings](https://github.com/settings/keys).
-2. Ensure you have a Linux machine, on which the git, Golang, and docker have been installed.
-    - Ensure the Golang version matches the version defined in `.go-version` file.
-    - Ensure non-privileged users can run docker commands, refer to the [Linux postinstall](https://docs.docker.com/engine/install/linux-postinstall/).
-    - Ensure there is at least 5GB of free space on your Linux machine.
+2. Ensure you have a Linux machine, on which git, Golang, and docker have been installed.
+   - Ensure the Golang version matches the version defined in the `.go-version` file.
+   - Ensure non-privileged users can run docker commands; refer to the [Linux postinstall](https://docs.docker.com/engine/install/linux-postinstall/).
+   - Ensure there is at least 5 GB of free space on your Linux machine.
 3. Install gsutil, refer to [gsutil_install](https://cloud.google.com/storage/docs/gsutil_install). When asked about cloud project to use, pick `etcd-development`.
 4. Authenticate the image registry, refer to [Authentication methods](https://cloud.google.com/container-registry/docs/advanced-authentication).
    - `gcloud auth login`
@@ -100,9 +101,9 @@ On the day of the release:
    under project `etcd-development`, and images are pushed to `quay.io` and `gcr.io`.
    - It is advisable to do a dry run before the actual release. This will create a `/tmp` directory. Do **NOT** forget to remove this directory before the actual release.
 
-      ```bash
-      DRY_RUN=true BRANCH=${BRANCH} ./scripts/release.sh ${VERSION}
-      ```
+     ```bash
+     DRY_RUN=true BRANCH=${BRANCH} ./scripts/release.sh ${VERSION}
+     ```
 
 4. Publish the release page on GitHub
    - Open the **draft** release URL shown by the release script
@@ -130,12 +131,12 @@ On the day of the release:
 6. Update the changelog to reflect the correct release date.
 7. Paste the release link to the issue raised in Step 1 and close the issue.
 8. Raise a follow-up `kubernetes/org` pull request to return the GitHub release team to empty, least privilege state.
-9. Crease a new stable branch through `git push origin release-${VERSION_MAJOR}.${VERSION_MINOR}` if this is a new major or minor stable release.
+9. Create a new stable branch through `git push origin release-${VERSION_MAJOR}.${VERSION_MINOR}` if this is a new major or minor stable release.
 10. Re-generate a new password for quay.io if needed (e.g. shared to a contributor who isn't in the release team, and we should rotate the password at least once every 3 months).
 11. Bump the new etcd release in Kubernetes, refer to [Bump etcd Version in Kubernetes](bump_etcd_version_k8s.md).
 
-- For etcd 3.6 patches, bump it to Kubernetes 1.34 and all newer minor versions (including `master` branch)
-- For etcd 3.5 patches, bump it to Kubernetes 1.33 and all older supported versions
+- For etcd 3.6 patches, bump it to Kubernetes 1.34 and all newer minor versions (including the `master` branch).
+- For etcd 3.5 patches, bump it to Kubernetes 1.33 and all older supported versions.
 
 #### Release known issues
 
