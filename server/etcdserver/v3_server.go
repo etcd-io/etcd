@@ -15,7 +15,6 @@
 package etcdserver
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
@@ -972,7 +971,6 @@ func (s *EtcdServer) Watchable() mvcc.WatchableKV { return s.KV() }
 
 func (s *EtcdServer) linearizableReadLoop() {
 	for {
-		requestID := s.reqIDGen.Next()
 		leaderChangedNotifier := s.leaderChanged.Receive()
 		select {
 		case <-leaderChangedNotifier:
@@ -992,7 +990,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 		s.readNotifier = nextnr
 		s.readMu.Unlock()
 
-		confirmedIndex, err := s.requestCurrentIndex(leaderChangedNotifier, requestID)
+		confirmedIndex, err := s.requestCurrentIndex(leaderChangedNotifier)
 		if isStopped(err) {
 			return
 		}
@@ -1027,7 +1025,10 @@ func isStopped(err error) bool {
 	return errorspkg.Is(err, raft.ErrStopped) || errorspkg.Is(err, errors.ErrStopped)
 }
 
-func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, requestID uint64) (uint64, error) {
+func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}) (uint64, error) {
+	requestIDs := map[uint64]struct{}{}
+	requestID := s.reqIDGen.Next()
+	requestIDs[requestID] = struct{}{}
 	err := s.sendReadIndex(requestID)
 	if err != nil {
 		return 0, err
@@ -1051,18 +1052,15 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 				return 0, errors.ErrLeaderChanged
 			default:
 			}
-			requestIDBytes := uint64ToBigEndianBytes(requestID)
-			gotOwnResponse := bytes.Equal(rs.RequestCtx, requestIDBytes)
-			if !gotOwnResponse {
+			responseID := uint64(0)
+			if len(rs.RequestCtx) == 8 {
+				responseID = binary.BigEndian.Uint64(rs.RequestCtx)
+			}
+			if _, ok := requestIDs[responseID]; !ok {
 				// a previous request might time out. now we should ignore the response of it and
 				// continue waiting for the response of the current requests.
-				responseID := uint64(0)
-				if len(rs.RequestCtx) == 8 {
-					responseID = binary.BigEndian.Uint64(rs.RequestCtx)
-				}
 				lg.Warn(
 					"ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader",
-					zap.Uint64("sent-request-id", requestID),
 					zap.Uint64("received-request-id", responseID),
 				)
 				slowReadIndex.Inc()
@@ -1076,6 +1074,8 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 		case <-firstCommitInTermNotifier:
 			firstCommitInTermNotifier = s.firstCommitInTerm.Receive()
 			lg.Info("first commit in current term: resending ReadIndex request")
+			requestID = s.reqIDGen.Next()
+			requestIDs[requestID] = struct{}{}
 			err := s.sendReadIndex(requestID)
 			if err != nil {
 				return 0, err
@@ -1088,6 +1088,8 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 				zap.Uint64("sent-request-id", requestID),
 				zap.Duration("retry-timeout", readIndexRetryTime),
 			)
+			requestID = s.reqIDGen.Next()
+			requestIDs[requestID] = struct{}{}
 			err := s.sendReadIndex(requestID)
 			if err != nil {
 				return 0, err
