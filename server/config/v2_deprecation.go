@@ -36,6 +36,11 @@ const (
 	//revive:disable-next-line:var-naming
 	V2_DEPR_1_WRITE_ONLY = V2Depr1WriteOnly
 
+	// V2Depr1WriteOnlySkipCheck is like V2Depr1WriteOnly but bypasses the v2 content check.
+	// Use only for 3.5→3.6 upgrades with v2 data.
+	// WARNING: v2 data will NOT be included in snapshots.
+	V2Depr1WriteOnlySkipCheck = V2DeprecationEnum("write-only-skip-check")
+
 	// V2Depr1WriteOnlyDrop means v2store is WIPED if found !!!
 	// Will be default in 3.7.
 	V2Depr1WriteOnlyDrop = V2DeprecationEnum("write-only-drop-data")
@@ -73,7 +78,7 @@ func (e V2DeprecationEnum) level() int {
 	switch e {
 	case V2Depr0NotYet:
 		return 0
-	case V2Depr1WriteOnly:
+	case V2Depr1WriteOnly, V2Depr1WriteOnlySkipCheck:
 		return 1
 	case V2Depr1WriteOnlyDrop:
 		return 2
