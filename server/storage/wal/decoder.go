@@ -185,9 +185,11 @@ func (d *decoder) isTornEntry(data []byte) bool {
 	}
 
 	// if any data for a sector chunk is all 0, it's a torn write
-	for _, sect := range chunks {
+	// Check from back to front since torn writes typically leave
+	// trailing zeros, allowing faster detection in the common case.
+	for i := len(chunks) - 1; i >= 0; i-- {
 		isZero := true
-		for _, v := range sect {
+		for _, v := range chunks[i] {
 			if v != 0 {
 				isZero = false
 				break
