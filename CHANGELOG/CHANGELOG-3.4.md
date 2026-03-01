@@ -10,6 +10,8 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.41 (2026-02-13)
 
+This update release preserves the endpoint Metadata field, although it will not be passed to grpc-go.  It also includes a golang update in order to prevent security vulnerabilities [CVE-2025-47914](https://github.com/advisories/GHSA-f6x5-jh6r-wrfv), [CVE-2025-61732](https://github.com/advisories/GHSA-8jvr-vh7g-f8gx), and [CVE-2025-58181](https://github.com/advisories/GHSA-j5w8-q4qc-rx2x).
+
 ### Package `clientv3`
 
 - [Remove the use of grpc-go's Metadata field](https://github.com/etcd-io/etcd/pull/21243)
@@ -1460,4 +1462,3 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 - [Rebase etcd image from Alpine to Debian](https://github.com/etcd-io/etcd/pull/10805) to improve security and maintenance effort for etcd release.
 
 ---
-
