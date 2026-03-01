@@ -836,13 +836,40 @@ func TestAuthInfoFromCtx(t *testing.T) {
 		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
 	}
 
+	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Bearer"}))
+	_, err = as.AuthInfoFromCtx(ctx)
+	if !errors.Is(err, ErrInvalidAuthToken) {
+		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
+	}
+
 	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Invalid.Token"}))
 	_, err = as.AuthInfoFromCtx(ctx)
 	if !errors.Is(err, ErrInvalidAuthToken) {
 		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
 	}
 
+	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: bearerPrefix + "Invalid.Token"}))
+	_, err = as.AuthInfoFromCtx(ctx)
+	if !errors.Is(err, ErrInvalidAuthToken) {
+		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
+	}
+
+	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: bearerPrefix}))
+	_, err = as.AuthInfoFromCtx(ctx)
+	if !errors.Is(err, ErrInvalidAuthToken) {
+		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
+	}
+
 	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: resp.Token}))
+	ai, err = as.AuthInfoFromCtx(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	if ai.Username != "foo" {
+		t.Errorf("expected %v, got %v", "foo", ai.Username)
+	}
+
+	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: bearerPrefix + resp.Token}))
 	ai, err = as.AuthInfoFromCtx(ctx)
 	if err != nil {
 		t.Error(err)
