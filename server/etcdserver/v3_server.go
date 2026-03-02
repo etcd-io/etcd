@@ -1122,11 +1122,11 @@ func uint64ToBigEndianBytes(number uint64) []byte {
 	return byteResult
 }
 
-func (s *EtcdServer) sendReadIndex(requestIndex uint64) error {
+func (s *EtcdServer) sendReadIndex(requestID uint64) error {
 	lg := s.Logger()
 	timeout := s.Cfg.ReqTimeout()
-	lg.Debug("sending read index request", zap.Uint64("read-request-id", requestIndex), zap.Duration("timeout", timeout))
-	ctxToSend := uint64ToBigEndianBytes(requestIndex)
+	lg.Debug("sending read index request", zap.Uint64("read-request-id", requestID), zap.Duration("timeout", timeout))
+	ctxToSend := uint64ToBigEndianBytes(requestID)
 
 
 	cctx, cancel := context.WithTimeout(context.Background(), timeout)

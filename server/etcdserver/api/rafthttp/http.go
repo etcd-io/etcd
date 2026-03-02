@@ -137,6 +137,7 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(len(b)))
 
+	logRaftCommunication(h.lg, h.localID, m, types.ID(m.From), "receive")
 	if err := h.r.Process(context.TODO(), m); err != nil {
 		var writerErr writerToResponse
 		switch {

@@ -16,6 +16,7 @@ package rafthttp
 
 import (
 	"context"
+	"encoding/binary"
 	"net/http"
 	"sync"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -450,4 +452,41 @@ func (t *Transport) ActivePeers() (cnt int) {
 		}
 	}
 	return cnt
+}
+
+func logRaftCommunication(lg *zap.Logger, localID types.ID, m raftpb.Message, remote types.ID, direction string) {
+	if !lg.Core().Enabled(zap.DebugLevel) {
+		return
+	}
+	var requestID uint64
+	switch m.Type {
+	case raftpb.MsgBeat, raftpb.MsgHeartbeat, raftpb.MsgHeartbeatResp:
+		if len(m.Context) != 8 {
+			return
+		}
+		requestID = binary.BigEndian.Uint64(m.Context)
+	case raftpb.MsgReadIndex, raftpb.MsgReadIndexResp:
+		if len(m.Entries) > 0 && len(m.Entries[0].Data) == 8 {
+			requestID = binary.BigEndian.Uint64(m.Entries[0].Data)
+		}
+	case raftpb.MsgProp:
+		if len(m.Entries) > 0 {
+			r := pb.InternalRaftRequest{}
+			if err := r.Unmarshal(m.Entries[0].Data); err == nil {
+				requestID = r.Header.ID
+			}
+		}
+	default:
+	}
+	lg.Debug(
+		"Raft communication",
+		zap.String("direction", direction),
+		zap.String("message-type", m.Type.String()),
+		zap.String("local-member-id", localID.String()),
+		zap.String("remote-peer-id", remote.String()),
+		zap.Uint64("term", m.Term),
+		zap.Uint64("index", m.Index),
+		zap.Uint64("commit", m.Commit),
+		zap.Uint64("request-id", requestID),
+	)
 }

@@ -96,6 +96,7 @@ func (p *pipeline) handle() {
 	for {
 		select {
 		case m := <-p.msgc:
+			logRaftCommunication(p.tr.Logger, p.tr.ID, m, p.peerID, "send")
 			start := time.Now()
 			err := p.post(pbutil.MustMarshal(&m))
 			end := time.Now()
