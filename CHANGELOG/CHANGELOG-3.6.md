@@ -18,6 +18,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - [server/etcdmain: fix startup deadlock in grpcproxy](https://github.com/etcd-io/etcd/pull/21354)
 
+### etcdctl
+
+- Fix [slice bounds trimming single-quoted args in Argify](https://github.com/etcd-io/etcd/pull/21402)
+
 ### Dependencies
 
 - [Bump go.opentelemetry.io/otel/sdk to v1.40.0 to resolve https://pkg.go.dev/vuln/GO-2026-4394](https://github.com/etcd-io/etcd/pull/21340)
