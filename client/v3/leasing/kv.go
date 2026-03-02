@@ -92,7 +92,7 @@ func (lkv *leasingKV) Put(ctx context.Context, key, val string, opts ...v3.OpOpt
 }
 
 func (lkv *leasingKV) GetStream(ctx context.Context, key string, opts ...v3.OpOption) (v3.GetStreamResponse, error) {
-	panic("unimplemented")
+	return lkv.kv.GetStream(ctx, key, opts...)
 }
 
 func (lkv *leasingKV) Delete(ctx context.Context, key string, opts ...v3.OpOption) (*v3.DeleteResponse, error) {

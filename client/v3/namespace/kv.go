@@ -65,7 +65,36 @@ func (kv *kvPrefix) Get(ctx context.Context, key string, opts ...clientv3.OpOpti
 }
 
 func (kv *kvPrefix) GetStream(ctx context.Context, key string, opts ...clientv3.OpOption) (clientv3.GetStreamResponse, error) {
-	panic("unimplemented")
+	if len(key) == 0 && !(clientv3.IsOptsWithFromKey(opts) || clientv3.IsOptsWithPrefix(opts)) {
+		return nil, rpctypes.ErrEmptyKey
+	}
+	getOp := clientv3.OpGet(key, opts...)
+	if !getOp.IsSortOptionValid() {
+		return nil, rpctypes.ErrInvalidSortOption
+	}
+	prefixedOp := kv.prefixOp(getOp)
+	prefixedKey := string(prefixedOp.KeyBytes())
+	streamOpts := opts
+	if prefixedEnd := prefixedOp.RangeBytes(); len(prefixedEnd) > 0 {
+		streamOpts = append(append([]clientv3.OpOption{}, opts...), clientv3.WithRange(string(prefixedEnd)))
+	}
+	inner, err := kv.KV.GetStream(ctx, prefixedKey, streamOpts...)
+	if err != nil {
+		return nil, err
+	}
+	ch := make(chan clientv3.MaybeRangeStreamResponse, 1)
+	go func() {
+		defer close(ch)
+		for r := range inner {
+			if r.Err == nil && r.RangeStreamResponse != nil && r.RangeStreamResponse.RangeResponse != nil {
+				for i := range r.RangeStreamResponse.RangeResponse.Kvs {
+					r.RangeStreamResponse.RangeResponse.Kvs[i].Key = r.RangeStreamResponse.RangeResponse.Kvs[i].Key[len(kv.pfx):]
+				}
+			}
+			ch <- r
+		}
+	}()
+	return ch, nil
 }
 
 func (kv *kvPrefix) Delete(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
