@@ -69,9 +69,9 @@ func TestArgify(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := Argify(tt.input)
+			result := argify(tt.input)
 			if !reflect.DeepEqual(result, tt.expected) {
-				t.Errorf("Argify(%q) = %v, want %v", tt.input, result, tt.expected)
+				t.Errorf("argify(%q) = %v, want %v", tt.input, result, tt.expected)
 			}
 		})
 	}
