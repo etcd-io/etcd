@@ -10,7 +10,7 @@ The etcd community adheres to the following principles:
 activities (e.g. level, involvement, etc) are done in public.
 - Merit: Ideas and contributions are accepted according to their technical merit for
 the betterment of the project. For specific guidance on practical contribution steps
-please see [contributor guide] guide.
+please see [contributor guide].
 
 ## Roles and responsibilities
 Etcd project roles along with their requirements and responsibilities are defined
