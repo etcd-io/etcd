@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.42 (TBC)
 
+### etcd server
+
+- Fix [Stale reads caused by process pausing](https://github.com/etcd-io/etcd/pull/21423)
+
 ---
 
 ## v3.4.41 (2026-02-13)
