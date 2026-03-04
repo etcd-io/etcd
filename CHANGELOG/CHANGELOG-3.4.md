@@ -11,6 +11,10 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [Race between read index and leader change](https://github.com/etcd-io/etcd/pull/21385)
 - Fix [Stale reads caused by process pausing](https://github.com/etcd-io/etcd/pull/21423)
 
+### Dependencies
+
+- Compile binaries using [go 1.25.7](https://github.com/etcd-io/etcd/pull/21406)
+
 ---
 
 ## v3.4.41 (2026-02-13)
