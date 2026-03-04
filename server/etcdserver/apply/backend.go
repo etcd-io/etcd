@@ -34,12 +34,18 @@ import (
 )
 
 type applierV3backend struct {
-	options ApplierOptions
+	options  ApplierOptions
+	memberID uint64
 }
 
 func newApplierV3Backend(opts ApplierOptions) applierV3 {
+	memberID := uint64(0)
+	if opts.RaftStatus != nil {
+		memberID = uint64(opts.RaftStatus.MemberID())
+	}
 	return &applierV3backend{
-		options: opts,
+		options:  opts,
+		memberID: memberID,
 	}
 }
 
@@ -59,8 +65,8 @@ func (a *applierV3backend) Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceu
 	return mvcctxn.Range(context.TODO(), a.options.Logger, a.options.KV, r)
 }
 
-func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return mvcctxn.Txn(context.TODO(), a.options.Logger, rt, a.options.TxnModeWriteWithSharedBuffer, a.options.KV, a.options.Lessor)
+func (a *applierV3backend) Txn(rt *pb.TxnRequest, header *pb.RequestHeader) (*pb.TxnResponse, *traceutil.Trace, error) {
+	return mvcctxn.Txn(context.TODO(), a.options.Logger, rt, a.options.TxnModeWriteWithSharedBuffer, a.options.KV, a.options.Lessor, header, a.memberID)
 }
 
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {

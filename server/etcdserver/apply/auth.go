@@ -106,11 +106,11 @@ func (aa *authApplierV3) DeleteRange(r *pb.DeleteRangeRequest) (*pb.DeleteRangeR
 	return aa.applierV3.DeleteRange(r)
 }
 
-func (aa *authApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
+func (aa *authApplierV3) Txn(rt *pb.TxnRequest, header *pb.RequestHeader) (*pb.TxnResponse, *traceutil.Trace, error) {
 	if err := txn.CheckTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
 		return nil, nil, err
 	}
-	return aa.applierV3.Txn(rt)
+	return aa.applierV3.Txn(rt, header)
 }
 
 func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
