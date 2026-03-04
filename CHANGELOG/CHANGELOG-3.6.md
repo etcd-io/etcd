@@ -9,6 +9,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 ### etcd server
 
 - [Ensure the metrics interceptor runs before other interceptors so that metrics remain up to date](https://github.com/etcd-io/etcd/pull/21329)
+- Fix [Race between read index and leader change](https://github.com/etcd-io/etcd/pull/21378)
 - Fix [Stale reads caused by process pausing](https://github.com/etcd-io/etcd/pull/21417)
 
 ### Package `clientv3`

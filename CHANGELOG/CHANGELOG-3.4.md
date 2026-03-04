@@ -8,6 +8,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ### etcd server
 
+- Fix [Race between read index and leader change](https://github.com/etcd-io/etcd/pull/21385)
 - Fix [Stale reads caused by process pausing](https://github.com/etcd-io/etcd/pull/21423)
 
 ---
