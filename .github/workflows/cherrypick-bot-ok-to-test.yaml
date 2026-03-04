@@ -1,23 +1,23 @@
 ---
-name: Add ok-to-test Label to Cherrypick Bot Pull Requests
+name: Auto-label ok-to-test (cherrypick bot)
 permissions: read-all
 
 on:
   pull_request_target:
     types:
-      - opened
+      - labeled
     branches:
       - release-3.6
       - release-3.5
       - release-3.4
 
 jobs:
-  approve:
-    name: Add ok-to-test label
+  add-label:
+    name: Add label
     # 90416843 = k8s-infra-cherrypick-robot account ID.
     if: |
-      github.event.actor.id == 90416843 &&
-      !contains(github.event.pull_request.labels.*.name, 'ok-to-test')
+      github.event.pull_request.user.id == 90416843 &&
+      contains(github.event.pull_request.labels.*.name, 'needs-ok-to-test')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -28,9 +28,15 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           debug: ${{ secrets.ACTIONS_RUNNER_DEBUG == 'true' }}
           script: |
-            github.rest.issues.addLabels({
+            await github.rest.issues.addLabels({
                issue_number: context.issue.number,
                owner: context.repo.owner,
                repo: context.repo.repo,
                labels: ['ok-to-test']
              });
+            await github.rest.issues.removeLabel({
+               issue_number: context.issue.number,
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               name: 'needs-ok-to-test'
+            });
