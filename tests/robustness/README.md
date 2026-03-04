@@ -110,7 +110,7 @@ These tests cover various scenarios, including:
 
 Etcd provides strict serializability for KV operations and eventual consistency for Watch.
 
-**Etcd Guarantees**
+#### Etcd Guarantees
 
 * **Key-value API operations** <https://etcd.io/docs/latest/learning/api_guarantees/#kv-apis>
 * **Watch API guarantees** <https://etcd.io/docs/latest/learning/api_guarantees/#watch-apis>
@@ -161,7 +161,7 @@ Errors in the etcd model could be causing false positives, which makes the abili
 
    * **For local runs:** this would be by identifying log line, in the following example that would be `/tmp/TestRobustnessExploratory_Etcd_HighTraffic_ClusterOfSize1`:
 
-      ```
+      ```text
       logger.go:146: 2024-04-08T09:45:27.734+0200 INFO    Saving robustness test report   {"path": "/tmp/TestRobustnessExploratory_Etcd_HighTraffic_ClusterOfSize1"}
       ```
 
@@ -194,7 +194,7 @@ Errors in the etcd model could be causing false positives, which makes the abili
 If robustness tests fail, we want to analyse the report to confirm if the issue is on etcd side. The location of the directory with the report
 is mentioned in the `Saving robustness test report` log. Logs from report generation should look like:
 
-```
+```text
     logger.go:146: 2024-05-08T10:42:54.429+0200 INFO    Saving robustness test report   {"path": "/tmp/TestRobustnessRegression_Issue14370/1715157774429416550"}
     logger.go:146: 2024-05-08T10:42:54.429+0200 INFO    Saving member data dir  {"member": "TestRobustnessRegressionIssue14370-test-0", "path": "/tmp/TestRobustnessRegression_Issue14370/1715157774429416550/server-TestRobustnessRegressionIssue14370-test-0"}
     logger.go:146: 2024-05-08T10:42:54.430+0200 INFO    no watch operations for client, skip persisting {"client-id": 1}
@@ -239,7 +239,7 @@ After a couple of tries robustness tests should fail with a log `Linearization i
 
 Example:
 
-```
+```text
     logger.go:146: 2025-08-01T22:54:26.550+0900 INFO Validating linearizable operations {"timeout": "5m0s"}
     logger.go:146: 2025-08-01T22:54:26.755+0900 ERROR Linearization illegal {"duration": "205.05225ms"}
     logger.go:146: 2025-08-01T22:54:26.755+0900 INFO Skipping other validations as linearization failed
@@ -264,7 +264,6 @@ All following requests are invalid (connected with red line) as they have revisi
 Etcd guarantees that revision is non-decreasing, so this shows a bug in etcd as there is no way revision should decrease.
 This is consistent with the root cause of [#14370] as it was an issue with the process crash causing the last write to be lost.
 
-
 ### Example analysis of a watch issue
 
 Let's reproduce and analyse robustness test report for issue [#15271].
@@ -273,7 +272,7 @@ After a couple of tries robustness tests should fail with a logs `Broke watch gu
 
 Example:
 
-```
+```text
     logger.go:146: 2024-05-08T10:50:11.301+0200 INFO    Validating linearizable operations      {"timeout": "5m0s"}
     logger.go:146: 2024-05-08T10:50:15.754+0200 INFO    Linearization success   {"duration": "4.453346487s"}
     logger.go:146: 2024-05-08T10:50:15.754+0200 INFO    Validating watch
@@ -294,7 +293,7 @@ Each line consists of json blob corresponding to a single watch request sent by 
 Look for events with `Revision` equal to revision mentioned in the first log with `Broke watch guarantee`, in this case, look for `"Revision":3,`.
 You should see watch responses where the `Revision` decreases like ones below:
 
-```
+```text
 {"Events":[{"Type":"put-operation","Key":"key5","Value":{"Value":"793","Hash":0},"Revision":799,"IsCreate":false,"PrevValue":null}],"IsProgressNotify":false,"Revision":799,"Time":3202907249,"Error":""}
 {"Events":[{"Type":"put-operation","Key":"key4","Value":{"Value":"1","Hash":0},"Revision":3,"IsCreate":true,"PrevValue":null}, ...
 ```
@@ -304,4 +303,3 @@ However, the following line includes an event with `Revision` equal `3`.
 If you follow the `revision` throughout the file you should notice that watch replayed revisions for a second time.
 This is incorrect and breaks `Ordered` [watch API guarantees].
 This is consistent with the root cause of [#15271] where the member reconnecting to cluster will resend revisions.
-
