@@ -42,9 +42,9 @@ func (a *quotaApplierV3) Put(p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trac
 	return resp, trace, err
 }
 
-func (a *quotaApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
+func (a *quotaApplierV3) Txn(rt *pb.TxnRequest, header *pb.RequestHeader) (*pb.TxnResponse, *traceutil.Trace, error) {
 	ok := a.q.Available(rt)
-	resp, trace, err := a.applierV3.Txn(rt)
+	resp, trace, err := a.applierV3.Txn(rt, header)
 	if err == nil && !ok {
 		err = errors.ErrNoSpace
 	}
