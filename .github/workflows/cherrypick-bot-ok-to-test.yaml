@@ -28,15 +28,15 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           debug: ${{ secrets.ACTIONS_RUNNER_DEBUG == 'true' }}
           script: |
-            await github.rest.issues.addLabels({
-               issue_number: context.issue.number,
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               labels: ['ok-to-test']
-             });
             await github.rest.issues.removeLabel({
                issue_number: context.issue.number,
                owner: context.repo.owner,
                repo: context.repo.repo,
                name: 'needs-ok-to-test'
+            });
+            await github.rest.issues.addLabels({
+               issue_number: context.issue.number,
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               labels: ['ok-to-test']
             });
