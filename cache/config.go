@@ -14,7 +14,10 @@
 
 package cache
 
-import "time"
+import (
+	"net/http"
+	"time"
+)
 
 type Config struct {
 	// PerWatcherBufferSize caps each watcher’s buffered channel.
@@ -33,6 +36,10 @@ type Config struct {
 	GetTimeout time.Duration
 	// BTreeDegree controls the degree (branching factor) of the in-memory B-tree store.
 	BTreeDegree int
+	// MetricsMux, when set, registers a Prometheus metrics handler at MetricsPath.
+	MetricsMux *http.ServeMux
+	// MetricsPath is the HTTP path for the Prometheus handler (default: "/cache/metrics").
+	MetricsPath string
 }
 
 // TODO: tune via performance/load tests.
@@ -76,4 +83,15 @@ func WithGetTimeout(d time.Duration) Option {
 
 func WithBTreeDegree(n int) Option {
 	return func(c *Config) { c.BTreeDegree = n }
+}
+
+// WithMetrics registers a Prometheus metrics handler on the given ServeMux.
+// The default path is "/cache/metrics"; use WithMetricsPath to override.
+func WithMetrics(mux *http.ServeMux) Option {
+	return func(c *Config) { c.MetricsMux = mux }
+}
+
+// WithMetricsPath overrides the default metrics endpoint path.
+func WithMetricsPath(path string) Option {
+	return func(c *Config) { c.MetricsPath = path }
 }

@@ -59,6 +59,11 @@ func newDemux(historyWindowSize int, resyncInterval time.Duration) *demux {
 	}
 }
 
+func (d *demux) reportWatcherMetrics() {
+	demuxActiveWatchers.Set(float64(len(d.activeWatchers)))
+	demuxLaggingWatchers.Set(float64(len(d.laggingWatchers)))
+}
+
 // resyncLoop periodically tries to catch lagging watchers up by replaying events from History.
 func (d *demux) resyncLoop(ctx context.Context) {
 	timer := time.NewTimer(d.resyncInterval)
@@ -84,6 +89,7 @@ func (d *demux) WaitForNextResync(ctx context.Context) error {
 func (d *demux) Register(w *watcher, startingRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	defer d.reportWatcherMetrics()
 
 	if d.maxRev == 0 {
 		if startingRev == 0 {
@@ -112,6 +118,7 @@ func (d *demux) Unregister(w *watcher) {
 		defer d.mu.Unlock()
 		delete(d.activeWatchers, w)
 		delete(d.laggingWatchers, w)
+		d.reportWatcherMetrics()
 	}()
 	w.Stop()
 }
@@ -154,6 +161,9 @@ func (d *demux) Broadcast(resp clientv3.WatchResponse) error {
 	}
 	d.updateStoreLocked(resp)
 	d.broadcastLocked(resp)
+
+	demuxHistorySize.Set(float64(d.history.size))
+	d.reportWatcherMetrics()
 	return nil
 }
 
@@ -272,6 +282,8 @@ func (d *demux) purge() {
 	}
 	d.activeWatchers = make(map[*watcher]int64)
 	d.laggingWatchers = make(map[*watcher]int64)
+	d.reportWatcherMetrics()
+	demuxHistorySize.Set(0)
 }
 
 // Compact is called when etcd reports a compaction at compactRev to rebase history;
@@ -285,6 +297,8 @@ func (d *demux) Compact(compactRev int64) {
 func (d *demux) resyncLaggingWatchers() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
+	defer d.reportWatcherMetrics()
 
 	if d.minRev == 0 {
 		return
