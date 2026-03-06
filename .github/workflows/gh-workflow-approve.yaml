@@ -9,6 +9,7 @@ on:
       - synchronize
     branches:
       - main
+      - release-3.6
       - release-3.5
       - release-3.4
 
