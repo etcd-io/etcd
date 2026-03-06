@@ -36,3 +36,9 @@ updates:
     target-branch: "release-3.5"
     schedule:
       interval: monthly
+
+  - package-ecosystem: docker
+    directory: /
+    target-branch: "release-3.6"
+    schedule:
+      interval: monthly
