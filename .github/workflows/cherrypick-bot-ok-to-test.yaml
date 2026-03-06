@@ -17,7 +17,7 @@ jobs:
     # 90416843 = k8s-infra-cherrypick-robot account ID.
     if: |
       github.event.pull_request.user.id == 90416843 &&
-      contains(github.event.pull_request.labels.*.name, 'needs-ok-to-test')
+      github.event.label.name == 'needs-ok-to-test'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -28,15 +28,19 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           debug: ${{ secrets.ACTIONS_RUNNER_DEBUG == 'true' }}
           script: |
-            await github.rest.issues.removeLabel({
-               issue_number: context.issue.number,
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               name: 'needs-ok-to-test'
-            });
+            try {
+              await github.rest.issues.removeLabel({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'needs-ok-to-test'
+              });
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
             await github.rest.issues.addLabels({
-               issue_number: context.issue.number,
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               labels: ['ok-to-test']
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['ok-to-test']
             });
