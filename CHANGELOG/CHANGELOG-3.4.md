@@ -14,6 +14,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### Dependencies
 
 - Compile binaries using [go 1.25.7](https://github.com/etcd-io/etcd/pull/21406)
+- [Bump golang.org/x/net to v0.51.0 to resolve GO-2026-4559](https://github.com/etcd-io/etcd/pull/21444)
 
 ---
 
