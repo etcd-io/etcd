@@ -28,6 +28,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - [Bump go.opentelemetry.io/otel/sdk to v1.40.0 to resolve https://pkg.go.dev/vuln/GO-2026-4394](https://github.com/etcd-io/etcd/pull/21340)
 - Compile binaries using [go 1.25.7](https://github.com/etcd-io/etcd/pull/21393)
+- [Bump golang.org/x/net to v0.51.0 to resolve GO-2026-4559](https://github.com/etcd-io/etcd/pull/21440)
 
 ---
 
