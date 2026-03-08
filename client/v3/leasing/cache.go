@@ -217,26 +217,22 @@ func (lc *leaseCache) Get(ctx context.Context, op v3.Op) (*v3.GetResponse, bool)
 }
 
 func (lk *leaseKey) get(op v3.Op) *v3.GetResponse {
-	ret := *lk.response
-	ret.Header = copyHeader(ret.Header)
-	empty := len(ret.Kvs) == 0 || op.IsCountOnly()
-	empty = empty || (op.MinModRev() > ret.Kvs[0].ModRevision)
-	empty = empty || (op.MaxModRev() != 0 && op.MaxModRev() < ret.Kvs[0].ModRevision)
-	empty = empty || (op.MinCreateRev() > ret.Kvs[0].CreateRevision)
-	empty = empty || (op.MaxCreateRev() != 0 && op.MaxCreateRev() < ret.Kvs[0].CreateRevision)
+	resp := lk.response
+	empty := len(resp.Kvs) == 0 || op.IsCountOnly()
+	empty = empty || (op.MinModRev() > resp.Kvs[0].ModRevision)
+	empty = empty || (op.MaxModRev() != 0 && op.MaxModRev() < resp.Kvs[0].ModRevision)
+	empty = empty || (op.MinCreateRev() > resp.Kvs[0].CreateRevision)
+	empty = empty || (op.MaxCreateRev() != 0 && op.MaxCreateRev() < resp.Kvs[0].CreateRevision)
+
+	ret := copyGetResponseMetadataOnly(resp)
 	if empty {
 		ret.Kvs = nil
 	} else {
-		kv := *ret.Kvs[0]
-		kv.Key = make([]byte, len(kv.Key))
-		copy(kv.Key, ret.Kvs[0].Key)
-		if !op.IsKeysOnly() {
-			kv.Value = make([]byte, len(kv.Value))
-			copy(kv.Value, ret.Kvs[0].Value)
+		ret.Kvs = []*mvccpb.KeyValue{
+			copyKeyValue(resp.Kvs[0], op.IsKeysOnly()),
 		}
-		ret.Kvs = []*mvccpb.KeyValue{&kv}
 	}
-	return &ret
+	return ret
 }
 
 func (lc *leaseCache) notify(key string) (*leaseKey, <-chan struct{}) {
