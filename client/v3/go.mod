@@ -7,6 +7,7 @@ toolchain go1.26.1
 require (
 	github.com/coreos/go-semver v0.3.1
 	github.com/dustin/go-humanize v1.0.1
+	github.com/gogo/protobuf v1.3.2
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1

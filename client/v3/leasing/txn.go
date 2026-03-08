@@ -206,7 +206,7 @@ func (txn *txnLeasing) serverTxn() (*v3.TxnResponse, error) {
 		resp, err := txn.lkv.kv.Txn(txn.ctx).If(cmps...).Then(userTxn).Else(fbOps...).Commit()
 		if err != nil {
 			for _, cmp := range cmps {
-				txn.lkv.leases.Evict(strings.TrimPrefix(string(cmp.Key), txn.lkv.pfx))
+				txn.lkv.leases.Evict(strings.TrimPrefix(string(cmp.KeyBytes()), txn.lkv.pfx))
 			}
 			return nil, err
 		}
