@@ -318,8 +318,12 @@ func (wps *watchProxyStream) delete(id int64) {
 	}
 	wps.ranges.delete(w)
 	delete(wps.watchers, id)
+	header := w.lastHeader
+	if header == nil {
+		header = &pb.ResponseHeader{}
+	}
 	resp := &pb.WatchResponse{
-		Header:   &w.lastHeader,
+		Header:   header,
 		WatchId:  id,
 		Canceled: true,
 	}

@@ -100,7 +100,7 @@ func (p *fieldsPrinter) Txn(r v3.TxnResponse) {
 }
 
 func (p *fieldsPrinter) Watch(resp v3.WatchResponse) {
-	p.hdr(&resp.Header)
+	p.hdr(resp.Header)
 	for _, e := range resp.Events {
 		fmt.Println(`"Type" :`, e.Type)
 		if e.PrevKv != nil {
