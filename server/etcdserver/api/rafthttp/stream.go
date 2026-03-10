@@ -475,6 +475,13 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			cr.lg.Panic("unknown stream type", zap.String("type", t.String()))
 		}
 	}
+	if dec == nil {
+		cr.mu.Unlock()
+		if err := rc.Close(); err != nil {
+			return err
+		}
+		return errors.New("decoder is nil: unknown stream type")
+	}
 	select {
 	case <-cr.ctx.Done():
 		cr.mu.Unlock()
