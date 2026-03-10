@@ -335,6 +335,72 @@ func TestV3AuthNonAuthorizedRPCs(t *testing.T) {
 	require.Truef(t, eqErrGRPC(err, rpctypes.ErrGRPCUserEmpty), "could put key (%v), it should cause an error of permission denied", respput)
 }
 
+func TestV3AuthNestedTxnPermissionDenied(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	users := []user{
+		{
+			name:     "user1",
+			password: "user1-123",
+			role:     "role1",
+			key:      "foo",
+			end:      "zoo",
+		},
+	}
+	authSetupUsers(t, integration.ToGRPC(clus.Client(0)).Auth, users)
+	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
+
+	rootc, err := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, err)
+	defer rootc.Close()
+
+	userc, err := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "user1",
+		Password:  "user1-123",
+	})
+	require.NoError(t, err)
+	defer userc.Close()
+
+	_, err = rootc.Put(t.Context(), "boo", "bar")
+	require.NoError(t, err)
+
+	txn := &pb.TxnRequest{
+		Success: []*pb.RequestOp{
+			{
+				Request: &pb.RequestOp_RequestTxn{
+					RequestTxn: &pb.TxnRequest{
+						Success: []*pb.RequestOp{
+							{
+								Request: &pb.RequestOp_RequestDeleteRange{
+									RequestDeleteRange: &pb.DeleteRangeRequest{
+										Key: []byte("boo"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err = integration.ToGRPC(userc).KV.Txn(t.Context(), txn)
+	require.Error(t, err)
+	require.Truef(t, eqErrGRPC(err, rpctypes.ErrGRPCPermissionDenied), "got %v, expected %v", err, rpctypes.ErrGRPCPermissionDenied)
+
+	resp, err := rootc.Get(t.Context(), "boo")
+	require.NoError(t, err)
+	require.Len(t, resp.Kvs, 1)
+	require.Equal(t, resp.Kvs[0].Value, []byte("bar"))
+}
+
 func TestV3AuthOldRevConcurrent(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
