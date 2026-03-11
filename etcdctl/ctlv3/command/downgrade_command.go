@@ -95,7 +95,7 @@ func downgradeValidateCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.DowngradeValidate(*resp)
+	display.DowngradeValidate(resp)
 }
 
 // downgradeEnableCommandFunc executes the "downgrade enable" command.
@@ -121,7 +121,7 @@ func downgradeEnableCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.DowngradeEnable(*resp)
+	display.DowngradeEnable(resp)
 }
 
 // downgradeCancelCommandFunc executes the "downgrade cancel" command.
@@ -135,5 +135,5 @@ func downgradeCancelCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.DowngradeCancel(*resp)
+	display.DowngradeCancel(resp)
 }

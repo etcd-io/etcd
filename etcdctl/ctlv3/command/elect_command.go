@@ -83,7 +83,7 @@ func observe(c *clientv3.Client, election string) error {
 
 	go func() {
 		for resp := range e.Observe(ctx) {
-			display.Get(*resp)
+			display.Get(resp)
 		}
 		close(donec)
 	}()
@@ -125,7 +125,7 @@ func campaign(c *clientv3.Client, election string, prop string) error {
 	if err != nil {
 		return err
 	}
-	display.Get(*resp)
+	display.Get(resp)
 
 	select {
 	case <-donec:
