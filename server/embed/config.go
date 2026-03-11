@@ -16,6 +16,7 @@ package embed
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -771,8 +772,70 @@ func ConfigFromFile(path string) (*Config, error) {
 	return &cfg.Config, nil
 }
 
+// durationFieldKeys lists all JSON keys in Config that correspond to time.Duration fields.
+// String values (e.g. "1m", "500ms") are converted to nanosecond integers before unmarshaling,
+// because time.Duration does not implement json.Unmarshaler.
+var durationFieldKeys = map[string]bool{
+	"backend-batch-interval":          true,
+	"grpc-keepalive-min-time":         true,
+	"grpc-keepalive-interval":         true,
+	"grpc-keepalive-timeout":          true,
+	"corrupt-check-time":              true,
+	"compact-hash-check-time":         true,
+	"compaction-sleep-interval":       true,
+	"watch-progress-notify-interval":  true,
+	"warning-apply-duration":          true,
+	"warning-unary-request-duration":  true,
+	"downgrade-check-time":            true,
+}
+
+// preprocessDurationFields converts string duration values (e.g. "1m", "500ms") to
+// nanosecond integers so that time.Duration fields unmarshal correctly from JSON/YAML.
+func preprocessDurationFields(b []byte) ([]byte, error) {
+	var raw map[string]json.RawMessage
+	if err := yaml.Unmarshal(b, &raw); err != nil {
+		// If parsing as a map fails, return the original bytes and let the
+		// caller handle the error during normal unmarshaling.
+		return b, nil
+	}
+
+	modified := false
+	for key, val := range raw {
+		if !durationFieldKeys[key] {
+			continue
+		}
+		// Try to unmarshal as a string (e.g. "1m", "10s").
+		var s string
+		if err := json.Unmarshal(val, &s); err != nil {
+			// Not a string; might already be a number, which is fine.
+			continue
+		}
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			return nil, fmt.Errorf("invalid duration value for %q: %w", key, err)
+		}
+		nsBytes, err := json.Marshal(d.Nanoseconds())
+		if err != nil {
+			return nil, err
+		}
+		raw[key] = nsBytes
+		modified = true
+	}
+
+	if !modified {
+		return b, nil
+	}
+
+	return yaml.Marshal(raw)
+}
+
 func (cfg *configYAML) configFromFile(path string) error {
 	b, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	b, err = preprocessDurationFields(b)
 	if err != nil {
 		return err
 	}
