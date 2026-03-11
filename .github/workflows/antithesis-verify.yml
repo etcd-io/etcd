@@ -1,6 +1,9 @@
 ---
 name: Verify Antithesis Docker Compose Pipeline
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
