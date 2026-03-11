@@ -322,6 +322,28 @@ func Regression(t *testing.T) []TestScenario {
 			e2e.WithSnapshotCatchUpEntries(10),
 		),
 	})
+	clusterClientSwitchingInterval := 500 * time.Millisecond
+	scenarios = append(scenarios, TestScenario{
+		Name:      "Issue20221-event",
+		Failpoint: failpoint.BlackholeUntilSnapshot,
+		Profile: traffic.Profile{
+			KeyValue: &traffic.KeyValueHigh,
+			Watch: &traffic.Watch{
+				MemberClientCount:    6,
+				ClusterClientCount:   2,
+				RevisionOffsetRange:  traffic.Range{Min: 10, Max: 100},
+				EndpointSwitchPeriod: &clusterClientSwitchingInterval,
+			},
+		},
+		Traffic: traffic.EtcdPut,
+		Cluster: *e2e.NewConfig(
+			e2e.WithSnapshotCount(10),
+			e2e.WithPeerProxy(true),
+			e2e.WithIsPeerTLS(true),
+			e2e.WithWatchProcessNotifyInterval(10*time.Millisecond),
+			e2e.WithSnapshotCatchUpEntries(10),
+		),
+	})
 	if v.Compare(version.V3_5) >= 0 {
 		opts := []e2e.EPClusterOption{
 			e2e.WithSnapshotCount(100),
