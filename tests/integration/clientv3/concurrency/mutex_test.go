@@ -17,6 +17,7 @@ package concurrency_test
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -83,6 +84,15 @@ func TestMutexLockEarlyTerminationOnSessionExpired(t *testing.T) {
 	go func() {
 		m2Done <- m2.Lock(t.Context())
 	}()
+
+	// wait until m2's key appears in etcd
+	require.Eventually(t, func() bool {
+		resp, err := cli.Get(t.Context(), "/my-lock/", clientv3.WithPrefix())
+		if err != nil {
+			return false
+		}
+		return len(resp.Kvs) >= 2
+	}, 5*time.Second, 50*time.Millisecond)
 
 	// revoke s2's session while m1 still holds the lock,
 	// this should trigger early termination,
