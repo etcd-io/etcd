@@ -1666,6 +1666,19 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb membership.Member) (
 	return s.configure(ctx, cc)
 }
 
+func (s *EtcdServer) MemberList(ctx context.Context, r *pb.MemberListRequest) ([]*membership.Member, error) {
+	if r.Linearizable {
+		if err := s.LinearizableReadNotify(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := s.checkMembershipOperationPermission(ctx); err != nil {
+		return nil, err
+	}
+	return s.cluster.Members(), nil
+}
+
 func (s *EtcdServer) setCommittedIndex(v uint64) {
 	s.committedIndex.Store(v)
 }
