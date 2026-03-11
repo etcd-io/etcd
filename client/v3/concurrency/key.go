@@ -32,15 +32,12 @@ func waitDelete(ctx context.Context, client *v3.Client, key, leaseKey string, re
 	defer cancel()
 
 	wch := client.Watch(cctx, key, v3.WithRev(rev))
-	lch := client.Watch(cctx, leaseKey)
+	lch := client.Watch(cctx, leaseKey, v3.WithRev(rev))
 
 	for {
 		select {
 		case wr, ok := <-wch:
 			if !ok {
-				if err := wr.Err(); err != nil {
-					return err
-				}
 				return ErrLostWatcher
 			}
 
@@ -55,9 +52,6 @@ func waitDelete(ctx context.Context, client *v3.Client, key, leaseKey string, re
 			}
 		case sr, ok := <-lch:
 			if !ok {
-				if err := sr.Err(); err != nil {
-					return err
-				}
 				return ErrLostWatcher
 			}
 
