@@ -148,7 +148,7 @@ func TestMemberAdd(t *testing.T) {
 						Member:  &pb.Member{ID: tt.number},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
-					p.MemberAdd(response)
+					p.MemberAdd(&response)
 
 					var got map[string]any
 					err := decoder.Decode(&got)
@@ -193,7 +193,7 @@ func TestMemberRemove(t *testing.T) {
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
-					p.MemberRemove(0, response)
+					p.MemberRemove(0, &response)
 
 					var got map[string]any
 					err := decoder.Decode(&got)
@@ -233,7 +233,7 @@ func TestMemberUpdate(t *testing.T) {
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
-					p.MemberUpdate(0, response)
+					p.MemberUpdate(0, &response)
 
 					var got map[string]any
 					err := decoder.Decode(&got)
@@ -273,7 +273,7 @@ func TestMemberPromote(t *testing.T) {
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
-					p.MemberPromote(0, response)
+					p.MemberPromote(0, &response)
 
 					var got map[string]any
 					err := decoder.Decode(&got)
@@ -313,7 +313,7 @@ func TestMemberList(t *testing.T) {
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
-					p.MemberList(response)
+					p.MemberList(&response)
 
 					var got map[string]any
 					err := decoder.Decode(&got)

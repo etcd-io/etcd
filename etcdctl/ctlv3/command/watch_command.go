@@ -169,18 +169,18 @@ func printWatchCh(c *clientv3.Client, ch clientv3.WatchChan, execArgs []string) 
 			fmt.Fprintf(os.Stderr, "watch was canceled (%v)\n", resp.Err())
 		}
 		if resp.IsProgressNotify() {
-			fmt.Fprintf(os.Stdout, "progress notify: %d\n", resp.Header.Revision)
+			fmt.Fprintf(os.Stdout, "progress notify: %d\n", resp.Header.GetRevision())
 		}
-		display.Watch(resp)
+		display.Watch(&resp)
 
 		if len(execArgs) > 0 {
-			for _, ev := range resp.Events {
+			for _, event := range resp.Events {
 				cmd := exec.CommandContext(c.Ctx(), execArgs[0], execArgs[1:]...)
 				cmd.Env = os.Environ()
-				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_REVISION=%d", resp.Header.Revision))
-				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_EVENT_TYPE=%q", ev.Type))
-				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_KEY=%q", ev.Kv.Key))
-				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_VALUE=%q", ev.Kv.Value))
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_REVISION=%d", resp.Header.GetRevision()))
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_EVENT_TYPE=%q", event.GetType()))
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_KEY=%q", event.GetKv().GetKey()))
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ETCD_WATCH_VALUE=%q", event.GetKv().GetValue()))
 				cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 				if err := cmd.Run(); err != nil {
 					fmt.Fprintf(os.Stderr, "command %q error (%v)\n", execArgs, err)
