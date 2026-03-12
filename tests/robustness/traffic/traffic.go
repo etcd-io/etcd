@@ -38,10 +38,17 @@ var (
 	RequestTimeout                = 200 * time.Millisecond
 	WatchTimeout                  = 500 * time.Millisecond
 	MultiOpTxnOpCount             = 4
-	DefaultCompactionPeriod       = 200 * time.Millisecond
-	DefaultRevisionOffset         = int64(100)
+	MinimalCompactionPeriod       = 100 * time.Millisecond
 
-	LowTraffic = Profile{
+	KeyValueVeryLow = KeyValue{
+		MinimalQPS:                     50,
+		MaximalQPS:                     100,
+		BurstableQPS:                   100,
+		MemberClientCount:              6,
+		ClusterClientCount:             2,
+		MaxNonUniqueRequestConcurrency: 3,
+	}
+	KeyValueMedium = KeyValue{
 		MinimalQPS:                     100,
 		MaximalQPS:                     200,
 		BurstableQPS:                   1000,
@@ -49,13 +56,24 @@ var (
 		ClusterClientCount:             2,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
-	HighTrafficProfile = Profile{
+	KeyValueHigh = KeyValue{
 		MinimalQPS:                     100,
 		MaximalQPS:                     1000,
 		BurstableQPS:                   1000,
 		MemberClientCount:              6,
 		ClusterClientCount:             2,
 		MaxNonUniqueRequestConcurrency: 3,
+	}
+	WatchDefault = Watch{
+		MemberClientCount:  6,
+		ClusterClientCount: 2,
+		RevisionOffset:     100,
+	}
+	CompactionDefault = Compaction{
+		Period: 200 * time.Millisecond,
+	}
+	CompactionFrequent = Compaction{
+		Period: 100 * time.Millisecond,
 	}
 )
 
@@ -64,13 +82,13 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	lm := identity.NewLeaseIDStorage()
 	// Use the highest MaximalQPS of all traffic profiles as burst otherwise actual traffic may be accidentally limited
-	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
+	limiter := rate.NewLimiter(rate.Limit(profile.KeyValue.MaximalQPS), profile.KeyValue.BurstableQPS)
 
 	err := CheckEmptyDatabaseAtStart(ctx, lg, endpoints, clientSet)
 	require.NoError(t, err)
 
 	wg := sync.WaitGroup{}
-	nonUniqueWriteLimiter := NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
+	nonUniqueWriteLimiter := NewConcurrencyLimiter(profile.KeyValue.MaxNonUniqueRequestConcurrency)
 	finish := make(chan struct{})
 
 	keyStore := NewKeyStore(10, "key")
@@ -78,7 +96,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	lg.Info("Start traffic")
 	startTime := time.Since(clientSet.BaseTime())
-	for i := range profile.MemberClientCount {
+	for i := range profile.KeyValue.MemberClientCount {
 		wg.Add(1)
 
 		c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
@@ -99,7 +117,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			})
 		}(c)
 	}
-	for range profile.ClusterClientCount {
+	for range profile.KeyValue.ClusterClientCount {
 		wg.Add(1)
 
 		c, nerr := clientSet.NewClient(endpoints)
@@ -120,8 +138,8 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			})
 		}(c)
 	}
-	if !profile.ForbidRunWatchLoop {
-		for i := range profile.MemberClientCount {
+	if profile.Watch != nil {
+		for i := range profile.Watch.MemberClientCount {
 			wg.Add(1)
 			c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
 			require.NoError(t, nerr)
@@ -138,7 +156,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				})
 			}(c)
 		}
-		for range profile.ClusterClientCount {
+		for range profile.Watch.ClusterClientCount {
 			wg.Add(1)
 			c, nerr := clientSet.NewClient(endpoints)
 			require.NoError(t, nerr)
@@ -156,24 +174,23 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			}(c)
 		}
 	}
-	if !profile.ForbidCompaction {
+	if profile.Compaction != nil {
 		wg.Add(1)
 		c, nerr := clientSet.NewClient(endpoints)
 		if nerr != nil {
 			t.Fatal(nerr)
 		}
+
+		if profile.Compaction.Period < MinimalCompactionPeriod {
+			t.Fatalf("Compaction period %v below minimal %v", profile.Compaction.Period, MinimalCompactionPeriod)
+		}
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
 
-			compactionPeriod := DefaultCompactionPeriod
-			if profile.CompactPeriod != time.Duration(0) {
-				compactionPeriod = profile.CompactPeriod
-			}
-
 			traffic.RunCompactLoop(ctx, RunCompactLoopParam{
 				Client: c,
-				Period: compactionPeriod,
+				Period: profile.Compaction.Period,
 				Finish: finish,
 			})
 		}(c)
@@ -213,8 +230,8 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	watchTotal := CalculateWatchStats(reports, startTime, endTime)
 	lg.Info("Reporting complete watch", zap.Int("requests", watchTotal.Requests), zap.Int("events", watchTotal.Events), zap.Float64("eventsQPS", watchTotal.EventsQPS()), zap.Int("progressNotifies", watchTotal.ProgressNotifies), zap.Int("immediateClosures", watchTotal.ImmediateClosures), zap.Duration("period", watchTotal.Period), zap.Duration("avgDuration", watchTotal.AvgDuration()))
 
-	if beforeFailpointStats.QPS() < profile.MinimalQPS {
-		t.Errorf("Requiring minimal %f qps before failpoint injection for test results to be reliable, got %f qps", profile.MinimalQPS, beforeFailpointStats.QPS())
+	if beforeFailpointStats.QPS() < profile.KeyValue.MinimalQPS {
+		t.Errorf("Requiring minimal %f qps before failpoint injection for test results to be reliable, got %f qps", profile.KeyValue.MinimalQPS, beforeFailpointStats.QPS())
 	}
 	// TODO: Validate QPS post failpoint injection to ensure that we sufficiently cover the period when the cluster recovers.
 	return reports
@@ -328,30 +345,28 @@ func (ts *trafficStats) QPS() float64 {
 }
 
 type Profile struct {
+	KeyValue   *KeyValue
+	Watch      *Watch
+	Compaction *Compaction
+}
+
+type KeyValue struct {
 	MinimalQPS                     float64
 	MaximalQPS                     float64
 	BurstableQPS                   int
 	MaxNonUniqueRequestConcurrency int
 	MemberClientCount              int
 	ClusterClientCount             int
-	ForbidCompaction               bool
-	CompactPeriod                  time.Duration
-	ForbidRunWatchLoop             bool
 }
 
-func (p Profile) WithoutCompaction() Profile {
-	p.ForbidCompaction = true
-	return p
+type Watch struct {
+	MemberClientCount  int
+	ClusterClientCount int
+	RevisionOffset     int64
 }
 
-func (p Profile) WithCompactionPeriod(cp time.Duration) Profile {
-	p.CompactPeriod = cp
-	return p
-}
-
-func (p Profile) WithoutWatchLoop() Profile {
-	p.ForbidRunWatchLoop = true
-	return p
+type Compaction struct {
+	Period time.Duration
 }
 
 type RunTrafficLoopParam struct {
@@ -372,6 +387,7 @@ type RunCompactLoopParam struct {
 }
 
 type RunWatchLoopParam struct {
+	Config     Watch
 	Client     *client.RecordingClient
 	QPSLimiter *rate.Limiter
 	// TODO: merge 2 key stores into 1
@@ -415,7 +431,7 @@ func runWatch(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) err
 	if err != nil {
 		return err
 	}
-	rev := resp.Header.Revision + DefaultRevisionOffset
+	rev := resp.Header.Revision + p.Config.RevisionOffset
 
 	watchCtx, watchCancel := context.WithTimeout(ctx, WatchTimeout)
 	defer watchCancel()

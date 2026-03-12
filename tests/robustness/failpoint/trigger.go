@@ -91,7 +91,7 @@ func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.Et
 }
 
 func (t triggerCompact) Available(config e2e.EtcdProcessClusterConfig, _ e2e.EtcdProcess, profile traffic.Profile) bool {
-	if profile.ForbidCompaction {
+	if profile.Compaction != nil {
 		return false
 	}
 	// Since the introduction of compaction into traffic, injecting compaction failpoints started interfering with the peer proxy.

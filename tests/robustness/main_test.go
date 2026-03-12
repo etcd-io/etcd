@@ -45,7 +45,7 @@ var testRunner = framework.E2eTestRunner
 
 var (
 	WaitBeforeFailpoint = time.Second
-	WaitJitter          = traffic.DefaultCompactionPeriod
+	WaitJitter          = time.Millisecond * 200
 	WaitAfterFailpoint  = time.Second
 )
 
