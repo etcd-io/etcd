@@ -74,7 +74,7 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	}
 	// gofail: var raftBeforeWALSaveSnaphot struct{}
 
-	return st.w.SaveSnapshot(walsnap)
+	return st.w.SaveSnapshot(&walsnap)
 }
 
 // Release releases resources older than the given snap and are no longer needed:
@@ -121,7 +121,7 @@ func (st *storage) MinimalEtcdVersion() *semver.Version {
 		walsnap.Term = new(sn.Metadata.Term)
 		walsnap.ConfState = &sn.Metadata.ConfState
 	}
-	w, err := st.w.Reopen(st.lg, walsnap)
+	w, err := st.w.Reopen(st.lg, &walsnap)
 	if err != nil {
 		panic(err)
 	}

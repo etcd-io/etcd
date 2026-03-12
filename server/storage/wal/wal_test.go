@@ -228,7 +228,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	f.Close()
 
-	w, err := Open(zaptest.NewLogger(t), dir, walpb.Snapshot{})
+	w, err := Open(zaptest.NewLogger(t), dir, &walpb.Snapshot{})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	if g := filepath.Base(w.tail().Name()); g != walName(0, 0) {
 		t.Errorf("name = %+v, want %+v", g, walName(0, 0))
@@ -245,7 +245,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	f.Close()
 
-	w, err = Open(zaptest.NewLogger(t), dir, walpb.Snapshot{Index: new(uint64(5))})
+	w, err = Open(zaptest.NewLogger(t), dir, &walpb.Snapshot{Index: new(uint64(5))})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	if g := filepath.Base(w.tail().Name()); g != wname {
 		t.Errorf("name = %+v, want %+v", g, wname)
@@ -256,7 +256,7 @@ func TestOpenAtIndex(t *testing.T) {
 	w.Close()
 
 	emptydir := t.TempDir()
-	if _, err = Open(zaptest.NewLogger(t), emptydir, walpb.Snapshot{}); !errors.Is(err, ErrFileNotFound) {
+	if _, err = Open(zaptest.NewLogger(t), emptydir, &walpb.Snapshot{}); !errors.Is(err, ErrFileNotFound) {
 		t.Errorf("err = %v, want %v", err, ErrFileNotFound)
 	}
 }
@@ -290,7 +290,7 @@ func TestVerify(t *testing.T) {
 	require.NoError(t, w.Save(hs, nil))
 
 	// to verify the WAL is not corrupted at this point
-	hardstate, err := Verify(lg, walDir, walpb.Snapshot{})
+	hardstate, err := Verify(lg, walDir, &walpb.Snapshot{})
 	if err != nil {
 		t.Errorf("expected a nil error, got %v", err)
 	}
@@ -307,7 +307,7 @@ func TestVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = Verify(lg, walDir, walpb.Snapshot{})
+	_, err = Verify(lg, walDir, &walpb.Snapshot{})
 	if err == nil {
 		t.Error("expected a non-nil error, got nil")
 	}
@@ -344,7 +344,7 @@ func TestCut(t *testing.T) {
 		t.Fatal(err)
 	}
 	snap := walpb.Snapshot{Index: new(uint64(2)), Term: new(uint64(1)), ConfState: &confState}
-	if err = w.SaveSnapshot(snap); err != nil {
+	if err = w.SaveSnapshot(&snap); err != nil {
 		t.Fatal(err)
 	}
 	wname = walName(2, 2)
@@ -362,7 +362,7 @@ func TestCut(t *testing.T) {
 	defer f.Close()
 	nw := &WAL{
 		decoder: NewDecoder(fileutil.NewFileReader(f)),
-		start:   snap,
+		start:   &snap,
 	}
 	_, gst, _, err := nw.ReadAll()
 	if err != nil {
@@ -404,7 +404,7 @@ func TestSaveWithCut(t *testing.T) {
 
 	w.Close()
 
-	neww, err := Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	neww, err := Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	defer neww.Close()
 	wname := walName(1, index)
@@ -457,7 +457,7 @@ func TestRecover(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = w.SaveSnapshot(walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}); err != nil {
+			if err = w.SaveSnapshot(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}); err != nil {
 				t.Fatal(err)
 			}
 
@@ -480,7 +480,7 @@ func TestRecover(t *testing.T) {
 			}
 			w.Close()
 
-			if w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{}); err != nil {
+			if w, err = Open(zaptest.NewLogger(t), p, &walpb.Snapshot{}); err != nil {
 				t.Fatal(err)
 			}
 			metadata, state, entries, err := w.ReadAll()
@@ -579,7 +579,7 @@ func TestRecoverAfterCut(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < 10; i++ {
-		if err = md.SaveSnapshot(walpb.Snapshot{Index: new(uint64(i)), Term: new(uint64(1)), ConfState: &confState}); err != nil {
+		if err = md.SaveSnapshot(&walpb.Snapshot{Index: new(uint64(i)), Term: new(uint64(1)), ConfState: &confState}); err != nil {
 			t.Fatal(err)
 		}
 		es := []raftpb.Entry{{Index: uint64(i)}}
@@ -597,7 +597,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		w, err := Open(zaptest.NewLogger(t), p, walpb.Snapshot{Index: new(uint64(i)), Term: new(uint64(1))})
+		w, err := Open(zaptest.NewLogger(t), p, &walpb.Snapshot{Index: new(uint64(i)), Term: new(uint64(1))})
 		if err != nil {
 			if i <= 4 {
 				if !strings.Contains(err.Error(), "do not increase continuously") {
@@ -632,7 +632,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = w.SaveSnapshot(walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}); err != nil {
+	if err = w.SaveSnapshot(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}); err != nil {
 		t.Fatal(err)
 	}
 	if err = w.Save(raftpb.HardState{}, []raftpb.Entry{{Index: 0}}); err != nil {
@@ -640,7 +640,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	}
 	w.Close()
 
-	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -678,7 +678,7 @@ func TestOpenForRead(t *testing.T) {
 	w.ReleaseLockTo(unlockIndex)
 
 	// All are available for read
-	w2, err := OpenForRead(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w2, err := OpenForRead(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -710,7 +710,7 @@ func TestOpenWithMaxIndex(t *testing.T) {
 	w1.Close()
 	w1 = nil
 
-	w2, err := Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w2, err := Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -828,7 +828,7 @@ func TestTailWriteNoSlackSpace(t *testing.T) {
 	w.Close()
 
 	// open, write more
-	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -847,7 +847,7 @@ func TestTailWriteNoSlackSpace(t *testing.T) {
 	w.Close()
 
 	// confirm all writes
-	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -884,7 +884,7 @@ func TestRestartCreateWal(t *testing.T) {
 		t.Fatalf("got %q exists, expected it to not exist", tmpdir)
 	}
 
-	if w, err = OpenForRead(zaptest.NewLogger(t), p, walpb.Snapshot{}); err != nil {
+	if w, err = OpenForRead(zaptest.NewLogger(t), p, &walpb.Snapshot{}); err != nil {
 		t.Fatal(err)
 	}
 	defer w.Close()
@@ -943,7 +943,7 @@ func TestOpenOnTornWrite(t *testing.T) {
 	}
 	f.Close()
 
-	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -964,7 +964,7 @@ func TestOpenOnTornWrite(t *testing.T) {
 	w.Close()
 
 	// read back the entries, confirm number of entries matches expectation
-	w, err = OpenForRead(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = OpenForRead(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1036,22 +1036,22 @@ func TestValidSnapshotEntries(t *testing.T) {
 		defer w.Close()
 
 		// snap0 is implicitly created at index 0, term 0
-		if err = w.SaveSnapshot(snap1); err != nil {
+		if err = w.SaveSnapshot(&snap1); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.Save(state1, nil); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.SaveSnapshot(snap2); err != nil {
+		if err = w.SaveSnapshot(&snap2); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.SaveSnapshot(snap3); err != nil {
+		if err = w.SaveSnapshot(&snap3); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.Save(state2, nil); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.SaveSnapshot(snap4); err != nil {
+		if err = w.SaveSnapshot(&snap4); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -1059,7 +1059,7 @@ func TestValidSnapshotEntries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected := []walpb.Snapshot{snap0, snap1, snap2, snap3}
+	expected := []*walpb.Snapshot{&snap0, &snap1, &snap2, &snap3}
 	if !reflect.DeepEqual(walSnaps, expected) {
 		t.Errorf("expected walSnaps %+v, got %+v", expected, walSnaps)
 	}
@@ -1088,16 +1088,16 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 		defer w.Close()
 
 		// snap0 is implicitly created at index 0, term 0
-		if err = w.SaveSnapshot(snap1); err != nil {
+		if err = w.SaveSnapshot(&snap1); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.Save(state1, nil); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.SaveSnapshot(snap2); err != nil {
+		if err = w.SaveSnapshot(&snap2); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.SaveSnapshot(snap3); err != nil {
+		if err = w.SaveSnapshot(&snap3); err != nil {
 			t.Fatal(err)
 		}
 		for i := 0; i < 128; i++ {
@@ -1106,7 +1106,7 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 			}
 		}
 	}()
-	files, _, err := selectWALFiles(nil, p, snap0)
+	files, _, err := selectWALFiles(nil, p, &snap0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1180,7 +1180,7 @@ func TestLastRecordLengthExceedFileEnd(t *testing.T) {
 	newFileName := filepath.Join(filepath.Dir(fileName), "0000000000000000-0000000000000000.wal")
 	require.NoError(t, os.Rename(fileName, newFileName))
 
-	w, err := Open(zaptest.NewLogger(t), filepath.Dir(fileName), walpb.Snapshot{
+	w, err := Open(zaptest.NewLogger(t), filepath.Dir(fileName), &walpb.Snapshot{
 		Index: new(uint64(0)),
 		Term:  new(uint64(0)),
 	})
