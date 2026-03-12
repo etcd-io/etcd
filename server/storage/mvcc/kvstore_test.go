@@ -76,7 +76,7 @@ func TestStorePut(t *testing.T) {
 
 		wrev    Revision
 		wkey    []byte
-		wkv     mvccpb.KeyValue
+		wkv     *mvccpb.KeyValue
 		wputrev Revision
 	}{
 		{
@@ -86,7 +86,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 2},
 			newTestRevBytes(Revision{Main: 2}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -103,7 +103,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 2},
 			newTestRevBytes(Revision{Main: 2}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -120,7 +120,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 3},
 			newTestRevBytes(Revision{Main: 3}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
