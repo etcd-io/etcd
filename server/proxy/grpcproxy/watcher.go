@@ -79,7 +79,7 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 
 		filtered := false
 		for _, filter := range w.filters {
-			if filter(*ev) {
+			if filter(ev) {
 				filtered = true
 				break
 			}

@@ -150,7 +150,7 @@ func asembleRangeResponse(rr *mvcc.RangeResult, r *pb.RangeRequest) *pb.RangeRes
 		if r.KeysOnly {
 			rr.KVs[i].Value = nil
 		}
-		resp.Kvs[i] = &rr.KVs[i]
+		resp.Kvs[i] = rr.KVs[i]
 	}
 	return resp
 }
@@ -171,14 +171,14 @@ func pruneKVs(rr *mvcc.RangeResult, isPrunable func(*mvccpb.KeyValue) bool) {
 	j := 0
 	for i := range rr.KVs {
 		rr.KVs[j] = rr.KVs[i]
-		if !isPrunable(&rr.KVs[i]) {
+		if !isPrunable(rr.KVs[i]) {
 			j++
 		}
 	}
 	rr.KVs = rr.KVs[:j]
 }
 
-type kvSort struct{ kvs []mvccpb.KeyValue }
+type kvSort struct{ kvs []*mvccpb.KeyValue }
 
 func (s *kvSort) Swap(i, j int) {
 	t := s.kvs[i]

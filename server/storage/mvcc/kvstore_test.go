@@ -180,7 +180,7 @@ func TestStorePut(t *testing.T) {
 func TestStoreRange(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	key := newTestRevBytes(Revision{Main: 2})
-	kv := mvccpb.KeyValue{
+	kv := &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("bar"),
 		CreateRevision: 1,
@@ -221,7 +221,7 @@ func TestStoreRange(t *testing.T) {
 		if err != nil {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 		}
-		if w := []mvccpb.KeyValue{kv}; !reflect.DeepEqual(ret.KVs, w) {
+		if w := []*mvccpb.KeyValue{kv}; !reflect.DeepEqual(ret.KVs, w) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, ret.KVs, w)
 		}
 		if ret.Rev != wrev {
@@ -761,7 +761,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		t.Fatalf("failed to range: %v", err)
 	}
 	// readTx2 should see the result of new write
-	w := mvccpb.KeyValue{
+	w := &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("newBar"),
 		CreateRevision: 2,
@@ -778,7 +778,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		t.Fatalf("failed to range: %v", err)
 	}
 	// readTx1 should not see the result of new write
-	w = mvccpb.KeyValue{
+	w = &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("bar"),
 		CreateRevision: 2,

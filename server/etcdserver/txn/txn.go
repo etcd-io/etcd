@@ -270,7 +270,7 @@ func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
 			// nil == empty string in grpc; no way to represent missing value
 			return false
 		}
-		return compareKV(c, mvccpb.KeyValue{})
+		return compareKV(c, &mvccpb.KeyValue{})
 	}
 	for _, kv := range rr.KVs {
 		if !compareKV(c, kv) {
@@ -280,7 +280,7 @@ func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
 	return true
 }
 
-func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
+func compareKV(c *pb.Compare, ckv *mvccpb.KeyValue) bool {
 	var result int
 	rev := int64(0)
 	switch c.Target {
