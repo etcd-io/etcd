@@ -160,7 +160,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		wd = walDir(dataDir)
 	}
 
-	w, err := wal.OpenForRead(zap.NewExample(), wd, walsnap)
+	w, err := wal.OpenForRead(zap.NewExample(), wd, &walsnap)
 	if err != nil {
 		log.Fatalf("Failed opening WAL: %v", err)
 	}
