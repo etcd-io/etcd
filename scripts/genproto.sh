@@ -77,7 +77,6 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
 
 fi
 
-GOFAST_BIN=$(tool_get_bin github.com/gogo/protobuf/protoc-gen-gofast)
 GOGEN_BIN=$(tool_get_bin google.golang.org/protobuf/cmd/protoc-gen-go)
 GOGENGRPC_BIN=$(tool_get_bin google.golang.org/grpc/cmd/protoc-gen-go-grpc)
 GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway)
@@ -116,7 +115,6 @@ download_googleapi
 
 echo
 echo "Resolved binary and packages versions:"
-echo "  - protoc-gen-gofast:       ${GOFAST_BIN}"
 echo "  - protoc-gen-go:           ${GOGEN_BIN}"
 echo "  - protoc-gen-go-grpc:      ${GOGENGRPC_BIN}"
 echo "  - protoc-gen-grpc-gateway: ${GRPC_GATEWAY_BIN}"
@@ -129,16 +127,16 @@ GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 # directories containing protos to be built
 DIRS="./server/storage/wal/walpb ./api/etcdserverpb ./server/etcdserver/api/snap/snappb ./api/mvccpb ./server/lease/leasepb ./api/authpb ./server/etcdserver/api/v3lock/v3lockpb ./server/etcdserver/api/v3election/v3electionpb ./api/membershippb ./api/versionpb"
 
-log_callout -e "\\nRunning gofast (gogo) proto generation..."
+log_callout -e "\\nRunning protoc-gen-go proto generation..."
 
 for dir in ${DIRS}; do
   run pushd "${dir}"
-    run protoc --gofast_out=. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GOOGLEAPI_ROOT}" \
-      "--gofast_opt=paths=source_relative,${module_mappings}" \
+    run protoc --go_out=. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GOOGLEAPI_ROOT}" \
+      "--go_opt=paths=source_relative,${module_mappings}" \
       --go-grpc_out=. \
       "--go-grpc_opt=paths=source_relative,${module_mappings}" \
       -I"${GRPC_GATEWAY_ROOT}" \
-      --plugin="${GOFAST_BIN}" ./**/*.proto
+      ./**/*.proto
 
     run gofmt -s -w ./**/*.pb.go
     run_go_tool "golang.org/x/tools/cmd/goimports" -w ./**/*.pb.go
@@ -186,41 +184,6 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
   swaggerName=$(basename ${pb})
   run mv  Documentation/dev-guide/apispec/swagger/${pb}.swagger.json \
     Documentation/dev-guide/apispec/swagger/"${swaggerName}".swagger.json
-done
-
-# We only upgraded grpc-gateway from v1 to v2, but keep gogo/protobuf as it's for now.
-# So we have to convert v1 message to v2 message. Once we get rid of gogo/protobuf, and
-# start to depend on protobuf v2, then we can remove this patch.
-#
-# TODO(https://github.com/etcd-io/etcd/issues/14533): Remove the patch below after removal of gogo/protobuf
-for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock server/etcdserver/api/v3election/v3electionpb/v3election; do
-  gwfile="$(dirname ${pb})/gw/$(basename ${pb}).pb.gw.go"
-
-  # Changes something like below,
-  #  import (
-  # +       protov1 "github.com/golang/protobuf/proto"
-  # +
-  run ${SED?} -i -E "s|import \(|import \(\n\tprotov1 \"github.com/golang/protobuf/proto\"\n|g" "${gwfile}"
-
-  # Changes something like below,
-  # - return msg, metadata, err
-  # + return protov1.MessageV2(msg), metadata, err
-  run ${SED?} -i -E "s|return msg, metadata, err|return protov1.MessageV2\(msg\), metadata, err|g" "${gwfile}"
-
-  # Changes something like below,
-  # - if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-  # + if err := marshaler.NewDecoder(newReader()).Decode(protov1.MessageV2(&protoReq)); err != nil && err != io.EOF {
-  run ${SED?} -i -E "s|Decode\(\&protoReq\)|Decode\(protov1\.MessageV2\(\&protoReq\)\)|g" "${gwfile}"
-
-  # Changes something like below,
-  # - forward_Lease_LeaseKeepAlive_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
-  # + forward_Lease_LeaseKeepAlive_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) {
-  # +   m1, err := resp.Recv()
-  # +   return protov1.MessageV2(m1), err
-  # + }, mux.GetForwardResponseOptions()...)
-  run ${SED?} -i -E "s|return resp.Recv\(\)|\n\t\t\tm1, err := resp.Recv\(\)\n\t\t\treturn protov1.MessageV2\(m1\), err\n\t\t|g" "${gwfile}"
-
-  run go fmt "${gwfile}"
 done
 
 if [ "${1:-}" != "--skip-protodoc" ]; then
