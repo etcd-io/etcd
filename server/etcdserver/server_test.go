@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
@@ -102,7 +103,7 @@ func TestApplyRepeat(t *testing.T) {
 		Header: &pb.RequestHeader{ID: 1},
 		Put:    &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
 	}
-	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshal(req)}}
+	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshalMessage(req)}}
 	n.readyc <- raft.Ready{CommittedEntries: ents}
 	// dup msg
 	n.readyc <- raft.Ready{CommittedEntries: ents}
@@ -802,7 +803,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 			Header: &pb.RequestHeader{ID: idx},
 			Put:    &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
 		}
-		ent := raftpb.Entry{Index: idx, Data: pbutil.MustMarshal(req)}
+		ent := raftpb.Entry{Index: idx, Data: pbutil.MustMarshalMessage(req)}
 		ready := raft.Ready{Entries: []raftpb.Entry{ent}}
 		n.readyc <- ready
 
@@ -1072,7 +1073,7 @@ func TestPublishV3(t *testing.T) {
 	}
 	data := action[0].Params[0].([]byte)
 	var r pb.InternalRaftRequest
-	if err := r.Unmarshal(data); err != nil {
+	if err := proto.Unmarshal(data, &r); err != nil {
 		t.Fatalf("unmarshal request error: %v", err)
 	}
 	assert.Equal(t, &membershippb.ClusterMemberAttrSetRequest{Member_ID: 0x1, MemberAttributes: &membershippb.Attributes{
@@ -1194,7 +1195,7 @@ func TestUpdateVersionV3(t *testing.T) {
 	}
 	data := action[0].Params[0].([]byte)
 	var r pb.InternalRaftRequest
-	if err := r.Unmarshal(data); err != nil {
+	if err := proto.Unmarshal(data, &r); err != nil {
 		t.Fatalf("unmarshal request error: %v", err)
 	}
 	assert.Equal(t, &membershippb.ClusterVersionSetRequest{Ver: ver}, r.ClusterVersionSet)

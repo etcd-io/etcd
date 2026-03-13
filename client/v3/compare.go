@@ -15,7 +15,7 @@
 package clientv3
 
 import (
-	gogoproto "github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 )
@@ -184,11 +184,9 @@ func mustInt64orLeaseID(val any) int64 {
 	return mustInt64(val)
 }
 
-// TODO: use the official protobuf clone path after client/v3 stops using
-// gogo-generated messages.
 func cloneCompare(c *pb.Compare) *pb.Compare {
 	if c == nil {
 		return nil
 	}
-	return gogoproto.Clone(c).(*pb.Compare)
+	return proto.Clone(c).(*pb.Compare)
 }

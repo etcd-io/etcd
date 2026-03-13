@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
@@ -443,7 +444,7 @@ type contains interface {
 func kvsToEvents(lg *zap.Logger, c contains, revs, vals [][]byte) (evs []*mvccpb.Event) {
 	for i, v := range vals {
 		kv := &mvccpb.KeyValue{}
-		if err := kv.Unmarshal(v); err != nil {
+		if err := proto.Unmarshal(v, kv); err != nil {
 			lg.Panic("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
 		}
 

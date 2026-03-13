@@ -24,9 +24,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/testing/protocmp"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/client/v3/leasing"
@@ -133,7 +136,7 @@ func TestLeasingPutInvalidateNew(t *testing.T) {
 	require.NoError(t, err)
 	cResp, cerr := clus.Client(0).Get(t.Context(), "k")
 	require.NoError(t, cerr)
-	require.Truef(t, reflect.DeepEqual(lkvResp, cResp), `expected %+v, got response %+v`, cResp, lkvResp)
+	require.Emptyf(t, cmp.Diff((*pb.RangeResponse)(lkvResp), (*pb.RangeResponse)(cResp), protocmp.Transform()), "-want, +got")
 }
 
 // TestLeasingPutInvalidateExisting checks the leasing KV updates its cache on a Put to an existing key.
@@ -158,7 +161,7 @@ func TestLeasingPutInvalidateExisting(t *testing.T) {
 	require.NoError(t, err)
 	cResp, cerr := clus.Client(0).Get(t.Context(), "k")
 	require.NoError(t, cerr)
-	require.Truef(t, reflect.DeepEqual(lkvResp, cResp), `expected %+v, got response %+v`, cResp, lkvResp)
+	require.Emptyf(t, cmp.Diff((*pb.RangeResponse)(lkvResp), (*pb.RangeResponse)(cResp), protocmp.Transform()), "-want, +got")
 }
 
 // TestLeasingGetNoLeaseTTL checks a key with a TTL is not leased.

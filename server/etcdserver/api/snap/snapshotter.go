@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/client/pkg/v3/verify"
 	pioutil "go.etcd.io/etcd/pkg/v3/ioutil"
@@ -79,7 +80,7 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 	b := pbutil.MustMarshal(snapshot)
 	crc := crc32.Update(0, crcTable, b)
 	snap := snappb.Snapshot{Crc: &crc, Data: b}
-	d, err := snap.Marshal()
+	d, err := proto.Marshal(&snap)
 	if err != nil {
 		return err
 	}
@@ -167,7 +168,7 @@ func Read(lg *zap.Logger, snapname string) (*raftpb.Snapshot, error) {
 	}
 
 	var serializedSnap snappb.Snapshot
-	if err = serializedSnap.Unmarshal(b); err != nil {
+	if err = proto.Unmarshal(b, &serializedSnap); err != nil {
 		lg.Warn("failed to unmarshal snappb.Snapshot", zap.String("path", snapname), zap.Error(err))
 		return nil, err
 	}

@@ -18,7 +18,7 @@ import (
 	"errors"
 	"fmt"
 
-	proto "github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 var ErrCRCMismatch = errors.New("walpb: crc mismatch")
@@ -31,9 +31,6 @@ func (rec *Record) Validate(crc uint32) error {
 }
 
 // Clone returns a deep copy of s, or an empty Snapshot if s is nil.
-//
-// TODO: replace this with the official protobuf clone helper once this package
-// migrates away from gogo/protobuf.
 func (s *Snapshot) Clone() *Snapshot {
 	if s == nil {
 		return &Snapshot{}
