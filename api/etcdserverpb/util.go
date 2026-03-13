@@ -14,12 +14,9 @@
 
 package etcdserverpb
 
-import proto "github.com/gogo/protobuf/proto"
+import "google.golang.org/protobuf/proto"
 
 // Clone returns a deep copy of h, or an empty ResponseHeader if h is nil.
-//
-// TODO: replace this with the official protobuf clone helper once this package
-// migrates away from gogo/protobuf.
 func (h *ResponseHeader) Clone() *ResponseHeader {
 	if h == nil {
 		return &ResponseHeader{}

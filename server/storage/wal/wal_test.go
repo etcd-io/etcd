@@ -29,9 +29,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
@@ -89,7 +91,7 @@ func TestNew(t *testing.T) {
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	r := &walpb.Record{
 		Type: new(SnapshotType),
-		Data: pbutil.MustMarshal(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}),
+		Data: pbutil.MustMarshalMessage(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}),
 	}
 	err = e.encode(r)
 	require.NoErrorf(t, err, "err = %v, want nil", err)
@@ -1060,8 +1062,8 @@ func TestValidSnapshotEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	expected := []*walpb.Snapshot{&snap0, &snap1, &snap2, &snap3}
-	if !reflect.DeepEqual(walSnaps, expected) {
-		t.Errorf("expected walSnaps %+v, got %+v", expected, walSnaps)
+	if diff := cmp.Diff(expected, walSnaps, protocmp.Transform()); diff != "" {
+		t.Errorf("walSnaps mismatch (-want +got):\n%s", diff)
 	}
 }
 

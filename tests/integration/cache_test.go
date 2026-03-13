@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -369,7 +370,7 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			events, _ := collectAndAssertAtomicEvents(t, watches[i])
-			if diff := cmp.Diff(tc.wantEvents, events); diff != "" {
+			if diff := cmp.Diff(tc.wantEvents, events, protocmp.Transform()); diff != "" {
 				t.Errorf("unexpected events (-want +got):\n%s", diff)
 			}
 		})
@@ -800,7 +801,7 @@ func testGet(t *testing.T, kv clientv3.KV, getReader func() Getter, initialEvent
 				}
 				t.Fatalf("Get %q failed: %v", tc.key, err)
 			}
-			if diff := cmp.Diff(tc.wantKVs, resp.Kvs); diff != "" {
+			if diff := cmp.Diff(tc.wantKVs, resp.Kvs, protocmp.Transform()); diff != "" {
 				t.Fatalf("unexpected KVs (-want +got):\n%s", diff)
 			}
 			if op.IsSerializable() {
@@ -1314,7 +1315,7 @@ func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Gett
 				t.Fatalf("Get(%q): %v", tc.key, err)
 			}
 
-			if diff := cmp.Diff(tc.wantKVs, resp.Kvs); diff != "" {
+			if diff := cmp.Diff(tc.wantKVs, resp.Kvs, protocmp.Transform()); diff != "" {
 				t.Errorf("unexpected KVs (-want +got):\n%s", diff)
 			}
 
