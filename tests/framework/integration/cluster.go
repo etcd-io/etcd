@@ -35,7 +35,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -43,6 +42,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -387,6 +387,12 @@ func (c *Cluster) WaitMembersMatch(t testutil.TB, membs []*pb.Member) {
 		default:
 		}
 		for {
+			select {
+			case <-ctx.Done():
+				t.Fatalf("WaitMembersMatch failed: %v", ctx.Err())
+			default:
+			}
+
 			resp, err := cc.Cluster.MemberList(ctx, &pb.MemberListRequest{Linearizable: false})
 			if errors.Is(err, context.DeadlineExceeded) {
 				t.Fatal(err)
@@ -522,7 +528,9 @@ func (c *Cluster) waitVersion() {
 func isMembersEqual(membs []*pb.Member, wmembs []*pb.Member) bool {
 	sort.Sort(SortableMemberSliceByPeerURLs(membs))
 	sort.Sort(SortableMemberSliceByPeerURLs(wmembs))
-	return cmp.Equal(membs, wmembs, cmpopts.IgnoreFields(pb.Member{}, "ID", "PeerURLs", "ClientURLs"))
+	return cmp.Equal(membs, wmembs,
+		protocmp.Transform(),
+		protocmp.IgnoreFields(&pb.Member{}, "ID"))
 }
 
 func NewLocalListener(t testutil.TB) net.Listener {

@@ -199,7 +199,7 @@ func snapDir(dataDir string) string { return filepath.Join(dataDir, "member", "s
 
 func parseWALMetadata(b []byte) (id, cid types.ID) {
 	var metadata etcdserverpb.Metadata
-	pbutil.MustUnmarshal(&metadata, b)
+	pbutil.MustUnmarshalMessage(&metadata, b)
 	id = types.ID(metadata.GetNodeID())
 	cid = types.ID(metadata.GetClusterID())
 	return id, cid
@@ -223,57 +223,57 @@ func passConfChange(entry raftpb.Entry) (bool, string) {
 
 func passInternalRaftRequest(entry raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr.Unmarshal(entry.Data) == nil, "InternalRaftRequest"
+	return entry.Type == raftpb.EntryNormal && pbutil.MaybeUnmarshalMessage(&rr, entry.Data), "InternalRaftRequest"
 }
 
 func passUnknownNormal(entry raftpb.Entry) (bool, string) {
 	var rr2 etcdserverpb.InternalRaftRequest
-	return (entry.Type == raftpb.EntryNormal) && (rr2.Unmarshal(entry.Data) != nil), "UnknownNormal"
+	return (entry.Type == raftpb.EntryNormal) && !pbutil.MaybeUnmarshalMessage(&rr2, entry.Data), "UnknownNormal"
 }
 
 func passIRRRange(entry raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr.Unmarshal(entry.Data) == nil && rr.Range != nil, "InternalRaftRequest"
+	return entry.Type == raftpb.EntryNormal && pbutil.MaybeUnmarshalMessage(&rr, entry.Data) && rr.Range != nil, "InternalRaftRequest"
 }
 
 func passIRRPut(entry raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr.Unmarshal(entry.Data) == nil && rr.Put != nil, "InternalRaftRequest"
+	return entry.Type == raftpb.EntryNormal && pbutil.MaybeUnmarshalMessage(&rr, entry.Data) && rr.Put != nil, "InternalRaftRequest"
 }
 
 func passIRRDeleteRange(entry raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr.Unmarshal(entry.Data) == nil && rr.DeleteRange != nil, "InternalRaftRequest"
+	return entry.Type == raftpb.EntryNormal && pbutil.MaybeUnmarshalMessage(&rr, entry.Data) && rr.DeleteRange != nil, "InternalRaftRequest"
 }
 
 func passIRRTxn(entry raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr.Unmarshal(entry.Data) == nil && rr.Txn != nil, "InternalRaftRequest"
+	return entry.Type == raftpb.EntryNormal && pbutil.MaybeUnmarshalMessage(&rr, entry.Data) && rr.Txn != nil, "InternalRaftRequest"
 }
 
 func passIRRCompaction(entry raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr.Unmarshal(entry.Data) == nil && rr.Compaction != nil, "InternalRaftRequest"
+	return entry.Type == raftpb.EntryNormal && pbutil.MaybeUnmarshalMessage(&rr, entry.Data) && rr.Compaction != nil, "InternalRaftRequest"
 }
 
 func passIRRLeaseGrant(entry raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr.Unmarshal(entry.Data) == nil && rr.LeaseGrant != nil, "InternalRaftRequest"
+	return entry.Type == raftpb.EntryNormal && pbutil.MaybeUnmarshalMessage(&rr, entry.Data) && rr.LeaseGrant != nil, "InternalRaftRequest"
 }
 
 func passIRRLeaseRevoke(entry raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr.Unmarshal(entry.Data) == nil && rr.LeaseRevoke != nil, "InternalRaftRequest"
+	return entry.Type == raftpb.EntryNormal && pbutil.MaybeUnmarshalMessage(&rr, entry.Data) && rr.LeaseRevoke != nil, "InternalRaftRequest"
 }
 
 func passIRRLeaseCheckpoint(entry raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr.Unmarshal(entry.Data) == nil && rr.LeaseCheckpoint != nil, "InternalRaftRequest"
+	return entry.Type == raftpb.EntryNormal && pbutil.MaybeUnmarshalMessage(&rr, entry.Data) && rr.LeaseCheckpoint != nil, "InternalRaftRequest"
 }
 
 func passRequest(entry raftpb.Entry) (bool, string) {
 	var rr2 etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && rr2.Unmarshal(entry.Data) != nil, "Request"
+	return entry.Type == raftpb.EntryNormal && !pbutil.MaybeUnmarshalMessage(&rr2, entry.Data), "Request"
 }
 
 type EntryPrinter func(e raftpb.Entry)
@@ -284,7 +284,7 @@ type EntryPrinter func(e raftpb.Entry)
 // IRRDeleteRange and IRRTxn entries
 func printInternalRaftRequest(entry raftpb.Entry) {
 	var rr etcdserverpb.InternalRaftRequest
-	if err := rr.Unmarshal(entry.Data); err == nil {
+	if pbutil.MaybeUnmarshalMessage(&rr, entry.Data) {
 		// Ensure we don't log user password
 		if rr.AuthUserChangePassword != nil && rr.AuthUserChangePassword.Password != "" {
 			rr.AuthUserChangePassword.Password = "<value removed>"

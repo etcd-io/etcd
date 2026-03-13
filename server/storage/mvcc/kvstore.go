@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
@@ -494,7 +495,7 @@ func restoreChunk(lg *zap.Logger, kvc chan<- revKeyValue, keys, vals [][]byte, k
 		rkv := revKeyValue{key: key}
 
 		kv := &mvccpb.KeyValue{}
-		if err := kv.Unmarshal(vals[i]); err != nil {
+		if err := proto.Unmarshal(vals[i], kv); err != nil {
 			lg.Fatal("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
 		}
 		rkv.kv = kv

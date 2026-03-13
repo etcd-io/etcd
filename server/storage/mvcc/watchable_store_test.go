@@ -16,17 +16,18 @@ package mvcc
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
@@ -321,7 +322,7 @@ func TestSyncWatchers(t *testing.T) {
 	for i := 0; i < watcherN; i++ {
 		events := (<-w.(*watchStream).ch).Events
 		assert.Len(t, events, 1)
-		assert.Equal(t, []*mvccpb.Event{
+		want := []*mvccpb.Event{
 			{
 				Type: mvccpb.Event_PUT,
 				Kv: &mvccpb.KeyValue{
@@ -332,7 +333,10 @@ func TestSyncWatchers(t *testing.T) {
 					Value:          testValue,
 				},
 			},
-		}, events)
+		}
+		if diff := cmp.Diff(want, events, protocmp.Transform()); diff != "" {
+			t.Fatalf("unexpected events (-want +got):\n%s", diff)
+		}
 	}
 }
 
@@ -432,7 +436,9 @@ func TestRangeEvents(t *testing.T) {
 	}
 	for i, tc := range tcs {
 		t.Run(fmt.Sprintf("%d rangeEvents(%d, %d)", i, tc.minRev, tc.maxRev), func(t *testing.T) {
-			assert.ElementsMatch(t, tc.expectEvents, rangeEvents(lg, b, tc.minRev, tc.maxRev, fakeContains{}))
+			if diff := cmp.Diff(tc.expectEvents, rangeEvents(lg, b, tc.minRev, tc.maxRev, fakeContains{}), protocmp.Transform(), cmpopts.EquateEmpty()); diff != "" {
+				t.Fatalf("unexpected events (-want +got):\n%s", diff)
+			}
 		})
 	}
 }
@@ -660,7 +666,7 @@ func testWatchRestore(t *testing.T, delayBeforeRestore, delayAfterRestore time.D
 	for i, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			events := readEventsForSecond(t, watchers[i].Chan())
-			if diff := cmp.Diff(tc.wantEvents, events); diff != "" {
+			if diff := cmp.Diff(tc.wantEvents, events, protocmp.Transform()); diff != "" {
 				t.Errorf("unexpected events (-want +got):\n%s", diff)
 			}
 		})
@@ -854,8 +860,8 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 			if len(eb.evs) != len(tt.wwe[w]) {
 				t.Errorf("#%d: len(eb.evs) got = %d, want = %d", i, len(eb.evs), len(tt.wwe[w]))
 			}
-			if !reflect.DeepEqual(eb.evs, tt.wwe[w]) {
-				t.Errorf("#%d: reflect.DeepEqual events got = %v, want = true", i, false)
+			if diff := cmp.Diff(tt.wwe[w], eb.evs, protocmp.Transform()); diff != "" {
+				t.Errorf("#%d: events mismatch (-want +got):\n%s", i, diff)
 			}
 		}
 	}

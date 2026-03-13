@@ -524,7 +524,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 
 		case SnapshotType:
 			var snap walpb.Snapshot
-			pbutil.MustUnmarshal(&snap, rec.Data)
+			pbutil.MustUnmarshalMessage(&snap, rec.Data)
 			if snap.GetIndex() == w.start.GetIndex() {
 				if snap.GetTerm() != w.start.GetTerm() {
 					state.Reset()
@@ -626,7 +626,7 @@ func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]*walpb.Snapshot, err
 		switch rec.GetType() {
 		case SnapshotType:
 			loadedSnap := &walpb.Snapshot{}
-			pbutil.MustUnmarshal(loadedSnap, rec.Data)
+			pbutil.MustUnmarshalMessage(loadedSnap, rec.Data)
 			snaps = append(snaps, loadedSnap)
 		case StateType:
 			state = MustUnmarshalState(rec.Data)
@@ -713,7 +713,7 @@ func Verify(lg *zap.Logger, walDir string, snap *walpb.Snapshot) (*raftpb.HardSt
 			decoder.UpdateCRC(rec.GetCrc())
 		case SnapshotType:
 			var loadedSnap walpb.Snapshot
-			pbutil.MustUnmarshal(&loadedSnap, rec.Data)
+			pbutil.MustUnmarshalMessage(&loadedSnap, rec.Data)
 			if loadedSnap.GetIndex() == snap.GetIndex() {
 				if loadedSnap.GetTerm() != snap.GetTerm() {
 					return nil, ErrSnapshotMismatch
@@ -1002,7 +1002,7 @@ func (w *WAL) SaveSnapshot(e *walpb.Snapshot) error {
 		return err
 	}
 
-	b := pbutil.MustMarshal(e)
+	b := pbutil.MustMarshalMessage(e)
 
 	w.mu.Lock()
 	defer w.mu.Unlock()

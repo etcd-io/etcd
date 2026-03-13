@@ -21,9 +21,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -160,7 +162,13 @@ func TestKVGet(t *testing.T) {
 						resp, err := cc.Get(ctx, tt.begin, tt.options)
 						require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
 						resp.Header.MemberId = 0
-						assert.Equal(t, tt.wantResponse, resp)
+						assert.Emptyf(t,
+							cmp.Diff(
+								(*etcdserverpb.RangeResponse)(tt.wantResponse),
+								(*etcdserverpb.RangeResponse)(resp),
+								protocmp.Transform(),
+							),
+							"-want, +got")
 					})
 				}
 			})

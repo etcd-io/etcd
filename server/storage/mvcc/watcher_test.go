@@ -23,7 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -297,8 +299,8 @@ func TestWatchDeleteRange(t *testing.T) {
 
 	select {
 	case r := <-w.Chan():
-		if !reflect.DeepEqual(r.Events, we) {
-			t.Errorf("event = %v, want %v", r.Events, we)
+		if diff := cmp.Diff(we, r.Events, protocmp.Transform()); diff != "" {
+			t.Errorf("unexpected events (-want +got):\n%s", diff)
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("failed to receive event after 10 seconds!")

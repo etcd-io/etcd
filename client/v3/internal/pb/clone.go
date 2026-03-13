@@ -12,24 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package pb contains clone helpers for the current gogo-generated protobuf
-// messages used by client/v3.
-//
-// TODO: remove this package after client/v3 switches to the official
-// protobuf generator.
 package pb
 
 import (
-	gogoproto "github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	v3pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 )
 
-// TODO: use the official protobuf clone path after client/v3 stops using
-// gogo-generated messages.
 func CloneCompare(c *v3pb.Compare) *v3pb.Compare {
 	if c == nil {
 		return nil
 	}
-	return gogoproto.Clone(c).(*v3pb.Compare)
+	return proto.Clone(c).(*v3pb.Compare)
 }

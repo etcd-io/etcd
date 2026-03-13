@@ -7,7 +7,6 @@ toolchain go1.26.1
 require (
 	github.com/coreos/go-semver v0.3.1
 	github.com/dustin/go-humanize v1.0.1
-	github.com/gogo/protobuf v1.3.2
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1
@@ -15,6 +14,7 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
 	go.uber.org/zap v1.27.1
 	google.golang.org/grpc v1.79.2
+	google.golang.org/protobuf v1.36.11
 	sigs.k8s.io/yaml v1.6.0
 )
 
@@ -41,7 +41,6 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260209200024-4cfbd4190f57 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
