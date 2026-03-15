@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -147,9 +148,7 @@ func TestKVGet(t *testing.T) {
 					withKeysOnly := otc
 					withKeysOnly.name = fmt.Sprintf("%s --keys-only", withKeysOnly.name)
 					withKeysOnly.options.KeysOnly = true
-					wantResponse := *otc.wantResponse
-					wantResponse.Kvs = dropValue(withKeysOnly.wantResponse.Kvs)
-					withKeysOnly.wantResponse = &wantResponse
+					withKeysOnly.wantResponse = cloneGetResponseWithoutValues(otc.wantResponse)
 					testsWithKeysOnly = append(testsWithKeysOnly, withKeysOnly)
 				}
 				for _, tt := range slices.Concat(tests, testsWithKeysOnly) {
@@ -202,14 +201,28 @@ func rangeStreamSupports(o config.GetOptions) bool {
 	})
 }
 
-func dropValue(s []*mvccpb.KeyValue) []*mvccpb.KeyValue {
-	ss := make([]*mvccpb.KeyValue, 0, len(s))
-	for _, kv := range s {
-		clone := *kv
-		clone.Value = nil
-		ss = append(ss, &clone)
+func cloneGetResponseWithoutValues(resp *clientv3.GetResponse) *clientv3.GetResponse {
+	clone := cloneGetResponse(resp)
+	if clone == nil {
+		return nil
 	}
-	return ss
+	for _, kv := range clone.Kvs {
+		if kv != nil {
+			kv.Value = nil
+		}
+	}
+	return clone
+}
+
+func cloneGetResponse(resp *clientv3.GetResponse) *clientv3.GetResponse {
+	if resp == nil {
+		return nil
+	}
+	return (*clientv3.GetResponse)(
+		proto.Clone(
+			(*etcdserverpb.RangeResponse)(resp),
+		).(*etcdserverpb.RangeResponse),
+	)
 }
 
 func TestKVDelete(t *testing.T) {

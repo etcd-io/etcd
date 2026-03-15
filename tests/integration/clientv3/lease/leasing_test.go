@@ -823,14 +823,14 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 		clientv3.WithPrefix())
 	wresp := <-w
 	c := 0
-	var evs []clientv3.Event
+	var evsInStr []string
 	for _, ev := range wresp.Events {
-		evs = append(evs, *ev)
+		evsInStr = append(evsInStr, ev.String())
 		if ev.Kv.ModRevision == tresp.Header.Revision {
 			c++
 		}
 	}
-	require.Equalf(t, 3, c, "expected 3 put events, got %+v", evs)
+	require.Equalf(t, 3, c, "expected 3 put events, got %+v", evsInStr)
 }
 
 // TestLeasingTxnRandIfThenOrElse randomly leases keys two separate clients, then
