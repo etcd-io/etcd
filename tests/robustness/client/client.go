@@ -324,8 +324,9 @@ func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, with
 		Key:                key,
 		Revision:           rev,
 		WithPrefix:         withPrefix,
-		WithProgressNotify: withProgressNotify,
-		WithPrevKV:         withPrevKV,
+		// TODO: Restore when cache supports
+		// WithProgressNotify: withProgressNotify,
+		// WithPrevKV: withPrevKV,
 	}
 	return c.watch(ctx, request)
 }

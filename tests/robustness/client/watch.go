@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -33,6 +34,8 @@ type CollectClusterWatchEventsParam struct {
 
 func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEventsParam) error {
 	var g errgroup.Group
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	memberMaxRevisionChans := make([]chan int64, len(param.Endpoints))
 	for i, endpoint := range param.Endpoints {
 		memberMaxRevisionChan := make(chan int64, 1)
@@ -51,6 +54,15 @@ func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEve
 		for _, memberChan := range memberMaxRevisionChans {
 			memberChan <- maxRevision
 		}
+		// TODO: Investigate why collecting all events doesn't work
+		go func() {
+			select {
+			case <-ctx.Done():
+			case <-time.After(time.Second * 10):
+			}
+			cancel()
+			return
+		}()
 		return nil
 	})
 
