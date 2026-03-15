@@ -28,7 +28,7 @@ import (
 )
 
 func FuzzTxnRangeRequest(f *testing.F) {
-	testcases := []pb.RangeRequest{
+	testcases := []*pb.RangeRequest{
 		{
 			Key:        []byte{2},
 			RangeEnd:   []byte{2},
@@ -74,7 +74,7 @@ func FuzzTxnRangeRequest(f *testing.F) {
 }
 
 func FuzzTxnPutRequest(f *testing.F) {
-	testcases := []pb.PutRequest{
+	testcases := []*pb.PutRequest{
 		{
 			Key:         []byte{2},
 			Value:       []byte{2},
@@ -119,7 +119,7 @@ func FuzzTxnPutRequest(f *testing.F) {
 }
 
 func FuzzTxnDeleteRangeRequest(f *testing.F) {
-	testcases := []pb.DeleteRangeRequest{
+	testcases := []*pb.DeleteRangeRequest{
 		{
 			Key:      []byte{2},
 			RangeEnd: []byte{2},
