@@ -189,27 +189,6 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			}(c)
 		}
 	}
-	if profile.Compaction != nil {
-		wg.Add(1)
-		c, nerr := clientSet.NewClient(endpoints)
-		if nerr != nil {
-			t.Fatal(nerr)
-		}
-
-		if profile.Compaction.Period < MinimalCompactionPeriod {
-			t.Fatalf("Compaction period %v below minimal %v", profile.Compaction.Period, MinimalCompactionPeriod)
-		}
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
-
-			traffic.RunCompactLoop(ctx, RunCompactLoopParam{
-				Client: c,
-				Period: profile.Compaction.Period,
-				Finish: finish,
-			})
-		}(c)
-	}
 	var fr *report.FailpointInjection
 	select {
 	case frp, ok := <-failpointInjected:
