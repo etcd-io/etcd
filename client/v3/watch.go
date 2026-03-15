@@ -46,7 +46,7 @@ const (
 	InvalidWatchID = -1
 )
 
-type Event mvccpb.Event
+type Event = mvccpb.Event
 
 type WatchChan <-chan WatchResponse
 
@@ -114,16 +114,6 @@ type WatchResponse struct {
 
 	// CancelReason is a reason of canceling watch
 	CancelReason string
-}
-
-// IsCreate returns true if the event tells that the key is newly created.
-func (e *Event) IsCreate() bool {
-	return e.Type == EventTypePut && e.Kv.CreateRevision == e.Kv.ModRevision
-}
-
-// IsModify returns true if the event tells that a new value is put on existing key.
-func (e *Event) IsModify() bool {
-	return e.Type == EventTypePut && e.Kv.CreateRevision != e.Kv.ModRevision
 }
 
 // Err is the error value if this WatchResponse holds an error.
@@ -719,10 +709,9 @@ func (w *watchGRPCStream) nextResume() *watcherStream {
 
 // dispatchEvent sends a WatchResponse to the appropriate watcher stream
 func (w *watchGRPCStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
+	// TODO(fuweid): do we actually need copy here?
 	events := make([]*Event, len(pbresp.Events))
-	for i, ev := range pbresp.Events {
-		events[i] = (*Event)(ev)
-	}
+	copy(events, pbresp.Events)
 	// TODO: return watch ID?
 	wr := &WatchResponse{
 		Header:          nonNilWatchHeader(pbresp.Header),
