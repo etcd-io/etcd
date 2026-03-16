@@ -513,7 +513,7 @@ func (ctl *EtcdctlV3) TimeToLive(ctx context.Context, id clientv3.LeaseID, o con
 	}
 	defer cmd.Close()
 	var resp clientv3.LeaseTimeToLiveResponse
-	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "id"})
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "member_id"})
 	if err != nil {
 		return nil, err
 	}
@@ -542,7 +542,7 @@ func (ctl *EtcdctlV3) Leases(ctx context.Context) (*clientv3.LeaseLeasesResponse
 	}
 	defer cmd.Close()
 	var resp clientv3.LeaseLeasesResponse
-	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "id"})
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "member_id"})
 	if err != nil {
 		return nil, err
 	}
