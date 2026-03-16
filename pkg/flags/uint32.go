@@ -21,8 +21,8 @@ import (
 
 type uint32Value uint32
 
-// NewUint32Value creates an uint32 instance with the provided value.
-func NewUint32Value(v uint32) *uint32Value {
+// NewUint32Value creates a flag.Value for an uint32 variable.
+func NewUint32Value(v uint32) flag.Value {
 	val := new(uint32Value)
 	*val = uint32Value(v)
 	return val
