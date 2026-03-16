@@ -43,22 +43,38 @@ var trafficProfiles = []TrafficProfile{
 	{
 		Name:    "EtcdHighTraffic",
 		Traffic: traffic.EtcdPut,
-		Profile: traffic.HighTrafficProfile,
+		Profile: traffic.Profile{
+			KeyValue:   &traffic.KeyValueHigh,
+			Watch:      &traffic.WatchDefault,
+			Compaction: &traffic.CompactionDefault,
+		},
 	},
 	{
 		Name:    "EtcdTrafficDeleteLeases",
 		Traffic: traffic.EtcdPutDeleteLease,
-		Profile: traffic.LowTraffic,
+		Profile: traffic.Profile{
+			KeyValue:   &traffic.KeyValueMedium,
+			Watch:      &traffic.WatchDefault,
+			Compaction: &traffic.CompactionDefault,
+		},
 	},
 	{
 		Name:    "KubernetesHighTraffic",
 		Traffic: traffic.Kubernetes,
-		Profile: traffic.HighTrafficProfile,
+		Profile: traffic.Profile{
+			KeyValue:   &traffic.KeyValueHigh,
+			Watch:      &traffic.WatchDefault,
+			Compaction: &traffic.CompactionDefault,
+		},
 	},
 	{
 		Name:    "KubernetesLowTraffic",
 		Traffic: traffic.Kubernetes,
-		Profile: traffic.LowTraffic,
+		Profile: traffic.Profile{
+			KeyValue:   &traffic.KeyValueMedium,
+			Watch:      &traffic.WatchDefault,
+			Compaction: &traffic.CompactionDefault,
+		},
 	},
 }
 
@@ -141,15 +157,17 @@ func Exploratory(_ *testing.T) []TestScenario {
 		newScenarios := scenarios
 		for _, s := range scenarios {
 			// LazyFS increases the load on the CPU, so we run it with a more lightweight case.
-			if s.Profile.MinimalQPS <= 100 && s.Cluster.ClusterSize == 1 {
+			if s.Profile.KeyValue.MinimalQPS <= 100 && s.Cluster.ClusterSize == 1 {
 				lazyfsCluster := s.Cluster
 				lazyfsCluster.LazyFSEnabled = true
+				profileWithoutCompaction := s.Profile
+				profileWithoutCompaction.Compaction = nil
 				newScenarios = append(newScenarios, TestScenario{
 					Name:      filepath.Join(s.Name, "LazyFS"),
 					Failpoint: s.Failpoint,
 					Cluster:   lazyfsCluster,
 					Traffic:   s.Traffic,
-					Profile:   s.Profile.WithoutCompaction(),
+					Profile:   profileWithoutCompaction,
 					Watch:     s.Watch,
 				})
 			}
@@ -167,8 +185,11 @@ func Regression(t *testing.T) []TestScenario {
 	scenarios = append(scenarios, TestScenario{
 		Name:      "Issue14370",
 		Failpoint: failpoint.RaftBeforeSavePanic,
-		Profile:   traffic.LowTraffic.WithoutWatchLoop(),
-		Traffic:   traffic.EtcdPutDeleteLease,
+		Profile: traffic.Profile{
+			KeyValue:   &traffic.KeyValueMedium,
+			Compaction: &traffic.CompactionDefault,
+		},
+		Traffic: traffic.EtcdPutDeleteLease,
 		Cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
@@ -177,8 +198,11 @@ func Regression(t *testing.T) []TestScenario {
 	scenarios = append(scenarios, TestScenario{
 		Name:      "Issue14685",
 		Failpoint: failpoint.DefragBeforeCopyPanic,
-		Profile:   traffic.LowTraffic.WithoutWatchLoop(),
-		Traffic:   traffic.EtcdPutDeleteLease,
+		Profile: traffic.Profile{
+			KeyValue:   &traffic.KeyValueMedium,
+			Compaction: &traffic.CompactionDefault,
+		},
+		Traffic: traffic.EtcdPutDeleteLease,
 		Cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
@@ -187,8 +211,11 @@ func Regression(t *testing.T) []TestScenario {
 	scenarios = append(scenarios, TestScenario{
 		Name:      "Issue13766",
 		Failpoint: failpoint.KillFailpoint,
-		Profile:   traffic.HighTrafficProfile.WithoutWatchLoop(),
-		Traffic:   traffic.EtcdPut,
+		Profile: traffic.Profile{
+			KeyValue:   &traffic.KeyValueHigh,
+			Compaction: &traffic.CompactionDefault,
+		},
+		Traffic: traffic.EtcdPut,
 		Cluster: *e2e.NewConfig(
 			e2e.WithSnapshotCount(100),
 		),
@@ -198,7 +225,11 @@ func Regression(t *testing.T) []TestScenario {
 		Watch: client.WatchConfig{
 			RequestProgress: true,
 		},
-		Profile:   traffic.LowTraffic,
+		Profile: traffic.Profile{
+			KeyValue:   &traffic.KeyValueMedium,
+			Watch:      &traffic.WatchDefault,
+			Compaction: &traffic.CompactionDefault,
+		},
 		Traffic:   traffic.EtcdPutDeleteLease,
 		Failpoint: failpoint.KillFailpoint,
 		Cluster: *e2e.NewConfig(
@@ -206,8 +237,12 @@ func Regression(t *testing.T) []TestScenario {
 		),
 	})
 	scenarios = append(scenarios, TestScenario{
-		Name:      "Issue17529",
-		Profile:   traffic.HighTrafficProfile,
+		Name: "Issue17529",
+		Profile: traffic.Profile{
+			KeyValue:   &traffic.KeyValueHigh,
+			Watch:      &traffic.WatchDefault,
+			Compaction: &traffic.CompactionDefault,
+		},
 		Traffic:   traffic.Kubernetes,
 		Failpoint: failpoint.SleepBeforeSendWatchResponse,
 		Cluster: *e2e.NewConfig(
@@ -218,8 +253,10 @@ func Regression(t *testing.T) []TestScenario {
 	})
 
 	scenarios = append(scenarios, TestScenario{
-		Name:      "Issue17780",
-		Profile:   traffic.LowTraffic.WithoutCompaction().WithoutWatchLoop(),
+		Name: "Issue17780",
+		Profile: traffic.Profile{
+			KeyValue: &traffic.KeyValueMedium,
+		},
 		Failpoint: failpoint.BatchCompactBeforeSetFinishedCompactPanic,
 		Traffic:   traffic.Kubernetes,
 		Cluster: *e2e.NewConfig(
@@ -245,13 +282,9 @@ func Regression(t *testing.T) []TestScenario {
 	scenarios = append(scenarios, TestScenario{
 		Name: "Issue19179",
 		Profile: traffic.Profile{
-			MinimalQPS:                     50,
-			MaximalQPS:                     100,
-			BurstableQPS:                   100,
-			MemberClientCount:              6,
-			ClusterClientCount:             2,
-			MaxNonUniqueRequestConcurrency: 3,
-		}.WithoutCompaction(),
+			KeyValue: &traffic.KeyValueVeryLow,
+			Watch:    &traffic.WatchDefault,
+		},
 		Failpoint: failpoint.BatchCompactBeforeSetFinishedCompactPanic,
 		Traffic:   traffic.KubernetesCreateDelete,
 		Cluster: *e2e.NewConfig(
@@ -262,8 +295,12 @@ func Regression(t *testing.T) []TestScenario {
 		),
 	})
 	scenarios = append(scenarios, TestScenario{
-		Name:      "Issue18089",
-		Profile:   traffic.LowTraffic.WithCompactionPeriod(100 * time.Millisecond), // Use frequent compaction for high reproduce rate
+		Name: "Issue18089",
+		Profile: traffic.Profile{
+			KeyValue:   &traffic.KeyValueMedium,
+			Compaction: &traffic.CompactionFrequent, // Use frequent compaction for high reproduce rate
+			Watch:      &traffic.WatchDefault,
+		},
 		Failpoint: failpoint.SleepBeforeSendWatchResponse,
 		Traffic:   traffic.EtcdDelete,
 		Cluster: *e2e.NewConfig(
@@ -283,9 +320,13 @@ func Regression(t *testing.T) []TestScenario {
 		scenarios = append(scenarios, TestScenario{
 			Name:      "Issue15271",
 			Failpoint: failpoint.BlackholeUntilSnapshot,
-			Profile:   traffic.HighTrafficProfile,
-			Traffic:   traffic.EtcdPut,
-			Cluster:   *e2e.NewConfig(opts...),
+			Profile: traffic.Profile{
+				KeyValue:   &traffic.KeyValueHigh,
+				Compaction: &traffic.CompactionDefault,
+				Watch:      &traffic.WatchDefault,
+			},
+			Traffic: traffic.EtcdPut,
+			Cluster: *e2e.NewConfig(opts...),
 		})
 	}
 	return scenarios

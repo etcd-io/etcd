@@ -42,12 +42,16 @@ var (
 	DefaultRevisionOffset = int64(100)
 
 	profile = traffic.Profile{
-		MinimalQPS:                     100,
-		MaximalQPS:                     1000,
-		BurstableQPS:                   1000,
-		MemberClientCount:              3,
-		ClusterClientCount:             1,
-		MaxNonUniqueRequestConcurrency: 3,
+		KeyValue: &traffic.KeyValue{
+			MinimalQPS:                     100,
+			MaximalQPS:                     1000,
+			BurstableQPS:                   1000,
+			MemberClientCount:              3,
+			ClusterClientCount:             1,
+			MaxNonUniqueRequestConcurrency: 3,
+		},
+		Watch:      &traffic.WatchDefault,
+		Compaction: &traffic.CompactionDefault,
 	}
 	trafficNames = []string{
 		"etcd",
@@ -142,11 +146,11 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 	var wg sync.WaitGroup
 	leaseStorage := identity.NewLeaseIDStorage()
 	kubernetesStorage := traffic.NewKubernetesStorage()
-	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
-	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
+	limiter := rate.NewLimiter(rate.Limit(profile.KeyValue.MaximalQPS), profile.KeyValue.BurstableQPS)
+	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.KeyValue.MaxNonUniqueRequestConcurrency)
 	finish := closeAfter(ctx, duration)
 	keyStore := traffic.NewKeyStore(10, "key")
-	for i := range profile.MemberClientCount {
+	for i := range profile.KeyValue.MemberClientCount {
 		c := connect(clientSet, []string{hosts[i%len(hosts)]})
 		wg.Add(1)
 		go func(c *client.RecordingClient) {
@@ -164,7 +168,7 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 			})
 		}(c)
 	}
-	for range profile.ClusterClientCount {
+	for range profile.KeyValue.ClusterClientCount {
 		c := connect(clientSet, hosts)
 		wg.Add(1)
 		go func(c *client.RecordingClient) {
@@ -182,8 +186,8 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 			})
 		}(c)
 	}
-	if !profile.ForbidRunWatchLoop {
-		for i := range profile.MemberClientCount {
+	if profile.Watch != nil {
+		for i := range profile.Watch.MemberClientCount {
 			c := connect(clientSet, []string{hosts[i%len(hosts)]})
 			wg.Add(1)
 			go func(c *client.RecordingClient) {
@@ -199,7 +203,7 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 				})
 			}(c)
 		}
-		for range profile.ClusterClientCount {
+		for range profile.Watch.ClusterClientCount {
 			c := connect(clientSet, hosts)
 			wg.Add(1)
 			go func(c *client.RecordingClient) {
@@ -216,18 +220,20 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 			}(c)
 		}
 	}
-	wg.Add(1)
-	compactClient := connect(clientSet, hosts)
-	go func(c *client.RecordingClient) {
-		defer wg.Done()
-		defer c.Close()
-		tf.RunCompactLoop(ctx, traffic.RunCompactLoopParam{
-			Client: c,
-			Period: traffic.DefaultCompactionPeriod,
-			Finish: finish,
-		})
-	}(compactClient)
-	defragPeriod := traffic.DefaultCompactionPeriod * time.Duration(len(hosts))
+	if profile.Compaction != nil {
+		wg.Add(1)
+		compactClient := connect(clientSet, hosts)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			tf.RunCompactLoop(ctx, traffic.RunCompactLoopParam{
+				Client: c,
+				Period: profile.Compaction.Period,
+				Finish: finish,
+			})
+		}(compactClient)
+	}
+	defragPeriod := profile.Compaction.Period * time.Duration(len(hosts))
 	for _, h := range hosts {
 		c := connect(clientSet, []string{h})
 		wg.Add(1)
