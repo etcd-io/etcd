@@ -46,7 +46,7 @@ var NonDeterministicModel = func(keys []string) porcupine.Model {
 			if info == nil {
 				return ""
 			}
-			return DescribeOperationMetadata(info.(MaybeEtcdResponse))
+			return DescribeEtcdOperationMetadata(info.(MaybeEtcdResponse))
 		},
 		DescribeState: func(st any) string {
 			etcdStates := st.(nonDeterministicState)
@@ -79,22 +79,47 @@ func (states nonDeterministicState) Equal(other nonDeterministicState) bool {
 	if len(states) != len(other) {
 		return false
 	}
+	sortStates(states)
+	sortStates(other)
 
-	otherMatched := make([]bool, len(other))
-	for _, sItem := range states {
-		foundMatchInOther := false
-		for j, otherItem := range other {
-			if !otherMatched[j] && sItem.Equal(otherItem) {
-				otherMatched[j] = true
-				foundMatchInOther = true
-				break
-			}
-		}
-		if !foundMatchInOther {
+	for i := range states {
+		if !states[i].Equal(other[i]) {
 			return false
 		}
 	}
 	return true
+}
+
+func sortStates(states nonDeterministicState) {
+	slices.SortFunc(states, func(i, j EtcdState) int {
+		if c := cmp.Compare(i.Revision, j.Revision); c != 0 {
+			return c
+		}
+		if c := cmp.Compare(i.CompactRevision, j.CompactRevision); c != 0 {
+			return c
+		}
+		for k := range i.Values {
+			if (i.Values[k] == nil) != (j.Values[k] == nil) {
+				if i.Values[k] == nil {
+					return -1
+				}
+				return 1
+			}
+			if i.Values[k] == nil {
+				continue
+			}
+			if c := cmp.Compare(i.Values[k].ModRevision, j.Values[k].ModRevision); c != 0 {
+				return c
+			}
+			if c := cmp.Compare(i.Values[k].Version, j.Values[k].Version); c != 0 {
+				return c
+			}
+			if c := cmp.Compare(i.Values[k].Value.Hash, j.Values[k].Value.Hash); c != 0 {
+				return c
+			}
+		}
+		return 0
+	})
 }
 
 func (states nonDeterministicState) apply(request EtcdRequest, response MaybeEtcdResponse) (bool, nonDeterministicState) {

@@ -15,11 +15,9 @@
 package model
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 )
@@ -28,15 +26,15 @@ func TestModelDeterministic(t *testing.T) {
 	for _, tc := range commonTestScenarios {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			state := DeterministicModel.Init()
+			keys := collectKeys(tc.operations)
+			model := DeterministicModel(keys)
+			state := model.Init()
 			for _, op := range tc.operations {
-				ok, newState := DeterministicModel.Step(state, op.req, op.resp.EtcdResponse)
+				ok, newState := model.Step(state, op.req, op.resp.EtcdResponse)
 				if op.expectFailure == ok {
 					t.Logf("state: %v", state)
-					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, DeterministicModel.DescribeOperation(op.req, op.resp.EtcdResponse))
-					var loadedState EtcdState
-					err := json.Unmarshal([]byte(state.(string)), &loadedState)
-					require.NoErrorf(t, err, "Failed to load state")
+					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, model.DescribeOperation(op.req, op.resp.EtcdResponse))
+					loadedState := state.(EtcdState)
 					_, resp := loadedState.Step(op.req)
 					t.Errorf("Response diff: %s", cmp.Diff(op.resp, resp))
 					break
@@ -412,3 +410,4 @@ var commonTestScenarios = []modelTestCase{
 		},
 	},
 }
+

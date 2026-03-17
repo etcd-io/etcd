@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"maps"
 	"slices"
 	"sort"
 	"unsafe"
@@ -57,7 +58,7 @@ var DeterministicModel = func(keys []string) porcupine.Model {
 			if info == nil {
 				return ""
 			}
-			return DescribeOperationMetadata(MaybeEtcdResponse{EtcdResponse: info.(EtcdResponse)})
+			return DescribeEtcdOperationMetadata(MaybeEtcdResponse{EtcdResponse: info.(EtcdResponse)})
 		},
 		DescribeState: func(st any) string {
 			data, err := json.MarshalIndent(st, "", "  ")
@@ -74,6 +75,8 @@ type EtcdState struct {
 	Revision        int64 `json:",omitempty"`
 	CompactRevision int64 `json:",omitempty"`
 	Values          []*ValueRevision
+	KeyLeases       []int64
+	Leases          map[int64]EtcdLease
 }
 
 func (s EtcdState) Equal(other EtcdState) bool {
@@ -100,7 +103,12 @@ func (s EtcdState) Equal(other EtcdState) bool {
 			return false
 		}
 	}
-	return true
+	if !slices.Equal(s.KeyLeases, other.KeyLeases) {
+		return false
+	}
+	return maps.EqualFunc(s.Leases, other.Leases, func(l1, l2 EtcdLease) bool {
+		return l1.LeaseID == l2.LeaseID && maps.Equal(l1.Keys, l2.Keys)
+	})
 }
 
 func (s EtcdState) apply(request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
@@ -116,6 +124,11 @@ func (s EtcdState) DeepCopy() EtcdState {
 
 	newState.Keys = s.Keys
 	newState.Values = slices.Clone(s.Values)
+	newState.KeyLeases = slices.Clone(s.KeyLeases)
+	newState.Leases = make(map[int64]EtcdLease, len(s.Leases))
+	for k, v := range s.Leases {
+		newState.Leases[k] = v.DeepCopy()
+	}
 
 	return newState
 }
@@ -127,6 +140,8 @@ func freshEtcdState(keys []string) EtcdState {
 		CompactRevision: -1,
 		Keys:            keys,
 		Values:          make([]*ValueRevision, len(keys)),
+		KeyLeases:       make([]int64, len(keys)),
+		Leases:          make(map[int64]EtcdLease),
 	}
 }
 
@@ -138,9 +153,9 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 	case Txn:
 		return s.stepTxn(request)
 	case LeaseGrant:
-		panic("a")
+		return s.stepLeaseGrant(request)
 	case LeaseRevoke:
-		panic("b")
+		return s.stepLeaseRevoke(request)
 	case Defragment:
 		return s.stepDefragment()
 	case Compact:
@@ -196,6 +211,10 @@ func (s EtcdState) stepTxn(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 				RangeResponse: newState.getRange(op.Range),
 			}
 		case PutOperation:
+			lease, leaseExists := newState.Leases[op.Put.LeaseID]
+			if op.Put.LeaseID != 0 && !leaseExists {
+				break
+			}
 			ver := int64(1)
 			if val, exists := newState.value(op.Put.Key); exists && val.Version > 0 {
 				ver = val.Version + 1
@@ -206,10 +225,15 @@ func (s EtcdState) stepTxn(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 				Version:     ver,
 			})
 			increaseRevision = true
+			newState = detachFromOldLease(newState, op.Put.Key)
+			if leaseExists {
+				newState = attachToNewLease(newState, lease.LeaseID, op.Put.Key)
+			}
 		case DeleteOperation:
 			if _, ok := newState.value(op.Delete.Key); ok {
 				newState.setValue(op.Delete.Key, nil)
 				increaseRevision = true
+				newState = detachFromOldLease(newState, op.Delete.Key)
 				opResp[i].Deleted = 1
 			}
 		default:
@@ -239,6 +263,67 @@ func (s EtcdState) setValue(key string, val *ValueRevision) {
 		}
 	}
 	panic(fmt.Sprintf("No %v in %v", key, s.Keys))
+}
+
+func (s EtcdState) stepLeaseGrant(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
+	newState := s.DeepCopy()
+	// Empty LeaseID means the request failed and client didn't get response. Ignore it as client cannot use lease without knowing its id.
+	if request.LeaseGrant.LeaseID == 0 {
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantResponse{}}}
+	}
+	lease := EtcdLease{
+		LeaseID: request.LeaseGrant.LeaseID,
+		Keys:    map[string]struct{}{},
+	}
+	newState.Leases[request.LeaseGrant.LeaseID] = lease
+	return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantResponse{}}}
+}
+
+func (s EtcdState) stepLeaseRevoke(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
+	newState := s.DeepCopy()
+	// Delete the keys attached to the lease
+	keyDeleted := false
+	for key := range newState.Leases[request.LeaseRevoke.LeaseID].Keys {
+		// same as delete.
+		if _, ok := newState.value(key); ok {
+			if !keyDeleted {
+				keyDeleted = true
+			}
+			newState.setValue(key, nil)
+			newState = detachFromOldLease(newState, key)
+		}
+	}
+	// delete the lease
+	delete(newState.Leases, request.LeaseRevoke.LeaseID)
+	if keyDeleted {
+		newState.Revision++
+	}
+	return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseRevoke: &LeaseRevokeResponse{}}}
+}
+
+func detachFromOldLease(s EtcdState, key string) EtcdState {
+	for i, k := range s.Keys {
+		if k == key {
+			oldLeaseID := s.KeyLeases[i]
+			if oldLeaseID != 0 {
+				delete(s.Leases[oldLeaseID].Keys, key)
+				s.KeyLeases[i] = 0
+			}
+			return s
+		}
+	}
+	return s
+}
+
+func attachToNewLease(s EtcdState, leaseID int64, key string) EtcdState {
+	for i, k := range s.Keys {
+		if k == key {
+			s.KeyLeases[i] = leaseID
+			s.Leases[leaseID].Keys[key] = leased
+			return s
+		}
+	}
+	return s
 }
 
 func (s EtcdState) stepDefragment() (EtcdState, MaybeEtcdResponse) {

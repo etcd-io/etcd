@@ -108,9 +108,32 @@ func describeEtcdState(state EtcdState) string {
 			if value.Value.Hash != 0 {
 				descHTML = append(descHTML, fmt.Sprintf("hash: %d, ", value.Value.Hash))
 			}
-			descHTML = append(descHTML, fmt.Sprintf("mod: %d, ver: %d</li>", value.ModRevision, value.Version))
+			descHTML = append(descHTML, fmt.Sprintf("mod: %d, ver: %d", value.ModRevision, value.Version))
+
+			for i, k := range state.Keys {
+				if k == key {
+					if state.KeyLeases[i] != 0 {
+						descHTML = append(descHTML, fmt.Sprintf(", lease: %d", state.KeyLeases[i]))
+					}
+					break
+				}
+			}
+			descHTML = append(descHTML, "</li>")
 		}
 
+		descHTML = append(descHTML, "</ul>")
+	}
+
+	if len(state.Leases) > 0 {
+		descHTML = append(descHTML, "leases: <ul style=\"margin: 0.25em 0;\">")
+		leaseIDs := []int64{}
+		for id := range state.Leases {
+			leaseIDs = append(leaseIDs, id)
+		}
+		sort.Slice(leaseIDs, func(i, j int) bool { return leaseIDs[i] < leaseIDs[j] })
+		for _, id := range leaseIDs {
+			descHTML = append(descHTML, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%d</strong></li>", id))
+		}
 		descHTML = append(descHTML, "</ul>")
 	}
 
@@ -249,7 +272,7 @@ func describeRangeResponse(request RangeOptions, response RangeResponse) string 
 	return describeValueOrHash(response.KVs[0].Value)
 }
 
-func DescribeOperationMetadata(response MaybeEtcdResponse) string {
+func DescribeEtcdOperationMetadata(response MaybeEtcdResponse) string {
 	if response.MemberID != 0 {
 		return fmt.Sprintf("memberID: %s", types.ID(response.MemberID).String())
 	}

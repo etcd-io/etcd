@@ -1977,7 +1977,7 @@ func TestValidateWatch(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			replay := model.NewReplay(nil, tc.persistedRequests)
+			replay := model.NewReplay(model.ModelKeysFromRequests(tc.persistedRequests), tc.persistedRequests)
 			result := validateWatch(zaptest.NewLogger(t), tc.config, tc.reports, replay)
 			if result.Message != tc.expectError {
 				t.Errorf("validateWatch(...), got: %q, want: %q", result.Message, tc.expectError)

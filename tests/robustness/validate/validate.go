@@ -17,9 +17,7 @@ package validate
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"math"
-	"slices"
 	"time"
 
 	"github.com/anishathalye/porcupine"
@@ -44,7 +42,7 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 		linearizableOperations = patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
 	}
 	fmt.Printf("Ops: %v\n", len(linearizableOperations))
-	keys := modelKeys(linearizableOperations)
+	keys := model.ModelKeys(linearizableOperations)
 	result.Linearization = validateLinearizableOperationsAndVisualize(lg, keys, linearizableOperations, timeout)
 	result.Linearization.AddToVisualization(operationsForVisualization)
 	// Skip other validations if model is not linearizable, as they are expected to fail too and obfuscate the logs.
@@ -62,21 +60,7 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 	return result
 }
 
-func modelKeys(operations []porcupine.Operation) []string {
-	keysMap := map[string]bool{}
-	for _, op := range operations {
-		request := op.Input.(model.EtcdRequest)
-		if request.Type == model.Txn {
-			for _, op := range slices.Concat(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure) {
-				switch op.Type {
-				case model.PutOperation:
-					keysMap[op.Put.Key] = true
-				}
-			}
-		}
-	}
-	return slices.Collect(maps.Keys(keysMap))
-}
+
 
 type Config struct {
 	ExpectRevisionUnique bool

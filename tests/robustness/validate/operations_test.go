@@ -18,6 +18,7 @@ package validate
 import (
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"testing"
 	"time"
 
@@ -240,7 +241,55 @@ func TestValidateSerializableOperations(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			replay := model.NewReplay(nil, tc.persistedRequests)
+			keysMap := map[string]bool{}
+			for _, req := range tc.persistedRequests {
+				if req.Type == model.Txn {
+					for _, op := range append(req.Txn.OperationsOnSuccess, req.Txn.OperationsOnFailure...) {
+						if op.Type == model.PutOperation {
+							keysMap[op.Put.Key] = true
+						}
+						if op.Type == model.DeleteOperation {
+							keysMap[op.Delete.Key] = true
+						}
+					}
+				}
+			}
+			for _, op := range tc.operations {
+				req := op.Input.(model.EtcdRequest)
+				if req.Type == model.Txn {
+					for _, op := range append(req.Txn.OperationsOnSuccess, req.Txn.OperationsOnFailure...) {
+						if op.Type == model.PutOperation {
+							keysMap[op.Put.Key] = true
+						}
+						if op.Type == model.DeleteOperation {
+							keysMap[op.Delete.Key] = true
+						}
+					}
+				}
+			}
+			// Add keys from range requests as well, just in case
+			for _, op := range tc.operations {
+				req := op.Input.(model.EtcdRequest)
+				if req.Type == model.Range {
+					keysMap[req.Range.Start] = true
+					if req.Range.End != "" {
+						// For range requests, we might not know all keys in the range,
+						// but the model only cares about keys that are in the Keys slice.
+					}
+				}
+			}
+			// Ensure "a", "b", "c" are always there as they are used in most tests
+			keysMap["a"] = true
+			keysMap["b"] = true
+			keysMap["c"] = true
+
+			keys := []string{}
+			for k := range keysMap {
+				keys = append(keys, k)
+			}
+			slices.Sort(keys)
+
+			replay := model.NewReplay(keys, tc.persistedRequests)
 			result := validateSerializableOperations(zaptest.NewLogger(t), tc.operations, replay)
 			if result.Message != tc.expectError {
 				t.Errorf("validateSerializableOperations(...), got: %q, want: %q", result.Message, tc.expectError)
@@ -317,7 +366,7 @@ func BenchmarkValidateLinearizableOperations(b *testing.B) {
 	b.Run("BacktrackingHeavy", func(b *testing.B) {
 		history := backtrackingHeavy(b)
 		shuffles := shuffleHistory(history, b.N)
-		keys := modelKeys(history)
+		keys := model.ModelKeys(history)
 		b.ResetTimer()
 		for i := 0; i < len(shuffles); i++ {
 			validateLinearizableOperationsAndVisualize(lg, keys, shuffles[i], time.Second)
@@ -350,7 +399,7 @@ func concurrentFailedPutsWithRead(b *testing.B, concurrencyCount int) []porcupin
 			Return:   int64(i) + int64(concurrencyCount),
 		})
 	}
-	keys := modelKeys(ops)
+	keys := model.ModelKeys(ops)
 	replay := model.NewReplayFromOperations(keys, ops)
 	state, err := replay.StateForRevision(int64(concurrencyCount) + 1)
 	if err != nil {
@@ -409,7 +458,7 @@ func backtrackingHeavy(b *testing.B) (ops []porcupine.Operation) {
 			Return:   startTime + 1000 + int64(i),
 		})
 	}
-	keys := modelKeys(ops)
+	keys := model.ModelKeys(ops)
 	replay := model.NewReplayFromOperations(keys, ops)
 	state, err := replay.StateForRevision(int64(backgroundKeys + 1))
 	if err != nil {
@@ -453,7 +502,7 @@ func shuffleHistory(history []porcupine.Operation, shuffleCount int) [][]porcupi
 }
 
 func validateShuffles(b *testing.B, lg *zap.Logger, shuffles [][]porcupine.Operation, duration time.Duration) {
-	keys := modelKeys(shuffles[0])
+	keys := model.ModelKeys(shuffles[0])
 	for i := 0; i < len(shuffles); i++ {
 		result := validateLinearizableOperationsAndVisualize(lg, keys, shuffles[i], duration)
 		if err := result.Error(); err != nil {
