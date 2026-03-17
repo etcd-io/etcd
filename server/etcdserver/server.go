@@ -543,6 +543,13 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		cl.SetStore(st)
 		cl.SetBackend(be)
 		cl.Recover(api.UpdateCapability)
+		if m := cl.Member(id); m != nil {
+			if m.IsLearner {
+				isLearner.Set(1)
+			} else {
+				isLearner.Set(0)
+			}
+		}
 		if cl.Version() != nil && !cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
 			os.RemoveAll(bepath)
 			return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
@@ -1432,6 +1439,14 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	lg.Info("restoring cluster configuration")
 
 	s.cluster.Recover(api.UpdateCapability)
+
+	if m := s.cluster.Member(s.ID()); m != nil {
+		if m.IsLearner {
+			isLearner.Set(1)
+		} else {
+			isLearner.Set(0)
+		}
+	}
 
 	lg.Info("restored cluster configuration")
 	lg.Info("removing old peers from network")
