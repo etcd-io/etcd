@@ -38,8 +38,7 @@ import (
 )
 
 var (
-	DefaultWatchInterval  = 250 * time.Millisecond
-	DefaultRevisionOffset = int64(100)
+	DefaultWatchInterval = 250 * time.Millisecond
 
 	profile = traffic.Profile{
 		KeyValue: &traffic.KeyValue{
@@ -194,6 +193,7 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 				defer wg.Done()
 				defer c.Close()
 				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
+					Config:     *profile.Watch,
 					Client:     c,
 					QPSLimiter: limiter,
 					KeyStore:   keyStore,
@@ -210,6 +210,7 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 				defer wg.Done()
 				defer c.Close()
 				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
+					Config:     *profile.Watch,
 					Client:     c,
 					QPSLimiter: limiter,
 					KeyStore:   keyStore,
