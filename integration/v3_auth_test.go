@@ -17,15 +17,21 @@ package integration
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/auth/authpb"
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/pkg/testutil"
+)
+
+const (
+	PermissionDenied = "etcdserver: permission denied"
 )
 
 // TestV3AuthEmptyUserGet ensures that a get with an empty user will return an empty user error.
@@ -125,6 +131,16 @@ func testV3AuthWithLeaseRevokeWithRoot(t *testing.T, ccfg ClusterConfig) {
 	defer clus.Terminate(t)
 
 	api := toGRPC(clus.Client(0))
+
+	users := []user{
+		{
+			name:     "test-user",
+			password: "test-user-123",
+			role:     "test-role",
+			key:      "foo",
+		},
+	}
+	authSetupUsers(t, api.Auth, users)
 	authSetupRoot(t, api.Auth)
 
 	rootc, cerr := clientv3.New(clientv3.Config{
@@ -136,6 +152,26 @@ func testV3AuthWithLeaseRevokeWithRoot(t *testing.T, ccfg ClusterConfig) {
 		t.Fatal(cerr)
 	}
 	defer rootc.Close()
+
+	testUserCli, terr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "test-user",
+		Password:  "test-user-123",
+	})
+	require.NoError(t, terr)
+	defer testUserCli.Close()
+
+	anonCli, aerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+	})
+	require.NoError(t, aerr)
+	defer anonCli.Close()
+
+	_, aerr = anonCli.Grant(context.TODO(), 2)
+	require.ErrorContains(t, aerr, "etcdserver: user name is empty")
+
+	_, terr = testUserCli.Grant(context.TODO(), 2)
+	require.NoError(t, terr)
 
 	leaseResp, err := rootc.Grant(context.TODO(), 2)
 	if err != nil {
@@ -561,6 +597,12 @@ func TestV3AuthWithLeaseTimeToLive(t *testing.T) {
 	}
 	defer user2c.Close()
 
+	anonCli, cerr := clientv3.New(clientv3.Config{Endpoints: clus.Client(0).Endpoints()})
+	if cerr != nil {
+		t.Fatal(cerr)
+	}
+	defer anonCli.Close()
+
 	leaseResp, err := user1c.Grant(context.TODO(), 90)
 	if err != nil {
 		t.Fatal(err)
@@ -586,6 +628,12 @@ func TestV3AuthWithLeaseTimeToLive(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	_, err = anonCli.TimeToLive(context.TODO(), leaseID)
+	require.ErrorContains(t, err, "etcdserver: user name is empty")
+
+	_, err = anonCli.TimeToLive(context.TODO(), leaseID, clientv3.WithAttachedKeys())
+	require.ErrorContains(t, err, "etcdserver: user name is empty")
+
 	_, err = user2c.TimeToLive(context.TODO(), leaseID, clientv3.WithAttachedKeys())
 	if err == nil {
 		t.Fatal("timetolive from user2 should be failed with permission denied")
@@ -605,4 +653,343 @@ func TestV3AuthWithLeaseTimeToLive(t *testing.T) {
 	if err == nil {
 		t.Fatal("timetolive from user2 should be failed with permission denied")
 	}
+}
+
+func TestV3AuthWithLeaseRenew(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	users := []user{
+		{
+			name:     "test-user",
+			password: "test-user-123",
+			role:     "test-role",
+			// test-user can only write keys in [k1, k3), i.e. k1 and k2.
+			key: "k1",
+			end: "k3",
+		},
+	}
+	authSetupUsers(t, toGRPC(clus.Client(0)).Auth, users)
+	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
+
+	rootCli, cerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, cerr)
+	defer rootCli.Close()
+
+	testUserClis := []*clientv3.Client{}
+	for i := 0; i < len(clus.Members); i++ {
+		testUserCli, err := clientv3.New(clientv3.Config{
+			Endpoints: clus.Client(i).Endpoints(),
+			Username:  "test-user",
+			Password:  "test-user-123",
+		})
+		require.NoError(t, err)
+		defer testUserCli.Close()
+
+		testUserClis = append(testUserClis, testUserCli)
+	}
+
+	anonCli, cerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+	})
+	require.NoError(t, cerr)
+	defer anonCli.Close()
+
+	leaseResp, err := rootCli.Grant(t.Context(), 90)
+	require.NoError(t, err)
+	leaseID := leaseResp.ID
+
+	_, err = rootCli.Put(t.Context(), "k1", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+	_, err = rootCli.Put(t.Context(), "k3", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+
+	_, err = anonCli.KeepAliveOnce(t.Context(), leaseID)
+	require.ErrorContainsf(t, err, "etcdserver: user name is empty", "should reject renew")
+
+	_, err = rootCli.KeepAliveOnce(t.Context(), leaseID)
+	require.NoError(t, err)
+
+	for _, testUserCli := range testUserClis {
+		_, err = testUserCli.KeepAliveOnce(t.Context(), leaseID)
+		require.ErrorContainsf(t, err, "etcdserver: permission denied", "[%v] should reject renew", testUserCli.Endpoints())
+	}
+
+	leaseResp, err = rootCli.Grant(t.Context(), 90)
+	require.NoError(t, err)
+	leaseID = leaseResp.ID
+
+	_, err = rootCli.Put(t.Context(), "k1", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+	_, err = rootCli.Put(t.Context(), "k2", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+
+	for _, testUserCli := range testUserClis {
+		_, err = testUserCli.KeepAliveOnce(t.Context(), leaseID)
+		require.NoErrorf(t, err, "[%v] should accept renew", testUserCli.Endpoints())
+	}
+}
+
+func TestV3AuthAlarm(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+
+	clus := NewClusterV3(t, &ClusterConfig{
+		Size:              1,
+		QuotaBackendBytes: 1024 * 5,
+	})
+	defer clus.Terminate(t)
+
+	users := []user{
+		{
+			name:     "test-user",
+			password: "test-user-123",
+			role:     "test-role",
+			key:      "k1",
+			end:      "k3",
+		},
+	}
+	authSetupUsers(t, toGRPC(clus.Client(0)).Auth, users)
+	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
+
+	rootCli, rerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, rerr)
+	defer rootCli.Close()
+
+	testUserCli, terr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "test-user",
+		Password:  "test-user-123",
+	})
+	require.NoError(t, terr)
+	defer testUserCli.Close()
+
+	anonCli, aerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+	})
+	require.NoError(t, aerr)
+	defer anonCli.Close()
+
+	for i := 0; ; i++ {
+		_, err := rootCli.Put(ctx, fmt.Sprintf("%v", int64(i)), strings.Repeat("A", 1024))
+		if err == nil {
+			continue
+		}
+
+		require.ErrorContains(t, err, "etcdserver: mvcc: database space exceeded")
+		break
+	}
+
+	_, err := testUserCli.AlarmList(ctx)
+	require.ErrorContains(t, err, PermissionDenied)
+
+	memberID := uint64(0)
+
+	for i := 0; i < 10; i++ {
+		resp, rerr := rootCli.AlarmList(ctx)
+		require.NoError(t, rerr)
+
+		if len(resp.Alarms) > 0 {
+			memberID = resp.Alarms[0].MemberID
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	require.NotEqualf(t, uint64(0), memberID, "expect to find alarm with non-zero member ID")
+
+	_, err = testUserCli.AlarmDisarm(ctx, &clientv3.AlarmMember{
+		MemberID: memberID,
+		Alarm:    pb.AlarmType_NOSPACE,
+	})
+	require.ErrorContains(t, err, PermissionDenied)
+
+	resp, err := rootCli.AlarmDisarm(ctx, &clientv3.AlarmMember{
+		MemberID: memberID,
+		Alarm:    pb.AlarmType_NOSPACE,
+	})
+	require.NoError(t, err)
+	require.Lenf(t, resp.Alarms, 1, "expect 1 alarm from disarm but got %v", resp.Alarms)
+
+	resp, err = rootCli.AlarmList(ctx)
+	require.NoError(t, err)
+	require.Emptyf(t, resp.Alarms, "expect no alarm after disarm but got %v", resp.Alarms)
+}
+
+func TestV3AuthMemberListAndStatus(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+
+	users := []user{
+		{
+			name:     "test-user",
+			password: "test-user-123",
+			role:     "test-role",
+			key:      "k1",
+			end:      "k3",
+		},
+	}
+	authSetupUsers(t, toGRPC(clus.Client(0)).Auth, users)
+	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
+
+	rootCli, rerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, rerr)
+	defer rootCli.Close()
+
+	testUserCli, terr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "test-user",
+		Password:  "test-user-123",
+	})
+	require.NoError(t, terr)
+	defer testUserCli.Close()
+
+	_, err := testUserCli.MemberList(ctx)
+	require.ErrorContains(t, err, PermissionDenied)
+
+	_, err = testUserCli.Status(ctx, clus.Client(0).Endpoints()[0])
+	require.ErrorContains(t, err, PermissionDenied)
+
+	_, err = rootCli.MemberList(ctx)
+	require.NoError(t, err)
+
+	_, err = rootCli.Status(ctx, clus.Client(0).Endpoints()[0])
+	require.NoError(t, err)
+}
+
+func TestV3AuthLeaseLeases(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+
+	users := []user{
+		{
+			name:     "test-user",
+			password: "test-user-123",
+			role:     "test-role",
+			key:      "foo",
+		},
+	}
+	authSetupUsers(t, toGRPC(clus.Client(0)).Auth, users)
+	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
+
+	rootCli, rerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, rerr)
+	defer rootCli.Close()
+
+	testUserCli, terr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "test-user",
+		Password:  "test-user-123",
+	})
+	require.NoError(t, terr)
+	defer testUserCli.Close()
+
+	anonCli, aerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+	})
+	require.NoError(t, aerr)
+	defer anonCli.Close()
+
+	lresp, err := rootCli.Grant(ctx, 90)
+	require.NoError(t, err)
+	firstLeaseID := lresp.ID
+
+	_, err = rootCli.Put(ctx, "foo", "value", clientv3.WithLease(firstLeaseID))
+	require.NoError(t, err)
+
+	lresp, err = rootCli.Grant(ctx, 90)
+	require.NoError(t, err)
+	secondLeaseID := lresp.ID
+
+	_, err = rootCli.Put(ctx, "foo1", "value", clientv3.WithLease(secondLeaseID))
+	require.NoError(t, err)
+
+	_, err = testUserCli.Leases(ctx)
+	require.ErrorContains(t, err, PermissionDenied)
+
+	_, err = anonCli.Leases(ctx)
+	require.ErrorContains(t, err, "etcdserver: user name is empty")
+
+	resp, err := rootCli.Leases(ctx)
+	require.NoError(t, err)
+	require.Lenf(t, resp.Leases, 2, "want 2 leases but got %v", resp.Leases)
+
+	leaseIDs := []clientv3.LeaseID{firstLeaseID, secondLeaseID}
+	for _, lease := range resp.Leases {
+		require.Containsf(t, leaseIDs, lease.ID, "unexpected lease ID %v, want one of %v", lease.ID, leaseIDs)
+	}
+
+	_, err = rootCli.Revoke(ctx, secondLeaseID)
+	require.NoError(t, err)
+
+	_, err = testUserCli.Leases(ctx)
+	require.NoError(t, err)
+}
+
+func TestV3AuthCompact(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+
+	users := []user{
+		{
+			name:     "test-user",
+			password: "test-user-123",
+			role:     "test-role",
+			key:      "foo",
+		},
+	}
+	authSetupUsers(t, toGRPC(clus.Client(0)).Auth, users)
+	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
+
+	rootCli, rerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, rerr)
+	defer rootCli.Close()
+
+	testUserCli, terr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "test-user",
+		Password:  "test-user-123",
+	})
+	require.NoError(t, terr)
+	defer testUserCli.Close()
+
+	_, err := rootCli.Put(ctx, "key", "value")
+	require.NoError(t, err)
+
+	_, err = rootCli.Put(ctx, "key", "value")
+	require.NoError(t, err)
+
+	_, err = testUserCli.Compact(ctx, 1, clientv3.WithCompactPhysical())
+	require.ErrorContains(t, err, PermissionDenied)
+
+	_, err = rootCli.Compact(ctx, 1, clientv3.WithCompactPhysical())
+	require.NoError(t, err)
 }
