@@ -18,7 +18,17 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/anishathalye/porcupine"
 )
+
+func NewReplayFromOperations(ops []porcupine.Operation) *EtcdReplay {
+	requests := []EtcdRequest{}
+	for _, op := range ops {
+		requests = append(requests, op.Input.(EtcdRequest))
+	}
+	return NewReplay(requests)
+}
 
 func NewReplay(persistedRequests []EtcdRequest) *EtcdReplay {
 	state := freshEtcdState()
