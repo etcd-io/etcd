@@ -17,12 +17,19 @@ package embed
 import (
 	"testing"
 
+	"go.etcd.io/etcd/server/v3/embed/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 )
 
 func TestEnableAuth(t *testing.T) {
 	tdir := t.TempDir()
 	cfg := NewConfig()
+
+	testURLConfg := testutil.NewConfigTestURLs()
+	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = testURLConfg.ClientURLs, testURLConfg.ClientURLs
+	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = testURLConfg.PeerURLs, testURLConfg.PeerURLs
+	cfg.InitialCluster = testURLConfg.InitialCluster
+
 	cfg.Dir = tdir
 	e, err := StartEtcd(cfg)
 	if err != nil {
