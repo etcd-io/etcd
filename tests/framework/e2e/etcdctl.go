@@ -183,6 +183,15 @@ func (ctl *Etcdctl) MemberPromote(id uint64) (*clientv3.MemberPromoteResponse, e
 	return &resp, err
 }
 
+func (ctl *Etcdctl) MemberPromoteWithAuth(id uint64, username, password string) (*clientv3.MemberPromoteResponse, error) {
+	if ctl.v2 {
+		panic("Unsupported method for v2")
+	}
+	var resp clientv3.MemberPromoteResponse
+	err := ctl.spawnJsonCmd(&resp, "member", "promote", fmt.Sprintf("%x", id), "--user", fmt.Sprintf("%s:%s", username, password))
+	return &resp, err
+}
+
 func (ctl *Etcdctl) Compact(rev int64) (*clientv3.CompactResponse, error) {
 	if ctl.v2 {
 		panic("Unsupported method for v2")
