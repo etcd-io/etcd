@@ -34,10 +34,10 @@ import (
 )
 
 func printKV(isHex bool, valueOnly bool, kv *pb.KeyValue) {
-	k, v := string(kv.Key), string(kv.Value)
+	k, v := string(kv.GetKey()), string(kv.GetValue())
 	if isHex {
-		k = addHexPrefix(hex.EncodeToString(kv.Key))
-		v = addHexPrefix(hex.EncodeToString(kv.Value))
+		k = addHexPrefix(hex.EncodeToString(kv.GetKey()))
+		v = addHexPrefix(hex.EncodeToString(kv.GetValue()))
 	}
 	if !valueOnly {
 		fmt.Println(k)

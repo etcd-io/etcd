@@ -25,6 +25,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -436,21 +437,20 @@ func (sws *serverWatchStream) sendLoop() {
 			}
 
 			start := time.Now()
-			// TODO: evs is []mvccpb.Event type
-			// either return []*mvccpb.Event from the mvcc package
-			// or define protocol buffer with []mvccpb.Event.
+
+			// TODO(fuweid): do we still need copy here?
 			evs := wresp.Events
 			events := make([]*mvccpb.Event, len(evs))
 			sws.mu.RLock()
 			needPrevKV := sws.prevKV[wresp.WatchID]
 			sws.mu.RUnlock()
 			for i := range evs {
-				events[i] = &evs[i]
+				events[i] = evs[i]
 				if needPrevKV && !IsCreateEvent(evs[i]) {
 					opt := mvcc.RangeOptions{Rev: evs[i].Kv.ModRevision - 1}
 					r, err := sws.watchable.Range(context.TODO(), evs[i].Kv.Key, nil, opt)
 					if err == nil && len(r.KVs) != 0 {
-						events[i].PrevKv = &(r.KVs[0])
+						events[i].PrevKv = r.KVs[0]
 					}
 				}
 			}
@@ -573,7 +573,7 @@ func (sws *serverWatchStream) sendLoop() {
 	}
 }
 
-func IsCreateEvent(e mvccpb.Event) bool {
+func IsCreateEvent(e *mvccpb.Event) bool {
 	return e.Type == mvccpb.Event_PUT && e.Kv.CreateRevision == e.Kv.ModRevision
 }
 
@@ -584,20 +584,36 @@ func sendFragments(
 ) error {
 	// no need to fragment if total request size is smaller
 	// than max request limit or response contains only one event
-	if uint(wr.Size()) < maxRequestBytes || len(wr.Events) < 2 {
+	if uint(proto.Size(wr)) < maxRequestBytes || len(wr.Events) < 2 {
 		return sendFunc(wr)
 	}
 
-	ow := *wr
-	ow.Events = make([]*mvccpb.Event, 0)
-	ow.Fragment = true
-
 	var idx int
 	for {
-		cur := ow
+		// Keep this explicit field copy in sync with pb.WatchResponse.
+		// TestWatchResponseProtoFieldCount guards against missing new fields.
+		//
+		// Header is the same for all fragments from one response, so
+		// it is safe to reuse. However, we cannot reuse wr itself.
+		// sendFunc can enqueue the response and return immediately,
+		// so the actual send may happen later. Reusing wr would let
+		// mutations in the next loop iteration corrupt queued fragments.
+		//
+		// REF: https://github.com/grpc/grpc-go/issues/5857
+		cur := &pb.WatchResponse{
+			Header:          wr.Header,
+			WatchId:         wr.WatchId,
+			Created:         wr.Created,
+			Canceled:        wr.Canceled,
+			CompactRevision: wr.CompactRevision,
+			CancelReason:    wr.CancelReason,
+			Fragment:        true,
+			Events:          make([]*mvccpb.Event, 0),
+		}
+
 		for _, ev := range wr.Events[idx:] {
 			cur.Events = append(cur.Events, ev)
-			if len(cur.Events) > 1 && uint(cur.Size()) >= maxRequestBytes {
+			if len(cur.Events) > 1 && uint(proto.Size(cur)) >= maxRequestBytes {
 				cur.Events = cur.Events[:len(cur.Events)-1]
 				break
 			}
@@ -607,7 +623,7 @@ func sendFragments(
 			// last response has no more fragment
 			cur.Fragment = false
 		}
-		if err := sendFunc(&cur); err != nil {
+		if err := sendFunc(cur); err != nil {
 			return err
 		}
 		if !cur.Fragment {
@@ -632,11 +648,11 @@ func (sws *serverWatchStream) newResponseHeader(rev int64) *pb.ResponseHeader {
 	}
 }
 
-func filterNoDelete(e mvccpb.Event) bool {
+func filterNoDelete(e *mvccpb.Event) bool {
 	return e.Type == mvccpb.Event_DELETE
 }
 
-func filterNoPut(e mvccpb.Event) bool {
+func filterNoPut(e *mvccpb.Event) bool {
 	return e.Type == mvccpb.Event_PUT
 }
 

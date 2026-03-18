@@ -18,6 +18,7 @@ import (
 	"bytes"
 
 	v3pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -36,26 +37,27 @@ func evalCmp(resp *v3.GetResponse, tcmp v3.Cmp) bool {
 	var result int
 	if len(resp.Kvs) != 0 {
 		kv := resp.Kvs[0]
-		switch tcmp.Target {
+		cmp := tcmp.GetCompare()
+		switch cmp.GetTarget() {
 		case v3pb.Compare_VALUE:
-			if tv, _ := tcmp.TargetUnion.(*v3pb.Compare_Value); tv != nil {
+			if tv, _ := cmp.GetTargetUnion().(*v3pb.Compare_Value); tv != nil {
 				result = bytes.Compare(kv.Value, tv.Value)
 			}
 		case v3pb.Compare_CREATE:
-			if tv, _ := tcmp.TargetUnion.(*v3pb.Compare_CreateRevision); tv != nil {
+			if tv, _ := cmp.GetTargetUnion().(*v3pb.Compare_CreateRevision); tv != nil {
 				result = compareInt64(kv.CreateRevision, tv.CreateRevision)
 			}
 		case v3pb.Compare_MOD:
-			if tv, _ := tcmp.TargetUnion.(*v3pb.Compare_ModRevision); tv != nil {
+			if tv, _ := cmp.GetTargetUnion().(*v3pb.Compare_ModRevision); tv != nil {
 				result = compareInt64(kv.ModRevision, tv.ModRevision)
 			}
 		case v3pb.Compare_VERSION:
-			if tv, _ := tcmp.TargetUnion.(*v3pb.Compare_Version); tv != nil {
+			if tv, _ := cmp.GetTargetUnion().(*v3pb.Compare_Version); tv != nil {
 				result = compareInt64(kv.Version, tv.Version)
 			}
 		}
 	}
-	switch tcmp.Result {
+	switch tcmp.GetCompare().GetResult() {
 	case v3pb.Compare_EQUAL:
 		return result == 0
 	case v3pb.Compare_NOT_EQUAL:
@@ -97,8 +99,53 @@ func gatherResponseOps(resp []*v3pb.ResponseOp, ops []v3.Op) (ret []v3.Op) {
 }
 
 func copyHeader(hdr *v3pb.ResponseHeader) *v3pb.ResponseHeader {
-	h := *hdr
-	return &h
+	if hdr == nil {
+		return nil
+	}
+
+	return &v3pb.ResponseHeader{
+		ClusterId: hdr.GetClusterId(),
+		MemberId:  hdr.GetMemberId(),
+		Revision:  hdr.GetRevision(),
+		RaftTerm:  hdr.GetRaftTerm(),
+	}
+}
+
+func copyGetResponseMetadataOnly(resp *v3.GetResponse) *v3.GetResponse {
+	if resp == nil {
+		return nil
+	}
+
+	return &v3.GetResponse{
+		Header: copyHeader(resp.Header),
+		Kvs:    nil,
+		More:   resp.More,
+		Count:  resp.Count,
+	}
+}
+
+func copyKeyValue(kv *mvccpb.KeyValue, keysOnly bool) *mvccpb.KeyValue {
+	if kv == nil {
+		return nil
+	}
+
+	key := make([]byte, len(kv.Key))
+	copy(key, kv.Key)
+
+	var value []byte
+	if !keysOnly {
+		value = make([]byte, len(kv.Value))
+		copy(value, kv.Value)
+	}
+
+	return &mvccpb.KeyValue{
+		Key:            key,
+		CreateRevision: kv.CreateRevision,
+		ModRevision:    kv.ModRevision,
+		Version:        kv.Version,
+		Value:          value,
+		Lease:          kv.Lease,
+	}
 }
 
 func closeAll(chs []chan<- struct{}) {

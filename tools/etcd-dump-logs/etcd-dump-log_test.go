@@ -195,7 +195,7 @@ func appendNormalIRREnts(ents *[]raftpb.Entry) {
 
 	irrauthrolerevokepermission := &etcdserverpb.AuthRoleRevokePermissionRequest{Role: "role3", Key: []byte("key"), RangeEnd: []byte("rangeend")}
 
-	irrs := []etcdserverpb.InternalRaftRequest{
+	irrs := []*etcdserverpb.InternalRaftRequest{
 		{ID: 5, Range: irrrange},
 		{ID: 6, Put: irrput},
 		{ID: 7, DeleteRange: irrdeleterange},
@@ -227,7 +227,7 @@ func appendNormalIRREnts(ents *[]raftpb.Entry) {
 		currentry.Term = uint64(i + 4)
 		currentry.Index = uint64(i + 10)
 		currentry.Type = raftpb.EntryNormal
-		currentry.Data = pbutil.MustMarshal(&irr)
+		currentry.Data = pbutil.MustMarshalMessage(irr)
 		*ents = append(*ents, currentry)
 	}
 }

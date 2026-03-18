@@ -28,7 +28,7 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-func NewTmpWAL(tb testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL, string) {
+func NewTmpWAL(tb testing.TB, reqs []*etcdserverpb.InternalRaftRequest) (*wal.WAL, string) {
 	tb.Helper()
 	dir, err := os.MkdirTemp(tb.TempDir(), "etcd_wal_test")
 	if err != nil {
@@ -45,7 +45,7 @@ func NewTmpWAL(tb testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL
 		tb.Fatalf("Failed to close WAL: %v", err)
 	}
 	if len(reqs) != 0 {
-		w, err = wal.Open(lg, tmpPath, walpb.Snapshot{})
+		w, err = wal.Open(lg, tmpPath, &walpb.Snapshot{})
 		if err != nil {
 			tb.Fatalf("Failed to open WAL: %v", err)
 		}
@@ -61,7 +61,7 @@ func NewTmpWAL(tb testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL
 				Term:  1,
 				Index: 1,
 				Type:  raftpb.EntryNormal,
-				Data:  pbutil.MustMarshal(&req),
+				Data:  pbutil.MustMarshalMessage(req),
 			})
 		}
 		err = w.Save(state, entries)
@@ -74,7 +74,7 @@ func NewTmpWAL(tb testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL
 		}
 	}
 
-	w, err = wal.OpenForRead(lg, tmpPath, walpb.Snapshot{})
+	w, err = wal.OpenForRead(lg, tmpPath, &walpb.Snapshot{})
 	if err != nil {
 		tb.Fatalf("Failed to open WAL: %v", err)
 	}
@@ -84,7 +84,7 @@ func NewTmpWAL(tb testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL
 func Reopen(tb testing.TB, walPath string) *wal.WAL {
 	tb.Helper()
 	lg := zaptest.NewLogger(tb)
-	w, err := wal.OpenForRead(lg, walPath, walpb.Snapshot{})
+	w, err := wal.OpenForRead(lg, walPath, &walpb.Snapshot{})
 	if err != nil {
 		tb.Fatalf("Failed to open WAL: %v", err)
 	}

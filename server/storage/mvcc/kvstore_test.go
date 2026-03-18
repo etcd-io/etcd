@@ -29,8 +29,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -64,7 +67,7 @@ func TestStorePut(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := proto.Marshal(&kv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +79,7 @@ func TestStorePut(t *testing.T) {
 
 		wrev    Revision
 		wkey    []byte
-		wkv     mvccpb.KeyValue
+		wkv     *mvccpb.KeyValue
 		wputrev Revision
 	}{
 		{
@@ -86,7 +89,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 2},
 			newTestRevBytes(Revision{Main: 2}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -103,7 +106,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 2},
 			newTestRevBytes(Revision{Main: 2}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -120,7 +123,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 3},
 			newTestRevBytes(Revision{Main: 3}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -144,7 +147,7 @@ func TestStorePut(t *testing.T) {
 
 		s.Put([]byte("foo"), []byte("bar"), lease.LeaseID(i+1))
 
-		data, err := tt.wkv.Marshal()
+		data, err := proto.Marshal(tt.wkv)
 		if err != nil {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
@@ -180,14 +183,14 @@ func TestStorePut(t *testing.T) {
 func TestStoreRange(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	key := newTestRevBytes(Revision{Main: 2})
-	kv := mvccpb.KeyValue{
+	kv := &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("bar"),
 		CreateRevision: 1,
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := proto.Marshal(kv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +224,7 @@ func TestStoreRange(t *testing.T) {
 		if err != nil {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 		}
-		if w := []mvccpb.KeyValue{kv}; !reflect.DeepEqual(ret.KVs, w) {
+		if w := []*mvccpb.KeyValue{kv}; !cmp.Equal(ret.KVs, w, protocmp.Transform()) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, ret.KVs, w)
 		}
 		if ret.Rev != wrev {
@@ -260,7 +263,7 @@ func TestStoreDeleteRange(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := proto.Marshal(&kv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,9 +303,9 @@ func TestStoreDeleteRange(t *testing.T) {
 			t.Errorf("#%d: n = %d, want 1", i, n)
 		}
 
-		data, err := (&mvccpb.KeyValue{
+		data, err := proto.Marshal(&mvccpb.KeyValue{
 			Key: []byte("foo"),
-		}).Marshal()
+		})
 		if err != nil {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
@@ -383,7 +386,7 @@ func TestStoreRestore(t *testing.T) {
 		ModRevision:    4,
 		Version:        1,
 	}
-	putkvb, err := putkv.Marshal()
+	putkvb, err := proto.Marshal(&putkv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +394,7 @@ func TestStoreRestore(t *testing.T) {
 	delkv := mvccpb.KeyValue{
 		Key: []byte("foo"),
 	}
-	delkvb, err := delkv.Marshal()
+	delkvb, err := proto.Marshal(&delkv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -761,14 +764,14 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		t.Fatalf("failed to range: %v", err)
 	}
 	// readTx2 should see the result of new write
-	w := mvccpb.KeyValue{
+	w := &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("newBar"),
 		CreateRevision: 2,
 		ModRevision:    3,
 		Version:        2,
 	}
-	if !reflect.DeepEqual(ret.KVs[0], w) {
+	if !cmp.Equal(ret.KVs[0], w, protocmp.Transform()) {
 		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
 	}
 	readTx2.End()
@@ -778,14 +781,14 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		t.Fatalf("failed to range: %v", err)
 	}
 	// readTx1 should not see the result of new write
-	w = mvccpb.KeyValue{
+	w = &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("bar"),
 		CreateRevision: 2,
 		ModRevision:    2,
 		Version:        1,
 	}
-	if !reflect.DeepEqual(ret.KVs[0], w) {
+	if !cmp.Equal(ret.KVs[0], w, protocmp.Transform()) {
 		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
 	}
 	readTx1.End()

@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 
+	"google.golang.org/protobuf/proto"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache"
@@ -61,10 +63,11 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 	}
 
 	// cache linearizable as serializable
-	req := *r
+	// TODO(fuweid): consider using shadow copy here
+	req := proto.Clone(r).(*pb.RangeRequest)
 	req.Serializable = true
 	gresp := (*pb.RangeResponse)(resp.Get())
-	p.cache.Add(&req, gresp)
+	p.cache.Add(req, gresp)
 	cacheKeys.Set(float64(p.cache.Size()))
 
 	return gresp, nil
@@ -223,7 +226,7 @@ func TxnRequestToOp(r *pb.TxnRequest) clientv3.Op {
 	thenops := make([]clientv3.Op, len(r.Success))
 	elseops := make([]clientv3.Op, len(r.Failure))
 	for i := range r.Compare {
-		cmps[i] = (clientv3.Cmp)(*r.Compare[i])
+		cmps[i] = clientv3.FromCompare(r.Compare[i])
 	}
 	for i := range r.Success {
 		thenops[i] = requestOpToOp(r.Success[i])

@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2026 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build libs
+package pb
 
-// This file implements that pattern:
-// https://go.dev/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
-// for etcd. Thanks to this file 'go mod tidy' does not removes dependencies.
+import (
+	"google.golang.org/protobuf/proto"
 
-package libs
+	v3pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+)
+
+func CloneCompare(c *v3pb.Compare) *v3pb.Compare {
+	if c == nil {
+		return nil
+	}
+	return proto.Clone(c).(*v3pb.Compare)
+}
