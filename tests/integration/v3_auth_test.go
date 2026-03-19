@@ -230,6 +230,86 @@ func TestV3AuthWithLeaseRevoke(t *testing.T) {
 	}
 }
 
+func TestV3AuthWithLeaseRenew(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	users := []user{
+		{
+			name:     "test-user",
+			password: "test-user-123",
+			role:     "test-role",
+			// test-user can only write keys in [k1, k3), i.e. k1 and k2.
+			key: "k1",
+			end: "k3",
+		},
+	}
+	authSetupUsers(t, integration.ToGRPC(clus.Client(0)).Auth, users)
+	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
+
+	rootCli, cerr := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, cerr)
+	defer rootCli.Close()
+
+	testUserClis := []*clientv3.Client{}
+	for i := 0; i < len(clus.Members); i++ {
+		testUserCli, err := integration.NewClient(t, clientv3.Config{
+			Endpoints: clus.Client(i).Endpoints(),
+			Username:  "test-user",
+			Password:  "test-user-123",
+		})
+		require.NoError(t, err)
+		defer testUserCli.Close()
+
+		testUserClis = append(testUserClis, testUserCli)
+	}
+
+	anonCli, cerr := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+	})
+	require.NoError(t, cerr)
+	defer anonCli.Close()
+
+	leaseResp, err := rootCli.Grant(t.Context(), 90)
+	require.NoError(t, err)
+	leaseID := leaseResp.ID
+
+	_, err = rootCli.Put(t.Context(), "k1", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+	_, err = rootCli.Put(t.Context(), "k3", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+
+	_, err = anonCli.KeepAliveOnce(t.Context(), leaseID)
+	require.ErrorContainsf(t, err, "etcdserver: user name is empty", "should reject renew")
+
+	_, err = rootCli.KeepAliveOnce(t.Context(), leaseID)
+	require.NoError(t, err)
+
+	for _, testUserCli := range testUserClis {
+		_, err = testUserCli.KeepAliveOnce(t.Context(), leaseID)
+		require.ErrorContainsf(t, err, "etcdserver: permission denied", "[%v] should reject renew", testUserCli.Endpoints())
+	}
+
+	leaseResp, err = rootCli.Grant(t.Context(), 90)
+	require.NoError(t, err)
+	leaseID = leaseResp.ID
+
+	_, err = rootCli.Put(t.Context(), "k1", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+	_, err = rootCli.Put(t.Context(), "k2", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+
+	for _, testUserCli := range testUserClis {
+		_, err = testUserCli.KeepAliveOnce(t.Context(), leaseID)
+		require.NoErrorf(t, err, "[%v] should accept renew", testUserCli.Endpoints())
+	}
+}
+
 func TestV3AuthWithLeaseAttach(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
