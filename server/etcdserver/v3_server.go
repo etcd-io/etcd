@@ -267,6 +267,11 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 		// only use positive int64 id's
 		r.ID = int64(s.reqIDGen.Next() & ((1 << 63) - 1))
 	}
+
+	if err := s.requireAuthInfo(ctx); err != nil {
+		return nil, err
+	}
+
 	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseGrant: r})
 	if err != nil {
 		return nil, err
@@ -287,6 +292,10 @@ func (s *EtcdServer) waitAppliedIndex() error {
 }
 
 func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
+	if err := s.requireAuthInfo(ctx); err != nil {
+		return nil, err
+	}
+
 	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
 	if err != nil {
 		return nil, err
@@ -311,6 +320,10 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 			return 0, err
 		}
 
+		if err := s.checkLeaseRenew(ctx, id); err != nil {
+			return 0, err
+		}
+
 		ttl, err := s.lessor.Renew(id)
 		if err == nil { // already requested to primary lessor(leader)
 			return ttl, nil
@@ -329,6 +342,11 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 		if lerr != nil {
 			return -1, lerr
 		}
+
+		if err := s.checkLeaseRenew(ctx, id); err != nil {
+			return 0, err
+		}
+
 		for _, url := range leader.PeerURLs {
 			lurl := url + leasehttp.LeasePrefix
 			ttl, err := leasehttp.RenewHTTP(cctx, id, lurl, s.peerRt)
@@ -346,6 +364,39 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 	return -1, ErrCanceled
 }
 
+func (s *EtcdServer) checkLeaseRenew(ctx context.Context, leaseID lease.LeaseID) error {
+	rev := s.AuthStore().Revision()
+	if !s.AuthStore().IsAuthEnabled() {
+		return nil
+	}
+
+	authInfo, err := s.AuthInfoFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+	if authInfo == nil {
+		return auth.ErrUserEmpty
+	}
+
+	if s.AuthStore().IsAdminPermitted(authInfo) == nil {
+		return nil
+	}
+
+	l := s.lessor.Lookup(leaseID)
+	if l != nil {
+		for _, key := range l.Keys() {
+			if err := s.AuthStore().IsPutPermitted(authInfo, []byte(key)); err != nil {
+				return err
+			}
+		}
+	}
+
+	if rev != s.AuthStore().Revision() {
+		return auth.ErrAuthOldRevision
+	}
+	return nil
+}
+
 func (s *EtcdServer) checkLeaseTimeToLive(ctx context.Context, leaseID lease.LeaseID) (uint64, error) {
 	rev := s.AuthStore().Revision()
 	if !s.AuthStore().IsAuthEnabled() {
@@ -357,6 +408,10 @@ func (s *EtcdServer) checkLeaseTimeToLive(ctx context.Context, leaseID lease.Lea
 	}
 	if authInfo == nil {
 		return rev, auth.ErrUserEmpty
+	}
+
+	if s.AuthStore().IsAdminPermitted(authInfo) == nil {
+		return rev, nil
 	}
 
 	l := s.lessor.Lookup(leaseID)
@@ -434,6 +489,10 @@ func (s *EtcdServer) leaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 }
 
 func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
+	if err := s.requireAuthInfo(ctx); err != nil {
+		return nil, err
+	}
+
 	var rev uint64
 	var err error
 	if r.Keys {
@@ -460,11 +519,50 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 // LeaseLeases is really ListLeases !???
 func (s *EtcdServer) LeaseLeases(ctx context.Context, r *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
 	ls := s.lessor.Leases()
+
+	if err := s.checkLeaseLeases(ctx, ls); err != nil {
+		return nil, err
+	}
+
 	lss := make([]*pb.LeaseStatus, len(ls))
 	for i := range ls {
 		lss[i] = &pb.LeaseStatus{ID: int64(ls[i].ID)}
 	}
 	return &pb.LeaseLeasesResponse{Header: newHeader(s), Leases: lss}, nil
+}
+
+func (s *EtcdServer) checkLeaseLeases(ctx context.Context, leases []*lease.Lease) error {
+	rev := s.AuthStore().Revision()
+
+	if !s.AuthStore().IsAuthEnabled() {
+		return nil
+	}
+
+	authInfo, err := s.AuthInfoFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if authInfo == nil {
+		return auth.ErrUserEmpty
+	}
+
+	if err := s.AuthStore().IsAdminPermitted(authInfo); err == nil {
+		return nil
+	}
+
+	for _, l := range leases {
+		for _, key := range l.Keys() {
+			if err := s.AuthStore().IsRangePermitted(authInfo, []byte(key), []byte{}); err != nil {
+				return err
+			}
+		}
+	}
+
+	if rev != s.AuthStore().Revision() {
+		return auth.ErrAuthOldRevision
+	}
+	return nil
 }
 
 func (s *EtcdServer) waitLeader(ctx context.Context) (*membership.Member, error) {
@@ -1102,4 +1200,20 @@ func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse
 	}
 	resp := pb.DowngradeResponse{Version: s.ClusterVersion().String()}
 	return &resp, nil
+}
+
+func (s *EtcdServer) requireAuthInfo(ctx context.Context) error {
+	if !s.authStore.IsAuthEnabled() {
+		return nil
+	}
+
+	authInfo, err := s.AuthInfoFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if authInfo == nil {
+		return auth.ErrUserEmpty
+	}
+	return nil
 }

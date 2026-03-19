@@ -1136,21 +1136,31 @@ func authTestEndpointHealth(cx ctlCtx) {
 		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
 	}
 
-	// health checking with an ordinary user "succeeds" since permission denial goes through consensus
-	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3EndpointHealth(cx); err != nil {
-		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
-	}
-
 	// succeed if permissions granted for ordinary user
 	cx.user, cx.pass = "root", "root"
 	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "health", "", false}); err != nil {
 		cx.t.Fatal(err)
 	}
+
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3EndpointHealth(cx); err != nil {
-		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
-	}
+	func(cx ctlCtx) {
+		cmdArgs := append(cx.PrefixArgs(), "endpoint", "health")
+		lines := make([]string, cx.epc.Cfg.ClusterSize)
+		for i := range lines {
+			lines[i] = cx.epc.Procs[i].EndpointsGRPC()[0] + " is unhealthy: failed to commit proposal: Unable to fetch the alarm list"
+		}
+
+		proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+		require.NoErrorf(cx.t, err, "failed to spawn endpoint health command")
+		defer func() {
+			proc.Close()
+		}()
+
+		for _, line := range lines {
+			_, lerr := proc.Expect(line)
+			require.NoErrorf(cx.t, lerr, "endpoint health should fail with permission denied error")
+		}
+	}(cx)
 }
 
 func certCNAndUsername(cx ctlCtx, noPassword bool) {
