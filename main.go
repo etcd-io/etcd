@@ -24,5 +24,5 @@ package main
 import "go.etcd.io/etcd/etcdmain"
 
 func main() {
-	etcdmain.Main()
+	etcdmain.Main() // ?
 }
