@@ -143,6 +143,15 @@ func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.Req
 			if err != nil {
 				return err
 			}
+		case *pb.RequestOp_RequestTxn:
+			if tv.RequestTxn == nil {
+				continue
+			}
+
+			err := checkTxnAuth(as, ai, tv.RequestTxn)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
