@@ -156,3 +156,18 @@ func (as *AuthServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChan
 	}
 	return resp, nil
 }
+
+type AuthAdmin struct {
+	ag AuthGetter
+}
+
+// isPermitted verifies the user has admin privilege.
+// Only users with "root" role are permitted.
+func (aa *AuthAdmin) isPermitted(ctx context.Context) error {
+	authInfo, err := aa.ag.AuthInfoFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	return aa.ag.AuthStore().IsAdminPermitted(authInfo)
+}
