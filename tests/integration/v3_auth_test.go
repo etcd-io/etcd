@@ -429,8 +429,9 @@ func TestV3AuthNestedTxnPermissionDenied(t *testing.T) {
 			end:      "zoo",
 		},
 	}
-	authSetupUsers(t, integration.ToGRPC(clus.Client(0)).Auth, users)
-	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
+	anonCli := integration.ToGRPC(clus.Client(0))
+	authSetupUsers(t, anonCli.Auth, users)
+	authSetupRoot(t, anonCli.Auth)
 
 	rootc, err := integration.NewClient(t, clientv3.Config{
 		Endpoints: clus.Client(0).Endpoints(),
@@ -451,27 +452,21 @@ func TestV3AuthNestedTxnPermissionDenied(t *testing.T) {
 	_, err = rootc.Put(t.Context(), "boo", "bar")
 	require.NoError(t, err)
 
-	txn := &pb.TxnRequest{
-		Success: []*pb.RequestOp{
-			{
-				Request: &pb.RequestOp_RequestTxn{
-					RequestTxn: &pb.TxnRequest{
-						Success: []*pb.RequestOp{
-							{
-								Request: &pb.RequestOp_RequestDeleteRange{
-									RequestDeleteRange: &pb.DeleteRangeRequest{
-										Key: []byte("boo"),
-									},
-								},
-							},
-						},
+	_, err = userc.Txn(t.Context()).
+		Then(clientv3.OpTxn(
+			nil,
+			[]clientv3.Op{
+				clientv3.OpTxn(
+					nil,
+					[]clientv3.Op{
+						clientv3.OpDelete("boo"),
 					},
-				},
+					nil,
+				),
 			},
-		},
-	}
+			nil,
+		)).Commit()
 
-	_, err = integration.ToGRPC(userc).KV.Txn(t.Context(), txn)
 	require.Error(t, err)
 	require.Truef(t, eqErrGRPC(err, rpctypes.ErrGRPCPermissionDenied), "got %v, expected %v", err, rpctypes.ErrGRPCPermissionDenied)
 
