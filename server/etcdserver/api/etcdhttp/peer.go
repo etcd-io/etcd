@@ -21,12 +21,14 @@ import (
 	"strconv"
 	"strings"
 
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
+	"google.golang.org/grpc/metadata"
 
 	"go.uber.org/zap"
 )
@@ -135,7 +137,14 @@ func (h *peerMemberPromoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	resp, err := h.server.PromoteMember(r.Context(), id)
+	// reconstruct gRPC metadata from HTTP header (if present) so admin check can pass
+	ctx := r.Context()
+	if token := r.Header.Get("Authorization"); token != "" {
+		md := metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: token})
+		ctx = metadata.NewIncomingContext(ctx, md)
+	}
+
+	resp, err := h.server.PromoteMember(ctx, id)
 	if err != nil {
 		switch err {
 		case membership.ErrIDNotFound:

@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -93,6 +94,14 @@ func TestCtlV3MemberUpdateClientAutoTLS(t *testing.T) {
 }
 func TestCtlV3MemberUpdatePeerTLS(t *testing.T) {
 	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigPeerTLS()))
+}
+
+func TestCtlV3MemberPromoteWithAuthFromLeader(t *testing.T) {
+	testCtl(t, memberPromoteWithAuth(false), withTestTimeout(30*time.Second))
+}
+
+func TestCtlV3MemberPromoteWithAuthFromFollower(t *testing.T) {
+	testCtl(t, memberPromoteWithAuth(true), withTestTimeout(30*time.Second))
 }
 
 func memberListTest(cx ctlCtx) {
@@ -415,5 +424,46 @@ func ensureAllMembersFromV3StoreAreVotingMembers(t *testing.T, dataDir string) {
 
 	for _, m := range members {
 		require.Falsef(t, m.IsLearner, "member is still learner: %+v", m)
+	}
+}
+
+func memberPromoteWithAuth(fromFollower bool) func(cx ctlCtx) {
+	return func(cx ctlCtx) {
+		// Add a regular member
+		_, err := cx.epc.StartNewProc(nil, false, cx.t)
+		require.NoError(cx.t, err)
+
+		var learnerID uint64
+		var addErr error
+		for {
+			// Add a learner once the cluster is healthy
+			learnerID, addErr = cx.epc.StartNewProc(nil, true, cx.t)
+			if addErr != nil {
+				if strings.Contains(addErr.Error(), "etcdserver: unhealthy cluster") {
+					time.Sleep(1 * time.Second)
+					continue
+				}
+			}
+			break
+		}
+		require.NoError(cx.t, addErr)
+
+		leaderIdx := cx.epc.WaitLeader(cx.t)
+		followerIdx := (leaderIdx + 1) % len(cx.epc.Procs)
+
+		require.NoError(cx.t, authEnable(cx))
+		cx.user, cx.pass = "root", "root"
+
+		if fromFollower {
+			_, err = cx.epc.Procs[followerIdx].
+				Etcdctl(e2e.ClientNonTLS, false, false).
+				MemberPromoteWithAuth(learnerID, cx.user, cx.pass)
+		} else {
+			_, err = cx.epc.Procs[leaderIdx].
+				Etcdctl(e2e.ClientNonTLS, false, false).
+				MemberPromoteWithAuth(learnerID, cx.user, cx.pass)
+		}
+
+		require.NoError(cx.t, err)
 	}
 }
