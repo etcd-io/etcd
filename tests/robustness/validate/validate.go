@@ -41,8 +41,9 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 	if len(persistedRequests) != 0 {
 		linearizableOperations = patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
 	}
-
-	result.Linearization = validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
+	fmt.Printf("Ops: %v\n", len(linearizableOperations))
+	keys := model.ModelKeys(linearizableOperations)
+	result.Linearization = validateLinearizableOperationsAndVisualize(lg, keys, linearizableOperations, timeout)
 	result.Linearization.AddToVisualization(operationsForVisualization)
 	// Skip other validations if model is not linearizable, as they are expected to fail too and obfuscate the logs.
 	if result.Linearization.Error() != nil {
@@ -53,11 +54,13 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 		lg.Info("Skipping other validations as persisted requests were empty")
 		return result
 	}
-	replay := model.NewReplay(persistedRequests)
+	replay := model.NewReplay(keys, persistedRequests)
 	result.Watch = validateWatch(lg, cfg, reports, replay)
 	result.Serializable = validateSerializableOperations(lg, serializableOperations, replay)
 	return result
 }
+
+
 
 type Config struct {
 	ExpectRevisionUnique bool

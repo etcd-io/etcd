@@ -16,8 +16,6 @@ package model
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 	"sort"
 	"strings"
 
@@ -88,27 +86,39 @@ func describeEtcdState(state EtcdState) string {
 
 	descHTML = append(descHTML, fmt.Sprintf("<p style=\"margin: 0.25em 0;\">state, rev: %d, compactRev: %d</p>", state.Revision, state.CompactRevision))
 
-	if len(state.KeyValues) > 0 {
+	keys := []string{}
+	for i, v := range state.Values {
+		if v == nil {
+			continue
+		}
+		keys = append(keys, state.Keys[i])
+	}
+
+	if len(keys) > 0 {
 		descHTML = append(descHTML, "keys: <ul style=\"margin: 0.25em 0;\">")
 
-		keys := slices.Collect(maps.Keys(state.KeyValues))
 		sort.Strings(keys)
 		for _, key := range keys {
 			descHTML = append(descHTML, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%s</strong> - ", key))
 
-			value := state.KeyValues[key]
+			value, _ := state.value(key)
 			if value.Value.Value != "" {
 				descHTML = append(descHTML, fmt.Sprintf("val: %q, ", value.Value.Value))
 			}
 			if value.Value.Hash != 0 {
 				descHTML = append(descHTML, fmt.Sprintf("hash: %d, ", value.Value.Hash))
 			}
-			lease := state.KeyLeases[key]
-			if lease != 0 {
-				descHTML = append(descHTML, fmt.Sprintf("lease: %d, ", lease))
-			}
+			descHTML = append(descHTML, fmt.Sprintf("mod: %d, ver: %d", value.ModRevision, value.Version))
 
-			descHTML = append(descHTML, fmt.Sprintf("mod: %d, ver: %d</li>", value.ModRevision, value.Version))
+			for i, k := range state.Keys {
+				if k == key {
+					if state.KeyLeases[i] != 0 {
+						descHTML = append(descHTML, fmt.Sprintf(", lease: %d", state.KeyLeases[i]))
+					}
+					break
+				}
+			}
+			descHTML = append(descHTML, "</li>")
 		}
 
 		descHTML = append(descHTML, "</ul>")
@@ -116,10 +126,13 @@ func describeEtcdState(state EtcdState) string {
 
 	if len(state.Leases) > 0 {
 		descHTML = append(descHTML, "leases: <ul style=\"margin: 0.25em 0;\">")
-		leases := slices.Collect(maps.Keys(state.Leases))
-		slices.Sort(leases)
-		for _, lease := range leases {
-			descHTML = append(descHTML, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%d</strong></li>", lease))
+		leaseIDs := []int64{}
+		for id := range state.Leases {
+			leaseIDs = append(leaseIDs, id)
+		}
+		sort.Slice(leaseIDs, func(i, j int) bool { return leaseIDs[i] < leaseIDs[j] })
+		for _, id := range leaseIDs {
+			descHTML = append(descHTML, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%d</strong></li>", id))
 		}
 		descHTML = append(descHTML, "</ul>")
 	}
@@ -259,7 +272,7 @@ func describeRangeResponse(request RangeOptions, response RangeResponse) string 
 	return describeValueOrHash(response.KVs[0].Value)
 }
 
-func DescribeOperationMetadata(response MaybeEtcdResponse) string {
+func DescribeEtcdOperationMetadata(response MaybeEtcdResponse) string {
 	if response.MemberID != 0 {
 		return fmt.Sprintf("memberID: %s", types.ID(response.MemberID).String())
 	}

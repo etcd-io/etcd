@@ -18,6 +18,7 @@ package validate
 import (
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"testing"
 	"time"
 
@@ -240,7 +241,55 @@ func TestValidateSerializableOperations(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			replay := model.NewReplay(tc.persistedRequests)
+			keysMap := map[string]bool{}
+			for _, req := range tc.persistedRequests {
+				if req.Type == model.Txn {
+					for _, op := range append(req.Txn.OperationsOnSuccess, req.Txn.OperationsOnFailure...) {
+						if op.Type == model.PutOperation {
+							keysMap[op.Put.Key] = true
+						}
+						if op.Type == model.DeleteOperation {
+							keysMap[op.Delete.Key] = true
+						}
+					}
+				}
+			}
+			for _, op := range tc.operations {
+				req := op.Input.(model.EtcdRequest)
+				if req.Type == model.Txn {
+					for _, op := range append(req.Txn.OperationsOnSuccess, req.Txn.OperationsOnFailure...) {
+						if op.Type == model.PutOperation {
+							keysMap[op.Put.Key] = true
+						}
+						if op.Type == model.DeleteOperation {
+							keysMap[op.Delete.Key] = true
+						}
+					}
+				}
+			}
+			// Add keys from range requests as well, just in case
+			for _, op := range tc.operations {
+				req := op.Input.(model.EtcdRequest)
+				if req.Type == model.Range {
+					keysMap[req.Range.Start] = true
+					if req.Range.End != "" {
+						// For range requests, we might not know all keys in the range,
+						// but the model only cares about keys that are in the Keys slice.
+					}
+				}
+			}
+			// Ensure "a", "b", "c" are always there as they are used in most tests
+			keysMap["a"] = true
+			keysMap["b"] = true
+			keysMap["c"] = true
+
+			keys := []string{}
+			for k := range keysMap {
+				keys = append(keys, k)
+			}
+			slices.Sort(keys)
+
+			replay := model.NewReplay(keys, tc.persistedRequests)
 			result := validateSerializableOperations(zaptest.NewLogger(t), tc.operations, replay)
 			if result.Message != tc.expectError {
 				t.Errorf("validateSerializableOperations(...), got: %q, want: %q", result.Message, tc.expectError)
@@ -303,13 +352,13 @@ func BenchmarkValidateLinearizableOperations(b *testing.B) {
 		validateShuffles(b, lg, shuffles, time.Second)
 	})
 	b.Run("SequentialFailedPuts", func(b *testing.B) {
-		history := sequentialFailedPuts(14, 1)
+		history := sequentialFailedPuts(15, 1)
 		shuffles := shuffleHistory(history, b.N)
 		b.ResetTimer()
 		validateShuffles(b, lg, shuffles, time.Second)
 	})
 	b.Run("ConcurrentFailedPutsWithRead", func(b *testing.B) {
-		history := concurrentFailedPutsWithRead(b, 13)
+		history := concurrentFailedPutsWithRead(b, 14)
 		shuffles := shuffleHistory(history, b.N)
 		b.ResetTimer()
 		validateShuffles(b, lg, shuffles, time.Second)
@@ -317,9 +366,10 @@ func BenchmarkValidateLinearizableOperations(b *testing.B) {
 	b.Run("BacktrackingHeavy", func(b *testing.B) {
 		history := backtrackingHeavy(b)
 		shuffles := shuffleHistory(history, b.N)
+		keys := model.ModelKeys(history)
 		b.ResetTimer()
 		for i := 0; i < len(shuffles); i++ {
-			validateLinearizableOperationsAndVisualize(lg, shuffles[i], time.Second)
+			validateLinearizableOperationsAndVisualize(lg, keys, shuffles[i], time.Second)
 		}
 	})
 }
@@ -349,7 +399,8 @@ func concurrentFailedPutsWithRead(b *testing.B, concurrencyCount int) []porcupin
 			Return:   int64(i) + int64(concurrencyCount),
 		})
 	}
-	replay := model.NewReplayFromOperations(ops)
+	keys := model.ModelKeys(ops)
+	replay := model.NewReplayFromOperations(keys, ops)
 	state, err := replay.StateForRevision(int64(concurrencyCount) + 1)
 	if err != nil {
 		b.Fatal(err)
@@ -385,7 +436,8 @@ func sequentialFailedPuts(count int, keyCount int) []porcupine.Operation {
 }
 
 func backtrackingHeavy(b *testing.B) (ops []porcupine.Operation) {
-	for i := 0; i < 30; i++ {
+	backgroundKeys := 30
+	for i := 0; i < backgroundKeys; i++ {
 		ops = append(ops, porcupine.Operation{
 			ClientId: -1,
 			Input:    putRequest(fmt.Sprintf("key%d", i+1000), "value"),
@@ -396,7 +448,7 @@ func backtrackingHeavy(b *testing.B) (ops []porcupine.Operation) {
 	}
 	startTime := int64(1000)
 
-	failedPuts := 4
+	failedPuts := 5
 	for i := 0; i < failedPuts; i++ {
 		ops = append(ops, porcupine.Operation{
 			ClientId: i,
@@ -406,8 +458,9 @@ func backtrackingHeavy(b *testing.B) (ops []porcupine.Operation) {
 			Return:   startTime + 1000 + int64(i),
 		})
 	}
-	replay := model.NewReplayFromOperations(ops)
-	state, err := replay.StateForRevision(int64(30 + 1))
+	keys := model.ModelKeys(ops)
+	replay := model.NewReplayFromOperations(keys, ops)
+	state, err := replay.StateForRevision(int64(backgroundKeys + 1))
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -449,8 +502,9 @@ func shuffleHistory(history []porcupine.Operation, shuffleCount int) [][]porcupi
 }
 
 func validateShuffles(b *testing.B, lg *zap.Logger, shuffles [][]porcupine.Operation, duration time.Duration) {
+	keys := model.ModelKeys(shuffles[0])
 	for i := 0; i < len(shuffles); i++ {
-		result := validateLinearizableOperationsAndVisualize(lg, shuffles[i], duration)
+		result := validateLinearizableOperationsAndVisualize(lg, keys, shuffles[i], duration)
 		if err := result.Error(); err != nil {
 			b.Fatalf("Not linearizable: %v", err)
 		}
