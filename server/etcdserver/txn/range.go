@@ -36,12 +36,31 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 	}(time.Now())
 	txnRead := kv.Read(mvcc.ConcurrentReadTxMode, trace)
 	defer txnRead.End()
-	resp, err = executeRange(ctx, lg, txnRead, r)
+	resp, err = executeRange(ctx, lg, txnRead, r, nil, 0)
 	return resp, trace, err
 }
 
-func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *pb.RangeRequest, header *pb.RequestHeader, thisMemberId uint64) (*pb.RangeResponse, error) {
 	trace := traceutil.Get(ctx)
+
+	// Skip range execution on non-requester members only if:
+	// 1. Request comes from raft (header != nil)
+	// 2. Requester member is known (RequesterMemberId != 0)
+	// 3. This member has a valid ID (thisMemberId != 0)
+	// 4. Range specifies a revision (Revision != 0)
+	//
+	// This optimization avoids executing expensive range queries on
+	// members that didn't receive the request, while ensuring all members
+	// validate via checkRange() for consistency.
+	if header != nil && header.RequesterMemberId != 0 && thisMemberId != 0 &&
+		r.Revision != 0 && thisMemberId != header.RequesterMemberId {
+		// Non-requester member, skip range execution
+		return &pb.RangeResponse{
+			Header: &pb.ResponseHeader{Revision: txnRead.Rev()},
+			Kvs:    nil,
+			Count:  0,
+		}, nil
+	}
 
 	limit := rangeLimit(r)
 	ro := mvcc.RangeOptions{

@@ -39,9 +39,6 @@ func Apply(lg *zap.Logger, e *raftpb.Entry, uberApply UberApplier, w wait.Wait, 
 
 	needResult := w.IsRegistered(id)
 	if needResult || !noSideEffect(&raftReq) {
-		if !needResult && raftReq.Txn != nil {
-			removeNeedlessRangeReqs(raftReq.Txn)
-		}
 		return uberApply.Apply(&raftReq, shouldApplyV3), id
 	}
 	return nil, id
@@ -49,22 +46,4 @@ func Apply(lg *zap.Logger, e *raftpb.Entry, uberApply UberApplier, w wait.Wait, 
 
 func noSideEffect(r *pb.InternalRaftRequest) bool {
 	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil || r.AuthStatus != nil
-}
-
-func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
-	f := func(ops []*pb.RequestOp) []*pb.RequestOp {
-		j := 0
-		for i := 0; i < len(ops); i++ {
-			if _, ok := ops[i].Request.(*pb.RequestOp_RequestRange); ok {
-				continue
-			}
-			ops[j] = ops[i]
-			j++
-		}
-
-		return ops[:j]
-	}
-
-	txn.Success = f(txn.Success)
-	txn.Failure = f(txn.Failure)
 }

@@ -652,7 +652,7 @@ func TestAuthApplierV3_Txn(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, _, err := authApplier.Txn(tc.request)
+			_, _, err := authApplier.Txn(tc.request, nil)
 			require.Equalf(t, tc.expectError, err, "Range returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}

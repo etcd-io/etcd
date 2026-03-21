@@ -42,7 +42,7 @@ type applierV3 interface {
 	Put(p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error)
 	DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error)
-	Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error)
+	Txn(rt *pb.TxnRequest, header *pb.RequestHeader) (*pb.TxnResponse, *traceutil.Trace, error)
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error)
 
 	LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
