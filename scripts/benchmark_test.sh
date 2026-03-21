@@ -28,13 +28,15 @@ fi
 
 BENCHMARK_NAME="$1"
 ARGS="${*:2}"
+ETCD_ARGS="${ETCD_ARGS:-}"
 
 echo "Starting the etcd server..."
 
 # Create a directory for etcd data under /tmp/etcd
 mkdir -p /tmp/etcd
 DATA_DIR=$(mktemp -d /tmp/etcd/data-XXXXXX)
-./bin/etcd --data-dir="$DATA_DIR" > /tmp/etcd.log 2>&1 &
+log_success "Running ./bin/etcd $ETCD_ARGS --data-dir=$DATA_DIR --log-outputs=/tmp/etcd.log"
+./bin/etcd ${ETCD_ARGS} --data-dir="$DATA_DIR" --log-outputs=/tmp/etcd.log &
 etcd_pid=$!
 
 trap 'log_warning -e "Stopping etcd server - PID $etcd_pid";
