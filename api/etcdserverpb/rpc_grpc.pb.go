@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	KV_Range_FullMethodName       = "/etcdserverpb.KV/Range"
+	KV_RangeStream_FullMethodName = "/etcdserverpb.KV/RangeStream"
 	KV_Put_FullMethodName         = "/etcdserverpb.KV/Put"
 	KV_DeleteRange_FullMethodName = "/etcdserverpb.KV/DeleteRange"
 	KV_Txn_FullMethodName         = "/etcdserverpb.KV/Txn"
@@ -33,6 +34,8 @@ const (
 type KVClient interface {
 	// Range gets the keys in the range from the key-value store.
 	Range(ctx context.Context, in *RangeRequest, opts ...grpc.CallOption) (*RangeResponse, error)
+	// RangeStream gets the keys in the range from the key-value store.
+	RangeStream(ctx context.Context, in *RangeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[RangeStreamResponse], error)
 	// Put puts the given key into the key-value store.
 	// A put request increments the revision of the key-value store
 	// and generates one event in the event history.
@@ -69,6 +72,25 @@ func (c *kVClient) Range(ctx context.Context, in *RangeRequest, opts ...grpc.Cal
 	}
 	return out, nil
 }
+
+func (c *kVClient) RangeStream(ctx context.Context, in *RangeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[RangeStreamResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &KV_ServiceDesc.Streams[0], KV_RangeStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[RangeRequest, RangeStreamResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type KV_RangeStreamClient = grpc.ServerStreamingClient[RangeStreamResponse]
 
 func (c *kVClient) Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -116,6 +138,8 @@ func (c *kVClient) Compact(ctx context.Context, in *CompactionRequest, opts ...g
 type KVServer interface {
 	// Range gets the keys in the range from the key-value store.
 	Range(context.Context, *RangeRequest) (*RangeResponse, error)
+	// RangeStream gets the keys in the range from the key-value store.
+	RangeStream(*RangeRequest, grpc.ServerStreamingServer[RangeStreamResponse]) error
 	// Put puts the given key into the key-value store.
 	// A put request increments the revision of the key-value store
 	// and generates one event in the event history.
@@ -145,6 +169,9 @@ type UnimplementedKVServer struct{}
 
 func (UnimplementedKVServer) Range(context.Context, *RangeRequest) (*RangeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Range not implemented")
+}
+func (UnimplementedKVServer) RangeStream(*RangeRequest, grpc.ServerStreamingServer[RangeStreamResponse]) error {
+	return status.Error(codes.Unimplemented, "method RangeStream not implemented")
 }
 func (UnimplementedKVServer) Put(context.Context, *PutRequest) (*PutResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Put not implemented")
@@ -196,6 +223,17 @@ func _KV_Range_Handler(srv interface{}, ctx context.Context, dec func(interface{
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _KV_RangeStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(RangeRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(KVServer).RangeStream(m, &grpc.GenericServerStream[RangeRequest, RangeStreamResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type KV_RangeStreamServer = grpc.ServerStreamingServer[RangeStreamResponse]
 
 func _KV_Put_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PutRequest)
@@ -297,7 +335,13 @@ var KV_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KV_Compact_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "RangeStream",
+			Handler:       _KV_RangeStream_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "rpc.proto",
 }
 

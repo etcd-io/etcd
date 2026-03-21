@@ -16,6 +16,8 @@ package clientv3
 
 import (
 	"context"
+	"errors"
+	"io"
 
 	"google.golang.org/grpc"
 
@@ -24,11 +26,12 @@ import (
 )
 
 type (
-	CompactResponse pb.CompactionResponse
-	PutResponse     pb.PutResponse
-	GetResponse     pb.RangeResponse
-	DeleteResponse  pb.DeleteRangeResponse
-	TxnResponse     pb.TxnResponse
+	CompactResponse   pb.CompactionResponse
+	PutResponse       pb.PutResponse
+	GetResponse       pb.RangeResponse
+	GetStreamResponse <-chan MaybeRangeStreamResponse
+	DeleteResponse    pb.DeleteRangeResponse
+	TxnResponse       pb.TxnResponse
 )
 
 type KV interface {
@@ -48,6 +51,16 @@ type KV interface {
 	// When passed WithSort(), the keys will be sorted.
 	Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error)
 
+	// RangeStream retrieves keys.
+	// By default, will return the value for "key", if any.
+	// When passed WithRange(end), will return the keys in the range [key, end).
+	// When passed WithFromKey(), returns keys greater than or equal to key.
+	// When passed WithRev(rev) with rev > 0, retrieves keys at the given revision;
+	// if the required revision is compacted, the request will fail with ErrCompacted .
+	// When passed WithLimit(limit), the number of returned keys is bounded by limit.
+	// When passed WithSort(), the keys will be sorted.
+	GetStream(ctx context.Context, key string, opts ...OpOption) (GetStreamResponse, error)
+
 	// Delete deletes a key, or optionally using WithRange(end), [key, end).
 	Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error)
 
@@ -63,6 +76,62 @@ type KV interface {
 
 	// Txn creates a transaction.
 	Txn(ctx context.Context) Txn
+}
+
+type MaybeRangeStreamResponse struct {
+	*pb.RangeStreamResponse
+	Err error
+}
+
+func GetStreamToGetResponse(stream GetStreamResponse) (*GetResponse, error) {
+	resp := &GetResponse{Header: &pb.ResponseHeader{}}
+	for r := range stream {
+		if r.Err != nil {
+			return nil, r.Err
+		}
+		mergeRangeStreamChunk((*pb.RangeResponse)(resp), r.RangeStreamResponse.RangeResponse)
+	}
+	return resp, nil
+}
+
+func RangeStreamToRangeResponse(c pb.KV_RangeStreamClient) (*pb.RangeResponse, error) {
+	resp := &pb.RangeResponse{Header: &pb.ResponseHeader{}}
+	for {
+		r, err := c.Recv()
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				return nil, err
+			}
+			return resp, nil
+		}
+		mergeRangeStreamChunk(resp, r.RangeResponse)
+	}
+}
+
+// mergeRangeStreamChunk merges a single RangeStream chunk into an accumulator.
+// Non-zero header fields, Count, and More overwrite; Kvs are appended.
+func mergeRangeStreamChunk(dst *pb.RangeResponse, src *pb.RangeResponse) {
+	if src.Header != nil {
+		if src.Header.ClusterId != 0 {
+			dst.Header.ClusterId = src.Header.ClusterId
+		}
+		if src.Header.MemberId != 0 {
+			dst.Header.MemberId = src.Header.MemberId
+		}
+		if src.Header.RaftTerm != 0 {
+			dst.Header.RaftTerm = src.Header.RaftTerm
+		}
+		if src.Header.Revision != 0 {
+			dst.Header.Revision = src.Header.Revision
+		}
+	}
+	if src.Count != 0 {
+		dst.Count = src.Count
+	}
+	if src.More {
+		dst.More = true
+	}
+	dst.Kvs = append(dst.Kvs, src.Kvs...)
 }
 
 type OpResponse struct {
@@ -122,6 +191,33 @@ func (kv *kv) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutR
 func (kv *kv) Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error) {
 	r, err := kv.Do(ctx, OpGet(key, opts...))
 	return r.get, ContextError(ctx, err)
+}
+
+func (kv *kv) GetStream(ctx context.Context, key string, opts ...OpOption) (GetStreamResponse, error) {
+	op := OpGet(key, opts...)
+	c, err := kv.remote.RangeStream(ctx, op.toRangeRequest(), kv.callOpts...)
+	if err != nil {
+		return nil, ContextError(ctx, err)
+	}
+	respCh := make(chan MaybeRangeStreamResponse, 1)
+	go func() {
+		for {
+			resp, err := c.Recv()
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					respCh <- MaybeRangeStreamResponse{
+						Err: err,
+					}
+				}
+				close(respCh)
+				return
+			}
+			respCh <- MaybeRangeStreamResponse{
+				RangeStreamResponse: resp,
+			}
+		}
+	}()
+	return respCh, nil
 }
 
 func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error) {

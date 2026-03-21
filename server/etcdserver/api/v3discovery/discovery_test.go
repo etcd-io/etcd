@@ -764,6 +764,10 @@ func (fkv *fakeBaseKV) Txn(ctx context.Context) clientv3.Txn {
 	return nil
 }
 
+func (fkv *fakeBaseKV) GetStream(ctx context.Context, key string, opts ...clientv3.OpOption) (clientv3.GetStreamResponse, error) {
+	return nil, nil
+}
+
 // fakeBaseWatcher is the base struct implementing the interface `clientv3.Watcher`.
 type fakeBaseWatcher struct{}
 
