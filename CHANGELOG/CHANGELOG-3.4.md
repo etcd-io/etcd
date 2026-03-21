@@ -4,17 +4,24 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ---
 
-## v3.4.42 (TBC)
+## v3.4.43 (TBC)
+
+---
+
+## v3.4.42 (2026-03-20)
 
 ### etcd server
 
 - Fix [Race between read index and leader change](https://github.com/etcd-io/etcd/pull/21385)
 - Fix [Stale reads caused by process pausing](https://github.com/etcd-io/etcd/pull/21423)
+- Guard unauthenticated endpoints with auth checks to fix [Authorization bypasses in multiple APIs (CVE-2026-33413)](https://github.com/etcd-io/etcd/security/advisories/GHSA-q8m4-xhhv-38mg)
+- Enforce auth checks for nested txn ops to fix [Nested etcd transactions bypass RBAC authorization checks (CVE-2026-33343)](https://github.com/etcd-io/etcd/security/advisories/GHSA-rfx7-8w68-q57q)
 
 ### Dependencies
 
-- Compile binaries using [go 1.25.7](https://github.com/etcd-io/etcd/pull/21406)
+- Compile binaries using [go 1.25.8](https://github.com/etcd-io/etcd/pull/21461)
 - [Bump golang.org/x/net to v0.51.0 to resolve GO-2026-4559](https://github.com/etcd-io/etcd/pull/21444)
+- [Bump google.golang.org/grpc to 1.79.3 to resolve CVE-2026-33186](https://github.com/etcd-io/etcd/pull/21502)
 
 ---
 
