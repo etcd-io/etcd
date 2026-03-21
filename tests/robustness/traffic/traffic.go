@@ -16,6 +16,8 @@ package traffic
 
 import (
 	"context"
+	"math/rand"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -139,6 +141,14 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
+			if profile.Watch != nil && profile.Watch.EndpointSwitchPeriod != nil {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					runEndpointSwitchLoop(ctx, c, endpoints, *profile.Watch.EndpointSwitchPeriod, finish)
+				}()
+			}
+
 			traffic.RunKeyValueLoop(ctx, RunTrafficLoopParam{
 				Client:                             c,
 				QPSLimiter:                         limiter,
@@ -177,6 +187,15 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			go func(c *client.RecordingClient) {
 				defer wg.Done()
 				defer c.Close()
+
+				if profile.Watch != nil && profile.Watch.EndpointSwitchPeriod != nil {
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						runEndpointSwitchLoop(ctx, c, endpoints, *profile.Watch.EndpointSwitchPeriod, finish)
+					}()
+				}
+
 				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
 					Config:     *profile.Watch,
 					Client:     c,
@@ -375,9 +394,10 @@ type KeyValue struct {
 }
 
 type Watch struct {
-	MemberClientCount   int
-	ClusterClientCount  int
-	RevisionOffsetRange Range
+	MemberClientCount    int
+	ClusterClientCount   int
+	RevisionOffsetRange  Range
+	EndpointSwitchPeriod *time.Duration
 }
 
 type Compaction struct {
@@ -494,4 +514,21 @@ func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []
 		break
 	}
 	return nil
+}
+
+func runEndpointSwitchLoop(ctx context.Context, c *client.RecordingClient, endpoints []string, period time.Duration, finish <-chan struct{}) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-finish:
+			return
+		case <-time.After(period):
+			shuffledEndpoints := slices.Clone(endpoints)
+			rand.Shuffle(len(shuffledEndpoints), func(i, j int) {
+				shuffledEndpoints[i], shuffledEndpoints[j] = shuffledEndpoints[j], shuffledEndpoints[i]
+			})
+			c.SetEndpoints(shuffledEndpoints...)
+		}
+	}
 }
