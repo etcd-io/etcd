@@ -42,6 +42,8 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.27 (2026-02-13)
 
+This update release preserves the endpoint Metadata field, although it will not be passed to grpc-go.  It also includes a golang update in order to prevent security vulnerabilities [CVE-2025-47914](https://github.com/advisories/GHSA-f6x5-jh6r-wrfv), [CVE-2025-61732](https://github.com/advisories/GHSA-8jvr-vh7g-f8gx), and [CVE-2025-58181](https://github.com/advisories/GHSA-j5w8-q4qc-rx2x).
+
 ### Package `clientv3`
 
 - [Remove the use of grpc-go's Metadata field](https://github.com/etcd-io/etcd/pull/21242)
@@ -844,4 +846,3 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 
 ---
-
