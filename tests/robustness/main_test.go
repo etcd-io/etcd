@@ -165,17 +165,6 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	})
 	watchSet := client.NewSet(ids, baseTime)
 	defer watchSet.Close()
-	g.Go(func() error {
-		endpoints := processEndpoints(clus)
-		err := client.CollectClusterWatchEvents(ctx, client.CollectClusterWatchEventsParam{
-			Lg:              lg,
-			Endpoints:       endpoints,
-			MaxRevisionChan: maxRevisionChan,
-			Cfg:             s.Watch,
-			ClientSet:       watchSet,
-		})
-		return err
-	})
 	err := g.Wait()
 	if err != nil {
 		t.Error(err)

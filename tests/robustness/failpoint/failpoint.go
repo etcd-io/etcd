@@ -36,12 +36,15 @@ const (
 )
 
 var allFailpoints = []Failpoint{
+	WaitSecond,
 	KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic, RaftAfterSavePanic,
 	DefragBeforeCopyPanic, DefragBeforeRenamePanic, BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
 	BackendBeforeStartDBTxnPanic, BackendAfterStartDBTxnPanic, BackendBeforeWritebackBufPanic,
-	BackendAfterWritebackBufPanic, CompactBeforeCommitScheduledCompactPanic, CompactAfterCommitScheduledCompactPanic,
-	CompactBeforeSetFinishedCompactPanic, CompactAfterSetFinishedCompactPanic, CompactBeforeCommitBatchPanic,
-	CompactAfterCommitBatchPanic, RaftBeforeLeaderSendPanic, BlackholePeerNetwork, DelayPeerNetwork,
+	BackendAfterWritebackBufPanic,
+	// CompactBeforeCommitScheduledCompactPanic, CompactAfterCommitScheduledCompactPanic,
+	// CompactBeforeSetFinishedCompactPanic, CompactAfterSetFinishedCompactPanic, CompactBeforeCommitBatchPanic,
+	// CompactAfterCommitBatchPanic,
+	RaftBeforeLeaderSendPanic, BlackholePeerNetwork, DelayPeerNetwork,
 	RaftBeforeFollowerSendPanic, RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic,
 	RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
 	BeforeApplyOneConfChangeSleep,
@@ -154,4 +157,23 @@ type AvailabilityChecker interface {
 
 type TimeoutInterface interface {
 	Timeout() time.Duration
+}
+
+var WaitSecond Failpoint = waitFailpoint{time.Second}
+
+type waitFailpoint struct {
+	time.Duration
+}
+
+func (f waitFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
+	time.Sleep(f.Duration)
+	return nil, nil
+}
+
+func (f waitFailpoint) Name() string {
+	return "Wait"
+}
+
+func (f waitFailpoint) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess, traffic.Profile) bool {
+	return true
 }

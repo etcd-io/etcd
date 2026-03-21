@@ -16,6 +16,8 @@ package cache
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -501,6 +503,7 @@ type mockWatcher struct {
 	wg           sync.WaitGroup
 	mu           sync.Mutex
 	lastStartRev int64
+	progressErr  error
 }
 
 func newMockWatcher(buf int) *mockWatcher {
@@ -522,7 +525,7 @@ func (m *mockWatcher) Watch(ctx context.Context, _ string, opts ...clientv3.OpOp
 	return out
 }
 
-func (m *mockWatcher) RequestProgress(_ context.Context) error { return nil }
+func (m *mockWatcher) RequestProgress(_ context.Context) error { return m.progressErr }
 
 func (m *mockWatcher) Close() error {
 	m.closeOnce.Do(func() { close(m.responses) })
@@ -600,6 +603,7 @@ func (m *mockWatcher) streamResponses(ctx context.Context, out chan<- clientv3.W
 type kvStub struct {
 	queued      []*clientv3.GetResponse
 	defaultResp *clientv3.GetResponse
+	defaultErr  error
 }
 
 func newKVStub(resps ...*clientv3.GetResponse) *kvStub {
@@ -610,7 +614,11 @@ func newKVStub(resps ...*clientv3.GetResponse) *kvStub {
 	}
 }
 
-func (s *kvStub) Get(ctx context.Context, key string, _ ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+func (s *kvStub) Get(_ context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+	if s.defaultErr != nil {
+		return nil, s.defaultErr
+	}
+
 	if len(s.queued) > 0 {
 		next := s.queued[0]
 		s.queued = s.queued[1:]
@@ -690,5 +698,158 @@ func verifySnapshot(t *testing.T, cache *Cache, want []*mvccpb.KeyValue) {
 
 	if diff := cmp.Diff(want, resp.Kvs); diff != "" {
 		t.Fatalf("cache snapshot mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func newCacheForWaitTest(serverRev int64, localRev int64, pr progressRequestor) (*Cache, *store) {
+	cfg := defaultConfig()
+	st := newStore(cfg.BTreeDegree, cfg.HistoryWindowSize)
+	if localRev > 0 {
+		st.Restore(nil, localRev)
+	}
+	kv := &kvStub{
+		defaultResp: &clientv3.GetResponse{Header: &pb.ResponseHeader{Revision: serverRev}},
+	}
+	return &Cache{
+		kv:                kv,
+		store:             st,
+		prefix:            "/",
+		progressRequestor: pr,
+		cfg:               cfg,
+	}, st
+}
+
+func waitingCount(p *conditionalProgressRequestor) int32 {
+	p.mux.Lock()
+	defer p.mux.Unlock()
+	return p.waiting
+}
+
+func TestWaitTillRevision(t *testing.T) {
+	t.Run("cache_already_caught_up", func(t *testing.T) {
+		c, _ := newCacheForWaitTest(10, 10, newTestConditionalProgressRequestor(&mockProgressNotifier{}))
+
+		if err := c.waitTillRevision(context.Background(), 10); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("local_rev_sufficient_skips_server_call", func(t *testing.T) {
+		cfg := defaultConfig()
+		st := newStore(cfg.BTreeDegree, cfg.HistoryWindowSize)
+		st.Restore(nil, 10)
+		c := &Cache{
+			kv:                &kvStub{defaultErr: fmt.Errorf("should not be called")},
+			store:             st,
+			prefix:            "/",
+			progressRequestor: newTestConditionalProgressRequestor(&mockProgressNotifier{}),
+			cfg:               cfg,
+		}
+
+		if err := c.waitTillRevision(context.Background(), 5); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("cache_catches_up", func(t *testing.T) {
+		c, st := newCacheForWaitTest(15, 5, newTestConditionalProgressRequestor(&mockProgressNotifier{}))
+
+		go func() {
+			time.Sleep(200 * time.Millisecond)
+			st.Restore(nil, 10)
+		}()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := c.waitTillRevision(ctx, 10); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("rev_zero_cache_caught_up", func(t *testing.T) {
+		c, _ := newCacheForWaitTest(10, 10, newTestConditionalProgressRequestor(&mockProgressNotifier{}))
+
+		if err := c.waitTillRevision(context.Background(), 0); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("rev_zero_waits_for_server_rev", func(t *testing.T) {
+		c, st := newCacheForWaitTest(10, 5, newTestConditionalProgressRequestor(&mockProgressNotifier{}))
+
+		go func() {
+			time.Sleep(200 * time.Millisecond)
+			st.Restore(nil, 10)
+		}()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := c.waitTillRevision(ctx, 0); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("context_cancelled", func(t *testing.T) {
+		c, _ := newCacheForWaitTest(10, 5, newTestConditionalProgressRequestor(&mockProgressNotifier{}))
+
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		defer cancel()
+		err := c.waitTillRevision(ctx, 10)
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("got %v, want context.DeadlineExceeded", err)
+		}
+	})
+
+	t.Run("timeout", func(t *testing.T) {
+		c, _ := newCacheForWaitTest(10, 5, newTestConditionalProgressRequestor(&mockProgressNotifier{}))
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		err := c.waitTillRevision(ctx, 10)
+		if !errors.Is(err, ErrCacheTimeout) {
+			t.Fatalf("got %v, want ErrCacheTimeout", err)
+		}
+	})
+}
+
+func TestWaitTillRevisionIncrementsActiveWaiters(t *testing.T) {
+	p := newTestConditionalProgressRequestor(&mockProgressNotifier{})
+	c, st := newCacheForWaitTest(15, 5, p)
+
+	if waitingCount(p) != 0 {
+		t.Fatal("expected 0 active waiters before waitTillRevision")
+	}
+
+	waitStarted := make(chan struct{})
+	go func() {
+		for waitingCount(p) == 0 {
+			time.Sleep(10 * time.Millisecond)
+		}
+		close(waitStarted)
+	}()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- c.waitTillRevision(context.Background(), 10)
+	}()
+
+	select {
+	case <-waitStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("activeWaiters never incremented")
+	}
+
+	if n := waitingCount(p); n != 1 {
+		t.Fatalf("expected 1 active waiter during poll, got %d", n)
+	}
+
+	st.Restore(nil, 15)
+
+	if err := <-errCh; err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if n := waitingCount(p); n != 0 {
+		t.Fatalf("expected 0 active waiters after completion, got %d", n)
 	}
 }
