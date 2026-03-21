@@ -16,6 +16,7 @@ package embed
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -941,6 +942,124 @@ func TestFastLeaseKeepAliveValidate(t *testing.T) {
 			cfg.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(tc.serverFeatureGates)
 			require.NoError(t, cfg.Validate())
 			require.Equal(t, tc.expectEnabled, cfg.ServerFeatureGate.Enabled(features.FastLeaseKeepAlive))
+		})
+	}
+}
+
+func TestConfigFileDurationFields(t *testing.T) {
+	testCases := []struct {
+		name      string
+		config    map[string]any
+		expectErr bool
+		check     func(t *testing.T, cfg *Config)
+	}{
+		{
+			name: "string duration for watch-progress-notify-interval",
+			config: map[string]any{
+				"watch-progress-notify-interval": "1m",
+			},
+			check: func(t *testing.T, cfg *Config) {
+				require.Equal(t, time.Minute, cfg.WatchProgressNotifyInterval)
+			},
+		},
+		{
+			name: "numeric duration (nanoseconds) for watch-progress-notify-interval",
+			config: map[string]any{
+				"watch-progress-notify-interval": float64(time.Minute),
+			},
+			check: func(t *testing.T, cfg *Config) {
+				require.Equal(t, time.Minute, cfg.WatchProgressNotifyInterval)
+			},
+		},
+		{
+			name: "string durations for multiple fields",
+			config: map[string]any{
+				"watch-progress-notify-interval": "30s",
+				"backend-batch-interval":         "500ms",
+				"grpc-keepalive-min-time":        "5s",
+				"grpc-keepalive-interval":        "2h",
+				"grpc-keepalive-timeout":         "20s",
+				"corrupt-check-time":             "4m",
+				"compact-hash-check-time":        "2m",
+				"compaction-sleep-interval":      "100ms",
+				"warning-apply-duration":         "200ms",
+				"warning-unary-request-duration":  "300ms",
+				"downgrade-check-time":           "5s",
+			},
+			check: func(t *testing.T, cfg *Config) {
+				require.Equal(t, 30*time.Second, cfg.WatchProgressNotifyInterval)
+				require.Equal(t, 500*time.Millisecond, cfg.BackendBatchInterval)
+				require.Equal(t, 5*time.Second, cfg.GRPCKeepAliveMinTime)
+				require.Equal(t, 2*time.Hour, cfg.GRPCKeepAliveInterval)
+				require.Equal(t, 20*time.Second, cfg.GRPCKeepAliveTimeout)
+				require.Equal(t, 4*time.Minute, cfg.CorruptCheckTime)
+				require.Equal(t, 2*time.Minute, cfg.CompactHashCheckTime)
+				require.Equal(t, 100*time.Millisecond, cfg.CompactionSleepInterval)
+				require.Equal(t, 200*time.Millisecond, cfg.WarningApplyDuration)
+				require.Equal(t, 300*time.Millisecond, cfg.WarningUnaryRequestDuration)
+				require.Equal(t, 5*time.Second, cfg.DowngradeCheckTime)
+			},
+		},
+		{
+			name: "invalid duration string",
+			config: map[string]any{
+				"watch-progress-notify-interval": "not-a-duration",
+			},
+			expectErr: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			b, err := json.Marshal(tc.config)
+			require.NoError(t, err)
+
+			tmpfile := mustCreateCfgFile(t, b)
+			defer os.Remove(tmpfile.Name())
+
+			cfg, err := ConfigFromFile(tmpfile.Name())
+			if tc.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			tc.check(t, cfg)
+		})
+	}
+}
+
+func TestPreprocessDurationFields(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     string
+		expectErr bool
+	}{
+		{
+			name:  "string duration value",
+			input: `{"watch-progress-notify-interval": "1m"}`,
+		},
+		{
+			name:  "numeric duration value passes through",
+			input: `{"watch-progress-notify-interval": 60000000000}`,
+		},
+		{
+			name:  "non-duration field unchanged",
+			input: `{"name": "my-etcd"}`,
+		},
+		{
+			name:      "invalid duration string",
+			input:     `{"watch-progress-notify-interval": "invalid"}`,
+			expectErr: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := preprocessDurationFields([]byte(tc.input))
+			if tc.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.NotEmpty(t, result)
 		})
 	}
 }
