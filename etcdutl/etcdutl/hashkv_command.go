@@ -15,6 +15,8 @@
 package etcdutl
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
@@ -54,6 +56,9 @@ type HashKV struct {
 }
 
 func calculateHashKV(dbPath string, rev int64) (HashKV, error) {
+	if _, err := os.Stat(dbPath); err != nil {
+		return HashKV{}, err
+	}
 	b := backend.NewDefaultBackend(zap.NewNop(), dbPath, backend.WithTimeout(FlockTimeout))
 	// Since `etcdutl hashkv` only hashes the keyspace and ignores leases, we use a simple lessor to simplify the implementation.
 	st := mvcc.NewStore(zap.NewNop(), b, &SimpleLessor{}, mvcc.StoreConfig{})
