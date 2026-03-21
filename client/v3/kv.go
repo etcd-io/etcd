@@ -149,6 +149,10 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 	var err error
 	switch op.t {
 	case tRange:
+		if len(op.key) == 0 {
+			err = rpctypes.ErrEmptyKey
+			break
+		}
 		if op.IsSortOptionValid() {
 			var resp *pb.RangeResponse
 			resp, err = kv.remote.Range(ctx, op.toRangeRequest(), kv.callOpts...)
@@ -159,6 +163,10 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 			err = rpctypes.ErrInvalidSortOption
 		}
 	case tPut:
+		if len(op.key) == 0 {
+			err = rpctypes.ErrEmptyKey
+			break
+		}
 		var resp *pb.PutResponse
 		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID), PrevKv: op.prevKV, IgnoreValue: op.ignoreValue, IgnoreLease: op.ignoreLease}
 		resp, err = kv.remote.Put(ctx, r, kv.callOpts...)
@@ -166,6 +174,10 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 			return OpResponse{put: (*PutResponse)(resp)}, nil
 		}
 	case tDeleteRange:
+		if len(op.key) == 0 {
+			err = rpctypes.ErrEmptyKey
+			break
+		}
 		var resp *pb.DeleteRangeResponse
 		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
 		resp, err = kv.remote.DeleteRange(ctx, r, kv.callOpts...)
