@@ -16,6 +16,8 @@ package cache
 
 import "time"
 
+const revisionPollInterval = 50 * time.Millisecond
+
 type Config struct {
 	// PerWatcherBufferSize caps each watcher’s buffered channel.
 	// Bigger values tolerate brief client slow-downs at the cost of extra memory.
@@ -31,20 +33,26 @@ type Config struct {
 	MaxBackoff time.Duration
 	// GetTimeout is the timeout applied to the first Get() used to bootstrap the cache.
 	GetTimeout time.Duration
+	// WaitTimeout is the maximum time a consistent Get will wait for the local cache to catch up before returning ErrCacheTimeout.
+	WaitTimeout time.Duration
 	// BTreeDegree controls the degree (branching factor) of the in-memory B-tree store.
 	BTreeDegree int
+	// ProgressRequestInterval controls how often progress notifications are requested from the etcd watch stream during a consistent Get.
+	ProgressRequestInterval time.Duration
 }
 
 // TODO: tune via performance/load tests.
 func defaultConfig() Config {
 	return Config{
-		PerWatcherBufferSize: 10,
-		HistoryWindowSize:    2048,
-		ResyncInterval:       50 * time.Millisecond,
-		InitialBackoff:       50 * time.Millisecond,
-		MaxBackoff:           2 * time.Second,
-		GetTimeout:           5 * time.Second,
-		BTreeDegree:          32,
+		PerWatcherBufferSize:    10,
+		HistoryWindowSize:       2048,
+		ResyncInterval:          50 * time.Millisecond,
+		InitialBackoff:          50 * time.Millisecond,
+		MaxBackoff:              2 * time.Second,
+		GetTimeout:              5 * time.Second,
+		WaitTimeout:             3 * time.Second,
+		BTreeDegree:             32,
+		ProgressRequestInterval: 100 * time.Millisecond,
 	}
 }
 
@@ -76,4 +84,12 @@ func WithGetTimeout(d time.Duration) Option {
 
 func WithBTreeDegree(n int) Option {
 	return func(c *Config) { c.BTreeDegree = n }
+}
+
+func WithProgressRequestInterval(d time.Duration) Option {
+	return func(c *Config) { c.ProgressRequestInterval = d }
+}
+
+func WithWaitTimeout(d time.Duration) Option {
+	return func(c *Config) { c.WaitTimeout = d }
 }
