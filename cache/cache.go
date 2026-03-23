@@ -23,6 +23,7 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -31,24 +32,33 @@ var (
 	ErrUnsupportedRequest = errors.New("cache: unsupported request parameters")
 	// Returned when the requested key or key‑range is invalid (empty or reversed) or lies outside c.prefix.
 	ErrKeyRangeInvalid = errors.New("cache: invalid or out‑of‑range key range")
+	// Returned when the cache timed out waiting for the requested revision
+	ErrCacheTimeout = errors.New("cache: timed out waiting for revision")
 )
 
 // Cache buffers a single etcd Watch for a given key‐prefix and fan‑outs local watchers.
+//
+// Note: gRPC proxy is not supported. Cache relies on RequestProgress RPCs,
+// which the gRPC proxy does not forward.
 type Cache struct {
-	prefix      string // prefix is the key-prefix this shard is responsible for ("" = root).
-	cfg         Config // immutable runtime configuration
-	watcher     clientv3.Watcher
-	kv          clientv3.KV
-	demux       *demux // demux fans incoming events out to active watchers and manages resync.
-	store       *store // last‑observed snapshot
-	ready       *ready
-	stop        context.CancelFunc
-	waitGroup   sync.WaitGroup
-	internalCtx context.Context
+	prefix            string // prefix is the key-prefix this shard is responsible for ("" = root).
+	cfg               Config // immutable runtime configuration
+	watcher           clientv3.Watcher
+	kv                clientv3.KV
+	demux             *demux // demux fans incoming events out to active watchers and manages resync.
+	store             *store // last‑observed snapshot
+	ready             *ready
+	stop              context.CancelFunc
+	waitGroup         sync.WaitGroup
+	internalCtx       context.Context
+	progressRequestor progressRequestor
 }
 
 // New builds a cache shard that watches only the requested prefix.
 // For the root cache pass "".
+//
+// Note: gRPC proxy is not supported. Cache relies on RequestProgress RPCs,
+// which the gRPC proxy does not forward.
 func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error) {
 	cfg := defaultConfig()
 	for _, opt := range opts {
@@ -65,22 +75,27 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 	internalCtx, cancel := context.WithCancel(context.Background())
 
 	cache := &Cache{
-		prefix:      prefix,
-		cfg:         cfg,
-		watcher:     client.Watcher,
-		kv:          client.KV,
-		store:       newStore(cfg.BTreeDegree, cfg.HistoryWindowSize),
-		ready:       newReady(),
-		stop:        cancel,
-		internalCtx: internalCtx,
+		prefix:            prefix,
+		cfg:               cfg,
+		watcher:           client.Watcher,
+		kv:                client.KV,
+		store:             newStore(cfg.BTreeDegree, cfg.HistoryWindowSize),
+		ready:             newReady(),
+		stop:              cancel,
+		internalCtx:       internalCtx,
+		progressRequestor: newConditionalProgressRequestor(client.Watcher, realClock{}, cfg.ProgressRequestInterval),
 	}
 
 	cache.demux = NewDemux(internalCtx, &cache.waitGroup, cfg.HistoryWindowSize, cfg.ResyncInterval)
 
-	cache.waitGroup.Add(1)
+	cache.waitGroup.Add(2)
 	go func() {
 		defer cache.waitGroup.Done()
 		cache.getWatchLoop()
+	}()
+	go func() {
+		defer cache.waitGroup.Done()
+		cache.progressRequestor.run(internalCtx)
 	}()
 
 	return cache, nil
@@ -161,6 +176,19 @@ func (c *Cache) Get(ctx context.Context, key string, opts ...clientv3.OpOption) 
 	endKey := op.RangeBytes()
 	requestedRev := op.Rev()
 
+	if !op.IsSerializable() {
+		serverRev, err := c.serverRevision(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if requestedRev > serverRev {
+			return nil, rpctypes.ErrFutureRev
+		}
+		if err = c.waitTillRevision(ctx, serverRev); err != nil {
+			return nil, err
+		}
+	}
+
 	kvs, latestRev, err := c.store.Get(startKey, endKey, requestedRev)
 	if err != nil {
 		return nil, err
@@ -190,6 +218,45 @@ func (c *Cache) WaitForRevision(ctx context.Context, rev int64) error {
 		}
 		select {
 		case <-time.After(10 * time.Millisecond):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func (c *Cache) serverRevision(ctx context.Context) (int64, error) {
+	key := c.prefix
+	if key == "" {
+		key = "/"
+	}
+	resp, err := c.kv.Get(ctx, key, clientv3.WithLimit(1), clientv3.WithCountOnly())
+	if err != nil {
+		return 0, err
+	}
+	return resp.Header.Revision, nil
+}
+
+func (c *Cache) waitTillRevision(ctx context.Context, rev int64) error {
+	if c.store.LatestRev() >= rev {
+		return nil
+	}
+
+	c.progressRequestor.add()
+	defer c.progressRequestor.remove()
+
+	ticker := time.NewTicker(revisionPollInterval)
+	defer ticker.Stop()
+	timeout := time.After(c.cfg.WaitTimeout)
+
+	// TODO: rewrite from periodic polling to passive notification
+	for {
+		if c.store.LatestRev() >= rev {
+			return nil
+		}
+		select {
+		case <-ticker.C:
+		case <-timeout:
+			return ErrCacheTimeout
 		case <-ctx.Done():
 			return ctx.Err()
 		}
@@ -358,9 +425,6 @@ func (c *Cache) validateGet(key string, op clientv3.Op) (KeyPredicate, error) {
 		return nil, fmt.Errorf("%w: MinCreateRev(%d) not supported", ErrUnsupportedRequest, op.MinCreateRev())
 	case op.MaxCreateRev() != 0:
 		return nil, fmt.Errorf("%w: MaxCreateRev(%d) not supported", ErrUnsupportedRequest, op.MaxCreateRev())
-	// cache now only serves serializable reads of the latest revision (rev == 0).
-	case !op.IsSerializable():
-		return nil, fmt.Errorf("%w: non-serializable request", ErrUnsupportedRequest)
 	}
 
 	startKey := []byte(key)
