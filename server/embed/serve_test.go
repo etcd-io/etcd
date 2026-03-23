@@ -29,10 +29,10 @@ func TestStartEtcdWrongToken(t *testing.T) {
 
 	cfg := NewConfig()
 
-	testURLConfg := testutil.NewConfigTestURLs()
-	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = testURLConfg.ClientURLs, testURLConfg.ClientURLs
-	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = testURLConfg.PeerURLs, testURLConfg.PeerURLs
-	cfg.InitialCluster = testURLConfg.InitialCluster
+	testURLConfig := testutil.NewConfigTestURLs()
+	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = testURLConfig.ClientURLs, testURLConfig.ClientURLs
+	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = testURLConfig.PeerURLs, testURLConfig.PeerURLs
+	cfg.InitialCluster = testURLConfig.InitialCluster
 
 	cfg.Dir = tdir
 	cfg.AuthToken = "wrong-token"

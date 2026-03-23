@@ -25,10 +25,10 @@ func TestEnableAuth(t *testing.T) {
 	tdir := t.TempDir()
 	cfg := NewConfig()
 
-	testURLConfg := testutil.NewConfigTestURLs()
-	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = testURLConfg.ClientURLs, testURLConfg.ClientURLs
-	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = testURLConfg.PeerURLs, testURLConfg.PeerURLs
-	cfg.InitialCluster = testURLConfg.InitialCluster
+	testURLConfig := testutil.NewConfigTestURLs()
+	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = testURLConfig.ClientURLs, testURLConfig.ClientURLs
+	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = testURLConfig.PeerURLs, testURLConfig.PeerURLs
+	cfg.InitialCluster = testURLConfig.InitialCluster
 
 	cfg.Dir = tdir
 	e, err := StartEtcd(cfg)
