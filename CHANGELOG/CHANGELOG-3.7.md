@@ -14,6 +14,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 ### etcd server
 
+- [Prioritize LeaseRevoke requests to ensure timely lease expiration during overload conditions](https://github.com/etcd-io/etcd/pull/20492)
 - [Update go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc to v0.61.0 and replaced the deprecated `UnaryServerInterceptor` and `StreamServerInterceptor` with `NewServerHandler`](https://github.com/etcd-io/etcd/pull/20017)
 - [Add Support for Unix Socket endpoints](https://github.com/etcd-io/etcd/pull/19760)
 - [Improves performance of lease and user/role operations (up to 2x) by updating `(*readView) Rev()` to use `SharedBufReadTxMode`](https://github.com/etcd-io/etcd/pull/20411)

@@ -49,6 +49,8 @@ const (
 	// However, if the committed entries are very heavy to toApply, the gap might grow.
 	// We should stop accepting new proposals if the gap growing to a certain point.
 	maxGapBetweenApplyAndCommitIndex = 5000
+	maxNormalGap                     = maxGapBetweenApplyAndCommitIndex
+	maxPriorityGap                   = 2 * maxGapBetweenApplyAndCommitIndex
 	traceThreshold                   = 100 * time.Millisecond
 	readIndexRetryTime               = 500 * time.Millisecond
 
@@ -923,7 +925,8 @@ func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) e
 func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*apply2.Result, error) {
 	ai := s.getAppliedIndex()
 	ci := s.getCommittedIndex()
-	if ci > ai+maxGapBetweenApplyAndCommitIndex {
+
+	if exceedsRequestLimit(ai, ci, &r, s.FeatureEnabled(features.PriorityRequest)) {
 		return nil, errors.ErrTooManyRequests
 	}
 
