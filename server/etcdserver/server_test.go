@@ -1574,3 +1574,22 @@ func TestAddFeatureGateMetrics(t *testing.T) {
 	err := ptestutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(expected), "etcd_server_feature_enabled")
 	require.NoErrorf(t, err, "unexpected metric collection result: \n%s", err)
 }
+// TestDoSerializeGetErrorPropagated tests that doSerialize propagates errors returned by the get function.
+func TestDoSerializeGetErrorPropagated(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+
+	srv := &EtcdServer{
+		lgMu:      new(sync.RWMutex),
+		lg:        lg,
+		Cfg:       config.ServerConfig{Logger: lg},
+		authStore: auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
+	}
+
+	chk := func(*auth.AuthInfo) error { return nil }
+	get := func() error { return mvcc.ErrCompacted }
+
+	err := srv.doSerialize(t.Context(), chk, get)
+	require.ErrorIs(t, err, mvcc.ErrCompacted)
+}
