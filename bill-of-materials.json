@@ -81,16 +81,7 @@
 		]
 	},
 	{
-		"project": "github.com/clipperhouse/stringish",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/clipperhouse/uax29/v2",
+		"project": "github.com/clipperhouse/uax29/v2/graphemes",
 		"licenses": [
 			{
 				"type": "MIT License",
