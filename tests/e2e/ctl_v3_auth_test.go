@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -296,26 +295,7 @@ func authTestEndpointHealth(cx ctlCtx) {
 	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "health", "", false}))
 
 	cx.user, cx.pass = "test-user", "pass"
-	func(cx ctlCtx) {
-		cmdArgs := append(cx.PrefixArgs(), "endpoint", "health")
-		lines := make([]expect.ExpectedResponse, cx.epc.Cfg.ClusterSize)
-		for i := range lines {
-			lines[i] = expect.ExpectedResponse{
-				Value: cx.epc.Procs[i].EndpointsGRPC()[0] + " is unhealthy: failed to commit proposal: Unable to fetch the alarm list",
-			}
-		}
-
-		proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
-		require.NoErrorf(cx.t, err, "failed to spawn endpoint health command")
-		defer func() {
-			require.Errorf(cx.t, proc.Close(), "endpoint health command should reject all non-root users")
-		}()
-
-		for _, line := range lines {
-			_, lerr := proc.ExpectWithContext(context.TODO(), line)
-			require.NoErrorf(cx.t, lerr, "endpoint health should fail with permission denied error")
-		}
-	}(cx)
+	require.NoErrorf(cx.t, ctlV3EndpointHealth(cx), "endpointStatusTest ctlV3EndpointHealth error")
 
 	cmdArgs := append(cx.PrefixArgs(), "endpoint", "health", "--user=root:root", "--cluster")
 	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
