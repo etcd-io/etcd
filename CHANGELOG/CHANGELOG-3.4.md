@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.43 (TBC)
 
+### etcdctl
+
+- Fix [etcdctl endpoint command regression with option --cluster when auth is enabled](https://github.com/etcd-io/etcd/pull/21533)
+
 ---
 
 ## v3.4.42 (2026-03-20)
