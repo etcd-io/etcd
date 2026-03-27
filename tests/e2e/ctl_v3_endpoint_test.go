@@ -34,8 +34,9 @@ func endpointHealthTest(cx ctlCtx) {
 	}
 }
 
-func ctlV3EndpointHealth(cx ctlCtx) error {
+func ctlV3EndpointHealth(cx ctlCtx, options ...string) error {
 	cmdArgs := append(cx.PrefixArgs(), "endpoint", "health")
+	cmdArgs = append(cmdArgs, options...)
 	lines := make([]string, cx.epc.cfg.clusterSize)
 	for i := range lines {
 		lines[i] = "is healthy"
