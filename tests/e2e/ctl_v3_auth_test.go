@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -315,6 +316,16 @@ func authTestEndpointHealth(cx ctlCtx) {
 			require.NoErrorf(cx.t, lerr, "endpoint health should fail with permission denied error")
 		}
 	}(cx)
+
+	cmdArgs := append(cx.PrefixArgs(), "endpoint", "health", "--user=root:root", "--cluster")
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	require.NoError(cx.t, err)
+	defer func() {
+		require.NoError(cx.t, proc.Close())
+	}()
+	proc.Wait()
+	response := strings.Join(proc.Lines(), "\n")
+	require.Contains(cx.t, response, "is healthy: successfully")
 }
 
 func certCNAndUsername(cx ctlCtx, noPassword bool) {
