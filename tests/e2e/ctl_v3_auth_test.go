@@ -20,12 +20,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -1161,6 +1163,16 @@ func authTestEndpointHealth(cx ctlCtx) {
 			require.NoErrorf(cx.t, lerr, "endpoint health should fail with permission denied error")
 		}
 	}(cx)
+
+	cmdArgs := append(cx.PrefixArgs(), "endpoint", "health", "--user=root:root", "--cluster")
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	require.NoError(cx.t, err)
+	defer func() {
+		require.NoError(cx.t, proc.Close())
+	}()
+	proc.Wait()
+	response := strings.Join(proc.Lines(), "\n")
+	require.Contains(cx.t, response, "is healthy: successfully")
 }
 
 func certCNAndUsername(cx ctlCtx, noPassword bool) {
@@ -1465,7 +1477,7 @@ func authTestRecoverSnapshot(cx ctlCtx) {
 	_, err = cliUser.Put(context.TODO(), "foo", "bar")
 	require.NoError(cx.t, err)
 
-	//verify all nodes have the same revision and hash
+	// verify all nodes have the same revision and hash
 	var endpoints []string
 	for _, proc := range cx.epc.Procs {
 		endpoints = append(endpoints, proc.Config().Acurl)
