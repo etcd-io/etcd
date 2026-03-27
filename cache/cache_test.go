@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -733,7 +734,9 @@ func TestWaitTillRevision(t *testing.T) {
 	t.Run("cache_already_caught_up", func(t *testing.T) {
 		c, _ := newCacheForWaitTest(10, 10, newTestProgressRequestor())
 
-		if err := c.waitTillRevision(context.Background(), 10); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := c.waitTillRevision(ctx, 10); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
@@ -805,14 +808,16 @@ func TestWaitTillRevision(t *testing.T) {
 	})
 
 	t.Run("timeout", func(t *testing.T) {
-		c, _ := newCacheForWaitTest(10, 5, newTestProgressRequestor())
+		synctest.Test(t, func(t *testing.T) {
+			c, _ := newCacheForWaitTest(10, 5, newTestProgressRequestor())
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		err := c.waitTillRevision(ctx, 10)
-		if !errors.Is(err, ErrCacheTimeout) {
-			t.Fatalf("got %v, want ErrCacheTimeout", err)
-		}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			err := c.waitTillRevision(ctx, 10)
+			if !errors.Is(err, ErrCacheTimeout) {
+				t.Fatalf("got %v, want ErrCacheTimeout", err)
+			}
+		})
 	})
 }
 
