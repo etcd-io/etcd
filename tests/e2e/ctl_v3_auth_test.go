@@ -65,6 +65,9 @@ func TestCtlV3AuthDefrag(t *testing.T) { testCtl(t, authTestDefrag) }
 func TestCtlV3AuthEndpointHealth(t *testing.T) {
 	testCtl(t, authTestEndpointHealth, withQuorum())
 }
+func TestCtlV3AuthEndpointHealthWithCluster(t *testing.T) {
+	testCtl(t, authTestEndpointHealthWithCluster, withQuorum())
+}
 func TestCtlV3AuthSnapshot(t *testing.T)        { testCtl(t, authTestSnapshot) }
 func TestCtlV3AuthSnapshotJWT(t *testing.T)     { testCtl(t, authTestSnapshot, withCfg(configJWT)) }
 func TestCtlV3AuthJWTExpire(t *testing.T)       { testCtl(t, authTestJWTExpire, withCfg(configJWT)) }
@@ -1108,6 +1111,17 @@ func authTestEndpointHealth(cx ctlCtx) {
 	cx.user, cx.pass = "test-user", "pass"
 	if err := ctlV3EndpointHealth(cx); err != nil {
 		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
+	}
+}
+
+func authTestEndpointHealthWithCluster(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3EndpointHealth(cx, "--cluster"); err != nil {
+		cx.t.Fatalf("authTestEndpointHealthWithCluster error (%v)", err)
 	}
 }
 
