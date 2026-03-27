@@ -16,10 +16,12 @@ package cache
 
 import (
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -422,6 +424,37 @@ func makePutEvent(key, val string, rev int64) *clientv3.Event {
 
 func makeDelEvent(key string, rev int64) *clientv3.Event {
 	return &clientv3.Event{Type: clientv3.EventTypeDelete, Kv: &mvccpb.KeyValue{Key: []byte(key), ModRevision: rev}}
+}
+
+func TestStoreDataRaceGetApply(t *testing.T) {
+	s := newStore(4, 32)
+
+	s.Restore(nil, 10)
+	err := s.Apply(clientv3.WatchResponse{
+		Header: pb.ResponseHeader{Revision: 20},
+	})
+	if err != nil {
+		t.Fatalf("watch progress notification: %v", err)
+	}
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for range 100 {
+			s.Get([]byte("/"), []byte{0}, 0)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := range 100 {
+			resp := clientv3.WatchResponse{
+				Events: []*clientv3.Event{makePutEvent("/key", "v", 21 + int64(i))},
+			}
+			_ = s.Apply(resp)
+		}
+	}()
+	wg.Wait()
 }
 
 func verifyStoreSnapshot(t *testing.T, s *store, want []*mvccpb.KeyValue, wantRev int64, requestedRev int64) {
