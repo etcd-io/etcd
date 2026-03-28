@@ -244,23 +244,34 @@ func (c *Cache) waitTillRevision(ctx context.Context, rev int64) error {
 	c.progressRequestor.add()
 	defer c.progressRequestor.remove()
 
-	ticker := time.NewTicker(revisionPollInterval)
-	defer ticker.Stop()
-	timeout := time.After(c.cfg.WaitTimeout)
+	startTime := time.Now()
 
-	// TODO: rewrite from periodic polling to passive notification
-	for {
-		if c.store.LatestRev() >= rev {
-			return nil
-		}
+	timeoutCh := time.After(c.cfg.WaitTimeout)
+	go func() {
 		select {
-		case <-ticker.C:
-		case <-timeout:
-			return ErrCacheTimeout
+		case <-timeoutCh:
+			c.store.revCond.Broadcast()
 		case <-ctx.Done():
+			c.store.revCond.Broadcast()
+		}
+	}()
+
+	c.store.mu.RLock()
+	defer c.store.mu.RUnlock()
+
+	for c.store.latest.rev < rev {
+		if time.Since(startTime) >= c.cfg.WaitTimeout {
+			return ErrCacheTimeout
+		}
+
+		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+
+		c.store.revCond.Wait()
 	}
+
+	return nil
 }
 
 // Close cancels the private context and blocks until all goroutines return.

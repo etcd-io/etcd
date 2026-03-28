@@ -16,8 +16,6 @@ package cache
 
 import "time"
 
-const revisionPollInterval = 50 * time.Millisecond
-
 type Config struct {
 	// PerWatcherBufferSize caps each watcher’s buffered channel.
 	// Bigger values tolerate brief client slow-downs at the cost of extra memory.
