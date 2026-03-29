@@ -88,8 +88,8 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
 }
 
-func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam) {
-	kc := kubernetes.Client{Client: &clientv3.Client{KV: p.Client}}
+func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, c *client.RecordingClient, p RunTrafficLoopParam) {
+	kc := kubernetes.Client{Client: &clientv3.Client{KV: c}}
 	s := p.Storage
 	keyPrefix := "/registry/" + t.resource + "/"
 	g := errgroup.Group{}
@@ -103,7 +103,7 @@ func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoop
 				return nil
 			default:
 			}
-			err := t.Read(ctx, p.Client, s, p.QPSLimiter, keyPrefix)
+			err := t.Read(ctx, c, s, p.QPSLimiter, keyPrefix)
 			if err != nil {
 				continue
 			}
@@ -136,8 +136,8 @@ func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoop
 	g.Wait()
 }
 
-func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
-	runWatchLoop(ctx, p, watchLoopConfig{
+func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, c *client.RecordingClient, p RunWatchLoopParam) {
+	runWatchLoop(ctx, c, p, watchLoopConfig{
 		key:           "/registry/" + t.resource + "/",
 		requireLeader: true,
 	})
@@ -278,7 +278,7 @@ func (t kubernetesTraffic) generateKey() string {
 	return fmt.Sprintf("/registry/%s/%s/%s", t.resource, t.namespace, stringutil.RandString(5))
 }
 
-func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, param RunCompactLoopParam) {
+func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, param RunCompactLoopParam) {
 	// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L112-L127
 	var compactTime int64
 	var rev int64
@@ -292,7 +292,7 @@ func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, param RunCompactL
 			return
 		}
 
-		compactTime, rev, err = compact(ctx, param.Client, compactTime, rev)
+		compactTime, rev, err = compact(ctx, c, compactTime, rev)
 		if err != nil {
 			continue
 		}

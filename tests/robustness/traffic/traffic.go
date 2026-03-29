@@ -109,106 +109,36 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	lg.Info("Start traffic")
 	startTime := time.Since(clientSet.BaseTime())
-	for i := range profile.KeyValue.MemberClientCount {
-		wg.Add(1)
-
-		c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
-		require.NoError(t, nerr)
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
-
-			traffic.RunKeyValueLoop(ctx, RunTrafficLoopParam{
-				Client:                             c,
-				QPSLimiter:                         limiter,
-				IDs:                                clientSet.IdentityProvider(),
-				LeaseIDStorage:                     lm,
-				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
-				KeyStore:                           keyStore,
-				Storage:                            kubernetesStorage,
-				Finish:                             finish,
-			})
-		}(c)
-	}
-	for range profile.KeyValue.ClusterClientCount {
-		wg.Add(1)
-
-		c, nerr := clientSet.NewClient(endpoints)
-		require.NoError(t, nerr)
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
-
-			traffic.RunKeyValueLoop(ctx, RunTrafficLoopParam{
-				Client:                             c,
-				QPSLimiter:                         limiter,
-				IDs:                                clientSet.IdentityProvider(),
-				LeaseIDStorage:                     lm,
-				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
-				KeyStore:                           keyStore,
-				Storage:                            kubernetesStorage,
-				Finish:                             finish,
-			})
-		}(c)
-	}
+	err = SimulateKeyValueTraffic(ctx, &wg, profile.KeyValue, endpoints, clientSet, traffic, RunTrafficLoopParam{
+		QPSLimiter:                         limiter,
+		IDs:                                clientSet.IdentityProvider(),
+		LeaseIDStorage:                     lm,
+		NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
+		KeyStore:                           keyStore,
+		Storage:                            kubernetesStorage,
+		Finish:                             finish,
+	})
+	require.NoError(t, err)
 	if profile.Watch != nil {
-		for i := range profile.Watch.MemberClientCount {
-			wg.Add(1)
-			c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
-			require.NoError(t, nerr)
-			go func(c *client.RecordingClient) {
-				defer wg.Done()
-				defer c.Close()
-				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-					Config:     *profile.Watch,
-					Client:     c,
-					QPSLimiter: limiter,
-					KeyStore:   keyStore,
-					Storage:    kubernetesStorage,
-					Finish:     finish,
-					Logger:     lg,
-				})
-			}(c)
-		}
-		for range profile.Watch.ClusterClientCount {
-			wg.Add(1)
-			c, nerr := clientSet.NewClient(endpoints)
-			require.NoError(t, nerr)
-			go func(c *client.RecordingClient) {
-				defer wg.Done()
-				defer c.Close()
-				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-					Config:     *profile.Watch,
-					Client:     c,
-					QPSLimiter: limiter,
-					KeyStore:   keyStore,
-					Storage:    kubernetesStorage,
-					Finish:     finish,
-					Logger:     lg,
-				})
-			}(c)
-		}
+		err = SimulateWatchTraffic(ctx, &wg, profile.Watch, endpoints, clientSet, traffic, RunWatchLoopParam{
+			Config:     *profile.Watch,
+			QPSLimiter: limiter,
+			KeyStore:   keyStore,
+			Storage:    kubernetesStorage,
+			Finish:     finish,
+			Logger:     lg,
+		})
+		require.NoError(t, err)
 	}
 	if profile.Compaction != nil {
-		wg.Add(1)
-		c, nerr := clientSet.NewClient(endpoints)
-		if nerr != nil {
-			t.Fatal(nerr)
-		}
-
 		if profile.Compaction.Period < MinimalCompactionPeriod {
 			t.Fatalf("Compaction period %v below minimal %v", profile.Compaction.Period, MinimalCompactionPeriod)
 		}
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
-
-			traffic.RunCompactLoop(ctx, RunCompactLoopParam{
-				Client: c,
-				Period: profile.Compaction.Period,
-				Finish: finish,
-			})
-		}(c)
+		err = SimulateCompactionTraffic(ctx, &wg, profile.Compaction, endpoints, clientSet, traffic, RunCompactLoopParam{
+			Period: profile.Compaction.Period,
+			Finish: finish,
+		})
+		require.NoError(t, err)
 	}
 	var fr *report.FailpointInjection
 	select {
@@ -250,6 +180,78 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	}
 	// TODO: Validate QPS post failpoint injection to ensure that we sufficiently cover the period when the cluster recovers.
 	return reports
+}
+
+func SimulateKeyValueTraffic(ctx context.Context, wg *sync.WaitGroup, profile *KeyValue, endpoints []string, clientSet *client.ClientSet, tf Traffic, baseParam RunTrafficLoopParam) error {
+	for i := range profile.MemberClientCount {
+		c, err := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
+		if err != nil {
+			return err
+		}
+		wg.Add(1)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+
+			tf.RunKeyValueLoop(ctx, c, baseParam)
+		}(c)
+	}
+	for range profile.ClusterClientCount {
+		c, err := clientSet.NewClient(endpoints)
+		if err != nil {
+			return err
+		}
+		wg.Add(1)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+
+			tf.RunKeyValueLoop(ctx, c, baseParam)
+		}(c)
+	}
+	return nil
+}
+
+func SimulateWatchTraffic(ctx context.Context, wg *sync.WaitGroup, profile *Watch, endpoints []string, clientSet *client.ClientSet, tf Traffic, baseParam RunWatchLoopParam) error {
+	for i := range profile.MemberClientCount {
+		c, err := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
+		if err != nil {
+			return err
+		}
+		wg.Add(1)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			tf.RunWatchLoop(ctx, c, baseParam)
+		}(c)
+	}
+	for range profile.ClusterClientCount {
+		c, err := clientSet.NewClient(endpoints)
+		if err != nil {
+			return err
+		}
+		wg.Add(1)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			tf.RunWatchLoop(ctx, c, baseParam)
+		}(c)
+	}
+	return nil
+}
+
+func SimulateCompactionTraffic(ctx context.Context, wg *sync.WaitGroup, profile *Compaction, endpoints []string, clientSet *client.ClientSet, tf Traffic, baseParam RunCompactLoopParam) error {
+	c, err := clientSet.NewClient(endpoints)
+	if err != nil {
+		return err
+	}
+	wg.Add(1)
+	go func(c *client.RecordingClient) {
+		defer wg.Done()
+		defer c.Close()
+		tf.RunCompactLoop(ctx, c, baseParam)
+	}(c)
+	return nil
 }
 
 func CalculateWatchStats(reports []report.ClientReport, start, end time.Duration) (ws watchStats) {
@@ -385,7 +387,6 @@ type Compaction struct {
 }
 
 type RunTrafficLoopParam struct {
-	Client                             *client.RecordingClient
 	QPSLimiter                         *rate.Limiter
 	IDs                                identity.Provider
 	LeaseIDStorage                     identity.LeaseIDStorage
@@ -396,14 +397,12 @@ type RunTrafficLoopParam struct {
 }
 
 type RunCompactLoopParam struct {
-	Client *client.RecordingClient
 	Period time.Duration
 	Finish <-chan struct{}
 }
 
 type RunWatchLoopParam struct {
 	Config     Watch
-	Client     *client.RecordingClient
 	QPSLimiter *rate.Limiter
 	// TODO: merge 2 key stores into 1
 	KeyStore *keyStore
@@ -413,13 +412,13 @@ type RunWatchLoopParam struct {
 }
 
 type Traffic interface {
-	RunKeyValueLoop(ctx context.Context, param RunTrafficLoopParam)
-	RunWatchLoop(ctx context.Context, param RunWatchLoopParam)
-	RunCompactLoop(ctx context.Context, param RunCompactLoopParam)
+	RunKeyValueLoop(ctx context.Context, c *client.RecordingClient, param RunTrafficLoopParam)
+	RunWatchLoop(ctx context.Context, c *client.RecordingClient, param RunWatchLoopParam)
+	RunCompactLoop(ctx context.Context, c *client.RecordingClient, param RunCompactLoopParam)
 	ExpectUniqueRevision() bool
 }
 
-func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) {
+func runWatchLoop(ctx context.Context, c *client.RecordingClient, p RunWatchLoopParam, cfg watchLoopConfig) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -434,15 +433,15 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 		}
 		// Client.get may fail when the blackhole is injected.
 		// We suppress logging for these expected failures to avoid polluting the logs.
-		_ = runWatch(ctx, p, cfg)
+		_ = runWatch(ctx, c, p, cfg)
 	}
 }
 
-func runWatch(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) error {
+func runWatch(ctx context.Context, c *client.RecordingClient, p RunWatchLoopParam, cfg watchLoopConfig) error {
 	getCtx, getCancel := context.WithTimeout(ctx, RequestTimeout)
 	defer getCancel()
 
-	resp, err := p.Client.Get(getCtx, cfg.key)
+	resp, err := c.Get(getCtx, cfg.key)
 	if err != nil {
 		return err
 	}
@@ -454,7 +453,7 @@ func runWatch(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) err
 	if cfg.requireLeader {
 		watchCtx = clientv3.WithRequireLeader(watchCtx)
 	}
-	w := p.Client.Watch(watchCtx, cfg.key, rev, true, true, true)
+	w := c.Watch(watchCtx, cfg.key, rev, true, true, true)
 	for {
 		select {
 		case <-ctx.Done():
