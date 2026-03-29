@@ -994,7 +994,7 @@ func TestWithPrefixGet(t *testing.T) {
 
 func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Getter) {
 	ctx := t.Context()
-	seedResp, err := cli.Put(ctx, "/foo/a", "val")
+	seedResp, err := cli.Put(ctx, "/foo/a", "val1")
 	if err != nil {
 		t.Fatalf("seed put: %v", err)
 	}
@@ -1002,14 +1002,18 @@ func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Gett
 
 	reader := getReader()
 
-	var latestRev int64
 	for i := 0; i < 5; i++ {
-		r, err := cli.Put(ctx, fmt.Sprintf("/bar/x%d", i), fmt.Sprintf("%d", i))
+		_, err = cli.Put(ctx, fmt.Sprintf("/bar/x%d", i), fmt.Sprintf("%d", i))
 		if err != nil {
 			t.Fatalf("advance put: %v", err)
 		}
-		latestRev = r.Header.Revision
 	}
+
+	resp, err := cli.Put(ctx, "/foo/a", "val2")
+	if err != nil {
+		t.Fatalf("second put: %v", err)
+	}
+	latestRev := resp.Header.Revision
 
 	if err := cli.RequestProgress(ctx); err != nil {
 		t.Fatalf("RequestProgress: %v", err)
@@ -1023,7 +1027,15 @@ func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Gett
 
 	expectedFooA := &mvccpb.KeyValue{
 		Key:            []byte("/foo/a"),
-		Value:          []byte("val"),
+		Value:          []byte("val2"),
+		CreateRevision: seedRev,
+		ModRevision:    latestRev,
+		Version:        2,
+	}
+
+	expectedOldFooA := &mvccpb.KeyValue{
+		Key:            []byte("/foo/a"),
+		Value:          []byte("val1"),
 		CreateRevision: seedRev,
 		ModRevision:    seedRev,
 		Version:        1,
@@ -1117,6 +1129,18 @@ func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Gett
 			key:     "/foo/a",
 			opts:    []clientv3.OpOption{clientv3.WithRange("/foo/z"), clientv3.WithSerializable(), clientv3.WithRev(baseRev)},
 			wantKVs: []*mvccpb.KeyValue{expectedFooA},
+		},
+		{
+			name:    "prefix query within cache prefix at intermediate rev serializable",
+			key:     "/foo/a",
+			opts:    []clientv3.OpOption{clientv3.WithRev(seedRev + 1), clientv3.WithSerializable()},
+			wantKVs: []*mvccpb.KeyValue{expectedOldFooA},
+		},
+		{
+			name:    "prefix query within cache prefix at intermediate rev",
+			key:     "/foo/a",
+			opts:    []clientv3.OpOption{clientv3.WithRev(seedRev + 1)},
+			wantKVs: []*mvccpb.KeyValue{expectedOldFooA},
 		},
 	}
 

@@ -87,19 +87,15 @@ func (s *store) getSnapshot(rev int64) (*snapshot, int64, error) {
 	if rev > s.latest.rev {
 		return nil, 0, rpctypes.ErrFutureRev
 	}
-	oldestRev := s.history.PeekOldest()
-	if rev < oldestRev {
-		return nil, 0, rpctypes.ErrCompacted
-	}
 
 	var targetSnapshot *snapshot
-	s.history.AscendGreaterOrEqual(rev, func(rev int64, snap *snapshot) bool {
+	s.history.DescendLessOrEqual(rev, func(rev int64, snap *snapshot) bool {
 		targetSnapshot = snap
 		return false
 	})
-	// If s.history < rev < s.latest.rev serve latest.
+
 	if targetSnapshot == nil {
-		targetSnapshot = &s.latest
+		return nil, 0, rpctypes.ErrCompacted
 	}
 
 	return targetSnapshot, s.latest.rev, nil
