@@ -171,7 +171,6 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 			Lg:              lg,
 			Endpoints:       endpoints,
 			MaxRevisionChan: maxRevisionChan,
-			Cfg:             s.Watch,
 			ClientSet:       watchSet,
 		})
 		return err
