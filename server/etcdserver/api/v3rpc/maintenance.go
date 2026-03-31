@@ -353,8 +353,15 @@ func (ams *authMaintenanceServer) HashKV(ctx context.Context, r *pb.HashKVReques
 }
 
 func (ams *authMaintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
-	if err := ams.isPermitted(ctx); err != nil {
-		return nil, togRPCError(err)
+	switch ar.GetAction() {
+	case pb.AlarmRequest_GET:
+		if err := ams.requireAuthInfo(ctx); err != nil {
+			return nil, togRPCError(err)
+		}
+	default:
+		if err := ams.isPermitted(ctx); err != nil {
+			return nil, togRPCError(err)
+		}
 	}
 	return ams.maintenanceServer.Alarm(ctx, ar)
 }
