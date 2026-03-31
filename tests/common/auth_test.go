@@ -691,9 +691,14 @@ func TestAuthMemberList(t *testing.T) {
 		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
 		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
 		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+		anonAuthClient := testutils.MustClient(clus.Client())
 
 		_, err := testUserAuthClient.MemberList(ctx, false)
-		require.ErrorContains(t, err, PermissionDenied)
+		require.NoError(t, err)
+
+		_, err = anonAuthClient.MemberList(ctx, false)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "etcdserver: user name is empty")
 
 		_, err = rootAuthClient.MemberList(ctx, false)
 		require.NoError(t, err)
@@ -994,6 +999,7 @@ func TestAuthAlarm(t *testing.T) {
 		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
 		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
 		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+		anonAuthClient := testutils.MustClient(clus.Client())
 
 		for i := 0; ; i++ {
 			err := rootAuthClient.Put(ctx,
@@ -1005,9 +1011,6 @@ func TestAuthAlarm(t *testing.T) {
 			require.ErrorContains(t, err, "etcdserver: mvcc: database space exceeded")
 			break
 		}
-
-		_, err := testUserAuthClient.AlarmList(ctx)
-		require.ErrorContains(t, err, PermissionDenied)
 
 		memberID := uint64(0)
 
@@ -1022,6 +1025,12 @@ func TestAuthAlarm(t *testing.T) {
 			time.Sleep(1 * time.Second)
 		}
 		require.NotEqualf(t, uint64(0), memberID, "expect to find alarm with non-zero member ID")
+
+		_, err := anonAuthClient.AlarmList(ctx)
+		require.ErrorContains(t, err, "etcdserver: user name is empty")
+
+		_, err = testUserAuthClient.AlarmList(ctx)
+		require.NoError(t, err)
 
 		_, err = testUserAuthClient.AlarmDisarm(ctx, &clientv3.AlarmMember{
 			MemberID: memberID,
