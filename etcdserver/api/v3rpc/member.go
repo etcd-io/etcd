@@ -91,7 +91,7 @@ func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateReq
 }
 
 func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest) (*pb.MemberListResponse, error) {
-	if err := cs.aa.isPermitted(ctx); err != nil {
+	if err := cs.aa.requireAuthInfo(ctx); err != nil {
 		return nil, togRPCError(err)
 	}
 	membs := membersToProtoMembers(cs.cluster.Members())

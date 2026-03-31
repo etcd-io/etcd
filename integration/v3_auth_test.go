@@ -788,8 +788,8 @@ func TestV3AuthAlarm(t *testing.T) {
 		break
 	}
 
-	_, err := testUserCli.AlarmList(ctx)
-	require.ErrorContains(t, err, PermissionDenied)
+	_, err := anonCli.AlarmList(ctx)
+	require.ErrorContains(t, err, "etcdserver: user name is empty")
 
 	memberID := uint64(0)
 
@@ -805,13 +805,17 @@ func TestV3AuthAlarm(t *testing.T) {
 	}
 	require.NotEqualf(t, uint64(0), memberID, "expect to find alarm with non-zero member ID")
 
+	resp, err := testUserCli.AlarmList(ctx)
+	require.NoError(t, err)
+	require.Len(t, resp.Alarms, 1)
+
 	_, err = testUserCli.AlarmDisarm(ctx, &clientv3.AlarmMember{
 		MemberID: memberID,
 		Alarm:    pb.AlarmType_NOSPACE,
 	})
 	require.ErrorContains(t, err, PermissionDenied)
 
-	resp, err := rootCli.AlarmDisarm(ctx, &clientv3.AlarmMember{
+	resp, err = rootCli.AlarmDisarm(ctx, &clientv3.AlarmMember{
 		MemberID: memberID,
 		Alarm:    pb.AlarmType_NOSPACE,
 	})
@@ -858,8 +862,17 @@ func TestV3AuthMemberListAndStatus(t *testing.T) {
 	require.NoError(t, terr)
 	defer testUserCli.Close()
 
-	_, err := testUserCli.MemberList(ctx)
-	require.ErrorContains(t, err, PermissionDenied)
+	anonCli, aerr := clientv3.New(clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+	})
+	require.NoError(t, aerr)
+	defer anonCli.Close()
+
+	_, err := anonCli.MemberList(ctx)
+	require.ErrorContains(t, err, "etcdserver: user name is empty")
+
+	_, err = testUserCli.MemberList(ctx)
+	require.NoError(t, err)
 
 	_, err = testUserCli.Status(ctx, clus.Client(0).Endpoints()[0])
 	require.ErrorContains(t, err, PermissionDenied)
