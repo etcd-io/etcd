@@ -1947,7 +1947,7 @@ func (s *EtcdServer) MemberList(ctx context.Context, r *pb.MemberListRequest) ([
 		}
 	}
 
-	if err := s.checkMembershipOperationPermission(ctx); err != nil {
+	if err := s.requireAuthInfo(ctx); err != nil {
 		return nil, err
 	}
 	return s.cluster.Members(), nil

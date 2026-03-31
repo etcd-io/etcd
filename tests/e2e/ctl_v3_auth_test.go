@@ -1145,24 +1145,9 @@ func authTestEndpointHealth(cx ctlCtx) {
 	}
 
 	cx.user, cx.pass = "test-user", "pass"
-	func(cx ctlCtx) {
-		cmdArgs := append(cx.PrefixArgs(), "endpoint", "health")
-		lines := make([]string, cx.epc.Cfg.ClusterSize)
-		for i := range lines {
-			lines[i] = cx.epc.Procs[i].EndpointsGRPC()[0] + " is unhealthy: failed to commit proposal: Unable to fetch the alarm list"
-		}
-
-		proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
-		require.NoErrorf(cx.t, err, "failed to spawn endpoint health command")
-		defer func() {
-			proc.Close()
-		}()
-
-		for _, line := range lines {
-			_, lerr := proc.Expect(line)
-			require.NoErrorf(cx.t, lerr, "endpoint health should fail with permission denied error")
-		}
-	}(cx)
+	if err := ctlV3EndpointHealth(cx); err != nil {
+		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
+	}
 
 	cmdArgs := append(cx.PrefixArgs(), "endpoint", "health", "--user=root:root", "--cluster")
 	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
