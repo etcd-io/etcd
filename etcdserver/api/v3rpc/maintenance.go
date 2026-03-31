@@ -279,6 +279,22 @@ func (ams *authMaintenanceServer) isAuthenticated(ctx context.Context) error {
 	return ams.ag.AuthStore().IsAdminPermitted(authInfo)
 }
 
+func (ams *authMaintenanceServer) requireAuthInfo(ctx context.Context) error {
+	if !ams.ag.AuthStore().IsAuthEnabled() {
+		return nil
+	}
+
+	authInfo, err := ams.ag.AuthInfoFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if authInfo == nil {
+		return auth.ErrUserEmpty
+	}
+	return nil
+}
+
 func (ams *authMaintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {
 	if err := ams.isAuthenticated(ctx); err != nil {
 		return nil, err
@@ -311,8 +327,15 @@ func (ams *authMaintenanceServer) HashKV(ctx context.Context, r *pb.HashKVReques
 }
 
 func (ams *authMaintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
-	if err := ams.isAuthenticated(ctx); err != nil {
-		return nil, togRPCError(err)
+	switch ar.GetAction() {
+	case pb.AlarmRequest_GET:
+		if err := ams.requireAuthInfo(ctx); err != nil {
+			return nil, togRPCError(err)
+		}
+	default:
+		if err := ams.isAuthenticated(ctx); err != nil {
+			return nil, togRPCError(err)
+		}
 	}
 	return ams.maintenanceServer.Alarm(ctx, ar)
 }

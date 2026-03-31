@@ -17,6 +17,7 @@ package v3rpc
 import (
 	"context"
 
+	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
@@ -170,4 +171,20 @@ func (aa *AuthAdmin) isPermitted(ctx context.Context) error {
 	}
 
 	return aa.ag.AuthStore().IsAdminPermitted(authInfo)
+}
+
+func (aa *AuthAdmin) requireAuthInfo(ctx context.Context) error {
+	if !aa.ag.AuthStore().IsAuthEnabled() {
+		return nil
+	}
+
+	authInfo, err := aa.ag.AuthInfoFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if authInfo == nil {
+		return auth.ErrUserEmpty
+	}
+	return nil
 }
