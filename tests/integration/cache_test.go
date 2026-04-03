@@ -488,7 +488,7 @@ func TestCacheWithPrefixWatch(t *testing.T) {
 	}
 }
 
-func TestCacheWatchPrefixProgressNotify(t *testing.T) {
+func TestCacheServerRequestProgress(t *testing.T) {
 	if integration.ThroughProxy {
 		t.Skip("grpc proxy currently does not support requesting progress notifications")
 	}
@@ -543,6 +543,74 @@ func TestCacheWatchPrefixProgressNotify(t *testing.T) {
 		}
 	case <-wctx.Done():
 		t.Fatalf("timed out waiting for progress notification: %v", wctx.Err())
+	}
+}
+
+func TestCacheRequestProgress(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	ctx := t.Context()
+
+	c, err := cache.New(client, "/foo")
+	if err != nil {
+		t.Fatalf("cache.New: %v", err)
+	}
+	t.Cleanup(c.Close)
+	if err := c.WaitReady(ctx); err != nil {
+		t.Fatalf("cache.WaitReady: %v", err)
+	}
+
+	wctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	watchCh := c.Watch(wctx, "/foo", clientv3.WithPrefix())
+
+	// Write some keys under the watched prefix so the cache advances.
+	var latestRev int64
+	for i := 0; i < 3; i++ {
+		resp, err := client.Put(ctx, fmt.Sprintf("/foo/key-%d", i), "v")
+		if err != nil {
+			t.Fatalf("Put(/foo/key-%d): %v", i, err)
+		}
+		latestRev = resp.Header.Revision
+	}
+
+	// Drain the event responses so the watcher is caught up.
+	// Events may be batched into fewer responses, so count total events.
+	totalEvents := 0
+	for totalEvents < 3 {
+		select {
+		case resp := <-watchCh:
+			if resp.Canceled {
+				t.Fatalf("unexpected canceled response: %v", resp.CancelReason)
+			}
+			totalEvents += len(resp.Events)
+		case <-wctx.Done():
+			t.Fatalf("timed out waiting for events, got %d/3", totalEvents)
+		}
+	}
+
+	// Call RequestProgress on the cache — this should deliver a progress
+	// notification to the watcher with the cache's current revision.
+	if err := c.RequestProgress(ctx); err != nil {
+		t.Fatalf("RequestProgress: %v", err)
+	}
+
+	select {
+	case resp, ok := <-watchCh:
+		if !ok {
+			t.Fatalf("expected watch response, got closed")
+		}
+		if !resp.IsProgressNotify() {
+			t.Fatalf("expected progress notify, got %d events", len(resp.Events))
+		}
+		if resp.Header.Revision < latestRev {
+			t.Fatalf("progress revision %d < latest rev %d", resp.Header.Revision, latestRev)
+		}
+	case <-wctx.Done():
+		t.Fatalf("timed out waiting for progress notification from RequestProgress")
 	}
 }
 

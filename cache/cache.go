@@ -101,6 +101,11 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 	return cache, nil
 }
 
+func (c *Cache) RequestProgress(_ context.Context) error {
+	c.demux.BroadcastProgress()
+	return nil
+}
+
 // Watch registers a cache-backed watcher for a given key or prefix.
 // It returns a WatchChan that streams WatchResponses containing events.
 func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan {

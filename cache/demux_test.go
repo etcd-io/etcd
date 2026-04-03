@@ -336,6 +336,84 @@ func TestSlowWatcherResync(t *testing.T) {
 	}
 }
 
+func TestBroadcastProgress(t *testing.T) {
+	t.Run("sends progress to active watchers", func(t *testing.T) {
+		d := newDemux(16, 10*time.Millisecond)
+		d.Init(1)
+		d.maxRev = 10
+
+		w1 := newWatcher(8, nil)
+		w2 := newWatcher(8, nil)
+		d.Register(w1, 0)
+		d.Register(w2, 0)
+
+		d.BroadcastProgress()
+
+		resps1 := readResponses(t, w1, 1)
+		require.Truef(t, resps1[0].IsProgressNotify(), "expected progress notify")
+		require.Equal(t, int64(10), resps1[0].Header.Revision)
+
+		resps2 := readResponses(t, w2, 1)
+		require.Truef(t, resps2[0].IsProgressNotify(), "expected progress notify")
+		require.Equal(t, int64(10), resps2[0].Header.Revision)
+	})
+
+	t.Run("is no-op when maxRev is zero", func(t *testing.T) {
+		d := newDemux(16, 10*time.Millisecond)
+		d.Init(1)
+
+		w := newWatcher(8, nil)
+		d.Register(w, 0)
+
+		d.maxRev = 0
+		d.BroadcastProgress()
+		select {
+		case <-w.respCh:
+			t.Fatal("expected no response when maxRev is 0")
+		default:
+		}
+	})
+
+	t.Run("sends progress only to active watchers", func(t *testing.T) {
+		d := newDemux(16, 10*time.Millisecond)
+		d.Init(1)
+		d.maxRev = 10
+
+		active := newWatcher(8, nil)
+		lagging := newWatcher(8, nil)
+		d.Register(active, 0) // startingRev becomes maxRev+1 => active
+		d.Register(lagging, 5)
+
+		d.BroadcastProgress()
+
+		activeResps := readResponses(t, active, 1)
+		require.Truef(t, activeResps[0].IsProgressNotify(), "expected progress notify for active watcher")
+		require.Equal(t, int64(10), activeResps[0].Header.Revision)
+
+		select {
+		case <-lagging.respCh:
+			t.Fatal("expected no progress notify for lagging watcher")
+		default:
+		}
+	})
+}
+
+func readResponses(t *testing.T, w *watcher, count int) []clientv3.WatchResponse {
+	t.Helper()
+	responses := make([]clientv3.WatchResponse, 0, count)
+
+	for i := 0; i < count; i++ {
+		select {
+		case resp := <-w.respCh:
+			responses = append(responses, resp)
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out waiting for response %d/%d (got %d)", i+1, count, len(responses))
+		}
+	}
+
+	return responses
+}
+
 func respWithEventRevs(revs ...int64) clientv3.WatchResponse {
 	events := make([]*clientv3.Event, 0, len(revs))
 	for _, r := range revs {
