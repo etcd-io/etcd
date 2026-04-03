@@ -414,6 +414,8 @@ type Config struct {
 	//  - file path to append server logs to.
 	// It can be multiple when "Logger" is zap.
 	LogOutputs []string `json:"log-outputs"`
+	// DisableLogSampling disables sampling of logs.
+	DisableLogSampling bool `json:"disable-log-sampling"`
 	// EnableLogRotation enables log rotation of a single LogOutputs file target.
 	EnableLogRotation bool `json:"enable-log-rotation"`
 	// LogRotationConfigJSON is a passthrough allowing a log rotation JSON config to be passed directly.
@@ -718,6 +720,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&cfg.LogFormat, "log-format", logutil.DefaultLogFormat, "Configures log format. Only supports json, console. Default is 'json'.")
 	fs.BoolVar(&cfg.EnableLogRotation, "enable-log-rotation", false, "Enable log rotation of a single log-outputs file target.")
 	fs.StringVar(&cfg.LogRotationConfigJSON, "log-rotation-config-json", DefaultLogRotationConfig, "Configures log rotation if enabled with a JSON logger config. Default: MaxSize=100(MB), MaxAge=0(days,no limit), MaxBackups=0(no limit), LocalTime=false(UTC), Compress=false(gzip)")
+	fs.BoolVar(&cfg.DisableLogSampling, "disable-log-sampling", false, "Disable log sampling")
 
 	fs.StringVar(&cfg.AutoCompactionRetention, "auto-compaction-retention", "0", "Auto compaction retention for mvcc key value store. 0 means disable auto compaction.")
 	fs.StringVar(&cfg.AutoCompactionMode, "auto-compaction-mode", "periodic", "interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.")
