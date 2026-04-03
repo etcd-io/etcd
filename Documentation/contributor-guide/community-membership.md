@@ -122,7 +122,7 @@ depend on to make decisions in the best interest of the project in a consistent 
   - Open a PR and add an entry to the [OWNERS] file
   - Request to be added to the <etcd-maintainers@googlegroups.com> and <etcd-maintainers-private@googlegroups.com> mailing lists
   - Request to join [etcd-maintainer teams of the etcd-io organization in GitHub](https://github.com/orgs/etcd-io/teams/maintainers-etcd)
-  - Request to join the private slack channel for etcd maintainers on [kubernetes slack](http://slack.kubernetes.io/)
+  - Request to join the private slack channel for etcd maintainers on [kubernetes slack](https://slack.kubernetes.io/)
   - Request access to `etcd-development` GCP project where we publish releases
   - Request access to passwords shared between maintainers
   - Request cncf service desk access by emailing <projects@cncf.io>

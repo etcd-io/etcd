@@ -18,7 +18,7 @@ for ensuring the stability of the release branch.
 - Sahdev Zala [@spzala](https://github.com/spzala)
 - Siyuan Zhang [@siyuanfoundation](https://github.com/siyuanfoundation)
 
-All release version numbers follow the format of [semantic versioning 2.0.0](http://semver.org/).
+All release version numbers follow the format of [semantic versioning 2.0.0](https://semver.org/).
 
 ### Major, minor version release, or its pre-release
 
