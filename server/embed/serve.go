@@ -476,6 +476,20 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 		rw.WriteHeader(http.StatusOK)
 		return
 	}
+	// Limit the request body size to prevent memory-exhaustion DoS via the
+	// gRPC-gateway JSON decoder (which base64-decodes fields before any
+	// server-side size check).
+	maxBytes := int64(ac.s.Cfg.MaxRequestBytesWithOverhead())
+	// Fast-reject: if Content-Length is known and oversized, return 413
+	// immediately without reading any body bytes.
+	if req.ContentLength > maxBytes {
+		http.Error(rw, "request body too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+	// Safety net: cap the readable bytes for cases where Content-Length is
+	// absent, zero, or lies.  The JSON decoder cannot allocate unbounded
+	// memory once MaxBytesReader is in place.
+	req.Body = http.MaxBytesReader(rw, req.Body, maxBytes)
 
 	ac.mux.ServeHTTP(rw, req)
 }
