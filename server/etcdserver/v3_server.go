@@ -317,7 +317,7 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 
 func (s *EtcdServer) waitAppliedIndex() error {
 	select {
-	case <-s.ApplyWait():
+	case <-s.ApplyWaitCommit():
 	case <-s.stopping:
 		return errors.ErrStopped
 	case <-time.After(applyTimeout):
