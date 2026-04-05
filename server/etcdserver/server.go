@@ -222,13 +222,7 @@ type EtcdServer struct {
 
 	w wait.Wait
 
-	readMu sync.RWMutex
-	// read routine notifies etcd server that it waits for reading by sending an empty struct to
-	// readwaitC
-	readwaitc chan struct{}
-	// readNotifier is used to notify the read routine that it can process the request
-	// when there is no error
-	readNotifier *notifier
+	*read
 
 	// stop signals the run goroutine should shutdown.
 	stop chan struct{}
@@ -573,8 +567,7 @@ func (s *EtcdServer) start() {
 	s.stop = make(chan struct{})
 	s.stopping = make(chan struct{}, 1)
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.readwaitc = make(chan struct{}, 1)
-	s.readNotifier = newNotifier()
+	s.read = newRead(s, &s.r)
 	s.leaderChanged = notify.NewNotifier()
 	if s.ClusterVersion() != nil {
 		lg.Info(

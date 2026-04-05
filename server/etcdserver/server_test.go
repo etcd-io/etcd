@@ -1745,6 +1745,7 @@ func setupTestRequestCurrentIndex(t *testing.T) (*EtcdServer, *testRaftNode) {
 			readStateC: make(chan raft.ReadState, 1),
 		},
 	}
+	s.read = newRead(s, &s.r)
 	return s, mockRaft
 }
 
