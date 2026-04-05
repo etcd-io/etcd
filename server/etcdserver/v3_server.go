@@ -17,7 +17,6 @@ package etcdserver
 import (
 	"context"
 	"encoding/base64"
-	"encoding/binary"
 	errorspkg "errors"
 	"strconv"
 	"time"
@@ -40,7 +39,6 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-	"go.etcd.io/raft/v3"
 )
 
 const (
@@ -52,7 +50,6 @@ const (
 	maxNormalGap                     = maxGapBetweenApplyAndCommitIndex
 	maxPriorityGap                   = 2 * maxGapBetweenApplyAndCommitIndex
 	traceThreshold                   = 100 * time.Millisecond
-	readIndexRetryTime               = 500 * time.Millisecond
 
 	// The timeout for the node to catch up its applied index, and is used in
 	// lease related operations, such as LeaseRenew and LeaseTimeToLive.
@@ -1068,196 +1065,6 @@ func getRequestType(r *pb.InternalRaftRequest) string {
 
 // Watchable returns a watchable interface attached to the etcdserver.
 func (s *EtcdServer) Watchable() mvcc.WatchableKV { return s.KV() }
-
-func (s *EtcdServer) linearizableReadLoop() {
-	for {
-		leaderChangedNotifier := s.leaderChanged.Receive()
-		select {
-		case <-leaderChangedNotifier:
-			continue
-		case <-s.readwaitc:
-		case <-s.stopping:
-			return
-		}
-
-		// as a single loop is can unlock multiple reads, it is not very useful
-		// to propagate the trace from Txn or Range.
-		_, trace := traceutil.EnsureTrace(context.Background(), s.Logger(), "linearizableReadLoop")
-
-		nextnr := newNotifier()
-		s.readMu.Lock()
-		nr := s.readNotifier
-		s.readNotifier = nextnr
-		s.readMu.Unlock()
-
-		confirmedIndex, err := s.requestCurrentIndex(leaderChangedNotifier)
-		if isStopped(err) {
-			return
-		}
-		if err != nil {
-			nr.notify(err)
-			continue
-		}
-
-		trace.Step("read index received")
-
-		trace.AddField(traceutil.Field{Key: "readStateIndex", Value: confirmedIndex})
-
-		appliedIndex := s.getAppliedIndex()
-		trace.AddField(traceutil.Field{Key: "appliedIndex", Value: strconv.FormatUint(appliedIndex, 10)})
-
-		if appliedIndex < confirmedIndex {
-			select {
-			case <-s.applyWait.Wait(confirmedIndex):
-			case <-s.stopping:
-				return
-			}
-		}
-		// unblock all l-reads requested at indices before confirmedIndex
-		nr.notify(nil)
-		trace.Step("applied index is now lower than readState.Index")
-
-		trace.LogAllStepsIfLong(traceThreshold)
-	}
-}
-
-func isStopped(err error) bool {
-	return errorspkg.Is(err, raft.ErrStopped) || errorspkg.Is(err, errors.ErrStopped)
-}
-
-func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}) (uint64, error) {
-	requestIDs := map[uint64]struct{}{}
-	requestID := s.reqIDGen.Next()
-	requestIDs[requestID] = struct{}{}
-	err := s.sendReadIndex(requestID)
-	if err != nil {
-		return 0, err
-	}
-
-	lg := s.Logger()
-	errorTimer := time.NewTimer(s.Cfg.ReqTimeout())
-	defer errorTimer.Stop()
-	retryTimer := time.NewTimer(readIndexRetryTime)
-	defer retryTimer.Stop()
-
-	firstCommitInTermNotifier := s.firstCommitInTerm.Receive()
-
-	for {
-		select {
-		case rs := <-s.r.readStateC:
-			// Check again if leader changed as when multiple channels are ready, select picks randomly.
-			select {
-			case <-leaderChangedNotifier:
-				readIndexFailed.Inc()
-				return 0, errors.ErrLeaderChanged
-			default:
-			}
-			responseID := uint64(0)
-			if len(rs.RequestCtx) == 8 {
-				responseID = binary.BigEndian.Uint64(rs.RequestCtx)
-			}
-			if _, ok := requestIDs[responseID]; !ok {
-				// a previous request might time out. now we should ignore the response of it and
-				// continue waiting for the response of the current requests.
-				lg.Warn(
-					"ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader",
-					zap.Uint64("received-request-id", responseID),
-				)
-				slowReadIndex.Inc()
-				continue
-			}
-			return rs.Index, nil
-		case <-leaderChangedNotifier:
-			readIndexFailed.Inc()
-			// return a retryable error.
-			return 0, errors.ErrLeaderChanged
-		case <-firstCommitInTermNotifier:
-			firstCommitInTermNotifier = s.firstCommitInTerm.Receive()
-			lg.Info("first commit in current term: resending ReadIndex request")
-			requestID = s.reqIDGen.Next()
-			requestIDs[requestID] = struct{}{}
-			err := s.sendReadIndex(requestID)
-			if err != nil {
-				return 0, err
-			}
-			retryTimer.Reset(readIndexRetryTime)
-			continue
-		case <-retryTimer.C:
-			lg.Warn(
-				"waiting for ReadIndex response took too long, retrying",
-				zap.Uint64("sent-request-id", requestID),
-				zap.Duration("retry-timeout", readIndexRetryTime),
-			)
-			requestID = s.reqIDGen.Next()
-			requestIDs[requestID] = struct{}{}
-			err := s.sendReadIndex(requestID)
-			if err != nil {
-				return 0, err
-			}
-			retryTimer.Reset(readIndexRetryTime)
-			continue
-		case <-errorTimer.C:
-			lg.Warn(
-				"timed out waiting for read index response (local node might have slow network)",
-				zap.Duration("timeout", s.Cfg.ReqTimeout()),
-			)
-			slowReadIndex.Inc()
-			return 0, errors.ErrTimeout
-		case <-s.stopping:
-			return 0, errors.ErrStopped
-		}
-	}
-}
-
-func uint64ToBigEndianBytes(number uint64) []byte {
-	byteResult := make([]byte, 8)
-	binary.BigEndian.PutUint64(byteResult, number)
-	return byteResult
-}
-
-func (s *EtcdServer) sendReadIndex(requestIndex uint64) error {
-	ctxToSend := uint64ToBigEndianBytes(requestIndex)
-
-	cctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
-	err := s.r.ReadIndex(cctx, ctxToSend)
-	cancel()
-	if errorspkg.Is(err, raft.ErrStopped) {
-		return err
-	}
-	if err != nil {
-		lg := s.Logger()
-		lg.Warn("failed to get read index from Raft", zap.Error(err))
-		readIndexFailed.Inc()
-		return err
-	}
-	return nil
-}
-
-func (s *EtcdServer) LinearizableReadNotify(ctx context.Context) error {
-	return s.linearizableReadNotify(ctx)
-}
-
-func (s *EtcdServer) linearizableReadNotify(ctx context.Context) error {
-	s.readMu.RLock()
-	nc := s.readNotifier
-	s.readMu.RUnlock()
-
-	// signal linearizable loop for current notify if it hasn't been already
-	select {
-	case s.readwaitc <- struct{}{}:
-	default:
-	}
-
-	// wait for read state notification
-	select {
-	case <-nc.c:
-		return nc.err
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-s.done:
-		return errors.ErrStopped
-	}
-}
 
 func (s *EtcdServer) AuthInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error) {
 	authInfo, err := s.AuthStore().AuthInfoFromCtx(ctx)
