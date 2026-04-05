@@ -691,7 +691,7 @@ func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	defer cancel()
 
 	// serve with linearized downgrade info
-	if err := h.server.linearizableReadNotify(ctx); err != nil {
+	if err := h.server.LinearizableReadNotify(ctx); err != nil {
 		http.Error(w, fmt.Sprintf("failed linearized read: %v", err),
 			http.StatusInternalServerError)
 		return
@@ -924,7 +924,7 @@ func (s *EtcdServer) ensureLeadership() bool {
 
 	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
 	defer cancel()
-	if err := s.linearizableReadNotify(ctx); err != nil {
+	if err := s.LinearizableReadNotify(ctx); err != nil {
 		lg.Warn("Failed to check current member's leadership",
 			zap.Error(err))
 		return false

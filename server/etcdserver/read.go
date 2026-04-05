@@ -33,10 +33,6 @@ var (
 )
 
 func (s *EtcdServer) LinearizableReadNotify(ctx context.Context) error {
-	return s.linearizableReadNotify(ctx)
-}
-
-func (s *EtcdServer) linearizableReadNotify(ctx context.Context) error {
 	s.readMu.RLock()
 	nc := s.readNotifier
 	s.readMu.RUnlock()
