@@ -201,6 +201,7 @@ func (cw *streamWriter) run() {
 			heartbeatc, msgc = nil, nil
 
 		case m := <-msgc:
+			logRaftCommunication(cw.lg, cw.localID, m, cw.peerID, "send")
 			err := enc.encode(&m)
 			if err == nil {
 				unflushed += m.Size()
@@ -497,6 +498,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			cr.mu.Unlock()
 			return err
 		}
+		logRaftCommunication(cr.lg, cr.tr.ID, m, cr.peerID, "receive")
 
 		// gofail: var raftDropHeartbeat struct{}
 		// continue labelRaftDropHeartbeat
