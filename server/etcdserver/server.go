@@ -60,6 +60,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
+	"go.etcd.io/etcd/server/v3/etcdserver/read"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -222,7 +223,7 @@ type EtcdServer struct {
 
 	w wait.Wait
 
-	*read
+	read *read.Read
 
 	// stop signals the run goroutine should shutdown.
 	stop chan struct{}
@@ -532,7 +533,7 @@ func (s *EtcdServer) Start() {
 	s.GoAttach(func() { monitorFileDescriptor(s.Logger(), s.stopping) })
 	s.GoAttach(s.monitorClusterVersions)
 	s.GoAttach(s.monitorStorageVersion)
-	s.GoAttach(s.linearizableReadLoop)
+	s.GoAttach(s.read.LinearizableReadLoop)
 	s.GoAttach(s.monitorKVHash)
 	s.GoAttach(s.monitorCompactHash)
 	s.GoAttach(s.monitorDowngrade)
@@ -567,7 +568,7 @@ func (s *EtcdServer) start() {
 	s.stop = make(chan struct{})
 	s.stopping = make(chan struct{}, 1)
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.read = newRead(s, &s.r)
+	s.read = read.NewRead(s, &s.r)
 	s.leaderChanged = notify.NewNotifier()
 	if s.ClusterVersion() != nil {
 		lg.Info(
@@ -686,7 +687,7 @@ func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	defer cancel()
 
 	// serve with linearized downgrade info
-	if err := h.server.LinearizableReadNotify(ctx); err != nil {
+	if err := h.server.read.LinearizableReadNotify(ctx); err != nil {
 		http.Error(w, fmt.Sprintf("failed linearized read: %v", err),
 			http.StatusInternalServerError)
 		return
@@ -919,7 +920,7 @@ func (s *EtcdServer) ensureLeadership() bool {
 
 	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
 	defer cancel()
-	if err := s.LinearizableReadNotify(ctx); err != nil {
+	if err := s.read.LinearizableReadNotify(ctx); err != nil {
 		lg.Warn("Failed to check current member's leadership",
 			zap.Error(err))
 		return false
@@ -1663,7 +1664,7 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb membership.Member) (
 
 func (s *EtcdServer) MemberList(ctx context.Context, r *pb.MemberListRequest) ([]*membership.Member, error) {
 	if r.Linearizable {
-		if err := s.LinearizableReadNotify(ctx); err != nil {
+		if err := s.read.LinearizableReadNotify(ctx); err != nil {
 			return nil, err
 		}
 	}

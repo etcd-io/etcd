@@ -56,6 +56,7 @@ import (
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
+	"go.etcd.io/etcd/server/v3/etcdserver/read"
 	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
@@ -1584,7 +1585,7 @@ func TestRequestCurrentIndex_LeaderChangedRace(t *testing.T) {
 		leaderChangedNotifier := s.leaderChanged.Receive()
 		s.leaderChanged.Notify()
 
-		index, err := s.requestCurrentIndex(leaderChangedNotifier)
+		index, err := s.read.RequestCurrentIndex(leaderChangedNotifier)
 		require.ErrorIs(t, err, errors.ErrLeaderChanged)
 		require.Equal(t, uint64(0), index)
 
@@ -1603,7 +1604,7 @@ func TestRequestCurrentIndex_UniqueRequestID(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		s.requestCurrentIndex(s.leaderChanged.Receive())
+		s.read.RequestCurrentIndex(s.leaderChanged.Receive())
 	}()
 
 	require.Eventually(t, func() bool {
@@ -1629,7 +1630,7 @@ func TestRequestCurrentIndex_Success(t *testing.T) {
 	var err error
 	go func() {
 		defer wg.Done()
-		index, err = s.requestCurrentIndex(s.leaderChanged.Receive())
+		index, err = s.read.RequestCurrentIndex(s.leaderChanged.Receive())
 	}()
 
 	require.Eventually(t, func() bool {
@@ -1661,7 +1662,7 @@ func TestRequestCurrentIndex_WrongRequestID(t *testing.T) {
 	var err error
 	go func() {
 		defer wg.Done()
-		index, err = s.requestCurrentIndex(s.leaderChanged.Receive())
+		index, err = s.read.RequestCurrentIndex(s.leaderChanged.Receive())
 	}()
 
 	require.Eventually(t, func() bool {
@@ -1704,7 +1705,7 @@ func TestRequestCurrentIndex_DelayedResponse(t *testing.T) {
 	var err error
 	go func() {
 		defer wg.Done()
-		index, err = s.requestCurrentIndex(s.leaderChanged.Receive())
+		index, err = s.read.RequestCurrentIndex(s.leaderChanged.Receive())
 	}()
 
 	require.Eventually(t, func() bool {
@@ -1745,7 +1746,7 @@ func setupTestRequestCurrentIndex(t *testing.T) (*EtcdServer, *testRaftNode) {
 			readStateC: make(chan raft.ReadState, 1),
 		},
 	}
-	s.read = newRead(s, &s.r)
+	s.read = read.NewRead(s, &s.r)
 	return s, mockRaft
 }
 

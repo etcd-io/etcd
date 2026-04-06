@@ -14,7 +14,10 @@
 
 package etcdserver
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 func (s *EtcdServer) ApplyWait(deadline uint64) <-chan struct{} {
 	return s.applyWait.Wait(deadline)
@@ -38,4 +41,8 @@ func (s *EtcdServer) RequestTimeout() time.Duration {
 
 func (s *EtcdServer) Stopping() <-chan struct{} {
 	return s.stopping
+}
+
+func (s *EtcdServer) LinearizableReadNotify(ctx context.Context) error {
+	return s.read.LinearizableReadNotify(ctx)
 }

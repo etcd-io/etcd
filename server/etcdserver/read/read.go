@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package read
 
 import (
 	"context"
@@ -33,8 +33,8 @@ var (
 	readIndexRetryTime = 500 * time.Millisecond
 )
 
-func newRead(server server, raft raftInterface) *read {
-	return &read{
+func NewRead(server server, raft raftInterface) *Read {
+	return &Read{
 		server:   server,
 		raft:     raft,
 		waitC:    make(chan struct{}, 1),
@@ -42,12 +42,12 @@ func newRead(server server, raft raftInterface) *read {
 	}
 }
 
-type read struct {
+type Read struct {
 	server server
 	raft   raftInterface
 	mux    sync.RWMutex
 	// read routine notifies etcd server that it waits for reading by sending an empty struct to
-	// readwaitC
+	// waitC
 	waitC chan struct{}
 	// notifier is used to notify the read routine that it can process the request
 	// when there is no error
@@ -71,7 +71,7 @@ type raftInterface interface {
 	ReadIndex(ctx context.Context, rctx []byte) error
 }
 
-func (r *read) LinearizableReadNotify(ctx context.Context) error {
+func (r *Read) LinearizableReadNotify(ctx context.Context) error {
 	r.mux.RLock()
 	nc := r.notifier
 	r.mux.RUnlock()
@@ -93,7 +93,7 @@ func (r *read) LinearizableReadNotify(ctx context.Context) error {
 	}
 }
 
-func (r *read) linearizableReadLoop() {
+func (r *Read) LinearizableReadLoop() {
 	for {
 		leaderChangedNotifier := r.server.LeaderChanged()
 		select {
@@ -114,7 +114,7 @@ func (r *read) linearizableReadLoop() {
 		r.notifier = nextnr
 		r.mux.Unlock()
 
-		confirmedIndex, err := r.requestCurrentIndex(leaderChangedNotifier)
+		confirmedIndex, err := r.RequestCurrentIndex(leaderChangedNotifier)
 		if isStopped(err) {
 			return
 		}
@@ -141,11 +141,11 @@ func (r *read) linearizableReadLoop() {
 		nr.notify(nil)
 		trace.Step("applied index is now lower than readState.Index")
 
-		trace.LogAllStepsIfLong(traceThreshold)
+		trace.LogAllStepsIfLong(100 * time.Millisecond)
 	}
 }
 
-func (r *read) requestCurrentIndex(leaderChangedNotifier <-chan struct{}) (uint64, error) {
+func (r *Read) RequestCurrentIndex(leaderChangedNotifier <-chan struct{}) (uint64, error) {
 	requestIDs := map[uint64]struct{}{}
 	requestID := r.server.NextRequestID()
 	requestIDs[requestID] = struct{}{}
@@ -229,7 +229,7 @@ func (r *read) requestCurrentIndex(leaderChangedNotifier <-chan struct{}) (uint6
 	}
 }
 
-func (r *read) sendReadIndex(requestIndex uint64) error {
+func (r *Read) sendReadIndex(requestIndex uint64) error {
 	ctxToSend := uint64ToBigEndianBytes(requestIndex)
 
 	cctx, cancel := context.WithTimeout(context.Background(), r.server.RequestTimeout())
