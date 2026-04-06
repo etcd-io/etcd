@@ -26,7 +26,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/options"
 	"go.etcd.io/etcd/tests/v3/robustness/random"
@@ -84,7 +83,6 @@ type TestScenario struct {
 	Cluster   e2e.EtcdProcessClusterConfig
 	Traffic   traffic.Traffic
 	Profile   traffic.Profile
-	Watch     client.WatchConfig
 }
 
 func Exploratory(_ *testing.T) []TestScenario {
@@ -168,7 +166,6 @@ func Exploratory(_ *testing.T) []TestScenario {
 					Cluster:   lazyfsCluster,
 					Traffic:   s.Traffic,
 					Profile:   profileWithoutCompaction,
-					Watch:     s.Watch,
 				})
 			}
 		}
@@ -222,9 +219,6 @@ func Regression(t *testing.T) []TestScenario {
 	})
 	scenarios = append(scenarios, TestScenario{
 		Name: "Issue15220",
-		Watch: client.WatchConfig{
-			RequestProgress: true,
-		},
 		Profile: traffic.Profile{
 			KeyValue:   &traffic.KeyValueMedium,
 			Watch:      &traffic.WatchDefault,
@@ -311,9 +305,6 @@ func Regression(t *testing.T) []TestScenario {
 	scenarios = append(scenarios, TestScenario{
 		Name:      "Issue20221",
 		Failpoint: failpoint.BlackholeUntilSnapshot,
-		Watch: client.WatchConfig{
-			RequestProgress: true,
-		},
 		Profile: traffic.Profile{
 			KeyValue: &traffic.KeyValueHigh,
 			Watch: &traffic.Watch{

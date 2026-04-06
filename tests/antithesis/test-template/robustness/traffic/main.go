@@ -100,9 +100,6 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 		lg.Fatal("Failed empty database at start check", zap.Error(err))
 	}
 	maxRevisionChan := make(chan int64, 1)
-	watchConfig := client.WatchConfig{
-		RequestProgress: true,
-	}
 	g := errgroup.Group{}
 	startTime := time.Since(baseTime)
 	g.Go(func() error {
@@ -120,7 +117,6 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 			Lg:              lg,
 			Endpoints:       hosts,
 			MaxRevisionChan: maxRevisionChan,
-			Cfg:             watchConfig,
 			ClientSet:       watchSet,
 		})
 		return err

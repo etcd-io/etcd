@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -27,7 +28,6 @@ type CollectClusterWatchEventsParam struct {
 	Lg              *zap.Logger
 	Endpoints       []string
 	MaxRevisionChan <-chan int64
-	Cfg             WatchConfig
 	ClientSet       *ClientSet
 }
 
@@ -43,7 +43,7 @@ func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEve
 				return err
 			}
 			defer c.Close()
-			return watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan, param.Cfg)
+			return watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan)
 		})
 	}
 	g.Go(func() error {
@@ -57,12 +57,8 @@ func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEve
 	return g.Wait()
 }
 
-type WatchConfig struct {
-	RequestProgress bool
-}
-
 // watchUntilRevision watches all changes until context is canceled, it has observed the revision provided via maxRevisionChan or maxRevisionChan was closed.
-func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) error {
+func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64) error {
 	var maxRevision int64
 	var lastRevision int64 = 1
 	var closing bool
@@ -96,13 +92,12 @@ resetWatch:
 						cancel()
 					}
 				}
+			case <-time.After(100 * time.Millisecond):
+				c.RequestProgress(ctx)
 			case resp, ok := <-watch:
 				if !ok {
 					lg.Info("Watch channel closed")
 					continue resetWatch
-				}
-				if cfg.RequestProgress {
-					c.RequestProgress(ctx)
 				}
 
 				if resp.Err() != nil {
