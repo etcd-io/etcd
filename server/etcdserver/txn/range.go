@@ -82,20 +82,16 @@ func rangeLimit(r *pb.RangeRequest) int64 {
 
 func filterRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest) {
 	if r.MaxModRevision != 0 {
-		f := func(kv *mvccpb.KeyValue) bool { return kv.ModRevision > r.MaxModRevision }
-		pruneKVs(rr, f)
+		pruneKVs(rr, func(kv *mvccpb.KeyValue) bool { return kv.ModRevision > r.MaxModRevision })
 	}
 	if r.MinModRevision != 0 {
-		f := func(kv *mvccpb.KeyValue) bool { return kv.ModRevision < r.MinModRevision }
-		pruneKVs(rr, f)
+		pruneKVs(rr, func(kv *mvccpb.KeyValue) bool { return kv.ModRevision < r.MinModRevision })
 	}
 	if r.MaxCreateRevision != 0 {
-		f := func(kv *mvccpb.KeyValue) bool { return kv.CreateRevision > r.MaxCreateRevision }
-		pruneKVs(rr, f)
+		pruneKVs(rr, func(kv *mvccpb.KeyValue) bool { return kv.CreateRevision > r.MaxCreateRevision })
 	}
 	if r.MinCreateRevision != 0 {
-		f := func(kv *mvccpb.KeyValue) bool { return kv.CreateRevision < r.MinCreateRevision }
-		pruneKVs(rr, f)
+		pruneKVs(rr, func(kv *mvccpb.KeyValue) bool { return kv.CreateRevision < r.MinCreateRevision })
 	}
 }
 
