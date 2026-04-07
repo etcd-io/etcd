@@ -16,6 +16,8 @@ package model
 
 import (
 	"encoding/json"
+	"math/rand"
+	"slices"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -48,6 +50,160 @@ func TestModelDeterministic(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEtcdStateEqual(t *testing.T) {
+	testCases := []struct {
+		name  string
+		s1    EtcdState
+		s2    EtcdState
+		equal bool
+	}{
+		{
+			name:  "Fresh states should be equal",
+			s1:    freshEtcdState(),
+			s2:    freshEtcdState(),
+			equal: true,
+		},
+		{
+			name: "States from identical history should be equal",
+			s1: func() EtcdState {
+				s := freshEtcdState()
+				s, _ = s.Step(putRequest("key", "1"))
+				s, _ = s.Step(putRequest("key", "2"))
+				return s
+			}(),
+			s2: func() EtcdState {
+				s := freshEtcdState()
+				s, _ = s.Step(putRequest("key", "1"))
+				s, _ = s.Step(putRequest("key", "2"))
+				return s
+			}(),
+			equal: true,
+		},
+		{
+			name: "States from different history should not be equal",
+			s1: func() EtcdState {
+				s := freshEtcdState()
+				s, _ = s.Step(putRequest("key", "1"))
+				s, _ = s.Step(putRequest("key", "2"))
+				return s
+			}(),
+			s2: func() EtcdState {
+				s := freshEtcdState()
+				s, _ = s.Step(putRequest("key", "2"))
+				s, _ = s.Step(putRequest("key", "1"))
+				return s
+			}(),
+			equal: false,
+		},
+		{
+			name: "Empty states with higher revision should be equal",
+			s1: func() EtcdState {
+				s := freshEtcdState()
+				s, _ = s.Step(putRequest("key", "1"))
+				s, _ = s.Step(putRequest("key", "2"))
+				s, _ = s.Step(deleteRequest("key"))
+				return s
+			}(),
+			s2: func() EtcdState {
+				s := freshEtcdState()
+				s, _ = s.Step(putRequest("key", "2"))
+				s, _ = s.Step(putRequest("key", "1"))
+				s, _ = s.Step(deleteRequest("key"))
+				return s
+			}(),
+			equal: true,
+		},
+		{
+			name: "Grant and Revoke empty lease should be equal to fresh state",
+			s1:   freshEtcdState(),
+			s2: func() EtcdState {
+				s := freshEtcdState()
+				s, _ = s.Step(leaseGrantRequest(1))
+				s, _ = s.Step(leaseRevokeRequest(1))
+				return s
+			}(),
+			equal: true,
+		},
+		{
+			name: "Delete via Revoke vs Delete directly should be equal",
+			s1: func() EtcdState {
+				s := freshEtcdState()
+				s, _ = s.Step(leaseGrantRequest(1))
+				s, _ = s.Step(putWithLeaseRequest("key", "val", 1))
+				s, _ = s.Step(leaseRevokeRequest(1))
+				return s
+			}(),
+			s2: func() EtcdState {
+				s := freshEtcdState()
+				s, _ = s.Step(putRequest("key", "val"))
+				s, _ = s.Step(deleteRequest("key"))
+				return s
+			}(),
+			equal: true,
+		},
+		{
+			name: "Put via Txn vs Put directly should be equal",
+			s1: func() EtcdState {
+				s := freshEtcdState()
+				s, _ = s.Step(compareRevisionAndPutRequest("key", 0, "val"))
+				return s
+			}(),
+			s2: func() EtcdState {
+				s := freshEtcdState()
+				s, _ = s.Step(putRequest("key", "val"))
+				return s
+			}(),
+			equal: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.s1.Equal(tc.s2) != tc.equal {
+				t.Errorf("Expected equal=%v, got %v", tc.equal, !tc.equal)
+				t.Errorf("Diff:\n%v", cmp.Diff(tc.s1, tc.s2))
+			}
+		})
+	}
+}
+
+func TestEtcdStateEqualCommutativeRequests(t *testing.T) {
+	commutativeRequests := []EtcdRequest{
+		leaseGrantRequest(1),
+		leaseGrantRequest(2),
+		leaseRevokeRequest(3),
+		leaseRevokeRequest(4),
+		getRequest("key1"),
+		getRequest("key2"),
+		defragmentRequest(),
+		defragmentRequest(),
+		compactRequest(1),
+		compactRequest(2),
+	}
+
+	baseState := applyRequests(commutativeRequests)
+
+	for i := 0; i < 10_000; i++ {
+		perm := slices.Clone(commutativeRequests)
+		rand.Shuffle(len(perm), func(i, j int) {
+			perm[i], perm[j] = perm[j], perm[i]
+		})
+		s2 := applyRequests(perm)
+
+		if !baseState.Equal(s2) {
+			t.Errorf("Expected states to be equal after random reordering, but they are not")
+		}
+	}
+}
+
+func applyRequests(reqs []EtcdRequest) EtcdState {
+	state := freshEtcdState()
+	for _, req := range reqs {
+		state, _ = state.Step(req)
+	}
+	return state
 }
 
 type modelTestCase struct {
