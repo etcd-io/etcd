@@ -634,7 +634,9 @@ func (s *EtcdServer) purgeFile() {
 
 func (s *EtcdServer) Cluster() api.Cluster { return s.cluster }
 
-func (s *EtcdServer) ApplyWait() <-chan struct{} { return s.applyWait.Wait(s.getCommittedIndex()) }
+func (s *EtcdServer) ApplyWaitCommit() <-chan struct{} {
+	return s.applyWait.Wait(s.getCommittedIndex())
+}
 
 type ServerPeer interface {
 	ServerV2
@@ -646,7 +648,7 @@ func (s *EtcdServer) LeaseHandler() http.Handler {
 	if s.lessor == nil {
 		return nil
 	}
-	return leasehttp.NewHandler(s.lessor, s.ApplyWait)
+	return leasehttp.NewHandler(s.lessor, s.ApplyWaitCommit)
 }
 
 func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler() }
@@ -691,7 +693,7 @@ func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	defer cancel()
 
 	// serve with linearized downgrade info
-	if err := h.server.linearizableReadNotify(ctx); err != nil {
+	if err := h.server.LinearizableReadNotify(ctx); err != nil {
 		http.Error(w, fmt.Sprintf("failed linearized read: %v", err),
 			http.StatusInternalServerError)
 		return
@@ -924,7 +926,7 @@ func (s *EtcdServer) ensureLeadership() bool {
 
 	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
 	defer cancel()
-	if err := s.linearizableReadNotify(ctx); err != nil {
+	if err := s.LinearizableReadNotify(ctx); err != nil {
 		lg.Warn("Failed to check current member's leadership",
 			zap.Error(err))
 		return false
