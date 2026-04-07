@@ -402,7 +402,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 				return lease.ErrNotPrimary
 			}
 
-			srv.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseCheckpoint: cp})
+			srv.raftRequest(ctx, pb.InternalRaftRequest{LeaseCheckpoint: cp})
 			return nil
 		})
 	}
