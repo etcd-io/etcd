@@ -17,6 +17,7 @@ package txn
 import (
 	"bytes"
 	"context"
+	"math"
 	"sort"
 	"time"
 
@@ -67,17 +68,26 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 
 func rangeLimit(r *pb.RangeRequest) int64 {
 	limit := r.Limit
-	if r.SortOrder != pb.RangeRequest_NONE ||
-		r.MinModRevision != 0 || r.MaxModRevision != 0 ||
-		r.MinCreateRevision != 0 || r.MaxCreateRevision != 0 {
-		// fetch everything; sort and truncate afterwards
+	if !isDefaultOrdering(r.SortTarget, r.SortOrder) || hasRevisionFilters(r) {
 		limit = 0
 	}
-	if limit > 0 {
-		// fetch one extra for 'more' flag
+	if limit > 0 && limit < math.MaxInt64 {
 		limit = limit + 1
 	}
 	return limit
+}
+
+func isDefaultOrdering(sortTarget pb.RangeRequest_SortTarget, sortOrder pb.RangeRequest_SortOrder) bool {
+	// Since current mvcc.Range implementation returns results
+	// sorted by keys in lexiographically ascending order,
+	// don't re-sort when target is 'KEY' and order is ASCEND
+	return sortOrder == pb.RangeRequest_NONE ||
+		(sortTarget == pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_ASCEND)
+}
+
+func hasRevisionFilters(r *pb.RangeRequest) bool {
+	return r.MinModRevision != 0 || r.MaxModRevision != 0 ||
+		r.MinCreateRevision != 0 || r.MaxCreateRevision != 0
 }
 
 func filterRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest) {
@@ -102,17 +112,10 @@ func filterRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest) {
 func sortRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest, lg *zap.Logger) {
 	sortOrder := r.SortOrder
 	if r.SortTarget != pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_NONE {
-		// Since current mvcc.Range implementation returns results
-		// sorted by keys in lexiographically ascending order,
-		// sort ASCEND by default only when target is not 'KEY'
 		sortOrder = pb.RangeRequest_ASCEND
-	} else if r.SortTarget == pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_ASCEND {
-		// Since current mvcc.Range implementation returns results
-		// sorted by keys in lexiographically ascending order,
-		// don't re-sort when target is 'KEY' and order is ASCEND
-		sortOrder = pb.RangeRequest_NONE
 	}
-	if sortOrder != pb.RangeRequest_NONE {
+
+	if !isDefaultOrdering(r.SortTarget, sortOrder) {
 		var sorter sort.Interface
 		switch {
 		case r.SortTarget == pb.RangeRequest_KEY:
