@@ -32,6 +32,9 @@ import (
 // FlockTimeout is the duration to wait to obtain a file lock on db file.
 var FlockTimeout time.Duration
 
+// ExitTimeout is the exit code when a command times out, matching the GNU timeout convention.
+const ExitTimeout = 124
+
 func GetLogger() *zap.Logger {
 	config := logutil.DefaultZapLoggerConfig
 	config.Encoding = "console"

@@ -15,10 +15,14 @@
 package etcdutl
 
 import (
+	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -27,6 +31,7 @@ import (
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
@@ -252,15 +257,52 @@ func getHashCommandFunc(_ *cobra.Command, args []string) {
 		lg.Fatal("db file not exist", zap.String("path", dp))
 	}
 
-	hash, err := getHash(dp)
-	if err != nil {
-		lg.Fatal("failed to get hash", zap.Error(err))
+	hash, err := runHashWithTimeout(dp, FlockTimeout)
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		fmt.Fprintf(os.Stderr, "timed out waiting for the database lock on %s\n", dp)
+		os.Exit(ExitTimeout)
+	case err != nil:
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	default:
+		fmt.Printf("db path: %s\nHash: %d\n", dp, hash)
 	}
-	fmt.Printf("db path: %s\nHash: %d\n", dp, hash)
+}
+
+// runHashWithTimeout runs getHash in a goroutine and returns the hash, or
+// context.DeadlineExceeded if timeout elapses before the operation completes.
+// Pass timeout=0 to wait indefinitely.
+func runHashWithTimeout(dbPath string, timeout time.Duration) (uint32, error) {
+	type result struct {
+		hash uint32
+		err  error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		h, err := getHash(dbPath)
+		ch <- result{h, err}
+	}()
+
+	if timeout <= 0 {
+		r := <-ch
+		return r.hash, r.err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	select {
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	case r := <-ch:
+		return r.hash, r.err
+	}
 }
 
 func getHash(dbPath string) (hash uint32, err error) {
-	b := backend.NewDefaultBackend(zap.NewNop(), dbPath, backend.WithTimeout(FlockTimeout))
+	// No bbolt flock timeout: we rely on the caller's context (via runHashWithTimeout)
+	// to bound the overall wait. Passing a bbolt timeout would cause NewDefaultBackend
+	// to panic on ErrTimeout instead of returning a clean error.
+	b := backend.NewDefaultBackend(zap.NewNop(), dbPath)
 	defer b.Close()
 	return b.Hash(schema.DefaultIgnores)
 }
