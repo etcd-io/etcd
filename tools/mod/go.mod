@@ -1,8 +1,8 @@
 module go.etcd.io/etcd/tools/v3
 
-go 1.24
+go 1.25
 
-toolchain go1.25.8
+toolchain go1.25.9
 
 require (
 	github.com/gogo/protobuf v1.3.2

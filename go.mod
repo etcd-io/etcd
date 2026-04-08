@@ -2,7 +2,7 @@ module go.etcd.io/etcd
 
 go 1.25.0
 
-toolchain go1.25.8
+toolchain go1.25.9
 
 require (
 	github.com/bgentry/speakeasy v0.1.0
