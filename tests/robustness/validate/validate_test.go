@@ -227,6 +227,39 @@ func TestValidateWatch(t *testing.T) {
 			},
 		},
 		{
+			name: "Reliable - Put with non-existent lease doesn't generate watch event - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
+							Responses: []model.WatchResponse{},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				{
+					Type: model.Txn,
+					Txn: &model.TxnRequest{
+						OperationsOnSuccess: []model.EtcdOperation{
+							{
+								Type: model.PutOperation,
+								Put: model.PutOptions{
+									Key:     "a",
+									Value:   model.ToValueOrHash("1"),
+									LeaseID: 1,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: "",
+		},
+		{
 			name: "Ordered, Unique - unique ordered events in separate response - pass",
 			reports: []report.ClientReport{
 				{

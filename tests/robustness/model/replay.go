@@ -16,7 +16,6 @@ package model
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/anishathalye/porcupine"
@@ -99,7 +98,7 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 					events = append(events, e)
 				}
 			case PutOperation:
-				_, leaseExists := prevState.Leases[op.Put.LeaseID]
+				leaseExists := prevState.leaseExists(op.Put.LeaseID)
 				if op.Put.LeaseID != 0 && !leaseExists {
 					break
 				}
@@ -112,7 +111,7 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 					},
 					Revision: response.Revision,
 				}
-				if _, ok := prevState.KeyValues[op.Put.Key]; !ok {
+				if _, ok := prevState.GetValue(op.Put.Key); !ok {
 					e.IsCreate = true
 				}
 				events = append(events, e)
@@ -121,15 +120,7 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 			}
 		}
 	case LeaseRevoke:
-		deletedKeys := []string{}
-		for key := range prevState.Leases[request.LeaseRevoke.LeaseID].Keys {
-			if _, ok := prevState.KeyValues[key]; ok {
-				deletedKeys = append(deletedKeys, key)
-			}
-		}
-
-		sort.Strings(deletedKeys)
-		for _, key := range deletedKeys {
+		for _, key := range prevState.leaseKeys(request.LeaseRevoke.LeaseID) {
 			e := PersistedEvent{
 				Event: Event{
 					Type: DeleteOperation,
