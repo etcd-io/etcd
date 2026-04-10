@@ -233,6 +233,235 @@ func TestCacheWatchAtomicOrderedDelivery(t *testing.T) {
 	}
 }
 
+func TestCacheWatchPrevKV(t *testing.T) {
+	t.Run("populates_prevkv_for_update_create_delete", func(t *testing.T) {
+		initialSnapshot := &clientv3.GetResponse{
+			Header: &pb.ResponseHeader{Revision: 3},
+			Kvs: []*mvccpb.KeyValue{
+				{Key: []byte("/a"), Value: []byte("v1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+				{Key: []byte("/b"), Value: []byte("b1"), CreateRevision: 3, ModRevision: 3, Version: 1},
+			},
+		}
+		mw := newMockWatcher(16)
+		fakeClient := &clientv3.Client{
+			Watcher: mw,
+			KV:      newKVStub(initialSnapshot),
+		}
+		c, err := New(fakeClient, "")
+		if err != nil {
+			t.Fatalf("New cache: %v", err)
+		}
+		defer c.Close()
+
+		mw.triggerCreatedNotify()
+		<-mw.registered
+
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+		defer cancel()
+		if err := c.WaitReady(ctx); err != nil {
+			t.Fatalf("cache did not become Ready(): %v", err)
+		}
+
+		watchCh := c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithPrevKV())
+
+		updateA := &clientv3.Event{
+			Type: clientv3.EventTypePut,
+			Kv:   &mvccpb.KeyValue{Key: []byte("/a"), Value: []byte("v2"), CreateRevision: 2, ModRevision: 4, Version: 2},
+		}
+		createC := &clientv3.Event{
+			Type: clientv3.EventTypePut,
+			Kv:   &mvccpb.KeyValue{Key: []byte("/c"), Value: []byte("c1"), CreateRevision: 5, ModRevision: 5, Version: 1},
+		}
+		deleteB := &clientv3.Event{
+			Type: clientv3.EventTypeDelete,
+			Kv:   &mvccpb.KeyValue{Key: []byte("/b"), ModRevision: 6},
+		}
+
+		mw.responses <- clientv3.WatchResponse{Events: []*clientv3.Event{updateA}}
+		mw.responses <- clientv3.WatchResponse{Events: []*clientv3.Event{createC}}
+		mw.responses <- clientv3.WatchResponse{Events: []*clientv3.Event{deleteB}}
+
+		var events []*clientv3.Event
+		for len(events) < 3 {
+			select {
+			case <-ctx.Done():
+				t.Fatalf("timed out waiting for events (%d/3 received)", len(events))
+			case resp := <-watchCh:
+				events = append(events, resp.Events...)
+			}
+		}
+
+		if events[0].PrevKv == nil {
+			t.Fatal("expected PrevKv for update event on /a, got nil")
+		}
+		if string(events[0].PrevKv.Key) != "/a" || string(events[0].PrevKv.Value) != "v1" {
+			t.Fatalf("PrevKv mismatch for /a update: got key=%q value=%q", events[0].PrevKv.Key, events[0].PrevKv.Value)
+		}
+
+		if events[1].PrevKv != nil {
+			t.Fatalf("expected nil PrevKv for create event on /c, got %+v", events[1].PrevKv)
+		}
+
+		if events[2].PrevKv == nil {
+			t.Fatal("expected PrevKv for delete event on /b, got nil")
+		}
+		if string(events[2].PrevKv.Key) != "/b" || string(events[2].PrevKv.Value) != "b1" {
+			t.Fatalf("PrevKv mismatch for /b delete: got key=%q value=%q", events[2].PrevKv.Key, events[2].PrevKv.Value)
+		}
+	})
+
+	t.Run("without_option_does_not_attach", func(t *testing.T) {
+		initialSnapshot := &clientv3.GetResponse{
+			Header: &pb.ResponseHeader{Revision: 2},
+			Kvs: []*mvccpb.KeyValue{
+				{Key: []byte("/a"), Value: []byte("v1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+			},
+		}
+		mw := newMockWatcher(16)
+		fakeClient := &clientv3.Client{
+			Watcher: mw,
+			KV:      newKVStub(initialSnapshot),
+		}
+		c, err := New(fakeClient, "")
+		if err != nil {
+			t.Fatalf("New cache: %v", err)
+		}
+		defer c.Close()
+
+		mw.triggerCreatedNotify()
+		<-mw.registered
+
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+		defer cancel()
+		if err := c.WaitReady(ctx); err != nil {
+			t.Fatalf("cache did not become Ready(): %v", err)
+		}
+
+		watchCh := c.Watch(ctx, "", clientv3.WithPrefix())
+
+		updateA := &clientv3.Event{
+			Type: clientv3.EventTypePut,
+			Kv:   &mvccpb.KeyValue{Key: []byte("/a"), Value: []byte("v2"), CreateRevision: 2, ModRevision: 3, Version: 2},
+		}
+		mw.responses <- clientv3.WatchResponse{Events: []*clientv3.Event{updateA}}
+
+		select {
+		case <-ctx.Done():
+			t.Fatal("timed out waiting for event")
+		case resp := <-watchCh:
+			if len(resp.Events) != 1 {
+				t.Fatalf("expected 1 event, got %d", len(resp.Events))
+			}
+			if resp.Events[0].PrevKv != nil {
+				t.Fatalf("expected nil PrevKv without WithPrevKV(), got %+v", resp.Events[0].PrevKv)
+			}
+		}
+	})
+
+	t.Run("caller_context_cancellation_unblocks_waitForRev", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			initialSnapshot := &clientv3.GetResponse{
+				Header: &pb.ResponseHeader{Revision: 2},
+				Kvs: []*mvccpb.KeyValue{
+					{Key: []byte("/a"), Value: []byte("v1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+				},
+			}
+			mw := newMockWatcher(16)
+			fakeClient := &clientv3.Client{
+				Watcher: mw,
+				KV:      newKVStub(initialSnapshot),
+			}
+			c, err := New(fakeClient, "")
+			if err != nil {
+				t.Fatalf("New cache: %v", err)
+			}
+			defer c.Close()
+
+			mw.triggerCreatedNotify()
+			<-mw.registered
+
+			ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+			defer cancel()
+			if err := c.WaitReady(ctx); err != nil {
+				t.Fatalf("cache did not become Ready(): %v", err)
+			}
+
+			watchCtx, watchCancel := context.WithCancel(t.Context())
+			defer watchCancel()
+			watchCh := c.Watch(watchCtx, "", clientv3.WithPrefix(), clientv3.WithPrevKV())
+
+			mw.responses <- clientv3.WatchResponse{Events: []*clientv3.Event{
+				{
+					Type: clientv3.EventTypePut,
+					Kv:   &mvccpb.KeyValue{Key: []byte("/a"), Value: []byte("v2"), CreateRevision: 2, ModRevision: 100, Version: 2},
+				},
+			}}
+
+			// Make sure that waitForRev is blocked by the high revision: 100
+			synctest.Wait()
+			watchCancel()
+			synctest.Wait()
+
+			resp, ok := <-watchCh
+			if ok && !resp.Canceled {
+				t.Fatalf("expected canceled response or closed channel, got %+v", resp)
+			}
+			if ok && resp.Canceled && resp.CancelReason != "context canceled" {
+				t.Fatalf("unexpected CancelReason: got %q, want %q", resp.CancelReason, "context canceled")
+			}
+		})
+	})
+
+	t.Run("cache_shutdown_unblocks_waitForRev", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			initialSnapshot := &clientv3.GetResponse{
+				Header: &pb.ResponseHeader{Revision: 2},
+				Kvs: []*mvccpb.KeyValue{
+					{Key: []byte("/a"), Value: []byte("v1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+				},
+			}
+			mw := newMockWatcher(16)
+			fakeClient := &clientv3.Client{
+				Watcher: mw,
+				KV:      newKVStub(initialSnapshot),
+			}
+			c, err := New(fakeClient, "")
+			if err != nil {
+				t.Fatalf("New cache: %v", err)
+			}
+
+			mw.triggerCreatedNotify()
+			<-mw.registered
+
+			ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+			defer cancel()
+			if err := c.WaitReady(ctx); err != nil {
+				t.Fatalf("cache did not become Ready(): %v", err)
+			}
+
+			watchCh := c.Watch(t.Context(), "", clientv3.WithPrefix(), clientv3.WithPrevKV())
+
+			mw.responses <- clientv3.WatchResponse{Events: []*clientv3.Event{
+				{
+					Type: clientv3.EventTypePut,
+					Kv:   &mvccpb.KeyValue{Key: []byte("/a"), Value: []byte("v2"), CreateRevision: 2, ModRevision: 100, Version: 2},
+				},
+			}}
+
+			synctest.Wait()
+			c.Close()
+
+			resp, ok := <-watchCh
+			if ok && !resp.Canceled {
+				t.Fatalf("expected canceled response or closed channel, got %+v", resp)
+			}
+			if ok && resp.Canceled && resp.CancelReason != "context canceled" {
+				t.Fatalf("unexpected CancelReason: got %q, want %q", resp.CancelReason, "context canceled")
+			}
+		})
+	})
+}
+
 func TestValidateWatchRange(t *testing.T) {
 	type tc struct {
 		name        string

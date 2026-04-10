@@ -23,12 +23,13 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 var (
-	// Returned when an option combination isn’t yet handled by the cache (e.g. WithPrevKV, WithProgressNotify for Watch(), WithCountOnly for Get()).
+	// Returned when an option combination isn’t yet handled by the cache (e.g. WithProgressNotify for Watch(), WithCountOnly for Get()).
 	ErrUnsupportedRequest = errors.New("cache: unsupported request parameters")
 	// Returned when the requested key or key‑range is invalid (empty or reversed) or lies outside c.prefix.
 	ErrKeyRangeInvalid = errors.New("cache: invalid or out‑of‑range key range")
@@ -126,6 +127,7 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 		return ch
 	}
 
+	needPrevKV := op.IsPrevKV()
 	w := newWatcher(c.cfg.PerWatcherBufferSize, pred)
 	c.demux.Register(w, startRev)
 
@@ -135,27 +137,37 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 		defer c.waitGroup.Done()
 		defer close(responseChan)
 		defer c.demux.Unregister(w)
+
+		mergedCtx, mergedCancel := context.WithCancel(ctx)
+		defer mergedCancel()
+		stop := context.AfterFunc(c.internalCtx, mergedCancel)
+		defer stop()
+
 		for {
 			select {
-			case <-ctx.Done():
-				return
-			case <-c.internalCtx.Done():
+			case <-mergedCtx.Done():
 				return
 			case resp, ok := <-w.respCh:
 				if !ok {
 					if w.cancelResp != nil {
 						select {
-						case <-ctx.Done():
-						case <-c.internalCtx.Done():
+						case <-mergedCtx.Done():
 						case responseChan <- *w.cancelResp:
 						}
 					}
 					return
 				}
+				if needPrevKV {
+					if err := c.attachPrevKV(mergedCtx, &resp); err != nil {
+						select {
+						case <-mergedCtx.Done():
+						case responseChan <- clientv3.WatchResponse{Canceled: true, CancelReason: err.Error()}:
+						}
+						return
+					}
+				}
 				select {
-				case <-ctx.Done():
-					return
-				case <-c.internalCtx.Done():
+				case <-mergedCtx.Done():
 					return
 				case responseChan <- resp:
 				}
@@ -400,8 +412,6 @@ func (c *Cache) watchEvents(rev int64, applyErr <-chan error, readyOnce *sync.On
 
 func (c *Cache) validateWatch(key string, op clientv3.Op) (pred KeyPredicate, err error) {
 	switch {
-	case op.IsPrevKV():
-		return nil, fmt.Errorf("%w: PrevKV not supported", ErrUnsupportedRequest)
 	case op.IsFragment():
 		return nil, fmt.Errorf("%w: Fragment not supported", ErrUnsupportedRequest)
 	case op.IsProgressNotify():
@@ -488,6 +498,40 @@ func (c *Cache) validateRange(startKey, endKey []byte) error {
 		}
 		return nil
 	}
+}
+
+func (c *Cache) attachPrevKV(ctx context.Context, resp *clientv3.WatchResponse) error {
+	if len(resp.Events) == 0 {
+		return nil
+	}
+	events := make([]*clientv3.Event, len(resp.Events))
+	for i, ev := range resp.Events {
+		if isCreateEvent(ev) {
+			events[i] = ev
+			continue
+		}
+		clone := *ev
+		prevRev := ev.Kv.ModRevision - 1
+		if err := c.store.waitForRev(ctx, prevRev); err != nil {
+			return err
+		}
+		kvs, _, err := c.store.Get(ev.Kv.Key, nil, prevRev)
+		switch {
+		case err == nil && len(kvs) > 0:
+			clone.PrevKv = kvs[0]
+		case errors.Is(err, rpctypes.ErrCompacted):
+			// Previous revision compacted; leave PrevKv nil.
+		case err != nil:
+			return fmt.Errorf("cache: looking up PrevKV for key %q at rev %d: %w", ev.Kv.Key, prevRev, err)
+		}
+		events[i] = &clone
+	}
+	resp.Events = events
+	return nil
+}
+
+func isCreateEvent(e *clientv3.Event) bool {
+	return e.Type == mvccpb.Event_PUT && e.Kv.CreateRevision == e.Kv.ModRevision
 }
 
 // WaitForNextResync blocks until the next resync loop iteration is complete.

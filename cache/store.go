@@ -15,6 +15,7 @@
 package cache
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -165,6 +166,22 @@ func (s *store) applyEventsLocked(events []*clientv3.Event) error {
 		s.latest.rev = rev
 		s.history.Append(newClonedSnapshot(rev, s.latest.tree))
 		s.revCond.Broadcast()
+	}
+	return nil
+}
+
+func (s *store) waitForRev(ctx context.Context, rev int64) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	stop := context.AfterFunc(ctx, s.revCond.Broadcast)
+	defer stop()
+
+	for s.latest.rev < rev {
+		s.revCond.Wait()
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 	}
 	return nil
 }

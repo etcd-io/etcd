@@ -1387,6 +1387,88 @@ func TestCacheLaggingWatcher(t *testing.T) {
 	}
 }
 
+func TestCacheWatchWithPrevKV(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	c, err := cache.New(client, "")
+	if err != nil {
+		t.Fatalf("cache.New: %v", err)
+	}
+	t.Cleanup(c.Close)
+	ctx := t.Context()
+	if err := c.WaitReady(ctx); err != nil {
+		t.Fatalf("cache not ready: %v", err)
+	}
+
+	// Create /foo/a (rev 2)
+	_, err = client.Put(ctx, "/foo/a", "v1")
+	if err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	// Create /foo/b (rev 3)
+	_, err = client.Put(ctx, "/foo/b", "b1")
+	if err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+
+	if err := c.WaitForRevision(ctx, 3); err != nil {
+		t.Fatalf("WaitForRevision: %v", err)
+	}
+
+	watchCh := c.Watch(ctx, "/foo", clientv3.WithPrefix(), clientv3.WithPrevKV())
+
+	// Update /foo/a (rev 4) — should have PrevKv
+	_, err = client.Put(ctx, "/foo/a", "v2")
+	if err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	// Create /foo/c (rev 5) — create event, no PrevKv
+	_, err = client.Put(ctx, "/foo/c", "c1")
+	if err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	// Delete /foo/b (rev 6) — should have PrevKv
+	_, err = client.Delete(ctx, "/foo/b")
+	if err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	var events []*clientv3.Event
+	deadline := time.After(2 * time.Second)
+	for len(events) < 3 {
+		select {
+		case resp := <-watchCh:
+			events = append(events, resp.Events...)
+		case <-deadline:
+			t.Fatalf("timed out waiting for events (%d/3 received)", len(events))
+		}
+	}
+
+	// Event 1: update /foo/a — PrevKv should have old value "v1"
+	if events[0].PrevKv == nil {
+		t.Fatal("expected PrevKv for update on /foo/a, got nil")
+	}
+	if string(events[0].PrevKv.Value) != "v1" {
+		t.Fatalf("PrevKv.Value for /foo/a: got %q, want %q", events[0].PrevKv.Value, "v1")
+	}
+
+	// Event 2: create /foo/c — PrevKv should be nil
+	if events[1].PrevKv != nil {
+		t.Fatalf("expected nil PrevKv for create on /foo/c, got %+v", events[1].PrevKv)
+	}
+
+	// Event 3: delete /foo/b — PrevKv should have old value "b1"
+	if events[2].PrevKv == nil {
+		t.Fatal("expected PrevKv for delete on /foo/b, got nil")
+	}
+	if string(events[2].PrevKv.Value) != "b1" {
+		t.Fatalf("PrevKv.Value for /foo/b: got %q, want %q", events[2].PrevKv.Value, "b1")
+	}
+}
+
 func TestCacheUnsupportedWatchOptions(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
@@ -1406,7 +1488,6 @@ func TestCacheUnsupportedWatchOptions(t *testing.T) {
 		name string
 		opt  clientv3.OpOption
 	}{
-		{"WithPrevKV", clientv3.WithPrevKV()},
 		{"WithFragment", clientv3.WithFragment()},
 		{"WithProgressNotify", clientv3.WithProgressNotify()},
 		{"WithCreatedNotify", clientv3.WithCreatedNotify()},
