@@ -317,9 +317,10 @@ func BenchmarkValidateLinearizableOperations(b *testing.B) {
 	b.Run("BacktrackingHeavy", func(b *testing.B) {
 		history := backtrackingHeavy(b)
 		shuffles := shuffleHistory(history, b.N)
+		keys := model.ModelKeys(history)
 		b.ResetTimer()
 		for i := 0; i < len(shuffles); i++ {
-			validateLinearizableOperationsAndVisualize(lg, shuffles[i], time.Second)
+			validateLinearizableOperationsAndVisualize(lg, keys, shuffles[i], time.Second)
 		}
 	})
 }
@@ -449,8 +450,9 @@ func shuffleHistory(history []porcupine.Operation, shuffleCount int) [][]porcupi
 }
 
 func validateShuffles(b *testing.B, lg *zap.Logger, shuffles [][]porcupine.Operation, duration time.Duration) {
+	keys := model.ModelKeys(shuffles[0])
 	for i := 0; i < len(shuffles); i++ {
-		result := validateLinearizableOperationsAndVisualize(lg, shuffles[i], duration)
+		result := validateLinearizableOperationsAndVisualize(lg, keys, shuffles[i], duration)
 		if err := result.Error(); err != nil {
 			b.Fatalf("Not linearizable: %v", err)
 		}
