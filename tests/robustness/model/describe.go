@@ -16,9 +16,6 @@ package model
 
 import (
 	"fmt"
-	"maps"
-	"slices"
-	"sort"
 	"strings"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -91,19 +88,18 @@ func describeEtcdState(state EtcdState) string {
 	if len(state.KeyValues) > 0 {
 		descHTML = append(descHTML, "keys: <ul style=\"margin: 0.25em 0;\">")
 
-		keys := slices.Collect(maps.Keys(state.KeyValues))
-		sort.Strings(keys)
-		for _, key := range keys {
-			descHTML = append(descHTML, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%s</strong> - ", key))
+		keys, values, leases := state.KeysValueLeases()
+		for i := range keys {
+			descHTML = append(descHTML, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%s</strong> - ", keys[i]))
 
-			value := state.KeyValues[key]
+			value := values[i]
 			if value.Value.Value != "" {
 				descHTML = append(descHTML, fmt.Sprintf("val: %q, ", value.Value.Value))
 			}
 			if value.Value.Hash != 0 {
 				descHTML = append(descHTML, fmt.Sprintf("hash: %d, ", value.Value.Hash))
 			}
-			lease := state.KeyLeases[key]
+			lease := leases[i]
 			if lease != 0 {
 				descHTML = append(descHTML, fmt.Sprintf("lease: %d, ", lease))
 			}
@@ -114,10 +110,9 @@ func describeEtcdState(state EtcdState) string {
 		descHTML = append(descHTML, "</ul>")
 	}
 
-	if len(state.Leases) > 0 {
+	leases := state.leases()
+	if len(leases) > 0 {
 		descHTML = append(descHTML, "leases: <ul style=\"margin: 0.25em 0;\">")
-		leases := slices.Collect(maps.Keys(state.Leases))
-		slices.Sort(leases)
 		for _, lease := range leases {
 			descHTML = append(descHTML, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%d</strong></li>", lease))
 		}

@@ -20,6 +20,7 @@ import (
 	"html"
 	"maps"
 	"reflect"
+	"slices"
 	"sort"
 
 	"github.com/anishathalye/porcupine"
@@ -163,7 +164,10 @@ func (s EtcdState) stepTxn(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 	newState := s.DeepCopy()
 	failure := false
 	for _, cond := range request.Txn.Conditions {
-		val := newState.KeyValues[cond.Key]
+		val, ok := newState.GetValue(cond.Key)
+		if !ok {
+			val = &ValueRevision{}
+		}
 		if cond.ExpectedVersion > 0 {
 			if val.Version != cond.ExpectedVersion {
 				failure = true
@@ -187,29 +191,29 @@ func (s EtcdState) stepTxn(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 				RangeResponse: newState.getRange(op.Range),
 			}
 		case PutOperation:
-			_, leaseExists := newState.Leases[op.Put.LeaseID]
-			if op.Put.LeaseID != 0 && !leaseExists {
-				break
+			var leaseID *int64
+			if op.Put.LeaseID != 0 {
+				if !newState.leaseExists(op.Put.LeaseID) {
+					break
+				}
+				leaseID = &op.Put.LeaseID
 			}
 			ver := int64(1)
-			if val, exists := newState.KeyValues[op.Put.Key]; exists && val.Version > 0 {
-				ver = val.Version + 1
+			valPtr, exists := newState.GetValue(op.Put.Key)
+			if exists && valPtr.Version > 0 {
+				ver = valPtr.Version + 1
 			}
-			newState.KeyValues[op.Put.Key] = ValueRevision{
+			val := ValueRevision{
 				Value:       op.Put.Value,
 				ModRevision: newState.Revision + 1,
 				Version:     ver,
 			}
+			newState.setValueLease(op.Put.Key, val, leaseID)
 			increaseRevision = true
-			newState = detachFromOldLease(newState, op.Put.Key)
-			if leaseExists {
-				newState = attachToNewLease(newState, op.Put.LeaseID, op.Put.Key)
-			}
 		case DeleteOperation:
-			if _, ok := newState.KeyValues[op.Delete.Key]; ok {
-				delete(newState.KeyValues, op.Delete.Key)
+			if _, ok := newState.GetValue(op.Delete.Key); ok {
+				newState.deleteKey(op.Delete.Key)
 				increaseRevision = true
-				newState = detachFromOldLease(newState, op.Delete.Key)
 				opResp[i].Deleted = 1
 			}
 		default:
@@ -294,11 +298,11 @@ func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 		}
 		response.Count = count
 	} else {
-		value, ok := s.KeyValues[options.Start]
+		valPtr, ok := s.GetValue(options.Start)
 		if ok {
 			response.KVs = append(response.KVs, KeyValue{
 				Key:           options.Start,
-				ValueRevision: value,
+				ValueRevision: *valPtr,
 			})
 			response.Count = 1
 		}
@@ -306,16 +310,57 @@ func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 	return response
 }
 
-func detachFromOldLease(s EtcdState, key string) EtcdState {
-	if oldLeaseID, ok := s.KeyLeases[key]; ok {
-		delete(s.Leases[oldLeaseID].Keys, key)
-		delete(s.KeyLeases, key)
+func (s EtcdState) KeysValueLeases() (keys []string, values []ValueRevision, leases []int64) {
+	keys = make([]string, 0, len(s.KeyValues))
+	values = make([]ValueRevision, 0, len(s.KeyValues))
+	leases = make([]int64, 0, len(s.KeyLeases))
+
+	for k, v := range s.KeyValues {
+		keys = append(keys, k)
+		values = append(values, v)
+		leases = append(leases, s.KeyLeases[k])
 	}
-	return s
+	return keys, values, leases
 }
 
-func attachToNewLease(s EtcdState, leaseID int64, key string) EtcdState {
-	s.KeyLeases[key] = leaseID
-	s.Leases[leaseID].Keys[key] = leased
-	return s
+func (s EtcdState) leases() []int64 {
+	return slices.Collect(maps.Keys(s.Leases))
+}
+
+func (s EtcdState) GetValue(key string) (*ValueRevision, bool) {
+	val, ok := s.KeyValues[key]
+	if !ok {
+		return nil, false
+	}
+	return &val, true
+}
+
+func (s EtcdState) setValueLease(key string, val ValueRevision, lease *int64) {
+	s.KeyValues[key] = val
+	if oldLeaseID, ok := s.KeyLeases[key]; ok {
+		delete(s.Leases[oldLeaseID].Keys, key)
+	}
+	if lease != nil {
+		s.KeyLeases[key] = *lease
+		s.Leases[*lease].Keys[key] = leased
+	} else {
+		delete(s.KeyLeases, key)
+	}
+}
+
+func (s EtcdState) leaseExists(lease int64) bool {
+	_, ok := s.Leases[lease]
+	return ok
+}
+
+func (s EtcdState) deleteKey(key string) {
+	delete(s.KeyValues, key)
+	if oldLeaseID, ok := s.KeyLeases[key]; ok {
+		delete(s.Leases[oldLeaseID].Keys, key)
+	}
+	delete(s.KeyLeases, key)
+}
+
+func (s EtcdState) leaseKeys(leaseID int64) []string {
+	return slices.Sorted(maps.Keys(s.Leases[leaseID].Keys))
 }
