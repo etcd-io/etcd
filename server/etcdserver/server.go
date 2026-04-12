@@ -978,16 +978,15 @@ func (s *EtcdServer) Defragment() error {
 
 func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	s.applySnapshot(ep, apply)
+
+	// wait for the raft routine to finish the disk writes before applying entries.
+	<-apply.notifyc
+
 	s.applyEntries(ep, apply)
 	backend.VerifyBackendConsistency(s.Backend(), s.Logger(), true, schema.AllBuckets...)
 
 	proposalsApplied.Set(float64(ep.appliedi))
 	s.applyWait.Trigger(ep.appliedi)
-
-	// wait for the raft routine to finish the disk writes before triggering a
-	// snapshot. or applied index might be greater than the last index in raft
-	// storage, since the raft routine might be slower than toApply routine.
-	<-apply.notifyc
 
 	s.snapshotIfNeededAndCompactRaftLog(ep)
 	select {
