@@ -791,6 +791,7 @@ func (s *EtcdServer) run() {
 				}
 			}
 			if newLeader {
+				s.lg.Info("became leader", zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()))
 				s.leaderChanged.Notify()
 			}
 			// TODO: remove the nil checking
@@ -966,9 +967,13 @@ func (s *EtcdServer) Cleanup() {
 }
 
 func (s *EtcdServer) Defragment() error {
+	s.lg.Info("Defragment: starting")
 	s.bemu.Lock()
 	defer s.bemu.Unlock()
-	return s.be.Defrag()
+	s.lg.Info("Defragment: acquired lock, starting defrag")
+	err := s.be.Defrag()
+	s.lg.Info("Defragment: finished", zap.Error(err))
+	return err
 }
 
 func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
@@ -1007,6 +1012,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 		zap.Uint64("current-applied-index", ep.appliedi),
 		zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
 		zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
+		zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()),
 	)
 	defer func() {
 		lg.Info(
@@ -1054,6 +1060,10 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	// Eventually the new consistent_index value coming from snapshot is overwritten
 	// by the old value.
 	s.consistIndex.SetBackend(newbe)
+	lg.Info("verifying snapshot index during recovery",
+		zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()),
+		zap.Uint64("snapshot-index", toApply.snapshot.Metadata.Index),
+	)
 	verifySnapshotIndex(toApply.snapshot, s.consistIndex.ConsistentIndex())
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
@@ -1914,6 +1924,10 @@ func (s *EtcdServer) apply(
 			shouldApplyV3 = membership.ApplyBoth
 			// set the consistent index of current executing entry
 			s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
+			s.lg.Debug("apply: set consistent applying index",
+				zap.Uint64("entry-index", e.Index),
+				zap.Uint64("entry-term", e.Term))
+			// gofail: var pauseAfterSetApplyingIndex struct{}
 		}
 		switch e.Type {
 		case raftpb.EntryNormal:
@@ -1953,6 +1967,9 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 			newIndex := s.consistIndex.ConsistentIndex()
 			if newIndex < e.Index {
 				s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+				s.lg.Info("applyEntryNormal: set consistent index",
+					zap.Uint64("entry-index", e.Index),
+					zap.Uint64("entry-term", e.Term))
 			}
 		}()
 	}
@@ -2019,6 +2036,9 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		if s.consistIndex != nil && membership.ApplyBoth == shouldApplyV3 {
 			applyingIndex, applyingTerm := s.consistIndex.ConsistentApplyingIndex()
 			s.consistIndex.SetConsistentIndex(applyingIndex, applyingTerm)
+			s.lg.Info("conf change failed: set consistent index",
+				zap.Uint64("consistent-index", applyingIndex),
+				zap.Uint64("consistent-term", applyingTerm))
 		}
 		return false, err
 	}
@@ -2120,6 +2140,10 @@ func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 	}
 	ep.memorySnapshotIndex = ep.appliedi
 
+	lg.Info("verifying consistent index is latest during snapshot",
+		zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()),
+		zap.Uint64("snapshot-index", snap.Metadata.Index),
+	)
 	verifyConsistentIndexIsLatest(snap, s.consistIndex.ConsistentIndex())
 
 	if toDisk {
@@ -2460,6 +2484,9 @@ func (s *EtcdServer) getTxPostLockInsideApplyHook() func() {
 		applyingIdx, applyingTerm := s.consistIndex.ConsistentApplyingIndex()
 		if applyingIdx > s.consistIndex.UnsafeConsistentIndex() {
 			s.consistIndex.SetConsistentIndex(applyingIdx, applyingTerm)
+			s.lg.Info("txPostLockInsideApplyHook: set consistent index",
+				zap.Uint64("consistent-index", applyingIdx),
+				zap.Uint64("consistent-term", applyingTerm))
 		}
 	}
 }
