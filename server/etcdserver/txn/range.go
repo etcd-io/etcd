@@ -113,6 +113,13 @@ func sortRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest, lg *zap.Logger) 
 	}
 
 	if !isDefaultOrdering(r.SortTarget, sortOrder) {
+		// Fast path: KEY DESCEND only needs a reverse since storage returns
+		// keys in ascending lexicographic order. This is O(n) vs O(n log n).
+		if r.SortTarget == pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_DESCEND {
+			slices.Reverse(rr.KVs)
+			return
+		}
+
 		// Use slices.SortFunc to avoid heap-allocating sort.Interface wrappers.
 		// For descending order, we negate the comparison function instead of
 		// wrapping with sort.Reverse (which allocates another interface).
