@@ -122,18 +122,20 @@ func (wh *watcherHub) add(e *Event) {
 func (wh *watcherHub) notify(e *Event) {
 	e = wh.EventHistory.addEvent(e) // add event into the eventHistory
 
-	segments := strings.Split(e.Node.Key, "/")
-
-	currPath := "/"
-
 	// walk through all the segments of the path and notify the watchers
 	// if the path is "/foo/bar", it will notify watchers with path "/",
 	// "/foo" and "/foo/bar"
-
-	for _, segment := range segments {
-		currPath = path.Join(currPath, segment)
-		// notify the watchers who interests in the changes of current path
-		wh.notifyWatchers(e, currPath, false)
+	//
+	// Iterate without strings.Split to avoid allocating a []string slice.
+	key := e.Node.Key
+	wh.notifyWatchers(e, "/", false)
+	for i := 1; i < len(key); i++ {
+		if key[i] == '/' {
+			wh.notifyWatchers(e, key[:i], false)
+		}
+	}
+	if len(key) > 1 {
+		wh.notifyWatchers(e, key, false)
 	}
 }
 
