@@ -469,17 +469,32 @@ func (s *store) Watch(key string, recursive, stream bool, sinceIndex uint64) (Wa
 
 // walk walks all the nodePath and apply the walkFunc on each directory
 func (s *store) walk(nodePath string, walkFunc func(prev *node, component string) (*node, *v2error.Error)) (*node, *v2error.Error) {
-	components := strings.Split(nodePath, "/")
-
 	curr := s.Root
 	var err *v2error.Error
 
-	for i := 1; i < len(components); i++ {
-		if len(components[i]) == 0 { // ignore empty string
-			return curr, nil
+	// Iterate over path components without allocating a []string via strings.Split.
+	// Skip leading slash.
+	for len(nodePath) > 0 {
+		// Skip leading slashes.
+		if nodePath[0] == '/' {
+			nodePath = nodePath[1:]
+			continue
+		}
+		// Find the next slash.
+		idx := strings.IndexByte(nodePath, '/')
+		var component string
+		if idx < 0 {
+			component = nodePath
+			nodePath = ""
+		} else {
+			component = nodePath[:idx]
+			nodePath = nodePath[idx+1:]
+		}
+		if len(component) == 0 {
+			continue
 		}
 
-		curr, err = walkFunc(curr, components[i])
+		curr, err = walkFunc(curr, component)
 		if err != nil {
 			return nil, err
 		}
