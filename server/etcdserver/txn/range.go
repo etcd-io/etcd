@@ -16,9 +16,10 @@ package txn
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"math"
-	"sort"
+	"slices"
 	"time"
 
 	"go.uber.org/zap"
@@ -112,27 +113,41 @@ func sortRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest, lg *zap.Logger) 
 	}
 
 	if !isDefaultOrdering(r.SortTarget, sortOrder) {
-		var sorter sort.Interface
-		switch {
-		case r.SortTarget == pb.RangeRequest_KEY:
-			sorter = &kvSortByKey{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_VERSION:
-			sorter = &kvSortByVersion{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_CREATE:
-			sorter = &kvSortByCreate{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_MOD:
-			sorter = &kvSortByMod{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_VALUE:
-			sorter = &kvSortByValue{&kvSort{rr.KVs}}
+		// Use slices.SortFunc to avoid heap-allocating sort.Interface wrappers.
+		// For descending order, we negate the comparison function instead of
+		// wrapping with sort.Reverse (which allocates another interface).
+		var cmpFunc func(a, b mvccpb.KeyValue) int
+		switch r.SortTarget {
+		case pb.RangeRequest_KEY:
+			cmpFunc = func(a, b mvccpb.KeyValue) int {
+				return bytes.Compare(a.Key, b.Key)
+			}
+		case pb.RangeRequest_VERSION:
+			cmpFunc = func(a, b mvccpb.KeyValue) int {
+				return cmp.Compare(a.Version, b.Version)
+			}
+		case pb.RangeRequest_CREATE:
+			cmpFunc = func(a, b mvccpb.KeyValue) int {
+				return cmp.Compare(a.CreateRevision, b.CreateRevision)
+			}
+		case pb.RangeRequest_MOD:
+			cmpFunc = func(a, b mvccpb.KeyValue) int {
+				return cmp.Compare(a.ModRevision, b.ModRevision)
+			}
+		case pb.RangeRequest_VALUE:
+			cmpFunc = func(a, b mvccpb.KeyValue) int {
+				return bytes.Compare(a.Value, b.Value)
+			}
 		default:
 			lg.Panic("unexpected sort target", zap.Int32("sort-target", int32(r.SortTarget)))
 		}
-		switch {
-		case sortOrder == pb.RangeRequest_ASCEND:
-			sort.Sort(sorter)
-		case sortOrder == pb.RangeRequest_DESCEND:
-			sort.Sort(sort.Reverse(sorter))
+		if sortOrder == pb.RangeRequest_DESCEND {
+			ascFunc := cmpFunc
+			cmpFunc = func(a, b mvccpb.KeyValue) int {
+				return ascFunc(b, a)
+			}
 		}
+		slices.SortFunc(rr.KVs, cmpFunc)
 	}
 }
 
@@ -177,41 +192,3 @@ func pruneKVs(rr *mvcc.RangeResult, isPrunable func(*mvccpb.KeyValue) bool) {
 	rr.KVs = rr.KVs[:j]
 }
 
-type kvSort struct{ kvs []mvccpb.KeyValue }
-
-func (s *kvSort) Swap(i, j int) {
-	t := s.kvs[i]
-	s.kvs[i] = s.kvs[j]
-	s.kvs[j] = t
-}
-func (s *kvSort) Len() int { return len(s.kvs) }
-
-type kvSortByKey struct{ *kvSort }
-
-func (s *kvSortByKey) Less(i, j int) bool {
-	return bytes.Compare(s.kvs[i].Key, s.kvs[j].Key) < 0
-}
-
-type kvSortByVersion struct{ *kvSort }
-
-func (s *kvSortByVersion) Less(i, j int) bool {
-	return (s.kvs[i].Version - s.kvs[j].Version) < 0
-}
-
-type kvSortByCreate struct{ *kvSort }
-
-func (s *kvSortByCreate) Less(i, j int) bool {
-	return (s.kvs[i].CreateRevision - s.kvs[j].CreateRevision) < 0
-}
-
-type kvSortByMod struct{ *kvSort }
-
-func (s *kvSortByMod) Less(i, j int) bool {
-	return (s.kvs[i].ModRevision - s.kvs[j].ModRevision) < 0
-}
-
-type kvSortByValue struct{ *kvSort }
-
-func (s *kvSortByValue) Less(i, j int) bool {
-	return bytes.Compare(s.kvs[i].Value, s.kvs[j].Value) < 0
-}
