@@ -32,6 +32,20 @@ import (
 // The default version to set when the store is first initialized.
 const defaultVersion = 2
 
+// normalizePath ensures the path starts with "/" and is clean.
+// It avoids allocation when the path is already normalized (common case).
+func normalizePath(p string) string {
+	if len(p) > 0 && p[0] == '/' && !strings.Contains(p, "//") && !strings.Contains(p, "/.") {
+		// Fast path: already starts with "/" and has no double-slashes or dots.
+		// Strip trailing slash if present (except for root "/").
+		if len(p) > 1 && p[len(p)-1] == '/' {
+			return p[:len(p)-1]
+		}
+		return p
+	}
+	return path.Join("/", p)
+}
+
 var minExpireTime time.Time
 
 func init() {
@@ -275,7 +289,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 		reportWriteFailure(CompareAndSwap)
 	}()
 
-	nodePath = path.Join("/", nodePath)
+	nodePath = normalizePath(nodePath)
 	// we do not allow the user to change "/"
 	if s.readonlySet.Contains(nodePath) {
 		return nil, v2error.NewError(v2error.EcodeRootROnly, "/", s.CurrentIndex)
@@ -350,7 +364,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 		reportWriteFailure(Delete)
 	}()
 
-	nodePath = path.Join("/", nodePath)
+	nodePath = normalizePath(nodePath)
 	// we do not allow the user to change "/"
 	if s.readonlySet.Contains(nodePath) {
 		return nil, v2error.NewError(v2error.EcodeRootROnly, "/", s.CurrentIndex)
@@ -411,7 +425,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 		reportWriteFailure(CompareAndDelete)
 	}()
 
-	nodePath = path.Join("/", nodePath)
+	nodePath = normalizePath(nodePath)
 
 	n, err := s.internalGet(nodePath)
 	if err != nil { // if the node does not exist, return error
@@ -454,7 +468,7 @@ func (s *store) Watch(key string, recursive, stream bool, sinceIndex uint64) (Wa
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
 
-	key = path.Join("/", key)
+	key = normalizePath(key)
 	if sinceIndex == 0 {
 		sinceIndex = s.CurrentIndex + 1
 	}
@@ -523,7 +537,7 @@ func (s *store) Update(nodePath string, newValue string, expireOpts TTLOptionSet
 		reportWriteFailure(Update)
 	}()
 
-	nodePath = path.Join("/", nodePath)
+	nodePath = normalizePath(nodePath)
 	// we do not allow the user to change "/"
 	if s.readonlySet.Contains(nodePath) {
 		return nil, v2error.NewError(v2error.EcodeRootROnly, "/", s.CurrentIndex)
@@ -587,7 +601,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 		nodePath += "/" + fmt.Sprintf("%020s", strconv.FormatUint(nextIndex, 10))
 	}
 
-	nodePath = path.Join("/", nodePath)
+	nodePath = normalizePath(nodePath)
 
 	// we do not allow the user to change "/"
 	if s.readonlySet.Contains(nodePath) {
@@ -662,7 +676,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 
 // InternalGet gets the node of the given nodePath.
 func (s *store) internalGet(nodePath string) (*node, *v2error.Error) {
-	nodePath = path.Join("/", nodePath)
+	nodePath = normalizePath(nodePath)
 
 	walkFunc := func(parent *node, name string) (*node, *v2error.Error) {
 		if !parent.IsDir() {
