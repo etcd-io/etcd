@@ -34,12 +34,34 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, keys []string, o
 	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
 	start := time.Now()
 
-	model := model.NonDeterministicModel(keys)
-	check, info := porcupine.CheckOperationsVerbose(model, operations, timeout)
+	model.LinearizationDeadlineTripped.Store(0)
+
+	var timer *time.Timer
+	if timeout > 0 {
+		timer = time.AfterFunc(timeout, func() {
+			model.LinearizationDeadlineTripped.Store(1)
+		})
+	}
+
+	m := model.NonDeterministicModel(keys)
+	check, info := porcupine.CheckOperationsVerbose(m, operations, timeout)
+	if timer != nil {
+		timer.Stop()
+	}
+
 	result := LinearizationResult{
 		Info:  info,
-		Model: model,
+		Model: m,
 	}
+
+	if model.LinearizationDeadlineTripped.Load() != 0 {
+		result.Status = Failure
+		result.Message = "timed out"
+		result.Timeout = true
+		lg.Error("Linearization timed out", zap.Duration("duration", time.Since(start)))
+		return result
+	}
+
 	switch check {
 	case porcupine.Ok:
 		result.Status = Success
