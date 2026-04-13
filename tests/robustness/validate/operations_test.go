@@ -18,6 +18,7 @@ package validate
 import (
 	"fmt"
 	"math/rand/v2"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -294,6 +295,48 @@ func keyValueRevision(key, value string, rev int64) model.KeyValue {
 	}
 }
 
+func TestValidateLinearizableOperationsTimeoutIsRespected(t *testing.T) {
+	timeout := time.Second
+	history := concurrentFailedPutsWithRead(t, 22)
+	keys := model.ModelKeys(history)
+
+	start := time.Now()
+	result := validateLinearizableOperationsAndVisualize(zap.NewNop(), keys, history, timeout)
+	elapsed := time.Since(start)
+
+	if !result.Timeout {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) timed out = false, message = %q", result.Message)
+	}
+	if result.Message != "timed out" {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) message = %q, want %q", result.Message, "timed out")
+	}
+	if elapsed > timeout+250*time.Millisecond {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) does not respect timeout: %v, timeout was %v", elapsed, timeout)
+	}
+}
+
+func TestValidateLinearizableOperationsIllegalGeneratesVisualization(t *testing.T) {
+	history := impossibleReadAfterSuccessfulPut()
+	keys := model.ModelKeys(history)
+
+	result := validateLinearizableOperationsAndVisualize(zap.NewNop(), keys, history, 100*time.Millisecond)
+	if result.Timeout {
+		t.Fatal("validateLinearizableOperationsAndVisualize(...) timed out unexpectedly")
+	}
+	if result.Message != "illegal" {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) message = %q, want %q", result.Message, "illegal")
+	}
+	if result.Status != Failure {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) status = %q, want %q", result.Status, Failure)
+	}
+	if len(result.Info.PartialLinearizations()) == 0 {
+		t.Fatal("validateLinearizableOperationsAndVisualize(...) produced no linearization info for illegal history")
+	}
+	if err := result.Visualize(zap.NewNop(), filepath.Join(t.TempDir(), "history.html")); err != nil {
+		t.Fatalf("result.Visualize(...): %v", err)
+	}
+}
+
 func BenchmarkValidateLinearizableOperations(b *testing.B) {
 	lg := zap.NewNop()
 	b.Run("SequentialSuccessPuts", func(b *testing.B) {
@@ -339,7 +382,8 @@ func sequentialSuccessPuts(count int, startRevision int64) []porcupine.Operation
 	return ops
 }
 
-func concurrentFailedPutsWithRead(b *testing.B, concurrencyCount int) []porcupine.Operation {
+func concurrentFailedPutsWithRead(tb testing.TB, concurrencyCount int) []porcupine.Operation {
+	tb.Helper()
 	ops := []porcupine.Operation{}
 	for i := 0; i < concurrencyCount; i++ {
 		ops = append(ops, porcupine.Operation{
@@ -353,7 +397,7 @@ func concurrentFailedPutsWithRead(b *testing.B, concurrencyCount int) []porcupin
 	replay := model.NewReplayFromOperations(ops)
 	state, err := replay.StateForRevision(int64(concurrencyCount) + 1)
 	if err != nil {
-		b.Fatal(err)
+		tb.Fatal(err)
 	}
 	request := rangeRequest("key", "kez", 0, 0)
 	_, resp := state.Step(request)
@@ -383,6 +427,25 @@ func sequentialFailedPuts(count int, keyCount int) []porcupine.Operation {
 		})
 	}
 	return ops
+}
+
+func impossibleReadAfterSuccessfulPut() []porcupine.Operation {
+	return []porcupine.Operation{
+		{
+			ClientId: 0,
+			Input:    putRequest("key", "value"),
+			Output:   txnResponse(2, model.EtcdOperationResult{}),
+			Call:     0,
+			Return:   1,
+		},
+		{
+			ClientId: 1,
+			Input:    rangeRequest("key", "", 0, 0),
+			Output:   rangeResponse(1, keyValueRevision("key", "wrong", 9999)),
+			Call:     2,
+			Return:   3,
+		},
+	}
 }
 
 func backtrackingHeavy(b *testing.B) (ops []porcupine.Operation) {

@@ -32,27 +32,49 @@ var (
 
 func validateLinearizableOperationsAndVisualize(lg *zap.Logger, keys []string, operations []porcupine.Operation, timeout time.Duration) LinearizationResult {
 	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
-	start := time.Now()
 
 	model := model.NonDeterministicModel(keys)
-	check, info := porcupine.CheckOperationsVerbose(model, operations, timeout)
 	result := LinearizationResult{
-		Info:  info,
 		Model: model,
 	}
+
+	// Use the non-verbose path for the initial decision so timeout is respected.
+	initialLinearizationCheckStart := time.Now()
+	check := porcupine.CheckOperationsTimeout(model, operations, timeout)
+	initialLinearizationCheckDuration := time.Since(initialLinearizationCheckStart)
+
 	switch check {
 	case porcupine.Ok:
 		result.Status = Success
-		lg.Info("Linearization success", zap.Duration("duration", time.Since(start)))
+		lg.Info("Linearization success",
+			zap.Duration("duration", initialLinearizationCheckDuration),
+		)
 	case porcupine.Unknown:
 		result.Status = Failure
 		result.Message = "timed out"
 		result.Timeout = true
-		lg.Error("Linearization timed out", zap.Duration("duration", time.Since(start)))
+		lg.Error("Linearization timed out",
+			zap.Duration("duration", initialLinearizationCheckDuration),
+		)
 	case porcupine.Illegal:
+		// Once the fast path already proved the history illegal, rerun in verbose
+		// mode without timeout so we always capture a visualization report.
+		reportGenerationStart := time.Now()
+		reportCheck, info := porcupine.CheckOperationsVerbose(model, operations, 0)
+		reportGenerationDuration := time.Since(reportGenerationStart)
+		result.Info = info
 		result.Status = Failure
 		result.Message = "illegal"
-		lg.Error("Linearization illegal", zap.Duration("duration", time.Since(start)))
+		if reportCheck != porcupine.Illegal {
+			lg.Warn("Verbose illegal rerun returned unexpected result",
+				zap.String("timeout_check_result", string(check)),
+				zap.String("report_result", string(reportCheck)),
+			)
+		}
+		lg.Error("Linearization illegal",
+			zap.Duration("initial_run_duration", initialLinearizationCheckDuration),
+			zap.Duration("report_run_duration", reportGenerationDuration),
+		)
 	default:
 		result.Status = Failure
 		result.Message = "unknown"
