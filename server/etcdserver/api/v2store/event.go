@@ -34,16 +34,21 @@ type Event struct {
 }
 
 func newEvent(action string, key string, modifiedIndex, createdIndex uint64) *Event {
-	n := &NodeExtern{
-		Key:           key,
-		ModifiedIndex: modifiedIndex,
-		CreatedIndex:  createdIndex,
+	// Allocate Event and NodeExtern together to reduce heap allocations from 2 to 1.
+	type eventWithNode struct {
+		event Event
+		node  NodeExtern
 	}
-
-	return &Event{
-		Action: action,
-		Node:   n,
+	en := &eventWithNode{
+		event: Event{Action: action},
+		node: NodeExtern{
+			Key:           key,
+			ModifiedIndex: modifiedIndex,
+			CreatedIndex:  createdIndex,
+		},
 	}
+	en.event.Node = &en.node
+	return &en.event
 }
 
 func (e *Event) IsCreated() bool {
