@@ -275,7 +275,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 		reportWriteFailure(CompareAndSwap)
 	}()
 
-	nodePath = path.Clean(path.Join("/", nodePath))
+	nodePath = path.Join("/", nodePath)
 	// we do not allow the user to change "/"
 	if s.readonlySet.Contains(nodePath) {
 		return nil, v2error.NewError(v2error.EcodeRootROnly, "/", s.CurrentIndex)
@@ -350,7 +350,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 		reportWriteFailure(Delete)
 	}()
 
-	nodePath = path.Clean(path.Join("/", nodePath))
+	nodePath = path.Join("/", nodePath)
 	// we do not allow the user to change "/"
 	if s.readonlySet.Contains(nodePath) {
 		return nil, v2error.NewError(v2error.EcodeRootROnly, "/", s.CurrentIndex)
@@ -411,7 +411,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 		reportWriteFailure(CompareAndDelete)
 	}()
 
-	nodePath = path.Clean(path.Join("/", nodePath))
+	nodePath = path.Join("/", nodePath)
 
 	n, err := s.internalGet(nodePath)
 	if err != nil { // if the node does not exist, return error
@@ -454,7 +454,7 @@ func (s *store) Watch(key string, recursive, stream bool, sinceIndex uint64) (Wa
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()
 
-	key = path.Clean(path.Join("/", key))
+	key = path.Join("/", key)
 	if sinceIndex == 0 {
 		sinceIndex = s.CurrentIndex + 1
 	}
@@ -523,7 +523,7 @@ func (s *store) Update(nodePath string, newValue string, expireOpts TTLOptionSet
 		reportWriteFailure(Update)
 	}()
 
-	nodePath = path.Clean(path.Join("/", nodePath))
+	nodePath = path.Join("/", nodePath)
 	// we do not allow the user to change "/"
 	if s.readonlySet.Contains(nodePath) {
 		return nil, v2error.NewError(v2error.EcodeRootROnly, "/", s.CurrentIndex)
@@ -587,7 +587,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 		nodePath += "/" + fmt.Sprintf("%020s", strconv.FormatUint(nextIndex, 10))
 	}
 
-	nodePath = path.Clean(path.Join("/", nodePath))
+	nodePath = path.Join("/", nodePath)
 
 	// we do not allow the user to change "/"
 	if s.readonlySet.Contains(nodePath) {
@@ -662,7 +662,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 
 // InternalGet gets the node of the given nodePath.
 func (s *store) internalGet(nodePath string) (*node, *v2error.Error) {
-	nodePath = path.Clean(path.Join("/", nodePath))
+	nodePath = path.Join("/", nodePath)
 
 	walkFunc := func(parent *node, name string) (*node, *v2error.Error) {
 		if !parent.IsDir() {
