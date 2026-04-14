@@ -114,7 +114,7 @@ func (r *Read) LinearizableReadLoop() {
 		r.notifier = nextnr
 		r.mux.Unlock()
 
-		confirmedIndex, err := r.RequestCurrentIndex(leaderChangedNotifier)
+		confirmedIndex, err := r.requestCurrentIndex(leaderChangedNotifier)
 		if isStopped(err) {
 			return
 		}
@@ -145,7 +145,7 @@ func (r *Read) LinearizableReadLoop() {
 	}
 }
 
-func (r *Read) RequestCurrentIndex(leaderChangedNotifier <-chan struct{}) (uint64, error) {
+func (r *Read) requestCurrentIndex(leaderChangedNotifier <-chan struct{}) (uint64, error) {
 	requestIDs := map[uint64]struct{}{}
 	requestID := r.server.NextRequestID()
 	requestIDs[requestID] = struct{}{}

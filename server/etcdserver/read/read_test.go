@@ -37,7 +37,7 @@ func TestRequestCurrentIndex_LeaderChangedRace(t *testing.T) {
 		mockRaft.readStateC <- raft.ReadState{Index: 100}
 		s.leaderChanged <- struct{}{}
 
-		index, err := r.RequestCurrentIndex(s.LeaderChanged())
+		index, err := r.requestCurrentIndex(s.LeaderChanged())
 		require.ErrorIs(t, err, errors.ErrLeaderChanged)
 		require.Equal(t, uint64(0), index)
 
@@ -60,7 +60,7 @@ func TestRequestCurrentIndex_UniqueRequestID(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		r.RequestCurrentIndex(s.LeaderChanged())
+		r.requestCurrentIndex(s.LeaderChanged())
 	}()
 
 	require.Eventually(t, func() bool {
@@ -87,7 +87,7 @@ func TestRequestCurrentIndex_Success(t *testing.T) {
 	var err error
 	go func() {
 		defer wg.Done()
-		index, err = r.RequestCurrentIndex(s.LeaderChanged())
+		index, err = r.requestCurrentIndex(s.LeaderChanged())
 	}()
 
 	require.Eventually(t, func() bool {
@@ -120,7 +120,7 @@ func TestRequestCurrentIndex_WrongRequestID(t *testing.T) {
 	var err error
 	go func() {
 		defer wg.Done()
-		index, err = r.RequestCurrentIndex(s.LeaderChanged())
+		index, err = r.requestCurrentIndex(s.LeaderChanged())
 	}()
 
 	require.Eventually(t, func() bool {
@@ -164,7 +164,7 @@ func TestRequestCurrentIndex_DelayedResponse(t *testing.T) {
 	var err error
 	go func() {
 		defer wg.Done()
-		index, err = r.RequestCurrentIndex(s.LeaderChanged())
+		index, err = r.requestCurrentIndex(s.LeaderChanged())
 	}()
 
 	require.Eventually(t, func() bool {
