@@ -120,6 +120,9 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []
 		}
 		return []Revision{rev}, 1
 	}
+	if limit > 0 {
+		revs = make([]Revision, 0, limit)
+	}
 	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			if limit <= 0 || len(revs) < limit {

@@ -158,7 +158,7 @@ func (ki *keyIndex) get(lg *zap.Logger, atRev int64) (modified, created Revision
 		return Revision{}, Revision{}, 0, ErrRevisionNotFound
 	}
 
-	n := g.walk(func(rev Revision) bool { return rev.Main > atRev })
+	n := g.findRevisionIndex(atRev)
 	if n != -1 {
 		return g.revs[n], g.created, g.ver - int64(len(g.revs)-n-1), nil
 	}
@@ -256,16 +256,6 @@ func (ki *keyIndex) keep(atRev int64, available map[Revision]struct{}) {
 }
 
 func (ki *keyIndex) doCompact(atRev int64, available map[Revision]struct{}) (genIdx int, revIndex int) {
-	// walk until reaching the first revision smaller or equal to "atRev",
-	// and add the revision to the available map
-	f := func(rev Revision) bool {
-		if rev.Main <= atRev {
-			available[rev] = struct{}{}
-			return false
-		}
-		return true
-	}
-
 	genIdx, g := 0, &ki.generations[0]
 	// find first generation includes atRev or created after atRev
 	for genIdx < len(ki.generations)-1 {
@@ -276,7 +266,12 @@ func (ki *keyIndex) doCompact(atRev int64, available map[Revision]struct{}) (gen
 		g = &ki.generations[genIdx]
 	}
 
-	revIndex = g.walk(f)
+	// Use binary search to find the last revision with Main <= atRev,
+	// and add it to the available map
+	revIndex = g.findRevisionIndex(atRev)
+	if revIndex != -1 {
+		available[g.revs[revIndex]] = struct{}{}
+	}
 
 	return genIdx, revIndex
 }
@@ -293,18 +288,18 @@ func (ki *keyIndex) findGeneration(rev int64) *generation {
 	cg := lastg
 
 	for cg >= 0 {
-		if len(ki.generations[cg].revs) == 0 {
+		g := &ki.generations[cg]
+		if len(g.revs) == 0 {
 			cg--
 			continue
 		}
-		g := ki.generations[cg]
 		if cg != lastg {
 			if tomb := g.revs[len(g.revs)-1].Main; tomb <= rev {
 				return nil
 			}
 		}
 		if g.revs[0].Main <= rev {
-			return &ki.generations[cg]
+			return g
 		}
 		cg--
 	}
@@ -312,7 +307,7 @@ func (ki *keyIndex) findGeneration(rev int64) *generation {
 }
 
 func (ki *keyIndex) Less(bki *keyIndex) bool {
-	return bytes.Compare(ki.key, bki.key) == -1
+	return bytes.Compare(ki.key, bki.key) < 0
 }
 
 func (ki *keyIndex) equal(b *keyIndex) bool {
@@ -365,6 +360,27 @@ func (g *generation) walk(f func(rev Revision) bool) int {
 		}
 	}
 	return -1
+}
+
+// findRevisionIndex uses binary search to find the index of the last revision
+// with Main <= atRev. Returns -1 if no such revision exists.
+// This is an optimized alternative to walk for the common case of searching
+// by main revision.
+func (g *generation) findRevisionIndex(atRev int64) int {
+	// Binary search for the last revision where Main <= atRev.
+	// Revisions are sorted in ascending order by Main.
+	lo, hi := 0, len(g.revs)-1
+	result := -1
+	for lo <= hi {
+		mid := lo + (hi-lo)/2
+		if g.revs[mid].Main <= atRev {
+			result = mid
+			lo = mid + 1
+		} else {
+			hi = mid - 1
+		}
+	}
+	return result
 }
 
 func (g *generation) String() string {
