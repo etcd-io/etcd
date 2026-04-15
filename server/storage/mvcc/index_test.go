@@ -234,6 +234,66 @@ func TestIndexRevision(t *testing.T) {
 	}
 }
 
+func TestIndexRevisionsWithTotalCount(t *testing.T) {
+	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2"), []byte("foo2"), []byte("foo1"), []byte("foo")}
+	allRevs := []Revision{{Main: 1}, {Main: 2}, {Main: 3}, {Main: 4}, {Main: 5}, {Main: 6}}
+
+	ti := newTreeIndex(zaptest.NewLogger(t))
+	for i := range allKeys {
+		ti.Put(allKeys[i], allRevs[i])
+	}
+
+	// Range [foo, fop) @ rev 6 matches 3 keys: foo, foo1, foo2.
+	tests := []struct {
+		key, end   []byte
+		atRev      int64
+		limit      int
+		withTotalCount bool
+		wrevs      []Revision
+		wtotal     int
+	}{
+		// withTotalCount=true with limit returns the full total
+		{
+			[]byte("foo"), []byte("fop"), 6, 1, true,
+			[]Revision{{Main: 6}}, 3,
+		},
+		// withTotalCount=false with limit caps total at len(revs)
+		{
+			[]byte("foo"), []byte("fop"), 6, 1, false,
+			[]Revision{{Main: 6}}, 1,
+		},
+		// withTotalCount=false with limit larger than matches returns full total
+		{
+			[]byte("foo"), []byte("fop"), 6, 10, false,
+			[]Revision{{Main: 6}, {Main: 5}, {Main: 4}}, 3,
+		},
+		// withTotalCount=false without limit returns full total
+		{
+			[]byte("foo"), []byte("fop"), 6, 0, false,
+			[]Revision{{Main: 6}, {Main: 5}, {Main: 4}}, 3,
+		},
+		// withTotalCount=true without limit returns full total
+		{
+			[]byte("foo"), []byte("fop"), 6, 0, true,
+			[]Revision{{Main: 6}, {Main: 5}, {Main: 4}}, 3,
+		},
+		// withTotalCount=false with no matches
+		{
+			[]byte("bar"), []byte("baz"), 6, 5, false,
+			nil, 0,
+		},
+	}
+	for i, tt := range tests {
+		revs, total := ti.Revisions(tt.key, tt.end, tt.atRev, tt.limit, tt.withTotalCount)
+		if !reflect.DeepEqual(revs, tt.wrevs) {
+			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
+		}
+		if total != tt.wtotal {
+			t.Errorf("#%d: total = %d, want %d", i, total, tt.wtotal)
+		}
+	}
+}
+
 func TestIndexCompactAndKeep(t *testing.T) {
 	maxRev := int64(20)
 
