@@ -1012,11 +1012,21 @@ func (as *authStore) Revision() uint64 {
 
 func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 	peer, ok := peer.FromContext(ctx)
-	if !ok || peer == nil || peer.AuthInfo == nil {
+	if !ok || peer == nil {
 		return nil
 	}
 
-	tlsInfo := peer.AuthInfo.(credentials.TLSInfo)
+	tlsInfo, ok := peer.AuthInfo.(credentials.TLSInfo) // Confirm client using TLS
+	if !ok {
+		return nil
+	}
+
+	if len(tlsInfo.State.PeerCertificates) == 0 {
+		// client sent no certificate
+		mtlsAuthFailureTotal.WithLabelValues(FailReasonNoCertificate).Inc()
+		return nil
+	}
+
 	for _, chains := range tlsInfo.State.VerifiedChains {
 		if len(chains) < 1 {
 			continue
@@ -1027,6 +1037,7 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 		}
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
+			mtlsAuthFailureTotal.WithLabelValues(FailReasonMissingMetadata).Inc()
 			return nil
 		}
 
@@ -1040,6 +1051,7 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 				zap.String("user-name", ai.Username),
 				zap.Uint64("revision", ai.Revision),
 			)
+			mtlsAuthFailureTotal.WithLabelValues(FailReasonGatewayProxy).Inc()
 			return nil
 		}
 		as.lg.Debug(
@@ -1048,6 +1060,15 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 			zap.String("user-name", ai.Username),
 			zap.Uint64("revision", ai.Revision),
 		)
+		secsUntilExpiry := time.Until(chains[0].NotAfter).Seconds()
+
+		if secsUntilExpiry < 0 {
+			mtlsAuthFailureTotal.WithLabelValues(FailReasonExpiredCertificate).Inc()
+			return nil
+		} else {
+			mtlsAuthSuccessTotal.Inc()
+		}
+		clientCertExpirationSecs.Observe(secsUntilExpiry) // Increments histogram bucketed by secsUntilExpiry
 		break
 	}
 	return ai

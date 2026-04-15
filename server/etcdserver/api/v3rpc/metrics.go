@@ -100,6 +100,15 @@ var (
 			Buckets: prometheus.ExponentialBuckets(0.001, 2, 14),
 		},
 	)
+
+	clientConnectionsByEncryptionTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "client_connections_by_encryption_total",
+		Help:      "Total number of client connections by transport encryption (tls or plaintext).",
+	},
+		[]string{"encryption"},
+	)
 )
 
 func init() {
@@ -111,4 +120,5 @@ func init() {
 	prometheus.MustRegister(watchSendLoopWatchStreamDurationPerEvent)
 	prometheus.MustRegister(watchSendLoopControlStreamDuration)
 	prometheus.MustRegister(watchSendLoopProgressDuration)
+	prometheus.MustRegister(clientConnectionsByEncryptionTotal)
 }
