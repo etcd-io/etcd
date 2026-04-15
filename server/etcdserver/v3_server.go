@@ -134,7 +134,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	}(time.Now())
 
 	if !r.Serializable {
-		err = s.LinearizableReadNotify(ctx)
+		err = s.read.LinearizableReadNotify(ctx)
 		trace.Step("agreement among raft nodes before linearized reading")
 		if err != nil {
 			return nil, err
@@ -203,7 +203,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 	)
 	if readOnly {
 		if !txn.IsTxnSerializable(r) {
-			err := s.LinearizableReadNotify(ctx)
+			err := s.read.LinearizableReadNotify(ctx)
 			trace.Step("agreement among raft nodes before linearized reading")
 			if err != nil {
 				return nil, err
@@ -694,7 +694,7 @@ func (s *EtcdServer) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*
 }
 
 func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	if err := s.LinearizableReadNotify(ctx); err != nil {
+	if err := s.read.LinearizableReadNotify(ctx); err != nil {
 		return nil, err
 	}
 

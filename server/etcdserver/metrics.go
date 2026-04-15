@@ -95,18 +95,6 @@ var (
 		Name:      "proposals_failed_total",
 		Help:      "The total number of failed proposals seen.",
 	})
-	slowReadIndex = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "slow_read_indexes_total",
-		Help:      "The total number of pending read indexes not in sync with leader's or timed out read index requests.",
-	})
-	readIndexFailed = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "read_indexes_failed_total",
-		Help:      "The total number of failed read indexes seen.",
-	})
 	requestDurationSec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "etcd",
@@ -184,8 +172,6 @@ func init() {
 	prometheus.MustRegister(proposalsApplied)
 	prometheus.MustRegister(proposalsPending)
 	prometheus.MustRegister(proposalsFailed)
-	prometheus.MustRegister(slowReadIndex)
-	prometheus.MustRegister(readIndexFailed)
 	prometheus.MustRegister(requestDurationSec)
 	prometheus.MustRegister(leaseExpired)
 	prometheus.MustRegister(currentVersion)
