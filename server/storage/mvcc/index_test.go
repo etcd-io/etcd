@@ -223,7 +223,7 @@ func TestIndexRevision(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		revs, _ := ti.Revisions(tt.key, tt.end, tt.atRev, tt.limit)
+		revs, _ := ti.Revisions(tt.key, tt.end, tt.atRev, tt.limit, true)
 		if !reflect.DeepEqual(revs, tt.wrevs) {
 			t.Errorf("#%d limit %d: revs = %+v, want %+v", i, tt.limit, revs, tt.wrevs)
 		}
