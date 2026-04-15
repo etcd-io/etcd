@@ -1,0 +1,47 @@
+---
+description: Governance rules for etcd — quality gates, security, conventions
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.go"
+alwaysApply: true
+---
+
+# Governance — etcd
+
+> Generated from governance.md by crag. Regenerate: `crag compile --target cursor`
+
+**Stack:** go, docker
+
+## Quality Gates
+
+Run these checks in order before committing:
+### Lint
+- `go vet ./...`
+
+### Test
+- `go test ./...`
+- `make test`
+- `make verify`
+
+### Build
+- `make build`
+
+### Ci (inferred from workflow)
+- `make antithesis-build-client-docker-image`
+- `docker compose -f config/docker-compose-${{ matrix.node-count }}-node.yml logs`
+
+### Contributor docs (advisory — confirm before enforcing)
+- `make verify-*  # from CONTRIBUTING.md`
+- `make verify-bom  # from CONTRIBUTING.md`
+- `make test-unit  # from CONTRIBUTING.md`
+## Security
+
+- No hardcoded secrets — grep for sk_live, AKIA, password= before commit
+
+## Conventions
+
+- Follow project commit conventions
+- Runtimes: node, go, docker
