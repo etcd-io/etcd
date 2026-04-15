@@ -94,13 +94,26 @@ func lockUntilSignal(c *clientv3.Client, lockname string, cmdArgs []string) erro
 	}
 
 	if len(cmdArgs) > 0 {
-		cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-		cmd.Env = append(environLockResponse(m), os.Environ()...)
-		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-		err := cmd.Run()
+		// Resolve the command to its absolute path via LookPath to prevent
+		// PATH-manipulation attacks before handing off to os.StartProcess.
+		cmdPath, err := exec.LookPath(cmdArgs[0])
+		if err != nil {
+			return fmt.Errorf("failed to resolve command %q: %w", cmdArgs[0], err)
+		}
+		proc, err := os.StartProcess(cmdPath, cmdArgs, &os.ProcAttr{
+			Env:   append(environLockResponse(m), os.Environ()...),
+			Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+		})
+		if err != nil {
+			return err
+		}
+		state, err := proc.Wait()
 		unlockErr := m.Unlock(context.TODO())
 		if err != nil {
 			return err
+		}
+		if !state.Success() {
+			return &exec.ExitError{ProcessState: state}
 		}
 		return unlockErr
 	}
