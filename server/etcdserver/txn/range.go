@@ -46,9 +46,9 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 
 	limit := rangeLimit(r)
 	ro := mvcc.RangeOptions{
-		Limit: limit,
-		Rev:   r.Revision,
-		Count: r.CountOnly,
+		Limit:     limit,
+		Rev:       r.Revision,
+		CountOnly: r.CountOnly,
 	}
 
 	rr, err := txnRead.Range(ctx, r.Key, mkGteRange(r.RangeEnd), ro)
