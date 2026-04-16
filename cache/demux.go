@@ -179,6 +179,23 @@ func (d *demux) BroadcastProgress() {
 	}
 }
 
+func (d *demux) BroadcastProgressTo(w *watcher) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	if d.maxRev == 0 {
+		return
+	}
+	if _, active := d.activeWatchers[w]; !active {
+		return
+	}
+	resp := clientv3.WatchResponse{
+		Header: etcdserverpb.ResponseHeader{
+			Revision: d.maxRev,
+		},
+	}
+	w.enqueueResponse(resp)
+}
+
 func (d *demux) updateStoreLocked(resp clientv3.WatchResponse) {
 	if resp.IsProgressNotify() {
 		d.maxRev = resp.Header.Revision

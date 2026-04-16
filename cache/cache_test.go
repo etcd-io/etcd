@@ -730,6 +730,110 @@ func newCacheForWaitTest(serverRev int64, localRev int64, pr progressRequestor) 
 	}, st
 }
 
+func setupWatcherWithFakeClock(t *testing.T, opts ...clientv3.OpOption) (clientv3.WatchChan, *mockWatcher, *fakeClock) {
+	t.Helper()
+	fc := newFakeClock()
+	mw := newMockWatcher(8)
+	fakeClient := &clientv3.Client{
+		Watcher: mw,
+		KV:      newKVStub(),
+	}
+	cfg := defaultConfig()
+	cfg.ProgressNotifyInterval = 100 * time.Millisecond
+	c, err := newCache(fakeClient, "", cfg, fc)
+	if err != nil {
+		t.Fatalf("newCache: %v", err)
+	}
+	t.Cleanup(c.Close)
+
+	mw.responses <- clientv3.WatchResponse{}
+	<-mw.registered
+
+	ctxWait, cancelWait := context.WithTimeout(t.Context(), time.Second)
+	defer cancelWait()
+	if err := c.WaitReady(ctxWait); err != nil {
+		t.Fatalf("cache did not become Ready: %v", err)
+	}
+
+	watchOpts := append([]clientv3.OpOption{clientv3.WithPrefix()}, opts...)
+	watchCh := c.Watch(t.Context(), "", watchOpts...)
+
+	// Seed an event so the cache has a known revision (rev 5),
+	// then drain it from the watch channel.
+	mw.responses <- clientv3.WatchResponse{
+		Events: []*clientv3.Event{event(mvccpb.Event_PUT, "/a", 5)},
+	}
+	readResponse(t, watchCh)
+
+	return watchCh, mw, fc
+}
+
+func TestCacheWatchProgressNotify(t *testing.T) {
+	t.Run("watcher requesting notification, receives them periodically", func(t *testing.T) {
+		progressCh, _, fc := setupWatcherWithFakeClock(t, clientv3.WithProgressNotify())
+
+		t.Log("First interval — progress notification arrives")
+		fc.Advance(100 * time.Millisecond)
+		resp := readResponse(t, progressCh)
+		if !resp.IsProgressNotify() {
+			t.Fatalf("expected progress notify, got events: %v", resp.Events)
+		}
+
+		t.Log("Second interval — another progress notification arrives")
+		fc.Advance(100 * time.Millisecond)
+		resp = readResponse(t, progressCh)
+		if !resp.IsProgressNotify() {
+			t.Fatalf("expected progress notify, got events: %v", resp.Events)
+		}
+	})
+
+	t.Run("watcher that didn't request progress doesn't receive any", func(t *testing.T) {
+		plainCh, _, fc := setupWatcherWithFakeClock(t)
+
+		t.Log("Advance past the interval — plain watcher should not receive anything")
+		fc.Advance(150 * time.Millisecond)
+
+		select {
+		case got, ok := <-plainCh:
+			if ok {
+				t.Fatalf("expected no response on plain watcher, got: IsProgressNotify=%v events=%v", got.IsProgressNotify(), got.Events)
+			}
+		default:
+		}
+	})
+
+	t.Run("event resets timer and delays sending progress", func(t *testing.T) {
+		progressCh, mw, fc := setupWatcherWithFakeClock(t, clientv3.WithProgressNotify())
+
+		t.Log("Advance partway into the interval, then deliver an event to reset the timer")
+		fc.Advance(50 * time.Millisecond)
+		mw.responses <- clientv3.WatchResponse{
+			Events: []*clientv3.Event{event(mvccpb.Event_PUT, "/b", 6)},
+		}
+		readResponse(t, progressCh)
+
+		t.Log("100 ms since original start but only 50 ms since event reset — no progress notify")
+		fc.Advance(50 * time.Millisecond)
+		select {
+		case got, ok := <-progressCh:
+			if ok {
+				t.Fatalf("expected no progress notify within interval after event, got: IsProgressNotify=%v events=%v", got.IsProgressNotify(), got.Events)
+			}
+		default:
+		}
+
+		t.Log("Full interval after the event — progress notify arrives")
+		fc.Advance(50 * time.Millisecond)
+		resp := readResponse(t, progressCh)
+		if !resp.IsProgressNotify() {
+			t.Fatalf("expected progress notify, got events: %v", resp.Events)
+		}
+		if resp.Header.Revision != 6 {
+			t.Fatalf("expected progress revision 6, got %d", resp.Header.Revision)
+		}
+	})
+}
+
 func TestWaitTillRevision(t *testing.T) {
 	t.Run("cache_already_caught_up", func(t *testing.T) {
 		c, _ := newCacheForWaitTest(10, 10, newTestProgressRequestor())

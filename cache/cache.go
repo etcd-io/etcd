@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	// Returned when an option combination isn’t yet handled by the cache (e.g. WithPrevKV, WithProgressNotify for Watch(), WithCountOnly for Get()).
+	// Returned when an option combination isn’t yet handled by the cache (e.g. WithPrevKV for Watch(), WithCountOnly for Get()).
 	ErrUnsupportedRequest = errors.New("cache: unsupported request parameters")
 	// Returned when the requested key or key‑range is invalid (empty or reversed) or lies outside c.prefix.
 	ErrKeyRangeInvalid = errors.New("cache: invalid or out‑of‑range key range")
@@ -52,6 +52,7 @@ type Cache struct {
 	waitGroup         sync.WaitGroup
 	internalCtx       context.Context
 	progressRequestor progressRequestor
+	clock             Clock
 }
 
 // New builds a cache shard that watches only the requested prefix.
@@ -64,7 +65,10 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 	for _, opt := range opts {
 		opt(&cfg)
 	}
+	return newCache(client, prefix, cfg, realClock{})
+}
 
+func newCache(client *clientv3.Client, prefix string, cfg Config, clock Clock) (*Cache, error) {
 	if cfg.HistoryWindowSize <= 0 {
 		return nil, fmt.Errorf("invalid HistoryWindowSize %d (must be > 0)", cfg.HistoryWindowSize)
 	}
@@ -83,7 +87,8 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 		ready:             newReady(),
 		stop:              cancel,
 		internalCtx:       internalCtx,
-		progressRequestor: newConditionalProgressRequestor(client.Watcher, realClock{}, cfg.ProgressRequestInterval),
+		progressRequestor: newConditionalProgressRequestor(client.Watcher, clock, cfg.ProgressRequestInterval),
+		clock:             clock,
 	}
 
 	cache.demux = NewDemux(internalCtx, &cache.waitGroup, cfg.HistoryWindowSize, cfg.ResyncInterval)
@@ -135,12 +140,24 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 		defer c.waitGroup.Done()
 		defer close(responseChan)
 		defer c.demux.Unregister(w)
+
+		var progressTimer Timer
+		var progressChan <-chan time.Time
+		if op.IsProgressNotify() {
+			progressTimer = c.clock.NewTimer(c.cfg.ProgressNotifyInterval)
+			defer progressTimer.Stop()
+			progressChan = progressTimer.Chan()
+		}
+
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-c.internalCtx.Done():
 				return
+			case <-progressChan:
+				c.demux.BroadcastProgressTo(w)
+				progressTimer.Reset(c.cfg.ProgressNotifyInterval)
 			case resp, ok := <-w.respCh:
 				if !ok {
 					if w.cancelResp != nil {
@@ -158,6 +175,9 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 				case <-c.internalCtx.Done():
 					return
 				case responseChan <- resp:
+					if progressTimer != nil {
+						progressTimer.Reset(c.cfg.ProgressNotifyInterval)
+					}
 				}
 			}
 		}
@@ -404,8 +424,6 @@ func (c *Cache) validateWatch(key string, op clientv3.Op) (pred KeyPredicate, er
 		return nil, fmt.Errorf("%w: PrevKV not supported", ErrUnsupportedRequest)
 	case op.IsFragment():
 		return nil, fmt.Errorf("%w: Fragment not supported", ErrUnsupportedRequest)
-	case op.IsProgressNotify():
-		return nil, fmt.Errorf("%w: ProgressNotify not supported", ErrUnsupportedRequest)
 	case op.IsCreatedNotify():
 		return nil, fmt.Errorf("%w: CreatedNotify not supported", ErrUnsupportedRequest)
 	case op.IsFilterPut():
