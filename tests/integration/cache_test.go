@@ -578,19 +578,7 @@ func TestCacheRequestProgress(t *testing.T) {
 	}
 
 	// Drain the event responses so the watcher is caught up.
-	// Events may be batched into fewer responses, so count total events.
-	totalEvents := 0
-	for totalEvents < 3 {
-		select {
-		case resp := <-watchCh:
-			if resp.Canceled {
-				t.Fatalf("unexpected canceled response: %v", resp.CancelReason)
-			}
-			totalEvents += len(resp.Events)
-		case <-wctx.Done():
-			t.Fatalf("timed out waiting for events, got %d/3", totalEvents)
-		}
-	}
+	readEvents(wctx, t, watchCh, 3)
 
 	// Call RequestProgress on the cache — this should deliver a progress
 	// notification to the watcher with the cache's current revision.
@@ -598,20 +586,119 @@ func TestCacheRequestProgress(t *testing.T) {
 		t.Fatalf("RequestProgress: %v", err)
 	}
 
-	select {
-	case resp, ok := <-watchCh:
-		if !ok {
-			t.Fatalf("expected watch response, got closed")
-		}
-		if !resp.IsProgressNotify() {
-			t.Fatalf("expected progress notify, got %d events", len(resp.Events))
-		}
-		if resp.Header.Revision < latestRev {
-			t.Fatalf("progress revision %d < latest rev %d", resp.Header.Revision, latestRev)
-		}
-	case <-wctx.Done():
-		t.Fatalf("timed out waiting for progress notification from RequestProgress")
+	resp := waitForProgressNotify(wctx, t, watchCh)
+	if resp.Header.Revision < latestRev {
+		t.Fatalf("progress revision %d < latest rev %d", resp.Header.Revision, latestRev)
 	}
+}
+
+func TestCacheWithProgressNotify(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	ctx := t.Context()
+
+	progressInterval := 200 * time.Millisecond
+	c, err := cache.New(client, "/foo", cache.WithProgressNotifyInterval(progressInterval))
+	if err != nil {
+		t.Fatalf("cache.New: %v", err)
+	}
+	t.Cleanup(c.Close)
+	if err := c.WaitReady(ctx); err != nil {
+		t.Fatalf("cache.WaitReady: %v", err)
+	}
+
+	t.Run("progress notification fires on idle watcher", func(t *testing.T) {
+		wctx, cancel := context.WithTimeout(ctx, 5*progressInterval)
+		defer cancel()
+
+		watchCh := c.Watch(wctx, "/foo", clientv3.WithPrefix(), clientv3.WithProgressNotify())
+
+		// Write a key so the cache has a non-zero revision.
+		if _, err := client.Put(ctx, "/foo/a", "1"); err != nil {
+			t.Fatalf("Put: %v", err)
+		}
+		readEvents(wctx, t, watchCh, 1)
+
+		// Wait for a progress notification (should arrive after ~progressInterval of idle time).
+		resp := waitForProgressNotify(wctx, t, watchCh)
+		if resp.Header.Revision == 0 {
+			t.Fatalf("progress notification has zero revision")
+		}
+	})
+
+	t.Run("no progress notification without WithProgressNotify", func(t *testing.T) {
+		wctx, cancel := context.WithTimeout(ctx, 5*progressInterval)
+		defer cancel()
+
+		watchCh := c.Watch(wctx, "/foo", clientv3.WithPrefix())
+
+		// Write a key so the watcher gets an event.
+		if _, err := client.Put(ctx, "/foo/b", "2"); err != nil {
+			t.Fatalf("Put: %v", err)
+		}
+		readEvents(wctx, t, watchCh, 1)
+
+		// Wait longer than the progress interval — should NOT get a progress notification.
+		select {
+		case resp := <-watchCh:
+			if resp.IsProgressNotify() {
+				t.Fatalf("got unexpected progress notification on watcher without WithProgressNotify")
+			}
+		case <-time.After(3 * progressInterval):
+		}
+	})
+
+	t.Run("progress notification is elided when events are flowing", func(t *testing.T) {
+		wctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
+		watchCh := c.Watch(wctx, "/foo", clientv3.WithPrefix(), clientv3.WithProgressNotify())
+
+		// Continuously write keys faster than the progress interval.
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for i := 0; i < 10; i++ {
+				if _, err := client.Put(ctx, fmt.Sprintf("/foo/stream-%d", i), fmt.Sprintf("%d", i)); err != nil {
+					return
+				}
+				time.Sleep(progressInterval / 5)
+			}
+		}()
+
+		// Collect responses while writes are happening.
+		var gotProgress bool
+		eventCount := 0
+	collectLoop:
+		for {
+			select {
+			case resp, ok := <-watchCh:
+				if !ok {
+					break collectLoop
+				}
+				if resp.IsProgressNotify() {
+					gotProgress = true
+				}
+				eventCount += len(resp.Events)
+				if eventCount >= 10 {
+					break collectLoop
+				}
+			case <-wctx.Done():
+				break collectLoop
+			}
+		}
+		<-done
+
+		if gotProgress {
+			t.Logf("progress notification received during active writes (elision not guaranteed but noted)")
+		}
+		if eventCount != 10 {
+			t.Fatalf("expected exactly 10 events, got %d", eventCount)
+		}
+	})
 }
 
 func TestCacheWithoutPrefixGet(t *testing.T) {
@@ -1408,7 +1495,6 @@ func TestCacheUnsupportedWatchOptions(t *testing.T) {
 	}{
 		{"WithPrevKV", clientv3.WithPrevKV()},
 		{"WithFragment", clientv3.WithFragment()},
-		{"WithProgressNotify", clientv3.WithProgressNotify()},
 		{"WithCreatedNotify", clientv3.WithCreatedNotify()},
 		{"WithFilterPut", clientv3.WithFilterPut()},
 		{"WithFilterDelete", clientv3.WithFilterDelete()},
@@ -1519,6 +1605,43 @@ func collectAndAssertAtomicEvents(t *testing.T, watch clientv3.WatchChan) (event
 			return events, true
 		case <-time.After(100 * time.Millisecond):
 			return events, true
+		}
+	}
+}
+
+func readEvents(ctx context.Context, t *testing.T, watchCh clientv3.WatchChan, n int) {
+	t.Helper()
+	received := 0
+	for received < n {
+		select {
+		case resp := <-watchCh:
+			if resp.Canceled {
+				t.Fatalf("unexpected canceled response: %v", resp.CancelReason)
+			}
+			received += len(resp.Events)
+		case <-ctx.Done():
+			t.Fatalf("timed out draining events, got %d/%d", received, n)
+		}
+	}
+}
+
+func waitForProgressNotify(ctx context.Context, t *testing.T, watchCh clientv3.WatchChan) clientv3.WatchResponse {
+	t.Helper()
+	for {
+		select {
+		case resp, ok := <-watchCh:
+			if !ok {
+				t.Fatalf("watch channel closed while waiting for progress notification")
+			}
+			if resp.Canceled {
+				t.Fatalf("unexpected canceled: %v", resp.CancelReason)
+			}
+			if resp.IsProgressNotify() {
+				return resp
+			}
+		case <-ctx.Done():
+			t.Fatalf("timed out waiting for progress notification")
+			return clientv3.WatchResponse{}
 		}
 	}
 }

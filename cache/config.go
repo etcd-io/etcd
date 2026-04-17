@@ -37,6 +37,8 @@ type Config struct {
 	BTreeDegree int
 	// ProgressRequestInterval controls how often progress notifications are requested from the etcd watch stream during a consistent Get.
 	ProgressRequestInterval time.Duration
+	// ProgressNotifyInterval controls how often progress notifications are sent to local watchers registered with WithProgressNotify().
+	ProgressNotifyInterval time.Duration
 }
 
 // TODO: tune via performance/load tests.
@@ -51,6 +53,7 @@ func defaultConfig() Config {
 		WaitTimeout:             3 * time.Second,
 		BTreeDegree:             32,
 		ProgressRequestInterval: 100 * time.Millisecond,
+		ProgressNotifyInterval:  10 * time.Minute,
 	}
 }
 
@@ -86,6 +89,10 @@ func WithBTreeDegree(n int) Option {
 
 func WithProgressRequestInterval(d time.Duration) Option {
 	return func(c *Config) { c.ProgressRequestInterval = d }
+}
+
+func WithProgressNotifyInterval(d time.Duration) Option {
+	return func(c *Config) { c.ProgressNotifyInterval = d }
 }
 
 func WithWaitTimeout(d time.Duration) Option {
