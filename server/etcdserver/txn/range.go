@@ -29,7 +29,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
+func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest, withTotalCount bool) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
 	ctx, trace = traceutil.EnsureTrace(ctx, lg, "range")
 	defer func(start time.Time) {
 		success := err == nil
@@ -37,18 +37,19 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 	}(time.Now())
 	txnRead := kv.Read(mvcc.ConcurrentReadTxMode, trace)
 	defer txnRead.End()
-	resp, err = executeRange(ctx, lg, txnRead, r)
+	resp, err = executeRange(ctx, lg, txnRead, r, withTotalCount)
 	return resp, trace, err
 }
 
-func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *pb.RangeRequest, withTotalCount bool) (*pb.RangeResponse, error) {
 	trace := traceutil.Get(ctx)
 
 	limit := rangeLimit(r)
 	ro := mvcc.RangeOptions{
-		Limit:     limit,
-		Rev:       r.Revision,
-		CountOnly: r.CountOnly,
+		Limit:          limit,
+		Rev:            r.Revision,
+		CountOnly:      r.CountOnly,
+		WithTotalCount: withTotalCount,
 	}
 
 	rr, err := txnRead.Range(ctx, r.Key, mkGteRange(r.RangeEnd), ro)

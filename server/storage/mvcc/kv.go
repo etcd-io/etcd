@@ -24,9 +24,10 @@ import (
 )
 
 type RangeOptions struct {
-	Limit     int64
-	Rev       int64
-	CountOnly bool
+	Limit          int64
+	Rev            int64
+	CountOnly      bool
+	WithTotalCount bool
 }
 
 type RangeResult struct {
