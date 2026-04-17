@@ -216,66 +216,153 @@ func TestKVPutWithRequireLeader(t *testing.T) {
 
 func TestKVRange(t *testing.T) {
 	integration.BeforeTest(t)
-
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
+	client := clus.RandClient()
 
-	kv := clus.RandClient()
+	// Same dataset as TestKVGet in tests/common/kv_test.go.
+	// Distinct values enable sort-by-value verification.
+	for _, in := range []struct{ k, v string }{
+		{"a", "aa1"}, {"b", "a"}, {"c", "ac1"}, {"c", "ac2"}, {"c", "aac"},
+		{"foo", "bar"}, {"foo/abc", "0"}, {"fop", "s"},
+	} {
+		_, err := client.Put(t.Context(), in.k, in.v)
+		require.NoError(t, err)
+	}
+	t.Run("Unary", func(t *testing.T) {
+		testKVRange(t, client.Get)
+	})
+	t.Run("Stream", func(t *testing.T) {
+		testKVRange(t, StreamToUnary(client.KV))
+	})
+}
+
+type GetFunc func(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error)
+
+func StreamToUnary(kv clientv3.KV) GetFunc {
+	return func(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+		stream, err := kv.GetStream(ctx, key, opts...)
+		if err != nil {
+			return nil, err
+		}
+		return clientv3.GetStreamToGetResponse(stream)
+	}
+}
+
+func testKVRange(t *testing.T, get GetFunc) {
 	ctx := t.Context()
 
-	keySet := []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
-	for i, key := range keySet {
-		if _, err := kv.Put(ctx, key, ""); err != nil {
-			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
-		}
-	}
-	resp, err := kv.Get(ctx, keySet[0])
-	if err != nil {
-		t.Fatalf("couldn't get key (%v)", err)
-	}
-	wheader := resp.Header
+	// After 8 puts: a, b, c(v1), c(v2), c(v3), foo, foo/abc, fop
+	// Revisions: 2, 3, 4, 5, 6, 7, 8, 9. Current revision: 9.
+	kvA := &mvccpb.KeyValue{Key: []byte("a"), Value: []byte("aa1"), CreateRevision: 2, ModRevision: 2, Version: 1}
+	kvB := &mvccpb.KeyValue{Key: []byte("b"), Value: []byte("a"), CreateRevision: 3, ModRevision: 3, Version: 1}
+	kvC := &mvccpb.KeyValue{Key: []byte("c"), Value: []byte("aac"), CreateRevision: 4, ModRevision: 6, Version: 3}
+	kvCV1 := &mvccpb.KeyValue{Key: []byte("c"), Value: []byte("ac1"), CreateRevision: 4, ModRevision: 4, Version: 1}
+	kvCV2 := &mvccpb.KeyValue{Key: []byte("c"), Value: []byte("ac2"), CreateRevision: 4, ModRevision: 5, Version: 2}
+	kvFoo := &mvccpb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 7, ModRevision: 7, Version: 1}
+	kvFooAbc := &mvccpb.KeyValue{Key: []byte("foo/abc"), Value: []byte("0"), CreateRevision: 8, ModRevision: 8, Version: 1}
+	kvFop := &mvccpb.KeyValue{Key: []byte("fop"), Value: []byte("s"), CreateRevision: 9, ModRevision: 9, Version: 1}
 
-	tests := []struct {
-		begin, end string
-		rev        int64
-		opts       []clientv3.OpOption
+	allKvs := []*mvccpb.KeyValue{kvA, kvB, kvC, kvFoo, kvFooAbc, kvFop}
+	reversedKvs := []*mvccpb.KeyValue{kvFop, kvFooAbc, kvFoo, kvC, kvB, kvA}
+	kvsByVersion := []*mvccpb.KeyValue{kvA, kvB, kvFoo, kvFooAbc, kvFop, kvC}
+	kvsByValue := []*mvccpb.KeyValue{kvFooAbc, kvB, kvA, kvC, kvFoo, kvFop}
+	kvsByValueDesc := []*mvccpb.KeyValue{kvFop, kvFoo, kvC, kvA, kvB, kvFooAbc}
 
-		wantSet []*mvccpb.KeyValue
-	}{
-		// fetch entire keyspace using WithFromKey
-		{
-			"\x00", "",
-			0,
-			[]clientv3.OpOption{clientv3.WithFromKey(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend)},
-
-			[]*mvccpb.KeyValue{
-				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
-				{Key: []byte("b"), Value: nil, CreateRevision: 3, ModRevision: 3, Version: 1},
-				{Key: []byte("c"), Value: nil, CreateRevision: 4, ModRevision: 6, Version: 3},
-				{Key: []byte("foo"), Value: nil, CreateRevision: 7, ModRevision: 7, Version: 1},
-				{Key: []byte("foo/abc"), Value: nil, CreateRevision: 8, ModRevision: 8, Version: 1},
-				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
-			},
-		},
+	type testcase struct {
+		name      string
+		key       string
+		opts      []clientv3.OpOption
+		wantKvs   []*mvccpb.KeyValue
+		wantCount int64
+		wantMore  bool
+		countOnly bool // skip keys-only variant
 	}
 
-	for i, tt := range tests {
-		opts := []clientv3.OpOption{clientv3.WithRange(tt.end), clientv3.WithRev(tt.rev)}
-		opts = append(opts, tt.opts...)
-		resp, err := kv.Get(ctx, tt.begin, opts...)
-		if err != nil {
-			t.Fatalf("#%d: couldn't range (%v)", i, err)
-		}
-		if !reflect.DeepEqual(wheader, resp.Header) {
-			t.Fatalf("#%d: wheader expected %+v, got %+v", i, wheader, resp.Header)
-		}
-		if !reflect.DeepEqual(tt.wantSet, resp.Kvs) {
-			t.Fatalf("#%d: resp.Kvs expected %+v, got %+v", i, tt.wantSet, resp.Kvs)
+	tests := []testcase{
+		// basic key lookups
+		{name: "single key", key: "a", wantKvs: []*mvccpb.KeyValue{kvA}, wantCount: 1},
+		{name: "single key serializable", key: "a", opts: []clientv3.OpOption{clientv3.WithSerializable()}, wantKvs: []*mvccpb.KeyValue{kvA}, wantCount: 1},
+		{name: "range [a,c)", key: "a", opts: []clientv3.OpOption{clientv3.WithRange("c")}, wantKvs: []*mvccpb.KeyValue{kvA, kvB}, wantCount: 2},
+
+		// full keyspace
+		{name: "prefix all", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix()}, wantKvs: allKvs, wantCount: 6},
+		{name: "from-key all", key: "", opts: []clientv3.OpOption{clientv3.WithFromKey()}, wantKvs: allKvs, wantCount: 6},
+		{name: "range [a,x)", key: "a", opts: []clientv3.OpOption{clientv3.WithRange("x")}, wantKvs: allKvs, wantCount: 6},
+
+		// historical revision
+		{name: "prefix at revision", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithRev(4)}, wantKvs: []*mvccpb.KeyValue{kvA, kvB, kvCV1}, wantCount: 3},
+
+		// count only
+		{name: "count only", key: "a", opts: []clientv3.OpOption{clientv3.WithCountOnly()}, wantCount: 1, countOnly: true},
+
+		// prefix and from-key with specific key
+		{name: "prefix foo", key: "foo", opts: []clientv3.OpOption{clientv3.WithPrefix()}, wantKvs: []*mvccpb.KeyValue{kvFoo, kvFooAbc}, wantCount: 2},
+		{name: "from-key foo", key: "foo", opts: []clientv3.OpOption{clientv3.WithFromKey()}, wantKvs: []*mvccpb.KeyValue{kvFoo, kvFooAbc, kvFop}, wantCount: 3},
+
+		// limit
+		{name: "limit", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithLimit(2)}, wantKvs: []*mvccpb.KeyValue{kvA, kvB}, wantCount: 6, wantMore: true},
+
+		// sort orders
+		{name: "sort mod revision asc", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByModRevision, clientv3.SortAscend)}, wantKvs: allKvs, wantCount: 6},
+		{name: "sort version asc", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByVersion, clientv3.SortAscend)}, wantKvs: kvsByVersion, wantCount: 6},
+		{name: "sort create revision none", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByCreateRevision, clientv3.SortNone)}, wantKvs: allKvs, wantCount: 6},
+		{name: "sort create revision desc", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByCreateRevision, clientv3.SortDescend)}, wantKvs: reversedKvs, wantCount: 6},
+		{name: "sort key desc", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend)}, wantKvs: reversedKvs, wantCount: 6},
+		{name: "sort value none", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByValue, clientv3.SortNone)}, wantKvs: kvsByValue, wantCount: 6},
+		{name: "sort value asc", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByValue, clientv3.SortAscend)}, wantKvs: kvsByValue, wantCount: 6},
+		{name: "sort value desc", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByValue, clientv3.SortDescend)}, wantKvs: kvsByValueDesc, wantCount: 6},
+
+		// historical versions of key c
+		{name: "c at revision 4", key: "c", opts: []clientv3.OpOption{clientv3.WithRev(4)}, wantKvs: []*mvccpb.KeyValue{kvCV1}, wantCount: 1},
+		{name: "c at revision 5", key: "c", opts: []clientv3.OpOption{clientv3.WithRev(5)}, wantKvs: []*mvccpb.KeyValue{kvCV2}, wantCount: 1},
+		{name: "c at revision 6", key: "c", opts: []clientv3.OpOption{clientv3.WithRev(6)}, wantKvs: []*mvccpb.KeyValue{kvC}, wantCount: 1},
+		{name: "c latest", key: "c", wantKvs: []*mvccpb.KeyValue{kvC}, wantCount: 1},
+
+		// min/max revision filters with sort
+		{name: "min mod revision", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithMinModRev(4), clientv3.WithSort(clientv3.SortByModRevision, clientv3.SortNone)}, wantKvs: []*mvccpb.KeyValue{kvC, kvFoo, kvFooAbc, kvFop}, wantCount: 6},
+		{name: "max mod revision", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithMaxModRev(5), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend)}, wantKvs: []*mvccpb.KeyValue{kvB, kvA}, wantCount: 6},
+		{name: "min create revision", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithMinCreateRev(4), clientv3.WithSort(clientv3.SortByVersion, clientv3.SortDescend)}, wantKvs: []*mvccpb.KeyValue{kvC, kvFoo, kvFooAbc, kvFop}, wantCount: 6},
+		{name: "max create revision", key: "", opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithMaxCreateRev(7), clientv3.WithSort(clientv3.SortByValue, clientv3.SortDescend)}, wantKvs: []*mvccpb.KeyValue{kvFoo, kvC, kvA, kvB}, wantCount: 6},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := get(ctx, tt.key, tt.opts...)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantKvs, resp.Kvs)
+			require.Equal(t, tt.wantCount, resp.Count)
+			require.Equal(t, tt.wantMore, resp.More)
+		})
+		// Also test with keys-only (count-only and keys-only are incompatible).
+		if !tt.countOnly {
+			t.Run(tt.name+" keys-only", func(t *testing.T) {
+				opts := append(append([]clientv3.OpOption{}, tt.opts...), clientv3.WithKeysOnly())
+				resp, err := get(ctx, tt.key, opts...)
+				require.NoError(t, err)
+				require.Equal(t, dropValues(tt.wantKvs), resp.Kvs)
+				require.Equal(t, tt.wantCount, resp.Count)
+				require.Equal(t, tt.wantMore, resp.More)
+			})
 		}
 	}
 }
 
+func dropValues(kvs []*mvccpb.KeyValue) []*mvccpb.KeyValue {
+	if kvs == nil {
+		return nil
+	}
+	out := make([]*mvccpb.KeyValue, len(kvs))
+	for i, kv := range kvs {
+		clone := *kv
+		clone.Value = nil
+		out[i] = &clone
+	}
+	return out
+}
+
 func TestKVGetErrConnClosed(t *testing.T) {
+	// TODO
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
@@ -283,13 +370,23 @@ func TestKVGetErrConnClosed(t *testing.T) {
 
 	cli := clus.Client(0)
 
-	donec := make(chan struct{})
 	require.NoError(t, cli.Close())
 	clus.TakeClient(0)
 
+	t.Run("Unary", func(t *testing.T) {
+		testKVGetErrConnClosed(t, cli.Get)
+	})
+
+	t.Run("Stream", func(t *testing.T) {
+		testKVGetErrConnClosed(t, StreamToUnary(cli.KV))
+	})
+}
+
+func testKVGetErrConnClosed(t *testing.T, get GetFunc) {
+	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		_, err := cli.Get(t.Context(), "foo")
+		_, err := get(t.Context(), "foo")
 		if !clientv3.IsConnCanceled(err) {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
@@ -303,6 +400,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 }
 
 func TestKVNewAfterClose(t *testing.T) {
+	// TODO
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
@@ -312,9 +410,19 @@ func TestKVNewAfterClose(t *testing.T) {
 	clus.TakeClient(0)
 	require.NoError(t, cli.Close())
 
+	t.Run("Unary", func(t *testing.T) {
+		testKVNewAfterClose(t, cli.Get)
+	})
+
+	t.Run("Stream", func(t *testing.T) {
+		testKVNewAfterClose(t, StreamToUnary(cli.KV))
+	})
+}
+
+func testKVNewAfterClose(t *testing.T, get GetFunc) {
 	donec := make(chan struct{})
 	go func() {
-		_, err := cli.Get(t.Context(), "foo")
+		_, err := get(t.Context(), "foo")
 		if !clientv3.IsConnCanceled(err) {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
@@ -478,12 +586,22 @@ func TestKVGetRetry(t *testing.T) {
 	_, err := kv.Put(ctx, "foo", "bar")
 	require.NoError(t, err)
 
-	clus.Members[fIdx].Stop(t)
+	t.Run("Unary", func(t *testing.T) {
+		testKVGetRetry(t, kv.Get, clus.Members[fIdx])
+	})
+
+	t.Run("Stream", func(t *testing.T) {
+		testKVGetRetry(t, StreamToUnary(kv), clus.Members[fIdx])
+	})
+}
+
+func testKVGetRetry(t *testing.T, get GetFunc, member *integration.Member) {
+	member.Stop(t)
 
 	donec := make(chan struct{}, 1)
 	go func() {
 		// Get will fail, but reconnect will trigger
-		gresp, gerr := kv.Get(ctx, "foo")
+		gresp, gerr := get(t.Context(), "foo")
 		if gerr != nil {
 			t.Error(gerr)
 		}
@@ -503,8 +621,8 @@ func TestKVGetRetry(t *testing.T) {
 	}()
 
 	time.Sleep(100 * time.Millisecond)
-	clus.Members[fIdx].Restart(t)
-	clus.Members[fIdx].WaitOK(t)
+	member.Restart(t)
+	member.WaitOK(t)
 
 	select {
 	case <-time.After(20 * time.Second):
@@ -515,6 +633,7 @@ func TestKVGetRetry(t *testing.T) {
 
 // TestKVPutFailGetRetry ensures a get will retry following a failed put.
 func TestKVPutFailGetRetry(t *testing.T) {
+	// TODO
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
@@ -555,6 +674,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 
 // TestKVGetCancel tests that a context cancel on a Get terminates as expected.
 func TestKVGetCancel(t *testing.T) {
+	// TODO
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
@@ -578,6 +698,7 @@ func TestKVGetCancel(t *testing.T) {
 
 // TestKVGetStoppedServerAndClose ensures closing after a failed Get works.
 func TestKVGetStoppedServerAndClose(t *testing.T) {
+	// TODO
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
@@ -660,6 +781,7 @@ func TestKVPutAtMostOnce(t *testing.T) {
 
 // TestKVLargeRequests tests various client/server side request limits.
 func TestKVLargeRequests(t *testing.T) {
+	// TODO
 	integration.BeforeTest(t)
 	tests := []struct {
 		// make sure that "MaxCallSendMsgSize" < server-side default send/recv limit
