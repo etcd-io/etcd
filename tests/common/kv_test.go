@@ -97,7 +97,6 @@ func TestKVGet(t *testing.T) {
 				currentHeader := &etcdserverpb.ResponseHeader{
 					ClusterId: currentResp.Header.ClusterId,
 					Revision:  currentResp.Header.Revision,
-					RaftTerm:  currentResp.Header.RaftTerm,
 				}
 
 				type testcase struct {
@@ -157,6 +156,7 @@ func TestKVGet(t *testing.T) {
 						resp, err := cc.Get(ctx, tt.begin, tt.options)
 						require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
 						resp.Header.MemberId = 0
+						resp.Header.RaftTerm = 0
 						assert.Equal(t, tt.wantResponse, resp)
 					})
 				}
