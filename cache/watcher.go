@@ -21,7 +21,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-// watcher holds one client’s buffered stream of events.
+// watcher holds one client's buffered stream of events.
 type watcher struct {
 	respCh     chan clientv3.WatchResponse
 	cancelResp *clientv3.WatchResponse
@@ -37,7 +37,7 @@ func newWatcher(bufSize int, pred KeyPredicate) *watcher {
 }
 
 // true  -> events delivered (or filtered/duplicate)
-// false -> buffer full (caller should mark watcher “lagging”)
+// false -> buffer full (caller should mark watcher "lagging")
 func (w *watcher) enqueueResponse(resp clientv3.WatchResponse) bool {
 	if !resp.IsProgressNotify() && w.keyPred != nil {
 		filtered := make([]*clientv3.Event, 0, len(resp.Events))
