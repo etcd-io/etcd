@@ -122,20 +122,18 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int, withTota
 	}
 	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
-			if limit <= 0 || len(revs) < limit {
+			reachedLimit := limit > 0 && len(revs) >= limit
+			if !reachedLimit {
 				revs = append(revs, rev)
+			} else {
+				if !withTotalCount {
+					return false
+				}
 			}
-			if withTotalCount {
-				total++
-			} else if limit > 0 && len(revs) >= limit {
-				return false
-			}
+			total++
 		}
 		return true
 	})
-	if !withTotalCount {
-		total = len(revs)
-	}
 	return revs, total
 }
 
