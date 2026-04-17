@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"reflect"
@@ -26,11 +27,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -1511,6 +1515,8 @@ func TestV3RangeRequest(t *testing.T) {
 					t.Errorf("#%d.%d: Range error: %v", i, j, err)
 					continue
 				}
+				assertRangeStreamMatchesRange(t, kvc, &req, resp)
+
 				if len(resp.Kvs) != len(tt.wresps[j]) {
 					t.Errorf("#%d.%d: bad len(resp.Kvs). got = %d, want = %d, ", i, j, len(resp.Kvs), len(tt.wresps[j]))
 					continue
@@ -1534,6 +1540,35 @@ func TestV3RangeRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+// assertRangeStreamMatchesRange calls RangeStream with the same request and
+// asserts the merged streamed response is identical to the unary Range response.
+func assertRangeStreamMatchesRange(t *testing.T, kvc pb.KVClient, req *pb.RangeRequest, expected *pb.RangeResponse) {
+	t.Helper()
+
+	// RangeStream does not support custom sort orders or revision filters.
+	if req.SortOrder != pb.RangeRequest_NONE && (req.SortOrder != pb.RangeRequest_ASCEND || req.SortTarget != pb.RangeRequest_KEY) {
+		return
+	}
+	if req.MaxModRevision != 0 || req.MinModRevision != 0 || req.MinCreateRevision != 0 || req.MaxCreateRevision != 0 {
+		return
+	}
+
+	stream, err := kvc.RangeStream(t.Context(), req)
+	require.NoError(t, err)
+
+	got := &pb.RangeResponse{}
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			break
+		}
+		require.NoError(t, rerr)
+		proto.Merge(got, chunk.RangeResponse)
+	}
+	require.Emptyf(t, cmp.Diff(expected, got, protocmp.Transform()),
+		"RangeStream response must match Range response")
 }
 
 // TestTLSGRPCRejectInsecureClient checks that connection is rejected if server is TLS but not client.
