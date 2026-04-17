@@ -56,19 +56,9 @@ func (r *ringBuffer[T]) full() bool {
 }
 
 // AscendGreaterOrEqual iterates through entries in ascending order starting from the first entry with revision >= pivot.
-// TODO: use binary search on the ring buffer to locate the first entry >= nextRev instead of a full scan
 func (r *ringBuffer[T]) AscendGreaterOrEqual(pivot int64, iter IterFunc[T]) {
-	if r.size == 0 {
-		return
-	}
-
-	for n, i := 0, r.tail; n < r.size; n, i = n+1, (i+1)%len(r.buffer) {
-		entry := r.buffer[i]
-
-		if entry.revision < pivot {
-			continue
-		}
-
+	for i := r.findFirstIndexGreaterOrEqual(pivot); i < r.size; i++ {
+		entry := r.at(i)
 		if !iter(entry.revision, entry.item) {
 			return
 		}
@@ -77,17 +67,8 @@ func (r *ringBuffer[T]) AscendGreaterOrEqual(pivot int64, iter IterFunc[T]) {
 
 // AscendLessThan iterates in ascending order over entries with revision < pivot.
 func (r *ringBuffer[T]) AscendLessThan(pivot int64, iter IterFunc[T]) {
-	if r.size == 0 {
-		return
-	}
-
-	for n, i := 0, r.tail; n < r.size; n, i = n+1, (i+1)%len(r.buffer) {
-		entry := r.buffer[i]
-
-		if entry.revision >= pivot {
-			return
-		}
-
+	for i := 0; i < r.findFirstIndexGreaterOrEqual(pivot); i++ {
+		entry := r.at(i)
 		if !iter(entry.revision, entry.item) {
 			return
 		}
@@ -96,17 +77,8 @@ func (r *ringBuffer[T]) AscendLessThan(pivot int64, iter IterFunc[T]) {
 
 // DescendGreaterThan iterates in descending order over entries with revision > pivot.
 func (r *ringBuffer[T]) DescendGreaterThan(pivot int64, iter IterFunc[T]) {
-	if r.size == 0 {
-		return
-	}
-
-	for n, i := 0, r.moduloIndex(r.head-1); n < r.size; n, i = n+1, r.moduloIndex(i-1) {
-		entry := r.buffer[i]
-
-		if entry.revision <= pivot {
-			return
-		}
-
+	for i := r.size - 1; i > r.findLastIndexLessOrEqual(pivot); i-- {
+		entry := r.at(i)
 		if !iter(entry.revision, entry.item) {
 			return
 		}
@@ -115,17 +87,8 @@ func (r *ringBuffer[T]) DescendGreaterThan(pivot int64, iter IterFunc[T]) {
 
 // DescendLessOrEqual iterates in descending order over entries with revision <= pivot.
 func (r *ringBuffer[T]) DescendLessOrEqual(pivot int64, iter IterFunc[T]) {
-	if r.size == 0 {
-		return
-	}
-
-	for n, i := 0, r.moduloIndex(r.head-1); n < r.size; n, i = n+1, r.moduloIndex(i-1) {
-		entry := r.buffer[i]
-
-		if entry.revision > pivot {
-			continue
-		}
-
+	for i := r.findLastIndexLessOrEqual(pivot); i >= 0; i-- {
+		entry := r.at(i)
 		if !iter(entry.revision, entry.item) {
 			return
 		}
@@ -158,4 +121,36 @@ func (r *ringBuffer[T]) RebaseHistory() {
 
 func (r *ringBuffer[T]) moduloIndex(index int) int {
 	return (index + len(r.buffer)) % len(r.buffer)
+}
+
+func (r *ringBuffer[T]) at(logicalIndex int) entry[T] {
+	return r.buffer[r.moduloIndex(r.tail+logicalIndex)]
+}
+
+func (r *ringBuffer[T]) findFirstIndexGreaterOrEqual(pivot int64) int {
+	left, right := 0, r.size-1
+	for left <= right {
+		// Prevent overflow; see https://github.com/golang/go/blob/master/src/sort/search.go#L105.
+		mid := int(uint(left+right) >> 1)
+		if r.at(mid).revision >= pivot {
+			right = mid - 1
+		} else {
+			left = mid + 1
+		}
+	}
+	return left
+}
+
+func (r *ringBuffer[T]) findLastIndexLessOrEqual(pivot int64) int {
+	left, right := 0, r.size-1
+	for left <= right {
+		// Prevent overflow; see https://github.com/golang/go/blob/master/src/sort/search.go#L105.
+		mid := int(uint(left+right) >> 1)
+		if r.at(mid).revision <= pivot {
+			left = mid + 1
+		} else {
+			right = mid - 1
+		}
+	}
+	return right
 }
