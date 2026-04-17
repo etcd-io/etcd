@@ -4,7 +4,51 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.28 (TBC)
+## v3.5.30 (TBC)
+
+---
+
+## v3.5.29 (2026-04-01)
+
+### etcd server
+
+- [etcdserver: allow non-admin to fetch member list and alarms](https://github.com/etcd-io/etcd/pull/21550)
+
+### etcdctl
+
+- Fix [etcdctl endpoint command regression with option --cluster when auth is enabled](https://github.com/etcd-io/etcd/pull/21532)
+
+---
+
+## v3.5.28 (2026-03-20)
+
+### etcd server
+
+- [Ensure the metrics interceptor runs before other interceptors so that metrics remain up to date](https://github.com/etcd-io/etcd/pull/21336)
+- Fix [Race between read index and leader change](https://github.com/etcd-io/etcd/pull/21387)
+- Fix [Stale reads caused by process pausing](https://github.com/etcd-io/etcd/pull/21421)
+- Fix [cannot promote member from follower when auth is enabled](https://github.com/etcd-io/etcd/pull/21494)
+- Guard unauthenticated endpoints with auth checks to fix [Authorization bypasses in multiple APIs (CVE-2026-33413)](https://github.com/etcd-io/etcd/security/advisories/GHSA-q8m4-xhhv-38mg)
+- Enforce auth checks for nested txn ops to fix [Nested etcd transactions bypass RBAC authorization checks (CVE-2026-33343)](https://github.com/etcd-io/etcd/security/advisories/GHSA-rfx7-8w68-q57q)
+
+### Package `clientv3`
+
+- [Print the endpoint the grpc request was actually sent to in unary interceptor](https://github.com/etcd-io/etcd/pull/21380)
+
+### etcd grpc-proxy
+
+- [server/etcdmain: fix startup deadlock in grpcproxy](https://github.com/etcd-io/etcd/pull/21356)
+
+### etcdctl
+
+- Fix [slice bounds trimming single-quoted args in Argify](https://github.com/etcd-io/etcd/pull/21403)
+
+### Dependencies
+
+- [Bump go.opentelemetry.io/otel/sdk to v1.40.0 to resolve https://pkg.go.dev/vuln/GO-2026-4394](https://github.com/etcd-io/etcd/pull/21338)
+- Compile binaries using [go 1.25.8](https://github.com/etcd-io/etcd/pull/21462)
+- [Bump golang.org/x/net to v0.51.0 to resolve GO-2026-4559](https://github.com/etcd-io/etcd/pull/21441)
+- [Bump google.golang.org/grpc to 1.79.3 to resolve CVE-2026-33186](https://github.com/etcd-io/etcd/pull/21500)
 
 ---
 

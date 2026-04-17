@@ -30,13 +30,15 @@ var (
 	errFutureRevRespRequested = errors.New("request about a future rev with response")
 )
 
-func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []porcupine.Operation, timeout time.Duration) LinearizationResult {
+func validateLinearizableOperationsAndVisualize(lg *zap.Logger, keys []string, operations []porcupine.Operation, timeout time.Duration) LinearizationResult {
 	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
 	start := time.Now()
-	check, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
+
+	model := model.NonDeterministicModel(keys)
+	check, info := porcupine.CheckOperationsVerbose(model, operations, timeout)
 	result := LinearizationResult{
 		Info:  info,
-		Model: model.NonDeterministicModel,
+		Model: model,
 	}
 	switch check {
 	case porcupine.Ok:
@@ -64,8 +66,9 @@ func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Opera
 	err := validateSerializableOperationsError(lg, operations, replay)
 	if err != nil {
 		lg.Error("Serializable validation failed", zap.Duration("duration", time.Since(start)), zap.Error(err))
+	} else {
+		lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
 	}
-	lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
 	return ResultFromError(err)
 }
 

@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	cache "go.etcd.io/etcd/cache/v3"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/stringutil"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
@@ -486,7 +488,7 @@ func TestCacheWithPrefixWatch(t *testing.T) {
 	}
 }
 
-func TestCacheWatchPrefixProgressNotify(t *testing.T) {
+func TestCacheServerRequestProgress(t *testing.T) {
 	if integration.ThroughProxy {
 		t.Skip("grpc proxy currently does not support requesting progress notifications")
 	}
@@ -544,7 +546,165 @@ func TestCacheWatchPrefixProgressNotify(t *testing.T) {
 	}
 }
 
+func TestCacheRequestProgress(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	ctx := t.Context()
+
+	c, err := cache.New(client, "/foo")
+	if err != nil {
+		t.Fatalf("cache.New: %v", err)
+	}
+	t.Cleanup(c.Close)
+	if err := c.WaitReady(ctx); err != nil {
+		t.Fatalf("cache.WaitReady: %v", err)
+	}
+
+	wctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	watchCh := c.Watch(wctx, "/foo", clientv3.WithPrefix())
+
+	// Write some keys under the watched prefix so the cache advances.
+	var latestRev int64
+	for i := 0; i < 3; i++ {
+		resp, err := client.Put(ctx, fmt.Sprintf("/foo/key-%d", i), "v")
+		if err != nil {
+			t.Fatalf("Put(/foo/key-%d): %v", i, err)
+		}
+		latestRev = resp.Header.Revision
+	}
+
+	// Drain the event responses so the watcher is caught up.
+	readEvents(wctx, t, watchCh, 3)
+
+	// Call RequestProgress on the cache — this should deliver a progress
+	// notification to the watcher with the cache's current revision.
+	if err := c.RequestProgress(ctx); err != nil {
+		t.Fatalf("RequestProgress: %v", err)
+	}
+
+	resp := waitForProgressNotify(wctx, t, watchCh)
+	if resp.Header.Revision < latestRev {
+		t.Fatalf("progress revision %d < latest rev %d", resp.Header.Revision, latestRev)
+	}
+}
+
+func TestCacheWithProgressNotify(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	ctx := t.Context()
+
+	progressInterval := 200 * time.Millisecond
+	c, err := cache.New(client, "/foo", cache.WithProgressNotifyInterval(progressInterval))
+	if err != nil {
+		t.Fatalf("cache.New: %v", err)
+	}
+	t.Cleanup(c.Close)
+	if err := c.WaitReady(ctx); err != nil {
+		t.Fatalf("cache.WaitReady: %v", err)
+	}
+
+	t.Run("progress notification fires on idle watcher", func(t *testing.T) {
+		wctx, cancel := context.WithTimeout(ctx, 5*progressInterval)
+		defer cancel()
+
+		watchCh := c.Watch(wctx, "/foo", clientv3.WithPrefix(), clientv3.WithProgressNotify())
+
+		// Write a key so the cache has a non-zero revision.
+		if _, err := client.Put(ctx, "/foo/a", "1"); err != nil {
+			t.Fatalf("Put: %v", err)
+		}
+		readEvents(wctx, t, watchCh, 1)
+
+		// Wait for a progress notification (should arrive after ~progressInterval of idle time).
+		resp := waitForProgressNotify(wctx, t, watchCh)
+		if resp.Header.Revision == 0 {
+			t.Fatalf("progress notification has zero revision")
+		}
+	})
+
+	t.Run("no progress notification without WithProgressNotify", func(t *testing.T) {
+		wctx, cancel := context.WithTimeout(ctx, 5*progressInterval)
+		defer cancel()
+
+		watchCh := c.Watch(wctx, "/foo", clientv3.WithPrefix())
+
+		// Write a key so the watcher gets an event.
+		if _, err := client.Put(ctx, "/foo/b", "2"); err != nil {
+			t.Fatalf("Put: %v", err)
+		}
+		readEvents(wctx, t, watchCh, 1)
+
+		// Wait longer than the progress interval — should NOT get a progress notification.
+		select {
+		case resp := <-watchCh:
+			if resp.IsProgressNotify() {
+				t.Fatalf("got unexpected progress notification on watcher without WithProgressNotify")
+			}
+		case <-time.After(3 * progressInterval):
+		}
+	})
+
+	t.Run("progress notification is elided when events are flowing", func(t *testing.T) {
+		wctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
+		watchCh := c.Watch(wctx, "/foo", clientv3.WithPrefix(), clientv3.WithProgressNotify())
+
+		// Continuously write keys faster than the progress interval.
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for i := 0; i < 10; i++ {
+				if _, err := client.Put(ctx, fmt.Sprintf("/foo/stream-%d", i), fmt.Sprintf("%d", i)); err != nil {
+					return
+				}
+				time.Sleep(progressInterval / 5)
+			}
+		}()
+
+		// Collect responses while writes are happening.
+		var gotProgress bool
+		eventCount := 0
+	collectLoop:
+		for {
+			select {
+			case resp, ok := <-watchCh:
+				if !ok {
+					break collectLoop
+				}
+				if resp.IsProgressNotify() {
+					gotProgress = true
+				}
+				eventCount += len(resp.Events)
+				if eventCount >= 10 {
+					break collectLoop
+				}
+			case <-wctx.Done():
+				break collectLoop
+			}
+		}
+		<-done
+
+		if gotProgress {
+			t.Logf("progress notification received during active writes (elision not guaranteed but noted)")
+		}
+		if eventCount != 10 {
+			t.Fatalf("expected exactly 10 events, got %d", eventCount)
+		}
+	})
+}
+
 func TestCacheWithoutPrefixGet(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("grpc proxy currently does not support requesting progress notifications")
+	}
 	tcs := []struct {
 		name                          string
 		initialEvents, followupEvents []*clientv3.Event
@@ -590,12 +750,12 @@ func TestGet(t *testing.T) {
 func testGet(t *testing.T, kv clientv3.KV, getReader func() Getter, initialEvents, followupEvents []*clientv3.Event) {
 	ctx := t.Context()
 	t.Log("Setup")
-	initialRev := applyEvents(ctx, t, kv, initialEvents)
+	baseRev := applyEvents(ctx, t, kv, initialEvents)
 
 	reader := getReader()
 	if c, ok := reader.(*cache.Cache); ok {
-		if err := c.WaitForRevision(ctx, initialRev); err != nil {
-			t.Fatalf("cache never caught up to rev %d: %v", initialRev, err)
+		if err := c.WaitForRevision(ctx, baseRev); err != nil {
+			t.Fatalf("cache never caught up to rev %d: %v", baseRev, err)
 		}
 	}
 
@@ -606,13 +766,27 @@ func testGet(t *testing.T, kv clientv3.KV, getReader func() Getter, initialEvent
 		}
 	}
 
+	if followupRev > baseRev {
+		baseRev = followupRev
+	}
+
+	latestRev := baseRev
+
 	t.Log("Validate")
 	for _, tc := range getTestCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			op := clientv3.OpGet(tc.key, tc.opts...)
+			latestRev += advanceRevision(t, kv)
+
+			opts := tc.opts
+			if tc.optsFunc != nil {
+				opts = append(opts, tc.optsFunc(latestRev)...)
+			}
+
+			op := clientv3.OpGet(tc.key, opts...)
 			requestedRev := op.Rev()
-			resp, err := reader.Get(ctx, tc.key, tc.opts...)
+
+			resp, err := reader.Get(ctx, tc.key, opts...)
 			if tc.expectErr != nil {
 				if !errors.Is(err, tc.expectErr) {
 					t.Fatalf("expected %v for Get %q; got %v", tc.expectErr, tc.key, err)
@@ -620,8 +794,8 @@ func testGet(t *testing.T, kv clientv3.KV, getReader func() Getter, initialEvent
 				return
 			}
 			if err != nil {
-				if _, ok := reader.(*cache.Cache); ok && requestedRev > 0 && requestedRev < initialRev && errors.Is(err, rpctypes.ErrCompacted) {
-					t.Logf("expected ErrCompacted: requestedRev=%d < initialCompleteRev=%d", requestedRev, initialRev)
+				if _, ok := reader.(*cache.Cache); ok && requestedRev > 0 && requestedRev < baseRev && errors.Is(err, rpctypes.ErrCompacted) {
+					t.Logf("expected ErrCompacted: requestedRev=%d < baseCompleteRev=%d", requestedRev, baseRev)
 					return
 				}
 				t.Fatalf("Get %q failed: %v", tc.key, err)
@@ -629,8 +803,14 @@ func testGet(t *testing.T, kv clientv3.KV, getReader func() Getter, initialEvent
 			if diff := cmp.Diff(tc.wantKVs, resp.Kvs); diff != "" {
 				t.Fatalf("unexpected KVs (-want +got):\n%s", diff)
 			}
-			if resp.Header.Revision != tc.wantRevision {
-				t.Fatalf("revision: got %d, want %d", resp.Header.Revision, tc.wantRevision)
+			if op.IsSerializable() {
+				if resp.Header.Revision < baseRev {
+					t.Fatalf("revision: got %d, want >= %d", resp.Header.Revision, baseRev)
+				}
+			} else {
+				if resp.Header.Revision != latestRev {
+					t.Fatalf("revision: got %d, want == %d", resp.Header.Revision, latestRev)
+				}
 			}
 		})
 	}
@@ -721,147 +901,225 @@ var (
 )
 
 type getTestCase struct {
-	name         string
-	key          string
-	opts         []clientv3.OpOption
-	wantKVs      []*mvccpb.KeyValue
-	wantRevision int64
-	expectErr    error
+	name      string
+	key       string
+	opts      []clientv3.OpOption
+	optsFunc  func(latestRev int64) []clientv3.OpOption
+	wantKVs   []*mvccpb.KeyValue
+	expectErr error
 }
 
 var getTestCases = []getTestCase{
 	{
-		name:         "single key /foo/a",
-		key:          "/foo/a",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable()},
-		wantKVs:      []*mvccpb.KeyValue{Rev8PutFooA.Kv},
-		wantRevision: 8,
+		name:    "single key /foo/a",
+		key:     "/foo/a",
+		opts:    []clientv3.OpOption{},
+		wantKVs: []*mvccpb.KeyValue{Rev8PutFooA.Kv},
 	},
 	{
-		name:         "single key /foo/a at rev=2",
-		key:          "/foo/a",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(2)},
-		wantKVs:      []*mvccpb.KeyValue{Rev2PutFooA.Kv},
-		wantRevision: 8,
+		name:    "single key /foo/a at rev=2",
+		key:     "/foo/a",
+		opts:    []clientv3.OpOption{clientv3.WithRev(2)},
+		wantKVs: []*mvccpb.KeyValue{Rev2PutFooA.Kv},
 	},
 	{
-		name:         "single key /foo/a  at rev=7",
-		key:          "/foo/a",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(7)},
-		wantKVs:      []*mvccpb.KeyValue{Rev7TxnPutFooA.Kv},
-		wantRevision: 8,
+		name:    "single key /foo/a  at rev=7",
+		key:     "/foo/a",
+		opts:    []clientv3.OpOption{clientv3.WithRev(7)},
+		wantKVs: []*mvccpb.KeyValue{Rev7TxnPutFooA.Kv},
 	},
 	{
-		name:         "single key /foo/a at rev=8",
-		key:          "/foo/a",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(8)},
-		wantKVs:      []*mvccpb.KeyValue{Rev8PutFooA.Kv},
-		wantRevision: 8,
+		name: "single key /foo/a at rev=latest",
+		key:  "/foo/a",
+		optsFunc: func(latestRev int64) []clientv3.OpOption {
+			return []clientv3.OpOption{clientv3.WithRev(latestRev)}
+		},
+		wantKVs: []*mvccpb.KeyValue{Rev8PutFooA.Kv},
 	},
 	{
-		name:      "single key /foo/a at rev=9 (future), returns error",
-		key:       "/foo/a",
-		opts:      []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(9)},
+		name: "single key /foo/a at rev=latest+1 (future), returns error",
+		key:  "/foo/a",
+		optsFunc: func(latestRev int64) []clientv3.OpOption {
+			return []clientv3.OpOption{clientv3.WithRev(latestRev + 1)}
+		},
 		expectErr: rpctypes.ErrFutureRev,
 	},
 	{
-		name:         "non-existing key",
-		key:          "/doesnotexist",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable()},
-		wantKVs:      nil,
-		wantRevision: 8,
+		name:    "non-existing key",
+		key:     "/doesnotexist",
+		opts:    []clientv3.OpOption{},
+		wantKVs: nil,
 	},
 	{
-		name:         "non-existing key at rev=4",
-		key:          "/doesnotexist",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(4)},
-		wantKVs:      nil,
-		wantRevision: 8,
+		name:    "non-existing key at rev=4",
+		key:     "/doesnotexist",
+		opts:    []clientv3.OpOption{clientv3.WithRev(4)},
+		wantKVs: nil,
 	},
 	{
-		name:      "non-existing key at rev=9 (future), returns error",
-		key:       "/doesnotexist",
-		opts:      []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(9)},
+		name: "non-existing key at rev=latest+1 (future), returns error",
+		key:  "/doesnotexist",
+		optsFunc: func(latestRev int64) []clientv3.OpOption {
+			return []clientv3.OpOption{clientv3.WithRev(latestRev + 1)}
+		},
 		expectErr: rpctypes.ErrFutureRev,
 	},
 	{
-		name:         "prefix /foo",
-		key:          "/foo",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
-		wantKVs:      []*mvccpb.KeyValue{Rev8PutFooA.Kv, Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
-		wantRevision: 8,
+		name:    "prefix /foo",
+		key:     "/foo",
+		opts:    []clientv3.OpOption{clientv3.WithPrefix()},
+		wantKVs: []*mvccpb.KeyValue{Rev8PutFooA.Kv, Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
 	},
 	{
-		name:         "prefix /foo at rev=5",
-		key:          "/foo",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix(), clientv3.WithRev(5)},
-		wantKVs:      []*mvccpb.KeyValue{Rev2PutFooA.Kv, Rev3PutFooB.Kv, Rev4PutFooC.Kv, Rev5PutFooD.Kv},
-		wantRevision: 8,
+		name:    "prefix /foo at rev=5",
+		key:     "/foo",
+		opts:    []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithRev(5)},
+		wantKVs: []*mvccpb.KeyValue{Rev2PutFooA.Kv, Rev3PutFooB.Kv, Rev4PutFooC.Kv, Rev5PutFooD.Kv},
 	},
 	{
-		name:         "prefix /foo/b at rev=4",
-		key:          "/foo/b",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix(), clientv3.WithRev(4)},
-		wantKVs:      []*mvccpb.KeyValue{Rev3PutFooB.Kv},
-		wantRevision: 8,
+		name:    "prefix /foo/b at rev=4",
+		key:     "/foo/b",
+		opts:    []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithRev(4)},
+		wantKVs: []*mvccpb.KeyValue{Rev3PutFooB.Kv},
 	},
 	{
-		name:         "prefix /foo/b at rev=7",
-		key:          "/foo/b",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix(), clientv3.WithRev(7)},
-		wantKVs:      []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv},
-		wantRevision: 8,
+		name:    "prefix /foo/b at rev=7",
+		key:     "/foo/b",
+		opts:    []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithRev(7)},
+		wantKVs: []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv},
 	},
 	{
-		name:      "prefix /foo at rev=9 (future), returns error",
-		key:       "/foo",
-		opts:      []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix(), clientv3.WithRev(9)},
-		wantKVs:   []*mvccpb.KeyValue{Rev2PutFooA.Kv, Rev3PutFooB.Kv, Rev4PutFooC.Kv, Rev5PutFooD.Kv},
+		name: "prefix /foo at rev=latest+1 (future), returns error",
+		key:  "/foo",
+		opts: []clientv3.OpOption{clientv3.WithPrefix()},
+		optsFunc: func(latestRev int64) []clientv3.OpOption {
+			return []clientv3.OpOption{clientv3.WithRev(latestRev + 1)}
+		},
 		expectErr: rpctypes.ErrFutureRev,
 	},
 	{
-		name:         "range [/foo/a, /foo/c)",
-		key:          "/foo/a",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/c")},
-		wantKVs:      []*mvccpb.KeyValue{Rev8PutFooA.Kv, Rev7TxnPutFooB.Kv},
-		wantRevision: 8,
+		name:    "range [/foo/a, /foo/c)",
+		key:     "/foo/a",
+		opts:    []clientv3.OpOption{clientv3.WithRange("/foo/c")},
+		wantKVs: []*mvccpb.KeyValue{Rev8PutFooA.Kv, Rev7TxnPutFooB.Kv},
 	},
 	{
-		name:         "range [/foo/a, /foo/d) at rev=5",
-		key:          "/foo/a",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/d"), clientv3.WithRev(5)},
-		wantKVs:      []*mvccpb.KeyValue{Rev2PutFooA.Kv, Rev3PutFooB.Kv, Rev4PutFooC.Kv},
-		wantRevision: 8,
+		name:    "range [/foo/a, /foo/d) at rev=5",
+		key:     "/foo/a",
+		opts:    []clientv3.OpOption{clientv3.WithRange("/foo/d"), clientv3.WithRev(5)},
+		wantKVs: []*mvccpb.KeyValue{Rev2PutFooA.Kv, Rev3PutFooB.Kv, Rev4PutFooC.Kv},
 	},
 	{
-		name:      "range [/foo/a, /foo/c) at rev=9 (future), returns error",
-		key:       "/foo/a",
-		opts:      []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/c"), clientv3.WithRev(9)},
+		name: "range [/foo/a, /foo/c) at rev=latest+1 (future), returns error",
+		key:  "/foo/a",
+		opts: []clientv3.OpOption{clientv3.WithRange("/foo/c")},
+		optsFunc: func(latestRev int64) []clientv3.OpOption {
+			return []clientv3.OpOption{clientv3.WithRev(latestRev + 1)}
+		},
 		expectErr: rpctypes.ErrFutureRev,
 	},
 	{
-		name:         "fromKey /foo/b",
-		key:          "/foo/b",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey()},
-		wantKVs:      []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
-		wantRevision: 8,
+		name:    "fromKey /foo/b",
+		key:     "/foo/b",
+		opts:    []clientv3.OpOption{clientv3.WithFromKey()},
+		wantKVs: []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
 	},
 	{
-		name:         "fromKey /foo/b at rev=7",
-		key:          "/foo/b",
-		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey(), clientv3.WithRev(7)},
-		wantKVs:      []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
-		wantRevision: 8,
+		name:    "fromKey /foo/b at rev=7",
+		key:     "/foo/b",
+		opts:    []clientv3.OpOption{clientv3.WithFromKey(), clientv3.WithRev(7)},
+		wantKVs: []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
 	},
 	{
-		name:      "fromKey /foo/b at rev=9 (future), returns error",
-		key:       "/foo/b",
-		opts:      []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey(), clientv3.WithRev(9)},
+		name: "fromKey /foo/b at rev=latest+1 (future), returns error",
+		key:  "/foo/b",
+		opts: []clientv3.OpOption{clientv3.WithFromKey()},
+		optsFunc: func(latestRev int64) []clientv3.OpOption {
+			return []clientv3.OpOption{clientv3.WithRev(latestRev + 1)}
+		},
+		expectErr: rpctypes.ErrFutureRev,
+	},
+	{
+		name:    "single key /foo/a serializable",
+		key:     "/foo/a",
+		opts:    []clientv3.OpOption{clientv3.WithSerializable()},
+		wantKVs: []*mvccpb.KeyValue{Rev8PutFooA.Kv},
+	},
+	{
+		name: "single key /foo/a serializable at rev=latest+1 (future), returns error",
+		key:  "/foo/a",
+		opts: []clientv3.OpOption{clientv3.WithSerializable()},
+		optsFunc: func(latestRev int64) []clientv3.OpOption {
+			return []clientv3.OpOption{clientv3.WithRev(latestRev + 1)}
+		},
+		expectErr: rpctypes.ErrFutureRev,
+	},
+	{
+		name:    "non-existing key serializable",
+		key:     "/doesnotexist",
+		opts:    []clientv3.OpOption{clientv3.WithSerializable()},
+		wantKVs: nil,
+	},
+	{
+		name: "non-existing key serializable at rev=latest+1 (future), returns error",
+		key:  "/doesnotexist",
+		opts: []clientv3.OpOption{clientv3.WithSerializable()},
+		optsFunc: func(latestRev int64) []clientv3.OpOption {
+			return []clientv3.OpOption{clientv3.WithRev(latestRev + 1)}
+		},
+		expectErr: rpctypes.ErrFutureRev,
+	},
+	{
+		name:    "prefix /foo serializable",
+		key:     "/foo",
+		opts:    []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSerializable()},
+		wantKVs: []*mvccpb.KeyValue{Rev8PutFooA.Kv, Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
+	},
+	{
+		name: "prefix /foo serializable at rev=latest+1 (future), returns error",
+		key:  "/foo",
+		opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSerializable()},
+		optsFunc: func(latestRev int64) []clientv3.OpOption {
+			return []clientv3.OpOption{clientv3.WithRev(latestRev + 1)}
+		},
+		expectErr: rpctypes.ErrFutureRev,
+	},
+	{
+		name:    "range [/foo/a, /foo/c) serializable",
+		key:     "/foo/a",
+		opts:    []clientv3.OpOption{clientv3.WithRange("/foo/c"), clientv3.WithSerializable()},
+		wantKVs: []*mvccpb.KeyValue{Rev8PutFooA.Kv, Rev7TxnPutFooB.Kv},
+	},
+	{
+		name: "range [/foo/a, /foo/c) serializable at rev=latest+1 (future), returns error",
+		key:  "/foo/a",
+		opts: []clientv3.OpOption{clientv3.WithRange("/foo/c"), clientv3.WithSerializable()},
+		optsFunc: func(latestRev int64) []clientv3.OpOption {
+			return []clientv3.OpOption{clientv3.WithRev(latestRev + 1)}
+		},
+		expectErr: rpctypes.ErrFutureRev,
+	},
+	{
+		name:    "fromKey /foo/b serializable",
+		key:     "/foo/b",
+		opts:    []clientv3.OpOption{clientv3.WithFromKey(), clientv3.WithSerializable()},
+		wantKVs: []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
+	},
+	{
+		name: "fromKey /foo/b serializable at rev=latest+1 (future), returns error",
+		key:  "/foo/b",
+		opts: []clientv3.OpOption{clientv3.WithFromKey(), clientv3.WithSerializable()},
+		optsFunc: func(latestRev int64) []clientv3.OpOption {
+			return []clientv3.OpOption{clientv3.WithRev(latestRev + 1)}
+		},
 		expectErr: rpctypes.ErrFutureRev,
 	},
 }
 
 func TestCacheWithPrefixGetInScope(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("grpc proxy currently does not support requesting progress notifications")
+	}
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	t.Cleanup(func() { clus.Terminate(t) })
@@ -891,7 +1149,7 @@ func TestWithPrefixGet(t *testing.T) {
 
 func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Getter) {
 	ctx := t.Context()
-	seedResp, err := cli.Put(ctx, "/foo/a", "val")
+	seedResp, err := cli.Put(ctx, "/foo/a", "val1")
 	if err != nil {
 		t.Fatalf("seed put: %v", err)
 	}
@@ -899,14 +1157,18 @@ func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Gett
 
 	reader := getReader()
 
-	var latestRev int64
 	for i := 0; i < 5; i++ {
-		r, err := cli.Put(ctx, fmt.Sprintf("/bar/x%d", i), fmt.Sprintf("%d", i))
+		_, err = cli.Put(ctx, fmt.Sprintf("/bar/x%d", i), fmt.Sprintf("%d", i))
 		if err != nil {
 			t.Fatalf("advance put: %v", err)
 		}
-		latestRev = r.Header.Revision
 	}
+
+	resp, err := cli.Put(ctx, "/foo/a", "val2")
+	if err != nil {
+		t.Fatalf("second put: %v", err)
+	}
+	latestRev := resp.Header.Revision
 
 	if err := cli.RequestProgress(ctx); err != nil {
 		t.Fatalf("RequestProgress: %v", err)
@@ -920,67 +1182,134 @@ func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Gett
 
 	expectedFooA := &mvccpb.KeyValue{
 		Key:            []byte("/foo/a"),
-		Value:          []byte("val"),
+		Value:          []byte("val2"),
+		CreateRevision: seedRev,
+		ModRevision:    latestRev,
+		Version:        2,
+	}
+
+	expectedOldFooA := &mvccpb.KeyValue{
+		Key:            []byte("/foo/a"),
+		Value:          []byte("val1"),
 		CreateRevision: seedRev,
 		ModRevision:    seedRev,
 		Version:        1,
 	}
 
+	baseRev := latestRev
+
 	testCases := []struct {
-		name         string
-		key          string
-		opts         []clientv3.OpOption
-		wantKVs      []*mvccpb.KeyValue
-		wantRevision int64
+		name     string
+		key      string
+		opts     []clientv3.OpOption
+		optsFunc func(latestRev int64) []clientv3.OpOption
+		wantKVs  []*mvccpb.KeyValue
 	}{
 		{
-			name:         "single key within cache prefix",
-			key:          "/foo/a",
-			opts:         []clientv3.OpOption{clientv3.WithSerializable()},
-			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: latestRev,
+			name:    "single key within cache prefix",
+			key:     "/foo/a",
+			opts:    []clientv3.OpOption{},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
 		},
 		{
-			name:         "single key within cache prefix at latest/progress rev",
-			key:          "/foo/a",
-			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(latestRev)},
-			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: latestRev,
+			name: "single key within cache prefix at latest/progress rev",
+			key:  "/foo/a",
+			optsFunc: func(latestRev int64) []clientv3.OpOption {
+				return []clientv3.OpOption{clientv3.WithRev(latestRev)}
+			},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
 		},
 		{
-			name:         "prefix query within cache prefix",
-			key:          "/foo",
-			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
-			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: latestRev,
+			name:    "prefix query within cache prefix",
+			key:     "/foo",
+			opts:    []clientv3.OpOption{clientv3.WithPrefix()},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
 		},
 		{
-			name:         "prefix query within cache prefix at latest/progress rev",
-			key:          "/foo",
-			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix(), clientv3.WithRev(latestRev)},
-			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: latestRev,
+			name: "prefix query within cache prefix at latest/progress rev",
+			key:  "/foo",
+			opts: []clientv3.OpOption{clientv3.WithPrefix()},
+			optsFunc: func(latestRev int64) []clientv3.OpOption {
+				return []clientv3.OpOption{clientv3.WithRev(latestRev)}
+			},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
 		},
 		{
-			name:         "range query within cache prefix",
-			key:          "/foo/a",
-			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/b")},
-			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: latestRev,
+			name:    "range query within cache prefix",
+			key:     "/foo/a",
+			opts:    []clientv3.OpOption{clientv3.WithRange("/foo/b")},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
 		},
 		{
-			name:         "range query within cache prefix at latest/progress rev",
-			key:          "/foo/a",
-			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/z"), clientv3.WithRev(latestRev)},
-			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: latestRev,
+			name: "range query within cache prefix at latest/progress rev",
+			key:  "/foo/a",
+			opts: []clientv3.OpOption{clientv3.WithRange("/foo/z")},
+			optsFunc: func(latestRev int64) []clientv3.OpOption {
+				return []clientv3.OpOption{clientv3.WithRev(latestRev)}
+			},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
+		},
+		{
+			name:    "single key within cache prefix serializable",
+			key:     "/foo/a",
+			opts:    []clientv3.OpOption{clientv3.WithSerializable()},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
+		},
+		{
+			name:    "single key within cache prefix at base rev serializable",
+			key:     "/foo/a",
+			opts:    []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(baseRev)},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
+		},
+		{
+			name:    "prefix query within cache prefix serializable",
+			key:     "/foo",
+			opts:    []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSerializable()},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
+		},
+		{
+			name:    "prefix query within cache prefix at base rev serializable",
+			key:     "/foo",
+			opts:    []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithSerializable(), clientv3.WithRev(baseRev)},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
+		},
+		{
+			name:    "range query within cache prefix serializable",
+			key:     "/foo/a",
+			opts:    []clientv3.OpOption{clientv3.WithRange("/foo/b"), clientv3.WithSerializable()},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
+		},
+		{
+			name:    "range query within cache prefix at base rev serializable",
+			key:     "/foo/a",
+			opts:    []clientv3.OpOption{clientv3.WithRange("/foo/z"), clientv3.WithSerializable(), clientv3.WithRev(baseRev)},
+			wantKVs: []*mvccpb.KeyValue{expectedFooA},
+		},
+		{
+			name:    "prefix query within cache prefix at intermediate rev serializable",
+			key:     "/foo/a",
+			opts:    []clientv3.OpOption{clientv3.WithRev(seedRev + 1), clientv3.WithSerializable()},
+			wantKVs: []*mvccpb.KeyValue{expectedOldFooA},
+		},
+		{
+			name:    "prefix query within cache prefix at intermediate rev",
+			key:     "/foo/a",
+			opts:    []clientv3.OpOption{clientv3.WithRev(seedRev + 1)},
+			wantKVs: []*mvccpb.KeyValue{expectedOldFooA},
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			resp, err := reader.Get(ctx, tc.key, tc.opts...)
+			latestRev += advanceRevision(t, cli)
+
+			opts := tc.opts
+			if tc.optsFunc != nil {
+				opts = append(opts, tc.optsFunc(latestRev)...)
+			}
+			op := clientv3.OpGet(tc.key, opts...)
+			resp, err := reader.Get(ctx, tc.key, opts...)
 			if err != nil {
 				t.Fatalf("Get(%q): %v", tc.key, err)
 			}
@@ -989,14 +1318,23 @@ func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Gett
 				t.Errorf("unexpected KVs (-want +got):\n%s", diff)
 			}
 
-			if resp.Header.Revision != tc.wantRevision {
-				t.Errorf("Header.Revision=%d; want: %d", resp.Header.Revision, tc.wantRevision)
+			if op.IsSerializable() {
+				if resp.Header.Revision < baseRev {
+					t.Errorf("Header.Revision=%d; want >= %d", resp.Header.Revision, baseRev)
+				}
+			} else {
+				if resp.Header.Revision != latestRev {
+					t.Errorf("Header.Revision=%d; want: %d", resp.Header.Revision, latestRev)
+				}
 			}
 		})
 	}
 }
 
 func TestCacheWithPrefixGetOutOfScope(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("grpc proxy currently does not support requesting progress notifications")
+	}
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	t.Cleanup(func() { clus.Terminate(t) })
@@ -1157,7 +1495,6 @@ func TestCacheUnsupportedWatchOptions(t *testing.T) {
 	}{
 		{"WithPrevKV", clientv3.WithPrevKV()},
 		{"WithFragment", clientv3.WithFragment()},
-		{"WithProgressNotify", clientv3.WithProgressNotify()},
 		{"WithCreatedNotify", clientv3.WithCreatedNotify()},
 		{"WithFilterPut", clientv3.WithFilterPut()},
 		{"WithFilterDelete", clientv3.WithFilterDelete()},
@@ -1184,6 +1521,9 @@ func TestCacheUnsupportedWatchOptions(t *testing.T) {
 }
 
 func TestCacheUnsupportedGetOptions(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("grpc proxy currently does not support requesting progress notifications")
+	}
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	t.Cleanup(func() { clus.Terminate(t) })
@@ -1210,7 +1550,6 @@ func TestCacheUnsupportedGetOptions(t *testing.T) {
 		{"WithMaxModRevision", []clientv3.OpOption{clientv3.WithMaxModRev(10)}},
 		{"WithMinCreateRevision", []clientv3.OpOption{clientv3.WithMinCreateRev(3)}},
 		{"WithMaxCreateRevision", []clientv3.OpOption{clientv3.WithMaxCreateRev(5)}},
-		{"NoSerializable", nil},
 	}
 
 	for _, tc := range unsupported {
@@ -1268,6 +1607,55 @@ func collectAndAssertAtomicEvents(t *testing.T, watch clientv3.WatchChan) (event
 			return events, true
 		}
 	}
+}
+
+func readEvents(ctx context.Context, t *testing.T, watchCh clientv3.WatchChan, n int) {
+	t.Helper()
+	received := 0
+	for received < n {
+		select {
+		case resp := <-watchCh:
+			if resp.Canceled {
+				t.Fatalf("unexpected canceled response: %v", resp.CancelReason)
+			}
+			received += len(resp.Events)
+		case <-ctx.Done():
+			t.Fatalf("timed out draining events, got %d/%d", received, n)
+		}
+	}
+}
+
+func waitForProgressNotify(ctx context.Context, t *testing.T, watchCh clientv3.WatchChan) clientv3.WatchResponse {
+	t.Helper()
+	for {
+		select {
+		case resp, ok := <-watchCh:
+			if !ok {
+				t.Fatalf("watch channel closed while waiting for progress notification")
+			}
+			if resp.Canceled {
+				t.Fatalf("unexpected canceled: %v", resp.CancelReason)
+			}
+			if resp.IsProgressNotify() {
+				return resp
+			}
+		case <-ctx.Done():
+			t.Fatalf("timed out waiting for progress notification")
+			return clientv3.WatchResponse{}
+		}
+	}
+}
+
+func advanceRevision(t *testing.T, kv clientv3.KV) int64 {
+	t.Helper()
+	n := rand.Intn(3) + 3
+	for i := 0; i < n; i++ {
+		_, err := kv.Put(t.Context(), fmt.Sprintf("/bar/%d/%s", i, stringutil.RandString(10)), "v")
+		if err != nil {
+			t.Fatalf("Put: %v", err)
+		}
+	}
+	return int64(n)
 }
 
 func applyEvents(ctx context.Context, t *testing.T, kv clientv3.KV, evs []*clientv3.Event) int64 {

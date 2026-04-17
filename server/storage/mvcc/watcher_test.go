@@ -353,7 +353,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 			id, _ := w.Watch(t.Context(), 0, notTestKey, nil, tc.startRev)
 			w.RequestProgress(id)
 			asssertProgressSent(t, w, id, tc.expectProgressBeforeSync)
-			s.syncWatchers([]mvccpb.Event{})
+			s.syncWatchers()
 			w.RequestProgress(id)
 			asssertProgressSent(t, w, id, tc.expectProgressAfterSync)
 		})
@@ -403,7 +403,7 @@ func TestWatcherRequestProgressAll(t *testing.T) {
 	default:
 	}
 
-	s.syncWatchers([]mvccpb.Event{})
+	s.syncWatchers()
 
 	w.RequestProgressAll()
 	wrs := WatchResponse{WatchID: clientv3.InvalidWatchID, Revision: 2}

@@ -20,9 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zapgrpc"
 	"go.uber.org/zap/zaptest"
-	"google.golang.org/grpc/grpclog"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
@@ -124,7 +122,6 @@ func BeforeTest(t testutil.TB, opts ...TestOption) {
 		revertFunc()
 	})
 
-	grpclog.SetLoggerV2(zapgrpc.NewLogger(zaptest.NewLogger(t).Named("grpc")))
 	insideTestContext = true
 
 	os.Chdir(t.TempDir())

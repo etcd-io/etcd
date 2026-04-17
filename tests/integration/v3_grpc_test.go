@@ -1578,7 +1578,6 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	defer clus.Terminate(t)
 
 	clus.Members[0].ClientTLSInfo = &integration.TestTLSInfo
-	clus.Members[0].DialOptions = []grpc.DialOption{grpc.WithBlock()} //nolint:staticcheck // TODO: remove for a supported version
 	clus.Members[0].GRPCURL = strings.Replace(clus.Members[0].GRPCURL, "http://", "https://", 1)
 	client, err := integration.NewClientV3(clus.Members[0])
 	if client != nil || err == nil {
@@ -1727,7 +1726,6 @@ func testTLSReload(
 				continue
 			}
 			cli, cerr := integration.NewClient(t, clientv3.Config{
-				DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 				Endpoints:   []string{clus.Members[0].GRPCURL},
 				DialTimeout: time.Second,
 				TLS:         cc,

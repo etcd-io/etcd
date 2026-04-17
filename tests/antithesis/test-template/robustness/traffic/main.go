@@ -38,16 +38,19 @@ import (
 )
 
 var (
-	DefaultWatchInterval  = 250 * time.Millisecond
-	DefaultRevisionOffset = int64(100)
+	DefaultWatchInterval = 250 * time.Millisecond
 
 	profile = traffic.Profile{
-		MinimalQPS:                     100,
-		MaximalQPS:                     1000,
-		BurstableQPS:                   1000,
-		MemberClientCount:              3,
-		ClusterClientCount:             1,
-		MaxNonUniqueRequestConcurrency: 3,
+		KeyValue: &traffic.KeyValue{
+			MinimalQPS:                     100,
+			MaximalQPS:                     1000,
+			BurstableQPS:                   1000,
+			MemberClientCount:              3,
+			ClusterClientCount:             1,
+			MaxNonUniqueRequestConcurrency: 3,
+		},
+		Watch:      &traffic.WatchDefault,
+		Compaction: &traffic.CompactionDefault,
 	}
 	trafficNames = []string{
 		"etcd",
@@ -80,7 +83,7 @@ func main() {
 		}
 	}()
 
-	lg.Info("Start traffic generation", zap.Duration("duration", duration))
+	lg.Info("Start traffic generation", zap.Duration("duration", duration), zap.String("base-time", baseTime.UTC().Format("2006-01-02T15:04:05.000000Z0700")))
 	r.Client, err = runTraffic(ctx, lg, tf, hosts, baseTime, duration)
 	if err != nil {
 		lg.Error("Failed to generate traffic")
@@ -97,9 +100,6 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 		lg.Fatal("Failed empty database at start check", zap.Error(err))
 	}
 	maxRevisionChan := make(chan int64, 1)
-	watchConfig := client.WatchConfig{
-		RequestProgress: true,
-	}
 	g := errgroup.Group{}
 	startTime := time.Since(baseTime)
 	g.Go(func() error {
@@ -117,7 +117,6 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 			Lg:              lg,
 			Endpoints:       hosts,
 			MaxRevisionChan: maxRevisionChan,
-			Cfg:             watchConfig,
 			ClientSet:       watchSet,
 		})
 		return err
@@ -142,92 +141,48 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 	var wg sync.WaitGroup
 	leaseStorage := identity.NewLeaseIDStorage()
 	kubernetesStorage := traffic.NewKubernetesStorage()
-	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
-	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
+	limiter := rate.NewLimiter(rate.Limit(profile.KeyValue.MaximalQPS), profile.KeyValue.BurstableQPS)
+	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.KeyValue.MaxNonUniqueRequestConcurrency)
 	finish := closeAfter(ctx, duration)
 	keyStore := traffic.NewKeyStore(10, "key")
-	for i := range profile.MemberClientCount {
-		c := connect(clientSet, []string{hosts[i%len(hosts)]})
-		wg.Add(1)
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
-			tf.RunKeyValueLoop(ctx, traffic.RunTrafficLoopParam{
-				Client:                             c,
-				QPSLimiter:                         limiter,
-				IDs:                                clientSet.IdentityProvider(),
-				LeaseIDStorage:                     leaseStorage,
-				NonUniqueRequestConcurrencyLimiter: concurrencyLimiter,
-				KeyStore:                           keyStore,
-				Storage:                            kubernetesStorage,
-				Finish:                             finish,
-			})
-		}(c)
+	err := traffic.SimulateKeyValueTraffic(ctx, &wg, profile.KeyValue, hosts, clientSet, tf, traffic.RunTrafficLoopParam{
+		QPSLimiter:                         limiter,
+		IDs:                                clientSet.IdentityProvider(),
+		LeaseIDStorage:                     leaseStorage,
+		NonUniqueRequestConcurrencyLimiter: concurrencyLimiter,
+		KeyStore:                           keyStore,
+		Storage:                            kubernetesStorage,
+		Finish:                             finish,
+	})
+	if err != nil {
+		assert.Unreachable("Client failed to connect to an etcd host", map[string]any{"endpoints": hosts, "error": err})
+		os.Exit(1)
 	}
-	for range profile.ClusterClientCount {
-		c := connect(clientSet, hosts)
-		wg.Add(1)
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
-			tf.RunKeyValueLoop(ctx, traffic.RunTrafficLoopParam{
-				Client:                             c,
-				QPSLimiter:                         limiter,
-				IDs:                                clientSet.IdentityProvider(),
-				LeaseIDStorage:                     leaseStorage,
-				NonUniqueRequestConcurrencyLimiter: concurrencyLimiter,
-				KeyStore:                           keyStore,
-				Storage:                            kubernetesStorage,
-				Finish:                             finish,
-			})
-		}(c)
-	}
-	if !profile.ForbidRunWatchLoop {
-		for i := range profile.MemberClientCount {
-			c := connect(clientSet, []string{hosts[i%len(hosts)]})
-			wg.Add(1)
-			go func(c *client.RecordingClient) {
-				defer wg.Done()
-				defer c.Close()
-				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-					Client:     c,
-					QPSLimiter: limiter,
-					KeyStore:   keyStore,
-					Storage:    kubernetesStorage,
-					Finish:     finish,
-					Logger:     lg,
-				})
-			}(c)
-		}
-		for range profile.ClusterClientCount {
-			c := connect(clientSet, hosts)
-			wg.Add(1)
-			go func(c *client.RecordingClient) {
-				defer wg.Done()
-				defer c.Close()
-				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-					Client:     c,
-					QPSLimiter: limiter,
-					KeyStore:   keyStore,
-					Storage:    kubernetesStorage,
-					Finish:     finish,
-					Logger:     lg,
-				})
-			}(c)
+	if profile.Watch != nil {
+		err := traffic.SimulateWatchTraffic(ctx, &wg, profile.Watch, hosts, clientSet, tf, traffic.RunWatchLoopParam{
+			Config:     *profile.Watch,
+			QPSLimiter: limiter,
+			KeyStore:   keyStore,
+			Storage:    kubernetesStorage,
+			Finish:     finish,
+			Logger:     lg,
+		})
+		if err != nil {
+			assert.Unreachable("Client failed to connect to an etcd host", map[string]any{"endpoints": hosts, "error": err})
+			os.Exit(1)
 		}
 	}
-	wg.Add(1)
-	compactClient := connect(clientSet, hosts)
-	go func(c *client.RecordingClient) {
-		defer wg.Done()
-		defer c.Close()
-		tf.RunCompactLoop(ctx, traffic.RunCompactLoopParam{
-			Client: c,
-			Period: traffic.DefaultCompactionPeriod,
+	if profile.Compaction != nil {
+		err := traffic.SimulateCompactionTraffic(ctx, &wg, profile.Compaction, hosts, clientSet, tf, traffic.RunCompactLoopParam{
+			Period: profile.Compaction.Period,
 			Finish: finish,
 		})
-	}(compactClient)
-	defragPeriod := traffic.DefaultCompactionPeriod * time.Duration(len(hosts))
+		if err != nil {
+			assert.Unreachable("Client failed to connect to an etcd host", map[string]any{"endpoints": hosts, "error": err})
+			os.Exit(1)
+		}
+	}
+	defragPeriod := profile.Compaction.Period * time.Duration(len(hosts))
 	for _, h := range hosts {
 		c := connect(clientSet, []string{h})
 		wg.Add(1)

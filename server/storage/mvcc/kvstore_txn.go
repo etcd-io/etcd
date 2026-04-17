@@ -80,12 +80,12 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 	if rev < tr.s.compactMainRev {
 		return &RangeResult{KVs: nil, Count: -1, Rev: 0}, ErrCompacted
 	}
-	if ro.Count {
+	if ro.CountOnly {
 		total := tr.s.kvindex.CountRevisions(key, end, rev)
 		tr.trace.Step("count revisions from in-memory index tree")
 		return &RangeResult{KVs: nil, Count: total, Rev: curRev}, nil
 	}
-	revpairs, total := tr.s.kvindex.Revisions(key, end, rev, int(ro.Limit))
+	revpairs, total := tr.s.kvindex.Revisions(key, end, rev, int(ro.Limit), ro.WithTotalCount)
 	tr.trace.Step("range keys from in-memory index tree")
 	if len(revpairs) == 0 {
 		return &RangeResult{KVs: nil, Count: total, Rev: curRev}, nil

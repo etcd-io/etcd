@@ -31,7 +31,7 @@ type kvOrdering struct {
 	revMu              sync.RWMutex
 }
 
-func NewKV(kv clientv3.KV, orderViolationFunc OrderViolationFunc) *kvOrdering {
+func NewKV(kv clientv3.KV, orderViolationFunc OrderViolationFunc) clientv3.KV {
 	return &kvOrdering{kv, orderViolationFunc, 0, sync.RWMutex{}}
 }
 

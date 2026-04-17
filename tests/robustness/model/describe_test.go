@@ -18,6 +18,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/anishathalye/porcupine"
 	"github.com/stretchr/testify/assert"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -170,7 +171,39 @@ func TestModelDescribe(t *testing.T) {
 			expectDescribe: `range("key16".."key16b", limit=2) -> [], count: 0, rev: 16`,
 		},
 	}
+	ops := []porcupine.Operation{}
 	for _, tc := range tcs {
-		assert.Equal(t, tc.expectDescribe, NonDeterministicModel.DescribeOperation(tc.req, tc.resp))
+		ops = append(ops, porcupine.Operation{Input: tc.req, Output: tc.resp})
+	}
+	model := NonDeterministicModel(ModelKeys(ops))
+	for _, tc := range tcs {
+		assert.Equal(t, tc.expectDescribe, model.DescribeOperation(tc.req, tc.resp))
+	}
+}
+
+func TestDescribeOperationMetadata(t *testing.T) {
+	tcs := []struct {
+		resp           MaybeEtcdResponse
+		expectDescribe string
+	}{
+		{
+			resp:           MaybeEtcdResponse{},
+			expectDescribe: "",
+		},
+		{
+			resp:           MaybeEtcdResponse{EtcdResponse: EtcdResponse{MemberID: 1}},
+			expectDescribe: "memberID: 1",
+		},
+		{
+			resp:           MaybeEtcdResponse{EtcdResponse: EtcdResponse{MemberID: 100}},
+			expectDescribe: "memberID: 64",
+		},
+		{
+			resp:           MaybeEtcdResponse{EtcdResponse: EtcdResponse{MemberID: 255}},
+			expectDescribe: "memberID: ff",
+		},
+	}
+	for _, tc := range tcs {
+		assert.Equal(t, tc.expectDescribe, DescribeOperationMetadata(tc.resp))
 	}
 }

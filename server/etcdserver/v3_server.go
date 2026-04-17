@@ -15,10 +15,8 @@
 package etcdserver
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/binary"
 	errorspkg "errors"
 	"strconv"
 	"time"
@@ -41,7 +39,6 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-	"go.etcd.io/raft/v3"
 )
 
 const (
@@ -50,8 +47,9 @@ const (
 	// However, if the committed entries are very heavy to toApply, the gap might grow.
 	// We should stop accepting new proposals if the gap growing to a certain point.
 	maxGapBetweenApplyAndCommitIndex = 5000
+	maxNormalGap                     = maxGapBetweenApplyAndCommitIndex
+	maxPriorityGap                   = 2 * maxGapBetweenApplyAndCommitIndex
 	traceThreshold                   = 100 * time.Millisecond
-	readIndexRetryTime               = 500 * time.Millisecond
 
 	// The timeout for the node to catch up its applied index, and is used in
 	// lease related operations, such as LeaseRenew and LeaseTimeToLive.
@@ -136,7 +134,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	}(time.Now())
 
 	if !r.Serializable {
-		err = s.linearizableReadNotify(ctx)
+		err = s.read.LinearizableReadNotify(ctx)
 		trace.Step("agreement among raft nodes before linearized reading")
 		if err != nil {
 			return nil, err
@@ -146,7 +144,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 	}
 
-	get := func() { resp, _, err = txn.Range(ctx, s.Logger(), s.KV(), r) }
+	get := func() { resp, _, err = txn.Range(ctx, s.Logger(), s.KV(), r, true) }
 	if serr := s.doSerialize(ctx, chk, get); serr != nil {
 		err = serr
 		return nil, err
@@ -205,7 +203,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 	)
 	if readOnly {
 		if !txn.IsTxnSerializable(r) {
-			err := s.linearizableReadNotify(ctx)
+			err := s.read.LinearizableReadNotify(ctx)
 			trace.Step("agreement among raft nodes before linearized reading")
 			if err != nil {
 				return nil, err
@@ -306,7 +304,11 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 	))
 	defer span.End()
 
-	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseGrant: r})
+	if err := s.requireAuthInfo(ctx); err != nil {
+		return nil, err
+	}
+
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{LeaseGrant: r})
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +317,7 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 
 func (s *EtcdServer) waitAppliedIndex() error {
 	select {
-	case <-s.ApplyWait():
+	case <-s.ApplyWaitCommit():
 	case <-s.stopping:
 		return errors.ErrStopped
 	case <-time.After(applyTimeout):
@@ -332,7 +334,11 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 	))
 	defer span.End()
 
-	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
+	if err := s.requireAuthInfo(ctx); err != nil {
+		return nil, err
+	}
+
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
 	if err != nil {
 		return nil, err
 	}
@@ -375,6 +381,10 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 			}
 		}
 
+		if err := s.checkLeaseRenew(ctx, id); err != nil {
+			return 0, err
+		}
+
 		ttl, err := s.lessor.Renew(id)
 		if err == nil { // already requested to primary lessor(leader)
 			return ttl, nil
@@ -393,6 +403,11 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 		if lerr != nil {
 			return -1, lerr
 		}
+
+		if err := s.checkLeaseRenew(ctx, id); err != nil {
+			return 0, err
+		}
+
 		for _, url := range leader.PeerURLs {
 			lurl := url + leasehttp.LeasePrefix
 			ttl, err := leasehttp.RenewHTTP(cctx, id, lurl, s.peerRt)
@@ -416,6 +431,39 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 	}
 }
 
+func (s *EtcdServer) checkLeaseRenew(ctx context.Context, leaseID lease.LeaseID) error {
+	rev := s.AuthStore().Revision()
+	if !s.AuthStore().IsAuthEnabled() {
+		return nil
+	}
+
+	authInfo, err := s.AuthInfoFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+	if authInfo == nil {
+		return auth.ErrUserEmpty
+	}
+
+	if s.AuthStore().IsAdminPermitted(authInfo) == nil {
+		return nil
+	}
+
+	l := s.lessor.Lookup(leaseID)
+	if l != nil {
+		for _, key := range l.Keys() {
+			if err := s.AuthStore().IsPutPermitted(authInfo, []byte(key)); err != nil {
+				return err
+			}
+		}
+	}
+
+	if rev != s.AuthStore().Revision() {
+		return auth.ErrAuthOldRevision
+	}
+	return nil
+}
+
 func (s *EtcdServer) checkLeaseTimeToLive(ctx context.Context, leaseID lease.LeaseID) (uint64, error) {
 	rev := s.AuthStore().Revision()
 	if !s.AuthStore().IsAuthEnabled() {
@@ -427,6 +475,10 @@ func (s *EtcdServer) checkLeaseTimeToLive(ctx context.Context, leaseID lease.Lea
 	}
 	if authInfo == nil {
 		return rev, auth.ErrUserEmpty
+	}
+
+	if s.AuthStore().IsAdminPermitted(authInfo) == nil {
+		return rev, nil
 	}
 
 	l := s.lessor.Lookup(leaseID)
@@ -504,6 +556,10 @@ func (s *EtcdServer) leaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 }
 
 func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
+	if err := s.requireAuthInfo(ctx); err != nil {
+		return nil, err
+	}
+
 	var rev uint64
 	var err error
 	if r.Keys {
@@ -537,13 +593,52 @@ func (s *EtcdServer) newHeader() *pb.ResponseHeader {
 }
 
 // LeaseLeases is really ListLeases !???
-func (s *EtcdServer) LeaseLeases(_ context.Context, _ *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
+func (s *EtcdServer) LeaseLeases(ctx context.Context, _ *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
 	ls := s.lessor.Leases()
+
+	if err := s.checkLeaseLeases(ctx, ls); err != nil {
+		return nil, err
+	}
+
 	lss := make([]*pb.LeaseStatus, len(ls))
 	for i := range ls {
 		lss[i] = &pb.LeaseStatus{ID: int64(ls[i].ID)}
 	}
 	return &pb.LeaseLeasesResponse{Header: s.newHeader(), Leases: lss}, nil
+}
+
+func (s *EtcdServer) checkLeaseLeases(ctx context.Context, leases []*lease.Lease) error {
+	rev := s.AuthStore().Revision()
+
+	if !s.AuthStore().IsAuthEnabled() {
+		return nil
+	}
+
+	authInfo, err := s.AuthInfoFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if authInfo == nil {
+		return auth.ErrUserEmpty
+	}
+
+	if err := s.AuthStore().IsAdminPermitted(authInfo); err == nil {
+		return nil
+	}
+
+	for _, l := range leases {
+		for _, key := range l.Keys() {
+			if err := s.AuthStore().IsRangePermitted(authInfo, []byte(key), []byte{}); err != nil {
+				return err
+			}
+		}
+	}
+
+	if rev != s.AuthStore().Revision() {
+		return auth.ErrAuthOldRevision
+	}
+	return nil
 }
 
 func (s *EtcdServer) waitLeader(ctx context.Context) (*membership.Member, error) {
@@ -567,7 +662,7 @@ func (s *EtcdServer) waitLeader(ctx context.Context) (*membership.Member, error)
 }
 
 func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmResponse, error) {
-	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{Alarm: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Alarm: r})
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +670,7 @@ func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmRe
 }
 
 func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
-	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{AuthEnable: r})
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthEnable: r})
 	if err != nil {
 		return nil, err
 	}
@@ -599,7 +694,7 @@ func (s *EtcdServer) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*
 }
 
 func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	if err := s.linearizableReadNotify(ctx); err != nil {
+	if err := s.read.LinearizableReadNotify(ctx); err != nil {
 		return nil, err
 	}
 
@@ -638,7 +733,7 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 			SimpleToken: st,
 		}
 
-		resp, err = s.raftRequestOnce(ctx, pb.InternalRaftRequest{Authenticate: internalReq})
+		resp, err = s.raftRequest(ctx, pb.InternalRaftRequest{Authenticate: internalReq})
 		if err != nil {
 			return nil, err
 		}
@@ -774,7 +869,7 @@ func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest
 	return resp.(*pb.AuthRoleDeleteResponse), nil
 }
 
-func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
+func (s *EtcdServer) raftRequest(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
 	result, err := s.processInternalRaftRequestOnce(ctx, r)
 	if err != nil {
 		trace.SpanFromContext(ctx).RecordError(err)
@@ -793,10 +888,6 @@ func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftReque
 		result.Trace.LogIfLong(traceThreshold)
 	}
 	return result.Resp, nil
-}
-
-func (s *EtcdServer) raftRequest(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
-	return s.raftRequestOnce(ctx, r)
 }
 
 // doSerialize handles the auth logic, with permissions checked by "chk", for a serialized request "get". Returns a non-nil error on authentication failure.
@@ -827,7 +918,8 @@ func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) e
 func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*apply2.Result, error) {
 	ai := s.getAppliedIndex()
 	ci := s.getCommittedIndex()
-	if ci > ai+maxGapBetweenApplyAndCommitIndex {
+
+	if exceedsRequestLimit(ai, ci, &r, s.FeatureEnabled(features.PriorityRequest)) {
 		return nil, errors.ErrTooManyRequests
 	}
 
@@ -971,186 +1063,6 @@ func getRequestType(r *pb.InternalRaftRequest) string {
 // Watchable returns a watchable interface attached to the etcdserver.
 func (s *EtcdServer) Watchable() mvcc.WatchableKV { return s.KV() }
 
-func (s *EtcdServer) linearizableReadLoop() {
-	for {
-		requestID := s.reqIDGen.Next()
-		leaderChangedNotifier := s.leaderChanged.Receive()
-		select {
-		case <-leaderChangedNotifier:
-			continue
-		case <-s.readwaitc:
-		case <-s.stopping:
-			return
-		}
-
-		// as a single loop is can unlock multiple reads, it is not very useful
-		// to propagate the trace from Txn or Range.
-		_, trace := traceutil.EnsureTrace(context.Background(), s.Logger(), "linearizableReadLoop")
-
-		nextnr := newNotifier()
-		s.readMu.Lock()
-		nr := s.readNotifier
-		s.readNotifier = nextnr
-		s.readMu.Unlock()
-
-		confirmedIndex, err := s.requestCurrentIndex(leaderChangedNotifier, requestID)
-		if isStopped(err) {
-			return
-		}
-		if err != nil {
-			nr.notify(err)
-			continue
-		}
-
-		trace.Step("read index received")
-
-		trace.AddField(traceutil.Field{Key: "readStateIndex", Value: confirmedIndex})
-
-		appliedIndex := s.getAppliedIndex()
-		trace.AddField(traceutil.Field{Key: "appliedIndex", Value: strconv.FormatUint(appliedIndex, 10)})
-
-		if appliedIndex < confirmedIndex {
-			select {
-			case <-s.applyWait.Wait(confirmedIndex):
-			case <-s.stopping:
-				return
-			}
-		}
-		// unblock all l-reads requested at indices before confirmedIndex
-		nr.notify(nil)
-		trace.Step("applied index is now lower than readState.Index")
-
-		trace.LogAllStepsIfLong(traceThreshold)
-	}
-}
-
-func isStopped(err error) bool {
-	return errorspkg.Is(err, raft.ErrStopped) || errorspkg.Is(err, errors.ErrStopped)
-}
-
-func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, requestID uint64) (uint64, error) {
-	err := s.sendReadIndex(requestID)
-	if err != nil {
-		return 0, err
-	}
-
-	lg := s.Logger()
-	errorTimer := time.NewTimer(s.Cfg.ReqTimeout())
-	defer errorTimer.Stop()
-	retryTimer := time.NewTimer(readIndexRetryTime)
-	defer retryTimer.Stop()
-
-	firstCommitInTermNotifier := s.firstCommitInTerm.Receive()
-
-	for {
-		select {
-		case rs := <-s.r.readStateC:
-			requestIDBytes := uint64ToBigEndianBytes(requestID)
-			gotOwnResponse := bytes.Equal(rs.RequestCtx, requestIDBytes)
-			if !gotOwnResponse {
-				// a previous request might time out. now we should ignore the response of it and
-				// continue waiting for the response of the current requests.
-				responseID := uint64(0)
-				if len(rs.RequestCtx) == 8 {
-					responseID = binary.BigEndian.Uint64(rs.RequestCtx)
-				}
-				lg.Warn(
-					"ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader",
-					zap.Uint64("sent-request-id", requestID),
-					zap.Uint64("received-request-id", responseID),
-				)
-				slowReadIndex.Inc()
-				continue
-			}
-			return rs.Index, nil
-		case <-leaderChangedNotifier:
-			readIndexFailed.Inc()
-			// return a retryable error.
-			return 0, errors.ErrLeaderChanged
-		case <-firstCommitInTermNotifier:
-			firstCommitInTermNotifier = s.firstCommitInTerm.Receive()
-			lg.Info("first commit in current term: resending ReadIndex request")
-			err := s.sendReadIndex(requestID)
-			if err != nil {
-				return 0, err
-			}
-			retryTimer.Reset(readIndexRetryTime)
-			continue
-		case <-retryTimer.C:
-			lg.Warn(
-				"waiting for ReadIndex response took too long, retrying",
-				zap.Uint64("sent-request-id", requestID),
-				zap.Duration("retry-timeout", readIndexRetryTime),
-			)
-			err := s.sendReadIndex(requestID)
-			if err != nil {
-				return 0, err
-			}
-			retryTimer.Reset(readIndexRetryTime)
-			continue
-		case <-errorTimer.C:
-			lg.Warn(
-				"timed out waiting for read index response (local node might have slow network)",
-				zap.Duration("timeout", s.Cfg.ReqTimeout()),
-			)
-			slowReadIndex.Inc()
-			return 0, errors.ErrTimeout
-		case <-s.stopping:
-			return 0, errors.ErrStopped
-		}
-	}
-}
-
-func uint64ToBigEndianBytes(number uint64) []byte {
-	byteResult := make([]byte, 8)
-	binary.BigEndian.PutUint64(byteResult, number)
-	return byteResult
-}
-
-func (s *EtcdServer) sendReadIndex(requestIndex uint64) error {
-	ctxToSend := uint64ToBigEndianBytes(requestIndex)
-
-	cctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
-	err := s.r.ReadIndex(cctx, ctxToSend)
-	cancel()
-	if errorspkg.Is(err, raft.ErrStopped) {
-		return err
-	}
-	if err != nil {
-		lg := s.Logger()
-		lg.Warn("failed to get read index from Raft", zap.Error(err))
-		readIndexFailed.Inc()
-		return err
-	}
-	return nil
-}
-
-func (s *EtcdServer) LinearizableReadNotify(ctx context.Context) error {
-	return s.linearizableReadNotify(ctx)
-}
-
-func (s *EtcdServer) linearizableReadNotify(ctx context.Context) error {
-	s.readMu.RLock()
-	nc := s.readNotifier
-	s.readMu.RUnlock()
-
-	// signal linearizable loop for current notify if it hasn't been already
-	select {
-	case s.readwaitc <- struct{}{}:
-	default:
-	}
-
-	// wait for read state notification
-	select {
-	case <-nc.c:
-		return nc.err
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-s.done:
-		return errors.ErrStopped
-	}
-}
-
 func (s *EtcdServer) AuthInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error) {
 	authInfo, err := s.AuthStore().AuthInfoFromCtx(ctx)
 	if authInfo != nil || err != nil {
@@ -1220,4 +1132,20 @@ func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse
 	}
 	resp := pb.DowngradeResponse{Version: version.Cluster(s.ClusterVersion().String())}
 	return &resp, nil
+}
+
+func (s *EtcdServer) requireAuthInfo(ctx context.Context) error {
+	if !s.authStore.IsAuthEnabled() {
+		return nil
+	}
+
+	authInfo, err := s.AuthInfoFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if authInfo == nil {
+		return auth.ErrUserEmpty
+	}
+	return nil
 }

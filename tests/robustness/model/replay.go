@@ -16,12 +16,24 @@ package model
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
+
+	"github.com/anishathalye/porcupine"
 )
 
+func NewReplayFromOperations(ops []porcupine.Operation) *EtcdReplay {
+	requests := []EtcdRequest{}
+	for _, op := range ops {
+		requests = append(requests, op.Input.(EtcdRequest))
+	}
+	return NewReplay(requests)
+}
+
 func NewReplay(persistedRequests []EtcdRequest) *EtcdReplay {
-	state := freshEtcdState()
+	keys := keysFromRequests(persistedRequests)
+	state := freshEtcdState(keys)
 	// Padding for index 0 and 1, so the index matches the revision.
 	revisionToEtcdState := []EtcdState{state, state}
 	var events []PersistedEvent
@@ -89,7 +101,7 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 					events = append(events, e)
 				}
 			case PutOperation:
-				_, leaseExists := prevState.Leases[op.Put.LeaseID]
+				leaseExists := prevState.leaseExists(op.Put.LeaseID)
 				if op.Put.LeaseID != 0 && !leaseExists {
 					break
 				}
@@ -102,7 +114,7 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 					},
 					Revision: response.Revision,
 				}
-				if _, ok := prevState.KeyValues[op.Put.Key]; !ok {
+				if _, ok := prevState.GetValue(op.Put.Key); !ok {
 					e.IsCreate = true
 				}
 				events = append(events, e)
@@ -111,15 +123,7 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 			}
 		}
 	case LeaseRevoke:
-		deletedKeys := []string{}
-		for key := range prevState.Leases[request.LeaseRevoke.LeaseID].Keys {
-			if _, ok := prevState.KeyValues[key]; ok {
-				deletedKeys = append(deletedKeys, key)
-			}
-		}
-
-		sort.Strings(deletedKeys)
-		for _, key := range deletedKeys {
+		for _, key := range prevState.leaseKeys(request.LeaseRevoke.LeaseID) {
 			e := PersistedEvent{
 				Event: Event{
 					Type: DeleteOperation,
@@ -163,4 +167,42 @@ type WatchRequest struct {
 	WithPrefix         bool
 	WithProgressNotify bool
 	WithPrevKV         bool
+}
+
+func ModelKeys(operations []porcupine.Operation) []string {
+	requests := []EtcdRequest{}
+	for _, op := range operations {
+		requests = append(requests, op.Input.(EtcdRequest))
+	}
+	return keysFromRequests(requests)
+}
+
+func keysFromRequests(requests []EtcdRequest) []string {
+	keysMap := map[string]bool{}
+	for _, request := range requests {
+		switch request.Type {
+		case Range:
+			keysMap[request.Range.Start] = true
+			if request.Range.End != "" {
+				keysMap[request.Range.End] = true
+			}
+		case Txn:
+			for _, op := range slices.Concat(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure) {
+				switch op.Type {
+				case RangeOperation:
+					keysMap[op.Range.Start] = true
+					if op.Range.End != "" {
+						keysMap[op.Range.End] = true
+					}
+				case PutOperation:
+					keysMap[op.Put.Key] = true
+				case DeleteOperation:
+					keysMap[op.Delete.Key] = true
+				}
+			}
+		}
+	}
+	keys := slices.Collect(maps.Keys(keysMap))
+	slices.Sort(keys)
+	return keys
 }

@@ -16,8 +16,11 @@ package cache
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -501,6 +504,7 @@ type mockWatcher struct {
 	wg           sync.WaitGroup
 	mu           sync.Mutex
 	lastStartRev int64
+	progressErr  error
 }
 
 func newMockWatcher(buf int) *mockWatcher {
@@ -522,7 +526,7 @@ func (m *mockWatcher) Watch(ctx context.Context, _ string, opts ...clientv3.OpOp
 	return out
 }
 
-func (m *mockWatcher) RequestProgress(_ context.Context) error { return nil }
+func (m *mockWatcher) RequestProgress(_ context.Context) error { return m.progressErr }
 
 func (m *mockWatcher) Close() error {
 	m.closeOnce.Do(func() { close(m.responses) })
@@ -600,6 +604,7 @@ func (m *mockWatcher) streamResponses(ctx context.Context, out chan<- clientv3.W
 type kvStub struct {
 	queued      []*clientv3.GetResponse
 	defaultResp *clientv3.GetResponse
+	defaultErr  error
 }
 
 func newKVStub(resps ...*clientv3.GetResponse) *kvStub {
@@ -610,7 +615,11 @@ func newKVStub(resps ...*clientv3.GetResponse) *kvStub {
 	}
 }
 
-func (s *kvStub) Get(ctx context.Context, key string, _ ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+func (s *kvStub) Get(_ context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+	if s.defaultErr != nil {
+		return nil, s.defaultErr
+	}
+
 	if len(s.queued) > 0 {
 		next := s.queued[0]
 		s.queued = s.queued[1:]
@@ -690,5 +699,281 @@ func verifySnapshot(t *testing.T, cache *Cache, want []*mvccpb.KeyValue) {
 
 	if diff := cmp.Diff(want, resp.Kvs); diff != "" {
 		t.Fatalf("cache snapshot mismatch (-want +got):\n%s", diff)
+	}
+}
+
+type noopProgressNotifier struct{}
+
+func (n *noopProgressNotifier) RequestProgress(_ context.Context) error {
+	return nil
+}
+
+func newTestProgressRequestor() *conditionalProgressRequestor {
+	return newConditionalProgressRequestor(&noopProgressNotifier{}, realClock{}, 100*time.Millisecond)
+}
+
+func newCacheForWaitTest(serverRev int64, localRev int64, pr progressRequestor) (*Cache, *store) {
+	cfg := defaultConfig()
+	st := newStore(cfg.BTreeDegree, cfg.HistoryWindowSize)
+	if localRev > 0 {
+		st.Restore(nil, localRev)
+	}
+	kv := &kvStub{
+		defaultResp: &clientv3.GetResponse{Header: &pb.ResponseHeader{Revision: serverRev}},
+	}
+	return &Cache{
+		kv:                kv,
+		store:             st,
+		prefix:            "/",
+		progressRequestor: pr,
+		cfg:               cfg,
+	}, st
+}
+
+func setupWatcherWithFakeClock(t *testing.T, opts ...clientv3.OpOption) (clientv3.WatchChan, *mockWatcher, *fakeClock) {
+	t.Helper()
+	fc := newFakeClock()
+	mw := newMockWatcher(8)
+	fakeClient := &clientv3.Client{
+		Watcher: mw,
+		KV:      newKVStub(),
+	}
+	cfg := defaultConfig()
+	cfg.ProgressNotifyInterval = 100 * time.Millisecond
+	c, err := newCache(fakeClient, "", cfg, fc)
+	if err != nil {
+		t.Fatalf("newCache: %v", err)
+	}
+	t.Cleanup(c.Close)
+
+	mw.responses <- clientv3.WatchResponse{}
+	<-mw.registered
+
+	ctxWait, cancelWait := context.WithTimeout(t.Context(), time.Second)
+	defer cancelWait()
+	if err := c.WaitReady(ctxWait); err != nil {
+		t.Fatalf("cache did not become Ready: %v", err)
+	}
+
+	watchOpts := append([]clientv3.OpOption{clientv3.WithPrefix()}, opts...)
+	watchCh := c.Watch(t.Context(), "", watchOpts...)
+
+	// Seed an event so the cache has a known revision (rev 5),
+	// then drain it from the watch channel.
+	mw.responses <- clientv3.WatchResponse{
+		Events: []*clientv3.Event{event(mvccpb.Event_PUT, "/a", 5)},
+	}
+	readResponse(t, watchCh)
+
+	return watchCh, mw, fc
+}
+
+func TestCacheWatchProgressNotify(t *testing.T) {
+	t.Run("watcher requesting notification, receives them periodically", func(t *testing.T) {
+		progressCh, _, fc := setupWatcherWithFakeClock(t, clientv3.WithProgressNotify())
+
+		t.Log("First interval — progress notification arrives")
+		fc.Advance(100 * time.Millisecond)
+		resp := readResponse(t, progressCh)
+		if !resp.IsProgressNotify() {
+			t.Fatalf("expected progress notify, got events: %v", resp.Events)
+		}
+
+		t.Log("Second interval — another progress notification arrives")
+		fc.Advance(100 * time.Millisecond)
+		resp = readResponse(t, progressCh)
+		if !resp.IsProgressNotify() {
+			t.Fatalf("expected progress notify, got events: %v", resp.Events)
+		}
+	})
+
+	t.Run("watcher that didn't request progress doesn't receive any", func(t *testing.T) {
+		plainCh, _, fc := setupWatcherWithFakeClock(t)
+
+		t.Log("Advance past the interval — plain watcher should not receive anything")
+		fc.Advance(150 * time.Millisecond)
+
+		select {
+		case got, ok := <-plainCh:
+			if ok {
+				t.Fatalf("expected no response on plain watcher, got: IsProgressNotify=%v events=%v", got.IsProgressNotify(), got.Events)
+			}
+		default:
+		}
+	})
+
+	t.Run("event resets timer and delays sending progress", func(t *testing.T) {
+		progressCh, mw, fc := setupWatcherWithFakeClock(t, clientv3.WithProgressNotify())
+
+		t.Log("Advance partway into the interval, then deliver an event to reset the timer")
+		fc.Advance(50 * time.Millisecond)
+		mw.responses <- clientv3.WatchResponse{
+			Events: []*clientv3.Event{event(mvccpb.Event_PUT, "/b", 6)},
+		}
+		readResponse(t, progressCh)
+
+		t.Log("100 ms since original start but only 50 ms since event reset — no progress notify")
+		fc.Advance(50 * time.Millisecond)
+		select {
+		case got, ok := <-progressCh:
+			if ok {
+				t.Fatalf("expected no progress notify within interval after event, got: IsProgressNotify=%v events=%v", got.IsProgressNotify(), got.Events)
+			}
+		default:
+		}
+
+		t.Log("Full interval after the event — progress notify arrives")
+		fc.Advance(50 * time.Millisecond)
+		resp := readResponse(t, progressCh)
+		if !resp.IsProgressNotify() {
+			t.Fatalf("expected progress notify, got events: %v", resp.Events)
+		}
+		if resp.Header.Revision != 6 {
+			t.Fatalf("expected progress revision 6, got %d", resp.Header.Revision)
+		}
+	})
+}
+
+func TestWaitTillRevision(t *testing.T) {
+	t.Run("cache_already_caught_up", func(t *testing.T) {
+		c, _ := newCacheForWaitTest(10, 10, newTestProgressRequestor())
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := c.waitTillRevision(ctx, 10); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("local_rev_sufficient_skips_server_call", func(t *testing.T) {
+		cfg := defaultConfig()
+		st := newStore(cfg.BTreeDegree, cfg.HistoryWindowSize)
+		st.Restore(nil, 10)
+		c := &Cache{
+			kv:                &kvStub{defaultErr: fmt.Errorf("should not be called")},
+			store:             st,
+			prefix:            "/",
+			progressRequestor: newTestProgressRequestor(),
+			cfg:               cfg,
+		}
+
+		if err := c.waitTillRevision(context.Background(), 5); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("cache_catches_up", func(t *testing.T) {
+		c, st := newCacheForWaitTest(15, 5, newTestProgressRequestor())
+
+		go func() {
+			time.Sleep(200 * time.Millisecond)
+			st.Restore(nil, 10)
+		}()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := c.waitTillRevision(ctx, 10); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("rev_zero_cache_caught_up", func(t *testing.T) {
+		c, _ := newCacheForWaitTest(10, 10, newTestProgressRequestor())
+
+		if err := c.waitTillRevision(context.Background(), 0); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("rev_zero_waits_for_server_rev", func(t *testing.T) {
+		c, st := newCacheForWaitTest(10, 5, newTestProgressRequestor())
+
+		go func() {
+			time.Sleep(200 * time.Millisecond)
+			st.Restore(nil, 10)
+		}()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := c.waitTillRevision(ctx, 0); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("context_cancelled", func(t *testing.T) {
+		c, _ := newCacheForWaitTest(10, 5, newTestProgressRequestor())
+
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		defer cancel()
+		err := c.waitTillRevision(ctx, 10)
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("got %v, want context.DeadlineExceeded", err)
+		}
+	})
+
+	t.Run("timeout", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			c, _ := newCacheForWaitTest(10, 5, newTestProgressRequestor())
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			err := c.waitTillRevision(ctx, 10)
+			if !errors.Is(err, ErrCacheTimeout) {
+				t.Fatalf("got %v, want ErrCacheTimeout", err)
+			}
+		})
+	})
+}
+
+func TestWaitTillRevisionTriggersProgressRequests(t *testing.T) {
+	fc := newFakeClock()
+	pr := newTestConditionalProgressRequestor(fc, 50*time.Millisecond)
+	c, st := newCacheForWaitTest(15, 5, pr)
+
+	// Start progress requestor
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go pr.run(ctx)
+
+	// Wait for goroutine to start
+	time.Sleep(10 * time.Millisecond)
+
+	// Initially, no progress requests should be sent (no waiters)
+	fc.Advance(100 * time.Millisecond)
+	if err := pollConditionNoChange(func() bool {
+		return pr.progressRequestsSentCount.Load() == 0
+	}); err != nil {
+		t.Fatal("expected no progress requests without active waiters")
+	}
+
+	// Start waiting - this should trigger progress requests
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- c.waitTillRevision(context.Background(), 10)
+	}()
+
+	// Advance time and wait for progress requests to start
+	fc.Advance(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
+
+	// Verify progress requests are being sent while waiting
+	if pr.progressRequestsSentCount.Load() == 0 {
+		t.Fatal("expected progress requests during wait")
+	}
+
+	// Complete the wait
+	st.Restore(nil, 15)
+
+	if err := <-errCh; err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// After completion, progress requests should stop
+	finalCount := pr.progressRequestsSentCount.Load()
+	fc.Advance(100 * time.Millisecond)
+	if err := pollConditionNoChange(func() bool {
+		return pr.progressRequestsSentCount.Load() == finalCount
+	}); err != nil {
+		t.Fatalf("expected no new progress requests after completion, got %d initially, then changed", finalCount)
 	}
 }

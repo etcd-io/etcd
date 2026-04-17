@@ -15,11 +15,15 @@
 package integration
 
 import (
+	"os"
 	"testing"
+
+	"google.golang.org/grpc/grpclog"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
 func TestMain(m *testing.M) {
 	testutil.MustTestMainWithLeakDetection(m)
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 }

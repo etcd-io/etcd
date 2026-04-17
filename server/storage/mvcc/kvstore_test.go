@@ -207,7 +207,7 @@ func TestStoreRange(t *testing.T) {
 		},
 	}
 
-	ro := RangeOptions{Limit: 1, Rev: 0, Count: false}
+	ro := RangeOptions{Limit: 1, Rev: 0, CountOnly: false}
 	for i, tt := range tests {
 		s := newFakeStore(lg)
 		b := s.b.(*fakeBackend)
@@ -755,7 +755,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 
 	// readTx2 simulates a short read request
 	readTx2 := s.Read(ConcurrentReadTxMode, traceutil.TODO())
-	ro := RangeOptions{Limit: 1, Rev: 0, Count: false}
+	ro := RangeOptions{Limit: 1, Rev: 0, CountOnly: false}
 	ret, err := readTx2.Range(t.Context(), []byte("foo"), nil, ro)
 	if err != nil {
 		t.Fatalf("failed to range: %v", err)
@@ -1027,7 +1027,7 @@ type fakeIndex struct {
 	indexCompactRespc     chan map[Revision]struct{}
 }
 
-func (i *fakeIndex) Revisions(key, end []byte, atRev int64, limit int) ([]Revision, int) {
+func (i *fakeIndex) Revisions(key, end []byte, atRev int64, limit int, withTotalCount bool) ([]Revision, int) {
 	_, rev := i.Range(key, end, atRev)
 	if len(rev) >= limit {
 		rev = rev[:limit]

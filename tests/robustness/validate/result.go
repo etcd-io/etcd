@@ -104,6 +104,7 @@ func (r *LinearizationResult) AddToVisualization(serializable []porcupine.Operat
 			Start:       op.Call,
 			End:         op.Return,
 			Description: r.Model.DescribeOperation(op.Input, op.Output),
+			Details:     r.Model.DescribeOperationMetadata(op.Metadata),
 		})
 	}
 	r.Info.AddAnnotations(annotations)

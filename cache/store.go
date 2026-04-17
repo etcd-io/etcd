@@ -32,6 +32,7 @@ var ErrNotReady = fmt.Errorf("cache: store not ready")
 // reads at historical revisions can be served until they fall out of the window.
 type store struct {
 	mu      sync.RWMutex
+	revCond *sync.Cond // revCond is broadcast whenever latest.rev changes
 	degree  int
 	latest  snapshot              // latest is the mutable working snapshot
 	history ringBuffer[*snapshot] // history stores immutable cloned snapshots
@@ -39,11 +40,14 @@ type store struct {
 
 func newStore(degree int, historyCapacity int) *store {
 	tree := btree.New[*kvItem](degree, kvItemLess)
-	return &store{
+	s := &store{
 		degree:  degree,
 		latest:  snapshot{rev: 0, tree: tree},
 		history: *newRingBuffer(historyCapacity, func(s *snapshot) int64 { return s.rev }),
 	}
+	// Use RLocker so waiters hold read lock, allowing concurrent reads and non-blocking writes
+	s.revCond = sync.NewCond(s.mu.RLocker())
+	return s
 }
 
 type kvItem struct {
@@ -83,19 +87,15 @@ func (s *store) getSnapshot(rev int64) (*snapshot, int64, error) {
 	if rev > s.latest.rev {
 		return nil, 0, rpctypes.ErrFutureRev
 	}
-	oldestRev := s.history.PeekOldest()
-	if rev < oldestRev {
-		return nil, 0, rpctypes.ErrCompacted
-	}
 
 	var targetSnapshot *snapshot
-	s.history.AscendGreaterOrEqual(rev, func(rev int64, snap *snapshot) bool {
+	s.history.DescendLessOrEqual(rev, func(rev int64, snap *snapshot) bool {
 		targetSnapshot = snap
 		return false
 	})
-	// If s.history < rev < s.latest.rev serve latest.
+
 	if targetSnapshot == nil {
-		targetSnapshot = &s.latest
+		return nil, 0, rpctypes.ErrCompacted
 	}
 
 	return targetSnapshot, s.latest.rev, nil
@@ -113,6 +113,7 @@ func (s *store) Restore(kvs []*mvccpb.KeyValue, rev int64) {
 	s.history.RebaseHistory()
 	s.latest.rev = rev
 	s.history.Append(newClonedSnapshot(rev, s.latest.tree))
+	s.revCond.Broadcast()
 }
 
 func (s *store) Apply(resp clientv3.WatchResponse) error {
@@ -142,6 +143,7 @@ func (s *store) applyProgressNotifyLocked(revision int64) {
 		return
 	}
 	s.latest.rev = revision
+	s.revCond.Broadcast()
 }
 
 func (s *store) applyEventsLocked(events []*clientv3.Event) error {
@@ -162,6 +164,7 @@ func (s *store) applyEventsLocked(events []*clientv3.Event) error {
 		}
 		s.latest.rev = rev
 		s.history.Append(newClonedSnapshot(rev, s.latest.tree))
+		s.revCond.Broadcast()
 	}
 	return nil
 }

@@ -268,7 +268,7 @@ func TestCheckRange(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			_, _, err := Range(ctx, zaptest.NewLogger(t), s, tc.op.GetRequestRange())
+			_, _, err := Range(ctx, zaptest.NewLogger(t), s, tc.op.GetRequestRange(), true)
 
 			gotErr := ""
 			if err != nil {
@@ -512,6 +512,90 @@ func TestCheckTxnAuth(t *testing.T) {
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{inRangeRequestDeleteRange},
 				Failure: []*pb.RequestOp{outOfRangeRequestDeleteRangeKvFalse},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Nested txn request in range is authorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestTxn{
+							RequestTxn: &pb.TxnRequest{
+								Success: []*pb.RequestOp{inRangeRequestRange, inRangeRequestPut},
+								Failure: []*pb.RequestOp{inRangeRequestDeleteRange},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Nested txn request out of range success case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestTxn{
+							RequestTxn: &pb.TxnRequest{
+								Success: []*pb.RequestOp{outOfRangeRequestRange},
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Nested txn request out of range failure case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Failure: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestTxn{
+							RequestTxn: &pb.TxnRequest{
+								Failure: []*pb.RequestOp{outOfRangeRequestPut},
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Nested txn request out of range delete is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestTxn{
+							RequestTxn: &pb.TxnRequest{
+								Success: []*pb.RequestOp{outOfRangeRequestDeleteRange},
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Two level nested txn request out of range delete is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestTxn{
+							RequestTxn: &pb.TxnRequest{
+								Failure: []*pb.RequestOp{
+									{
+										Request: &pb.RequestOp_RequestTxn{
+											RequestTxn: &pb.TxnRequest{
+												Success: []*pb.RequestOp{outOfRangeRequestDeleteRange},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 			err: auth.ErrPermissionDenied,
 		},

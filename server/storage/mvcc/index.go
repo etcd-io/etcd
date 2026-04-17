@@ -24,7 +24,7 @@ import (
 type index interface {
 	Get(key []byte, atRev int64) (rev, created Revision, ver int64, err error)
 	Range(key, end []byte, atRev int64) ([][]byte, []Revision)
-	Revisions(key, end []byte, atRev int64, limit int) ([]Revision, int)
+	Revisions(key, end []byte, atRev int64, limit int, withTotalCount bool) ([]Revision, int)
 	CountRevisions(key, end []byte, atRev int64) int
 	Put(key []byte, rev Revision)
 	Tombstone(key []byte, rev Revision) error
@@ -109,7 +109,7 @@ func (ti *treeIndex) unsafeVisit(key, end []byte, f func(ki *keyIndex) bool) {
 // Revisions returns limited number of revisions from key(included) to end(excluded)
 // at the given rev. The returned slice is sorted in the order of key. There is no limit if limit <= 0.
 // The second return parameter isn't capped by the limit and reflects the total number of revisions.
-func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []Revision, total int) {
+func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int, withTotalCount bool) (revs []Revision, total int) {
 	ti.RLock()
 	defer ti.RUnlock()
 
@@ -122,8 +122,13 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []
 	}
 	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
-			if limit <= 0 || len(revs) < limit {
+			reachedLimit := limit > 0 && len(revs) >= limit
+			if !reachedLimit {
 				revs = append(revs, rev)
+			} else {
+				if !withTotalCount {
+					return false
+				}
 			}
 			total++
 		}

@@ -102,14 +102,14 @@ func (t etcdTraffic) Name() string {
 	return "Etcd"
 }
 
-func (t etcdTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam) {
+func (t etcdTraffic) RunKeyValueLoop(ctx context.Context, c *client.RecordingClient, p RunTrafficLoopParam) {
 	lastOperationSucceeded := true
 	var lastRev int64
 	var requestType etcdRequestType
 	client := etcdTrafficClient{
 		etcdTraffic:  t,
 		keyStore:     p.KeyStore,
-		client:       p.Client,
+		client:       c,
 		limiter:      p.QPSLimiter,
 		idProvider:   p.IDs,
 		leaseStorage: p.LeaseIDStorage,
@@ -149,13 +149,13 @@ func (t etcdTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam)
 	}
 }
 
-func (t etcdTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
-	runWatchLoop(ctx, p, watchLoopConfig{
+func (t etcdTraffic) RunWatchLoop(ctx context.Context, c *client.RecordingClient, p RunWatchLoopParam) {
+	runWatchLoop(ctx, c, p, watchLoopConfig{
 		key: p.KeyStore.GetPrefix(),
 	})
 }
 
-func (t etcdTraffic) RunCompactLoop(ctx context.Context, param RunCompactLoopParam) {
+func (t etcdTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, param RunCompactLoopParam) {
 	var lastRev int64 = 2
 	ticker := time.NewTicker(param.Period)
 	defer ticker.Stop()
@@ -168,7 +168,7 @@ func (t etcdTraffic) RunCompactLoop(ctx context.Context, param RunCompactLoopPar
 		case <-ticker.C:
 		}
 		statusCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
-		resp, err := param.Client.Status(statusCtx, param.Client.Endpoints()[0])
+		resp, err := c.Status(statusCtx, c.Endpoints()[0])
 		cancel()
 		if err != nil {
 			continue
@@ -176,7 +176,7 @@ func (t etcdTraffic) RunCompactLoop(ctx context.Context, param RunCompactLoopPar
 
 		// Range allows for both revision has been compacted and future revision errors
 		compactRev := random.RandRange(lastRev, resp.Header.Revision+5)
-		_, err = param.Client.Compact(ctx, compactRev)
+		_, err = c.Compact(ctx, compactRev)
 		if err != nil {
 			continue
 		}
@@ -222,14 +222,14 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 		}
 	case List:
 		var resp *clientv3.GetResponse
-		resp, err = c.client.Range(ctx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), 0, limit)
+		resp, err = c.client.Range(opCtx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), 0, limit)
 		if resp != nil {
 			c.keyStore.SyncKeys(resp)
 			rev = resp.Header.Revision
 		}
 	case StaleList:
 		var resp *clientv3.GetResponse
-		resp, err = c.client.Range(ctx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), lastRev, limit)
+		resp, err = c.client.Range(opCtx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), lastRev, limit)
 		if resp != nil {
 			rev = resp.Header.Revision
 		}

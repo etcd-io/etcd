@@ -17,6 +17,7 @@ package txn
 import (
 	"bytes"
 	"context"
+	"math"
 	"sort"
 	"time"
 
@@ -28,7 +29,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
+func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest, withTotalCount bool) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
 	ctx, trace = traceutil.EnsureTrace(ctx, lg, "range")
 	defer func(start time.Time) {
 		success := err == nil
@@ -64,9 +65,10 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 
 	limit := rangeLimit(r)
 	ro := mvcc.RangeOptions{
-		Limit: limit,
-		Rev:   r.Revision,
-		Count: r.CountOnly,
+		Limit:          limit,
+		Rev:            r.Revision,
+		CountOnly:      r.CountOnly,
+		WithTotalCount: withTotalCount,
 	}
 
 	rr, err := txnRead.Range(ctx, r.Key, mkGteRange(r.RangeEnd), ro)
@@ -86,52 +88,50 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 
 func rangeLimit(r *pb.RangeRequest) int64 {
 	limit := r.Limit
-	if r.SortOrder != pb.RangeRequest_NONE ||
-		r.MinModRevision != 0 || r.MaxModRevision != 0 ||
-		r.MinCreateRevision != 0 || r.MaxCreateRevision != 0 {
-		// fetch everything; sort and truncate afterwards
+	if !isDefaultOrdering(r.SortTarget, r.SortOrder) || hasRevisionFilters(r) {
 		limit = 0
 	}
-	if limit > 0 {
-		// fetch one extra for 'more' flag
+	if limit > 0 && limit < math.MaxInt64 {
 		limit = limit + 1
 	}
 	return limit
 }
 
+func isDefaultOrdering(sortTarget pb.RangeRequest_SortTarget, sortOrder pb.RangeRequest_SortOrder) bool {
+	// Since current mvcc.Range implementation returns results
+	// sorted by keys in lexiographically ascending order,
+	// don't re-sort when target is 'KEY' and order is ASCEND
+	return sortOrder == pb.RangeRequest_NONE ||
+		(sortTarget == pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_ASCEND)
+}
+
+func hasRevisionFilters(r *pb.RangeRequest) bool {
+	return r.MinModRevision != 0 || r.MaxModRevision != 0 ||
+		r.MinCreateRevision != 0 || r.MaxCreateRevision != 0
+}
+
 func filterRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest) {
 	if r.MaxModRevision != 0 {
-		f := func(kv *mvccpb.KeyValue) bool { return kv.ModRevision > r.MaxModRevision }
-		pruneKVs(rr, f)
+		pruneKVs(rr, func(kv *mvccpb.KeyValue) bool { return kv.ModRevision > r.MaxModRevision })
 	}
 	if r.MinModRevision != 0 {
-		f := func(kv *mvccpb.KeyValue) bool { return kv.ModRevision < r.MinModRevision }
-		pruneKVs(rr, f)
+		pruneKVs(rr, func(kv *mvccpb.KeyValue) bool { return kv.ModRevision < r.MinModRevision })
 	}
 	if r.MaxCreateRevision != 0 {
-		f := func(kv *mvccpb.KeyValue) bool { return kv.CreateRevision > r.MaxCreateRevision }
-		pruneKVs(rr, f)
+		pruneKVs(rr, func(kv *mvccpb.KeyValue) bool { return kv.CreateRevision > r.MaxCreateRevision })
 	}
 	if r.MinCreateRevision != 0 {
-		f := func(kv *mvccpb.KeyValue) bool { return kv.CreateRevision < r.MinCreateRevision }
-		pruneKVs(rr, f)
+		pruneKVs(rr, func(kv *mvccpb.KeyValue) bool { return kv.CreateRevision < r.MinCreateRevision })
 	}
 }
 
 func sortRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest, lg *zap.Logger) {
 	sortOrder := r.SortOrder
 	if r.SortTarget != pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_NONE {
-		// Since current mvcc.Range implementation returns results
-		// sorted by keys in lexiographically ascending order,
-		// sort ASCEND by default only when target is not 'KEY'
 		sortOrder = pb.RangeRequest_ASCEND
-	} else if r.SortTarget == pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_ASCEND {
-		// Since current mvcc.Range implementation returns results
-		// sorted by keys in lexiographically ascending order,
-		// don't re-sort when target is 'KEY' and order is ASCEND
-		sortOrder = pb.RangeRequest_NONE
 	}
-	if sortOrder != pb.RangeRequest_NONE {
+
+	if !isDefaultOrdering(r.SortTarget, sortOrder) {
 		var sorter sort.Interface
 		switch {
 		case r.SortTarget == pb.RangeRequest_KEY:

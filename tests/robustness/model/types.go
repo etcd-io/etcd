@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"hash/fnv"
-	"maps"
 	"reflect"
 	"slices"
 
@@ -168,7 +167,7 @@ func (m *MemberID) UnmarshalJSON(data []byte) error {
 type EtcdResponse struct {
 	Txn         *TxnResponse
 	Range       *RangeResponse
-	LeaseGrant  *LeaseGrantReponse
+	LeaseGrant  *LeaseGrantResponse
 	LeaseRevoke *LeaseRevokeResponse
 	Defragment  *DefragmentResponse
 	Compact     *CompactResponse
@@ -203,7 +202,7 @@ type RangeResponse struct {
 	Count int64
 }
 
-type LeaseGrantReponse struct {
+type LeaseGrantResponse struct {
 	LeaseID int64
 }
 type (
@@ -219,20 +218,6 @@ type EtcdOperationResult struct {
 type KeyValue struct {
 	Key string
 	ValueRevision
-}
-
-var leased = struct{}{}
-
-type EtcdLease struct {
-	LeaseID int64
-	Keys    map[string]struct{}
-}
-
-func (el EtcdLease) DeepCopy() EtcdLease {
-	return EtcdLease{
-		LeaseID: el.LeaseID,
-		Keys:    maps.Clone(el.Keys),
-	}
 }
 
 type ValueRevision struct {
