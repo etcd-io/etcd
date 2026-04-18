@@ -56,6 +56,76 @@ func TestKVPut(t *testing.T) {
 	}
 }
 
+func TestKVPutIgnoreValue(t *testing.T) {
+	testRunner.BeforeTest(t)
+	for _, tc := range clusterTestCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
+			defer clus.Close()
+			cc := testutils.MustClient(clus.Client())
+
+			testutils.ExecuteUntil(ctx, t, func() {
+				_, err := cc.Put(ctx, "foo", "bar", config.PutOptions{})
+				require.NoError(t, err)
+				resp, err := cc.Get(ctx, "foo", config.GetOptions{})
+				require.NoError(t, err)
+				require.Len(t, resp.Kvs, 1)
+				assert.Equal(t, "bar", string(resp.Kvs[0].Value))
+
+				// Put with IgnoreValue should keep the old value
+				_, err = cc.Put(ctx, "foo", "", config.PutOptions{IgnoreValue: true})
+				require.NoError(t, err)
+				resp, err = cc.Get(ctx, "foo", config.GetOptions{})
+				require.NoError(t, err)
+				require.Len(t, resp.Kvs, 1)
+				assert.Equal(t, "bar", string(resp.Kvs[0].Value))
+			})
+		})
+	}
+}
+
+func TestKVPutIgnoreLease(t *testing.T) {
+	testRunner.BeforeTest(t)
+	for _, tc := range clusterTestCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
+			defer clus.Close()
+			cc := testutils.MustClient(clus.Client())
+
+			testutils.ExecuteUntil(ctx, t, func() {
+				leaseResp, err := cc.Grant(ctx, 10)
+				require.NoError(t, err)
+
+				_, err = cc.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: leaseResp.ID})
+				require.NoError(t, err)
+				resp, err := cc.Get(ctx, "foo", config.GetOptions{})
+				require.NoError(t, err)
+				require.Len(t, resp.Kvs, 1)
+				assert.Equal(t, "bar", string(resp.Kvs[0].Value))
+
+				// Put with IgnoreLease should keep the old lease but update value
+				_, err = cc.Put(ctx, "foo", "bar1", config.PutOptions{IgnoreLease: true})
+				require.NoError(t, err)
+				resp, err = cc.Get(ctx, "foo", config.GetOptions{})
+				require.NoError(t, err)
+				require.Len(t, resp.Kvs, 1)
+				assert.Equal(t, "bar1", string(resp.Kvs[0].Value))
+
+				// Revoking the lease should delete the key since it still has the lease
+				_, err = cc.Revoke(ctx, leaseResp.ID)
+				require.NoError(t, err)
+				resp, err = cc.Get(ctx, "foo", config.GetOptions{})
+				require.NoError(t, err)
+				assert.Empty(t, resp.Kvs)
+			})
+		})
+	}
+}
+
 func TestKVGet(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases() {
