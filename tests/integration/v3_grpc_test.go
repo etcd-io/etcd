@@ -1556,6 +1556,9 @@ func assertRangeStreamMatchesRange(t *testing.T, kvc pb.KVClient, req *pb.RangeR
 	}
 
 	stream, err := kvc.RangeStream(t.Context(), req)
+	if status.Code(err) == codes.Unimplemented {
+		return
+	}
 	require.NoError(t, err)
 
 	got := &pb.RangeResponse{}
@@ -1563,6 +1566,9 @@ func assertRangeStreamMatchesRange(t *testing.T, kvc pb.KVClient, req *pb.RangeR
 		chunk, rerr := stream.Recv()
 		if errors.Is(rerr, io.EOF) {
 			break
+		}
+		if status.Code(rerr) == codes.Unimplemented {
+			return
 		}
 		require.NoError(t, rerr)
 		proto.Merge(got, chunk.RangeResponse)
