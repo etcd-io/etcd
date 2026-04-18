@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2155,SC2128,SC2086
 
 # Based on github.com/kubernetes/kubernetes/blob/v1.8.2/hack/cherry_pick_pull.sh
 
