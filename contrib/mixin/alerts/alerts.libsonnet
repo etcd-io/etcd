@@ -18,7 +18,7 @@
             ||| % { etcd_instance_labels: $._config.etcd_instance_labels, etcd_selector: $._config.etcd_selector, network_failure_range: $._config.scrape_interval_seconds * 4 },
             'for': '20m',
             labels: {
-              severity: 'warning',
+              severity: 'critical',
             },
             annotations: {
               description: 'etcd cluster "{{ $labels.%s }}": members are down ({{ $value }}).' % $._config.clusterLabel,
@@ -35,8 +35,8 @@
               severity: 'critical',
             },
             annotations: {
-              description: 'etcd cluster "{{ $labels.%s }}": insufficient members ({{ $value }}).' % $._config.clusterLabel,
-              summary: 'etcd cluster has insufficient number of members.',
+              description: 'etcd cluster "{{ $labels.%s }}": is reporting fewer instances are available than are needed ({{ $value }}). When etcd does not have a majority of instances available the Kubernetes APIs will reject read and write requests and operations that preserve the health of workloads cannot be performed. This can occur when multiple control plane nodes are powered off or are unable to connect to each other via the network. Check that all control plane nodes are powered on and that network connections between each machine are functional.' % $._config.clusterLabel,
+              summary: 'etcd is reporting that a majority of instances are unavailable.',
             },
           },
           {
@@ -56,14 +56,14 @@
           {
             alert: 'etcdHighNumberOfLeaderChanges',
             expr: |||
-              increase((max without (%(etcd_instance_labels)s) (etcd_server_leader_changes_seen_total{%(etcd_selector)s}) or 0*absent(etcd_server_leader_changes_seen_total{%(etcd_selector)s}))[15m:1m]) >= 4
+              avg by (job) (changes(etcd_server_is_leader{%(etcd_selector)s}[10m])) > 5
             ||| % $._config,
             'for': '5m',
             labels: {
               severity: 'warning',
             },
             annotations: {
-              description: 'etcd cluster "{{ $labels.%s }}": {{ $value }} leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.' % $._config.clusterLabel,
+              description: 'etcd cluster "{{ $labels.%s }}": {{ $value }} leader changes within the last 10 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.' % $._config.clusterLabel,
               summary: 'etcd cluster has high number of leader changes.',
             },
           },
@@ -149,7 +149,7 @@
             alert: 'etcdHighFsyncDurations',
             expr: |||
               histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket{%(etcd_selector)s}[5m]))
-              > 0.5
+              > 0.05
             ||| % $._config,
             'for': '10m',
             labels: {
@@ -164,7 +164,7 @@
             alert: 'etcdHighFsyncDurations',
             expr: |||
               histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket{%(etcd_selector)s}[5m]))
-              > 1
+              > 0.07
             ||| % $._config,
             'for': '10m',
             labels: {
@@ -179,7 +179,7 @@
             alert: 'etcdHighCommitDurations',
             expr: |||
               histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket{%(etcd_selector)s}[5m]))
-              > 0.25
+              > 0.08
             ||| % $._config,
             'for': '10m',
             labels: {
@@ -191,9 +191,52 @@
             },
           },
           {
+            alert: 'etcdHighCommitDurations',
+            expr: |||
+              histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket{%(etcd_selector)s}[5m]))
+              > 0.1
+            ||| % $._config,
+            'for': '10m',
+            labels: {
+              severity: 'critical',
+            },
+            annotations: {
+              description: 'etcd cluster "{{ $labels.%s }}": 99th percentile commit durations {{ $value }}s on etcd instance {{ $labels.instance }}.' % $._config.clusterLabel,
+              summary: 'etcd cluster 99th percentile commit durations are too high.',
+            },
+          },
+          {
             alert: 'etcdDatabaseQuotaLowSpace',
             expr: |||
-              (last_over_time(etcd_mvcc_db_total_size_in_bytes{%(etcd_selector)s}[5m]) / last_over_time(etcd_server_quota_backend_bytes{%(etcd_selector)s}[5m]))*100 > 95
+              (last_over_time(etcd_mvcc_db_total_size_in_bytes{%(etcd_selector)s}[5m]) / last_over_time(etcd_server_quota_backend_bytes{%(etcd_selector)s}[5m]))*100 > 65
+            ||| % $._config,
+            'for': '10m',
+            labels: {
+              severity: 'info',
+            },
+            annotations: {
+              description: 'etcd cluster "{{ $labels.%s }}": database size is 65 percent of the defined quota on etcd instance {{ $labels.instance }}, please defrag or increase the quota as the writes to etcd will be disabled when it is full.' % $._config.clusterLabel,
+              summary: 'etcd cluster database is using >= 65 percent of the defined quota.',
+            },
+          },
+          {
+            alert: 'etcdDatabaseQuotaLowSpace',
+            expr: |||
+              (last_over_time(etcd_mvcc_db_total_size_in_bytes{%(etcd_selector)s}[5m]) / last_over_time(etcd_server_quota_backend_bytes{%(etcd_selector)s}[5m]))*100 > 75
+            ||| % $._config,
+            'for': '10m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'etcd cluster "{{ $labels.%s }}": database size is 75 percent of the defined quota on etcd instance {{ $labels.instance }}, please defrag or increase the quota as the writes to etcd will be disabled when it is full.' % $._config.clusterLabel,
+              summary: 'etcd cluster database is using >= 75 percent of the defined quota.',
+            },
+          },
+          {
+            alert: 'etcdDatabaseQuotaLowSpace',
+            expr: |||
+              (last_over_time(etcd_mvcc_db_total_size_in_bytes{%(etcd_selector)s}[5m]) / last_over_time(etcd_server_quota_backend_bytes{%(etcd_selector)s}[5m]))*100 > 85
             ||| % $._config,
             'for': '10m',
             labels: {
