@@ -29,8 +29,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -41,6 +44,18 @@ import (
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
+
+func protoDeepEqual(t *testing.T, a, b any) bool {
+	t.Helper()
+	if reflect.DeepEqual(a, b) {
+		return true
+	}
+	if diff := cmp.Diff(a, b, protocmp.Transform()); diff != "" {
+		t.Logf("diff: %s", diff)
+		return false
+	}
+	return true
+}
 
 func TestStoreRev(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
@@ -64,7 +79,7 @@ func TestStorePut(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := proto.Marshal(&kv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +91,7 @@ func TestStorePut(t *testing.T) {
 
 		wrev    Revision
 		wkey    []byte
-		wkv     mvccpb.KeyValue
+		wkv     *mvccpb.KeyValue
 		wputrev Revision
 	}{
 		{
@@ -86,7 +101,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 2},
 			newTestRevBytes(Revision{Main: 2}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -103,7 +118,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 2},
 			newTestRevBytes(Revision{Main: 2}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -120,7 +135,7 @@ func TestStorePut(t *testing.T) {
 
 			Revision{Main: 3},
 			newTestRevBytes(Revision{Main: 3}),
-			mvccpb.KeyValue{
+			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -144,7 +159,7 @@ func TestStorePut(t *testing.T) {
 
 		s.Put([]byte("foo"), []byte("bar"), lease.LeaseID(i+1))
 
-		data, err := tt.wkv.Marshal()
+		data, err := proto.Marshal(tt.wkv)
 		if err != nil {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
@@ -159,14 +174,14 @@ func TestStorePut(t *testing.T) {
 			}
 		}
 
-		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
+		if g := b.tx.Action(); !protoDeepEqual(t, g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
 		}
 		wact = []testutil.Action{
 			{Name: "get", Params: []any{[]byte("foo"), tt.wputrev.Main}},
 			{Name: "put", Params: []any{[]byte("foo"), tt.wputrev}},
 		}
-		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
+		if g := fi.Action(); !protoDeepEqual(t, g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
 		}
 		if s.currentRev != tt.wrev.Main {
@@ -180,14 +195,14 @@ func TestStorePut(t *testing.T) {
 func TestStoreRange(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	key := newTestRevBytes(Revision{Main: 2})
-	kv := mvccpb.KeyValue{
+	kv := &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("bar"),
 		CreateRevision: 1,
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := proto.Marshal(kv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +236,9 @@ func TestStoreRange(t *testing.T) {
 		if err != nil {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 		}
-		if w := []mvccpb.KeyValue{kv}; !reflect.DeepEqual(ret.KVs, w) {
+		var retPointers []*mvccpb.KeyValue
+		retPointers = append(retPointers, ret.KVs...)
+		if w := []*mvccpb.KeyValue{kv}; !protoDeepEqual(t, retPointers, w) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, ret.KVs, w)
 		}
 		if ret.Rev != wrev {
@@ -233,13 +250,13 @@ func TestStoreRange(t *testing.T) {
 		wact := []testutil.Action{
 			{Name: "range", Params: []any{schema.Key, wstart, []byte(nil), int64(0)}},
 		}
-		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
+		if g := b.tx.Action(); !protoDeepEqual(t, g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
 		}
 		wact = []testutil.Action{
 			{Name: "range", Params: []any{[]byte("foo"), []byte("goo"), wrev}},
 		}
-		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
+		if g := fi.Action(); !protoDeepEqual(t, g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
 		}
 		if s.currentRev != 2 {
@@ -260,7 +277,7 @@ func TestStoreDeleteRange(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := proto.Marshal(&kv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,23 +317,23 @@ func TestStoreDeleteRange(t *testing.T) {
 			t.Errorf("#%d: n = %d, want 1", i, n)
 		}
 
-		data, err := (&mvccpb.KeyValue{
+		data, err := proto.Marshal(&mvccpb.KeyValue{
 			Key: []byte("foo"),
-		}).Marshal()
+		})
 		if err != nil {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
 		wact := []testutil.Action{
 			{Name: "seqput", Params: []any{schema.Key, tt.wkey, data}},
 		}
-		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
+		if g := b.tx.Action(); !protoDeepEqual(t, g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
 		}
 		wact = []testutil.Action{
 			{Name: "range", Params: []any{[]byte("foo"), []byte("goo"), tt.wrrev}},
 			{Name: "tombstone", Params: []any{[]byte("foo"), tt.wdelrev}},
 		}
-		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
+		if g := fi.Action(); !protoDeepEqual(t, g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
 		}
 		if s.currentRev != tt.wrev.Main {
@@ -357,13 +374,13 @@ func TestStoreCompact(t *testing.T) {
 		{Name: "delete", Params: []any{schema.Key, key2}},
 		{Name: "put", Params: []any{schema.Meta, schema.FinishedCompactKeyName, newTestRevBytes(Revision{Main: 3})}},
 	}
-	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
+	if g := b.tx.Action(); !protoDeepEqual(t, g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
 	}
 	wact = []testutil.Action{
 		{Name: "compact", Params: []any{int64(3)}},
 	}
-	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
+	if g := fi.Action(); !protoDeepEqual(t, g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
 	}
 }
@@ -383,7 +400,7 @@ func TestStoreRestore(t *testing.T) {
 		ModRevision:    4,
 		Version:        1,
 	}
-	putkvb, err := putkv.Marshal()
+	putkvb, err := proto.Marshal(&putkv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +408,7 @@ func TestStoreRestore(t *testing.T) {
 	delkv := mvccpb.KeyValue{
 		Key: []byte("foo"),
 	}
-	delkvb, err := delkv.Marshal()
+	delkvb, err := proto.Marshal(&delkv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -414,7 +431,7 @@ func TestStoreRestore(t *testing.T) {
 		{Name: "range", Params: []any{schema.Meta, schema.ScheduledCompactKeyName, []byte(nil), int64(0)}},
 		{Name: "range", Params: []any{schema.Key, newTestRevBytes(Revision{Main: 1}), newTestRevBytes(Revision{Main: math.MaxInt64, Sub: math.MaxInt64}), int64(restoreChunkKeys)}},
 	}
-	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
+	if g := b.tx.Action(); !protoDeepEqual(t, g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
 	}
 
@@ -427,7 +444,7 @@ func TestStoreRestore(t *testing.T) {
 		{Name: "keyIndex", Params: []any{ki}},
 		{Name: "insert", Params: []any{ki}},
 	}
-	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
+	if g := fi.Action(); !protoDeepEqual(t, g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
 	}
 }
@@ -761,14 +778,14 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		t.Fatalf("failed to range: %v", err)
 	}
 	// readTx2 should see the result of new write
-	w := mvccpb.KeyValue{
+	w := &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("newBar"),
 		CreateRevision: 2,
 		ModRevision:    3,
 		Version:        2,
 	}
-	if !reflect.DeepEqual(ret.KVs[0], w) {
+	if !protoDeepEqual(t, ret.KVs[0], w) {
 		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
 	}
 	readTx2.End()
@@ -778,14 +795,14 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		t.Fatalf("failed to range: %v", err)
 	}
 	// readTx1 should not see the result of new write
-	w = mvccpb.KeyValue{
+	w = &mvccpb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("bar"),
 		CreateRevision: 2,
 		ModRevision:    2,
 		Version:        1,
 	}
-	if !reflect.DeepEqual(ret.KVs[0], w) {
+	if !protoDeepEqual(t, ret.KVs[0], w) {
 		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
 	}
 	readTx1.End()
@@ -850,10 +867,10 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 				return
 			}
 			var result kvs
-			for _, keyValue := range ret.KVs {
-				result = append(result, kv{keyValue.Key, keyValue.Value})
+			for i := range ret.KVs {
+				result = append(result, kv{ret.KVs[i].Key, ret.KVs[i].Value})
 			}
-			if !reflect.DeepEqual(wKVs, result) {
+			if !protoDeepEqual(t, wKVs, result) {
 				t.Errorf("unexpected range result") // too many key value pairs, skip printing them
 			}
 		}()

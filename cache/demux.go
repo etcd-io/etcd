@@ -170,7 +170,7 @@ func (d *demux) BroadcastProgress() {
 		return
 	}
 	resp := clientv3.WatchResponse{
-		Header: etcdserverpb.ResponseHeader{
+		Header: &etcdserverpb.ResponseHeader{
 			Revision: d.maxRev,
 		},
 	}
@@ -242,7 +242,7 @@ func (d *demux) broadcastProgressLocked(progressRev int64) {
 			continue
 		}
 		resp := clientv3.WatchResponse{
-			Header: etcdserverpb.ResponseHeader{
+			Header: &etcdserverpb.ResponseHeader{
 				Revision: progressRev,
 			},
 		}
@@ -276,6 +276,7 @@ func (d *demux) broadcastEventsLocked(events []*clientv3.Event) {
 		}
 
 		if !w.enqueueResponse(clientv3.WatchResponse{
+			Header: &etcdserverpb.ResponseHeader{},
 			Events: events[sendStart:],
 		}) { // overflow → lagging
 			d.laggingWatchers[w] = nextRev
@@ -333,6 +334,7 @@ func (d *demux) resyncLaggingWatchers() {
 		resyncSuccess := true
 		d.history.AscendGreaterOrEqual(nextRev, func(rev int64, eventBatch []*clientv3.Event) bool {
 			resp := clientv3.WatchResponse{
+				Header: &etcdserverpb.ResponseHeader{},
 				Events: eventBatch,
 			}
 			if !w.enqueueResponse(resp) { // buffer overflow: watcher still lagging
@@ -345,7 +347,7 @@ func (d *demux) resyncLaggingWatchers() {
 		// Send progress to just resync.
 		if resyncSuccess {
 			resp := clientv3.WatchResponse{
-				Header: etcdserverpb.ResponseHeader{Revision: d.maxRev},
+				Header: &etcdserverpb.ResponseHeader{Revision: d.maxRev},
 			}
 			if d.maxRev > nextRev && w.enqueueResponse(resp) {
 				nextRev = d.maxRev + 1

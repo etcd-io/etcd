@@ -72,7 +72,7 @@ func TestResumeElection(t *testing.T) {
 			if string(resp.Kvs[0].Value) == "candidate1" {
 				continue
 			}
-			respChan <- &resp
+			respChan <- resp
 			return
 		}
 		t.Error("Observe() channel closed prematurely")

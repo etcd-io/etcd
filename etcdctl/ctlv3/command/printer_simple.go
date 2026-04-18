@@ -31,27 +31,27 @@ type simplePrinter struct {
 	valueOnly bool
 }
 
-func (s *simplePrinter) Del(resp v3.DeleteResponse) {
+func (s *simplePrinter) Del(resp *v3.DeleteResponse) {
 	fmt.Println(resp.Deleted)
 	for _, kv := range resp.PrevKvs {
 		printKV(s.isHex, s.valueOnly, kv)
 	}
 }
 
-func (s *simplePrinter) Get(resp v3.GetResponse) {
+func (s *simplePrinter) Get(resp *v3.GetResponse) {
 	for _, kv := range resp.Kvs {
 		printKV(s.isHex, s.valueOnly, kv)
 	}
 }
 
-func (s *simplePrinter) Put(r v3.PutResponse) {
+func (s *simplePrinter) Put(r *v3.PutResponse) {
 	fmt.Println("OK")
 	if r.PrevKv != nil {
 		printKV(s.isHex, s.valueOnly, r.PrevKv)
 	}
 }
 
-func (s *simplePrinter) Txn(resp v3.TxnResponse) {
+func (s *simplePrinter) Txn(resp *v3.TxnResponse) {
 	if resp.Succeeded {
 		fmt.Println("SUCCESS")
 	} else {
@@ -62,18 +62,18 @@ func (s *simplePrinter) Txn(resp v3.TxnResponse) {
 		fmt.Println("")
 		switch v := r.Response.(type) {
 		case *pb.ResponseOp_ResponseDeleteRange:
-			s.Del((v3.DeleteResponse)(*v.ResponseDeleteRange))
+			s.Del((*v3.DeleteResponse)(v.ResponseDeleteRange))
 		case *pb.ResponseOp_ResponsePut:
-			s.Put((v3.PutResponse)(*v.ResponsePut))
+			s.Put((*v3.PutResponse)(v.ResponsePut))
 		case *pb.ResponseOp_ResponseRange:
-			s.Get(((v3.GetResponse)(*v.ResponseRange)))
+			s.Get(((*v3.GetResponse)(v.ResponseRange)))
 		default:
 			fmt.Printf("unexpected response %+v\n", r)
 		}
 	}
 }
 
-func (s *simplePrinter) Watch(resp v3.WatchResponse) {
+func (s *simplePrinter) Watch(resp *v3.WatchResponse) {
 	for _, e := range resp.Events {
 		fmt.Println(e.Type)
 		if e.PrevKv != nil {
@@ -83,19 +83,19 @@ func (s *simplePrinter) Watch(resp v3.WatchResponse) {
 	}
 }
 
-func (s *simplePrinter) Grant(resp v3.LeaseGrantResponse) {
+func (s *simplePrinter) Grant(resp *v3.LeaseGrantResponse) {
 	fmt.Printf("lease %016x granted with TTL(%ds)\n", resp.ID, resp.TTL)
 }
 
-func (s *simplePrinter) Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse) {
+func (s *simplePrinter) Revoke(id v3.LeaseID, r *v3.LeaseRevokeResponse) {
 	fmt.Printf("lease %016x revoked\n", id)
 }
 
-func (s *simplePrinter) KeepAlive(resp v3.LeaseKeepAliveResponse) {
+func (s *simplePrinter) KeepAlive(resp *v3.LeaseKeepAliveResponse) {
 	fmt.Printf("lease %016x keepalived with TTL(%d)\n", resp.ID, resp.TTL)
 }
 
-func (s *simplePrinter) TimeToLive(resp v3.LeaseTimeToLiveResponse, keys bool) {
+func (s *simplePrinter) TimeToLive(resp *v3.LeaseTimeToLiveResponse, keys bool) {
 	if resp.GrantedTTL == 0 && resp.TTL == -1 {
 		fmt.Printf("lease %016x already expired\n", resp.ID)
 		return
@@ -112,20 +112,20 @@ func (s *simplePrinter) TimeToLive(resp v3.LeaseTimeToLiveResponse, keys bool) {
 	fmt.Println(txt)
 }
 
-func (s *simplePrinter) Leases(resp v3.LeaseLeasesResponse) {
+func (s *simplePrinter) Leases(resp *v3.LeaseLeasesResponse) {
 	fmt.Printf("found %d leases\n", len(resp.Leases))
 	for _, item := range resp.Leases {
 		fmt.Printf("%016x\n", item.ID)
 	}
 }
 
-func (s *simplePrinter) Alarm(resp v3.AlarmResponse) {
+func (s *simplePrinter) Alarm(resp *v3.AlarmResponse) {
 	for _, e := range resp.Alarms {
 		fmt.Printf("%+v\n", e)
 	}
 }
 
-func (s *simplePrinter) MemberAdd(r v3.MemberAddResponse) {
+func (s *simplePrinter) MemberAdd(r *v3.MemberAddResponse) {
 	asLearner := " "
 	if r.Member.IsLearner {
 		asLearner = " as learner "
@@ -133,19 +133,19 @@ func (s *simplePrinter) MemberAdd(r v3.MemberAddResponse) {
 	fmt.Printf("Member %16x added%sto cluster %16x\n", r.Member.ID, asLearner, r.Header.ClusterId)
 }
 
-func (s *simplePrinter) MemberRemove(id uint64, r v3.MemberRemoveResponse) {
+func (s *simplePrinter) MemberRemove(id uint64, r *v3.MemberRemoveResponse) {
 	fmt.Printf("Member %16x removed from cluster %16x\n", id, r.Header.ClusterId)
 }
 
-func (s *simplePrinter) MemberUpdate(id uint64, r v3.MemberUpdateResponse) {
+func (s *simplePrinter) MemberUpdate(id uint64, r *v3.MemberUpdateResponse) {
 	fmt.Printf("Member %16x updated in cluster %16x\n", id, r.Header.ClusterId)
 }
 
-func (s *simplePrinter) MemberPromote(id uint64, r v3.MemberPromoteResponse) {
+func (s *simplePrinter) MemberPromote(id uint64, r *v3.MemberPromoteResponse) {
 	fmt.Printf("Member %16x promoted in cluster %16x\n", id, r.Header.ClusterId)
 }
 
-func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
+func (s *simplePrinter) MemberList(resp *v3.MemberListResponse) {
 	_, rows := makeMemberListTable(resp)
 	for _, row := range rows {
 		fmt.Println(strings.Join(row, ", "))
@@ -176,27 +176,27 @@ func (s *simplePrinter) EndpointHashKV(hashList []epHashKV) {
 	}
 }
 
-func (s *simplePrinter) MoveLeader(leader, target uint64, r v3.MoveLeaderResponse) {
+func (s *simplePrinter) MoveLeader(leader, target uint64, r *v3.MoveLeaderResponse) {
 	fmt.Printf("Leadership transferred from %s to %s\n", types.ID(leader), types.ID(target))
 }
 
-func (s *simplePrinter) DowngradeValidate(r v3.DowngradeResponse) {
+func (s *simplePrinter) DowngradeValidate(r *v3.DowngradeResponse) {
 	fmt.Printf("Downgrade validate success, cluster version %s\n", r.Version)
 }
 
-func (s *simplePrinter) DowngradeEnable(r v3.DowngradeResponse) {
+func (s *simplePrinter) DowngradeEnable(r *v3.DowngradeResponse) {
 	fmt.Printf("Downgrade enable success, cluster version %s\n", r.Version)
 }
 
-func (s *simplePrinter) DowngradeCancel(r v3.DowngradeResponse) {
+func (s *simplePrinter) DowngradeCancel(r *v3.DowngradeResponse) {
 	fmt.Printf("Downgrade cancel success, cluster version %s\n", r.Version)
 }
 
-func (s *simplePrinter) RoleAdd(role string, r v3.AuthRoleAddResponse) {
+func (s *simplePrinter) RoleAdd(role string, r *v3.AuthRoleAddResponse) {
 	fmt.Printf("Role %s created\n", role)
 }
 
-func (s *simplePrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
+func (s *simplePrinter) RoleGet(role string, r *v3.AuthRoleGetResponse) {
 	fmt.Printf("Role %s\n", role)
 	if rootRole == role && r.Perm == nil {
 		fmt.Println("KV Read:")
@@ -243,21 +243,21 @@ func (s *simplePrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 	}
 }
 
-func (s *simplePrinter) RoleList(r v3.AuthRoleListResponse) {
+func (s *simplePrinter) RoleList(r *v3.AuthRoleListResponse) {
 	for _, role := range r.Roles {
 		fmt.Printf("%s\n", role)
 	}
 }
 
-func (s *simplePrinter) RoleDelete(role string, r v3.AuthRoleDeleteResponse) {
+func (s *simplePrinter) RoleDelete(role string, r *v3.AuthRoleDeleteResponse) {
 	fmt.Printf("Role %s deleted\n", role)
 }
 
-func (s *simplePrinter) RoleGrantPermission(role string, r v3.AuthRoleGrantPermissionResponse) {
+func (s *simplePrinter) RoleGrantPermission(role string, r *v3.AuthRoleGrantPermissionResponse) {
 	fmt.Printf("Role %s updated\n", role)
 }
 
-func (s *simplePrinter) RoleRevokePermission(role string, key string, end string, r v3.AuthRoleRevokePermissionResponse) {
+func (s *simplePrinter) RoleRevokePermission(role string, key string, end string, r *v3.AuthRoleRevokePermissionResponse) {
 	if len(end) == 0 {
 		fmt.Printf("Permission of key %s is revoked from role %s\n", key, role)
 		return
@@ -269,11 +269,11 @@ func (s *simplePrinter) RoleRevokePermission(role string, key string, end string
 	}
 }
 
-func (s *simplePrinter) UserAdd(name string, r v3.AuthUserAddResponse) {
+func (s *simplePrinter) UserAdd(name string, r *v3.AuthUserAddResponse) {
 	fmt.Printf("User %s created\n", name)
 }
 
-func (s *simplePrinter) UserGet(name string, r v3.AuthUserGetResponse) {
+func (s *simplePrinter) UserGet(name string, r *v3.AuthUserGetResponse) {
 	fmt.Printf("User: %s\n", name)
 	fmt.Print("Roles:")
 	for _, role := range r.Roles {
@@ -282,29 +282,29 @@ func (s *simplePrinter) UserGet(name string, r v3.AuthUserGetResponse) {
 	fmt.Print("\n")
 }
 
-func (s *simplePrinter) UserChangePassword(v3.AuthUserChangePasswordResponse) {
+func (s *simplePrinter) UserChangePassword(*v3.AuthUserChangePasswordResponse) {
 	fmt.Println("Password updated")
 }
 
-func (s *simplePrinter) UserGrantRole(user string, role string, r v3.AuthUserGrantRoleResponse) {
+func (s *simplePrinter) UserGrantRole(user string, role string, r *v3.AuthUserGrantRoleResponse) {
 	fmt.Printf("Role %s is granted to user %s\n", role, user)
 }
 
-func (s *simplePrinter) UserRevokeRole(user string, role string, r v3.AuthUserRevokeRoleResponse) {
+func (s *simplePrinter) UserRevokeRole(user string, role string, r *v3.AuthUserRevokeRoleResponse) {
 	fmt.Printf("Role %s is revoked from user %s\n", role, user)
 }
 
-func (s *simplePrinter) UserDelete(user string, r v3.AuthUserDeleteResponse) {
+func (s *simplePrinter) UserDelete(user string, r *v3.AuthUserDeleteResponse) {
 	fmt.Printf("User %s deleted\n", user)
 }
 
-func (s *simplePrinter) UserList(r v3.AuthUserListResponse) {
+func (s *simplePrinter) UserList(r *v3.AuthUserListResponse) {
 	for _, user := range r.Users {
 		fmt.Printf("%s\n", user)
 	}
 }
 
-func (s *simplePrinter) AuthStatus(r v3.AuthStatusResponse) {
+func (s *simplePrinter) AuthStatus(r *v3.AuthStatusResponse) {
 	fmt.Println("Authentication Status:", r.Enabled)
 	fmt.Println("AuthRevision:", r.AuthRevision)
 }

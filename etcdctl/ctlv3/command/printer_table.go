@@ -25,7 +25,7 @@ import (
 
 type tablePrinter struct{ printer }
 
-func (tp *tablePrinter) MemberList(r v3.MemberListResponse) {
+func (tp *tablePrinter) MemberList(r *v3.MemberListResponse) {
 	hdr, rows := makeMemberListTable(r)
 	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
 	table := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(cfgBuilder.Build()))

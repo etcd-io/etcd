@@ -81,7 +81,7 @@ func (wb *watchBroadcast) bcast(wr clientv3.WatchResponse) {
 	defer wb.mu.Unlock()
 	// watchers start on the given revision, if any; ignore header rev on create
 	if wb.responses > 0 || wb.nextrev == 0 {
-		wb.nextrev = wr.Header.Revision + 1
+		wb.nextrev = wr.Header.GetRevision() + 1
 	}
 	wb.responses++
 	for r := range wb.receivers {
