@@ -18,6 +18,9 @@ package v3rpc
 import (
 	"context"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/pkg/v3/adt"
@@ -53,6 +56,38 @@ func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResp
 
 	s.hdr.fill(resp.Header)
 	return resp, nil
+}
+
+func (s *kvServer) RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error {
+	if err := checkRangeRequest(r); err != nil {
+		return err
+	}
+	if err := checkRangeStreamRequest(r); err != nil {
+		return err
+	}
+	err := s.kv.RangeStream(r, &headerFillingRangeStream{KV_RangeStreamServer: rs, hdr: &s.hdr, first: true})
+	if err != nil {
+		return togRPCError(err)
+	}
+	return nil
+}
+
+// headerFillingRangeStream wraps KV_RangeStreamServer to fill the cluster
+// header (cluster ID, member ID, raft term) on the first sent message.
+type headerFillingRangeStream struct {
+	pb.KV_RangeStreamServer
+	hdr   *header
+	first bool
+}
+
+func (s *headerFillingRangeStream) Send(resp *pb.RangeStreamResponse) error {
+	if s.first {
+		if resp.RangeResponse != nil && resp.RangeResponse.Header != nil {
+			s.hdr.fill(resp.RangeResponse.Header)
+		}
+		s.first = false
+	}
+	return s.KV_RangeStreamServer.Send(resp)
 }
 
 func (s *kvServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
@@ -131,6 +166,16 @@ func checkRangeRequest(r *pb.RangeRequest) error {
 		return rpctypes.ErrGRPCInvalidSortOption
 	}
 
+	return nil
+}
+
+func checkRangeStreamRequest(r *pb.RangeRequest) error {
+	if r.SortOrder != pb.RangeRequest_NONE && (r.SortOrder != pb.RangeRequest_ASCEND || r.SortTarget != pb.RangeRequest_KEY) {
+		return status.Errorf(codes.Unimplemented, "RangeStream does not support custom sort orders")
+	}
+	if r.MaxModRevision != 0 || r.MinModRevision != 0 || r.MinCreateRevision != 0 || r.MaxCreateRevision != 0 {
+		return status.Errorf(codes.Unimplemented, "RangeStream does not support revision filters")
+	}
 	return nil
 }
 

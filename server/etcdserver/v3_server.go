@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/base64"
 	errorspkg "errors"
+	"math"
 	"strconv"
 	"time"
 
@@ -58,6 +59,7 @@ const (
 
 type RaftKV interface {
 	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error)
+	RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error
 	Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error)
 	DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error)
@@ -150,6 +152,130 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		return nil, err
 	}
 	return resp, err
+}
+
+func (s *EtcdServer) RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error {
+	ctx := rs.Context()
+	var span trace.Span
+	ctx, span = traceutil.Tracer.Start(ctx, "range_streaming", trace.WithAttributes(
+		attribute.String("range_begin", string(r.GetKey())),
+		attribute.String("range_end", string(r.GetRangeEnd())),
+		attribute.Int64("rev", r.GetRevision()),
+		attribute.Int64("limit", r.GetLimit()),
+		attribute.Bool("count_only", r.GetCountOnly()),
+	))
+	defer span.End()
+
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "range_streaming",
+		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
+		traceutil.Field{Key: "range_end", Value: string(r.RangeEnd)},
+	)
+
+	if !r.Serializable {
+		err := s.read.LinearizableReadNotify(ctx)
+		trace.Step("agreement among raft nodes before linearized reading")
+		if err != nil {
+			return err
+		}
+	}
+
+	chk := func(ai *auth.AuthInfo) error {
+		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
+	}
+
+	var err error
+	get := func() {
+		err = s.rangeStream(ctx, r, rs)
+	}
+	if serr := s.doSerialize(ctx, chk, get); serr != nil {
+		err = serr
+		return err
+	}
+	return err
+}
+
+func (s *EtcdServer) rangeStream(ctx context.Context, r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error {
+	totalLimit := r.Limit
+	if totalLimit == 0 {
+		totalLimit = math.MaxInt64
+	}
+	r.Limit = 10
+	if r.Limit > totalLimit {
+		r.Limit = totalLimit
+	}
+	// Use withTotalCount=true for the first call to get the correct total count
+	// of matching keys. Subsequent calls use withTotalCount=false since we already
+	// have the total.
+	resp, _, err := txn.Range(ctx, s.Logger(), s.KV(), r, true)
+	if err != nil {
+		return err
+	}
+	totalCount := resp.Count
+	// TODO: Send only if responses of size MaxRequestBytes size
+	if !resp.More || int64(len(resp.Kvs)) == totalLimit {
+		return rs.Send(&pb.RangeStreamResponse{
+			RangeResponse: &pb.RangeResponse{
+				Header: &pb.ResponseHeader{Revision: resp.Header.Revision},
+				More:   resp.More,
+				Count:  totalCount,
+				Kvs:    resp.Kvs,
+			},
+		})
+	}
+	err = rs.Send(&pb.RangeStreamResponse{
+		RangeResponse: &pb.RangeResponse{
+			Header: &pb.ResponseHeader{Revision: resp.Header.Revision},
+			Kvs:    resp.Kvs,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	count := int64(len(resp.Kvs))
+	if r.Revision == 0 {
+		r.Revision = resp.Header.Revision
+	}
+
+	for resp.More && count < totalLimit {
+		r.Key = append(resp.Kvs[len(resp.Kvs)-1].Key, '\x00')
+
+		if resp.Size() < int(s.Cfg.MaxRequestBytes)/2 {
+			r.Limit *= 2
+		} else if resp.Size() > int(s.Cfg.MaxRequestBytes)*2 {
+			r.Limit /= 2
+		}
+		if r.Limit == 0 {
+			r.Limit = 1
+		}
+		if count+r.Limit > totalLimit {
+			r.Limit = totalLimit - count
+		}
+
+		resp, _, err = txn.Range(ctx, s.Logger(), s.KV(), r, false)
+		if err != nil {
+			return err
+		}
+		// TODO: Chunk output
+		if !resp.More || count+int64(len(resp.Kvs)) == totalLimit {
+			return rs.Send(&pb.RangeStreamResponse{
+				RangeResponse: &pb.RangeResponse{
+					More:  resp.More,
+					Count: totalCount,
+					Kvs:   resp.Kvs,
+				},
+			})
+		}
+		count += int64(len(resp.Kvs))
+		err = rs.Send(&pb.RangeStreamResponse{
+			RangeResponse: &pb.RangeResponse{
+				Kvs: resp.Kvs,
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
