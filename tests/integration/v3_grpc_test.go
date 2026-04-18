@@ -1960,7 +1960,77 @@ func TestV3AdditionalGRPCOptions(t *testing.T) {
 }
 
 func eqErrGRPC(err1 error, err2 error) bool {
-	return !(err1 == nil && err2 != nil) || err1.Error() == err2.Error()
+	s1 := mustGRPCStatus(err1)
+	s2 := mustGRPCStatus(err2)
+	return s1.Code() == s2.Code() && s1.Message() == s2.Message()
+}
+
+func mustGRPCStatus(err error) *status.Status {
+	if err == nil {
+		panic("eqErrGRPC: unexpected nil error")
+	}
+	s, ok := status.FromError(err)
+	if !ok {
+		panic(fmt.Sprintf("eqErrGRPC: not a gRPC status error: %T %v", err, err))
+	}
+	return s
+}
+
+func TestEqErrGRPC(t *testing.T) {
+	tests := []struct {
+		name     string
+		err1     error
+		err2     error
+		expected bool
+	}{
+		{
+			name:     "same error - same object",
+			err1:     rpctypes.ErrGRPCLeaseExist,
+			err2:     rpctypes.ErrGRPCLeaseExist,
+			expected: true,
+		},
+		{
+			name:     "wire reconstruction - same code and message",
+			err1:     status.Error(codes.FailedPrecondition, "etcdserver: lease already exists"),
+			err2:     rpctypes.ErrGRPCLeaseExist,
+			expected: true,
+		},
+		{
+			name:     "same code, different message",
+			err1:     status.Error(codes.FailedPrecondition, "error A"),
+			err2:     status.Error(codes.FailedPrecondition, "error B"),
+			expected: false,
+		},
+		{
+			name:     "different code, same message",
+			err1:     status.Error(codes.FailedPrecondition, "same message"),
+			err2:     status.Error(codes.NotFound, "same message"),
+			expected: false,
+		},
+		{
+			name:     "different code, different message",
+			err1:     rpctypes.ErrGRPCLeaseExist,
+			err2:     rpctypes.ErrGRPCLeaseNotFound,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if result := eqErrGRPC(tt.err1, tt.err2); result != tt.expected {
+				t.Errorf("eqErrGRPC(%v, %v) = %v, want %v", tt.err1, tt.err2, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestEqErrGRPCPanicsOnNonGRPCError(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("eqErrGRPC should panic on client-side EtcdError")
+		}
+	}()
+	eqErrGRPC(rpctypes.ErrUserEmpty, rpctypes.ErrGRPCUserEmpty)
 }
 
 // waitForRestart tries a range request until the client's server responds.
