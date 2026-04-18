@@ -97,7 +97,7 @@ func BenchmarkRange(b *testing.B) {
 				b.ReportAllocs()
 				b.ResetTimer()
 				for b.Loop() {
-					_, _, err := Range(ctx, zap.NewNop(), s, req, false)
+					_, _, err := Range(ctx, zap.NewNop(), s, req, true)
 					if err != nil {
 						b.Fatal(err)
 					}
