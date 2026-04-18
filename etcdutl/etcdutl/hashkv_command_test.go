@@ -15,6 +15,8 @@
 package etcdutl
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -123,7 +125,7 @@ func TestCalculateHashKV(t *testing.T) {
 			dbPath, cleanup := tc.setupFunc(t)
 			defer cleanup()
 
-			result, err := calculateHashKV(dbPath, tc.revision)
+			result, err := calculateHashKV(dbPath, tc.revision, 0, false, "")
 
 			if tc.expectError {
 				assert.Assert(t, err != nil)
@@ -140,6 +142,154 @@ func TestCalculateHashKV(t *testing.T) {
 
 			t.Logf("Test %s - Hash: %d, HashRevision: %d, CompactRevision: %d",
 				tc.name, result.Hash, result.HashRevision, result.CompactRevision)
+		})
+	}
+}
+
+func TestCalculateHashKV_DetailedMode(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test_detailed.db")
+
+	b := backend.NewDefaultBackend(zap.NewNop(), dbPath)
+	st := mvcc.NewStore(zap.NewNop(), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	st.Put([]byte("key1"), []byte("value1"), lease.NoLease)
+	st.Put([]byte("key2"), []byte("value2"), lease.NoLease)
+	st.Close()
+	b.Close()
+
+	tests := []struct {
+		name           string
+		detailed       bool
+		outputFile     string
+		expectDetailed bool
+		expectOutput   bool
+	}{
+		{
+			name:           "detailed mode with stdout",
+			detailed:       true,
+			outputFile:     "",
+			expectDetailed: true,
+			expectOutput:   true,
+		},
+		{
+			name:           "detailed mode with file output",
+			detailed:       true,
+			outputFile:     filepath.Join(tempDir, "output.json"),
+			expectDetailed: true,
+			expectOutput:   false,
+		},
+		{
+			name:           "non-detailed mode",
+			detailed:       false,
+			outputFile:     "",
+			expectDetailed: false,
+			expectOutput:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := calculateHashKV(dbPath, 0, 0, tt.detailed, tt.outputFile)
+			assert.NilError(t, err)
+
+			assert.Assert(t, result.Hash > 0)
+
+			if tt.expectDetailed {
+				if tt.outputFile != "" {
+					_, err := os.Stat(tt.outputFile)
+					assert.NilError(t, err)
+
+					data, err := os.ReadFile(tt.outputFile)
+					assert.NilError(t, err)
+
+					var detailedResult []mvcc.KeyRevisionHash
+					err = json.Unmarshal(data, &detailedResult)
+					assert.NilError(t, err)
+					assert.Equal(t, 2, len(detailedResult))
+				}
+			} else {
+				if tt.outputFile != "" {
+					// file should not exist
+					_, err := os.Stat(tt.outputFile)
+					assert.Assert(t, !os.IsExist(err))
+				}
+			}
+		})
+	}
+}
+
+func TestCalculateHashKV_CompactRev(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test_compact_rev.db")
+
+	b := backend.NewDefaultBackend(zap.NewNop(), dbPath)
+	st := mvcc.NewStore(zap.NewNop(), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	curRev := st.Put([]byte("key1"), []byte("value1"), lease.NoLease)
+	assert.Equal(t, int64(2), curRev)
+	curRev = st.Put([]byte("key2"), []byte("value2"), lease.NoLease)
+	assert.Equal(t, int64(3), curRev)
+	curRev = st.Put([]byte("key3"), []byte("value3"), lease.NoLease)
+	assert.Equal(t, int64(4), curRev)
+	st.Close()
+	b.Close()
+
+	tests := []struct {
+		name          string
+		rev           int64
+		compactRev    int64
+		detailed      bool
+		expectRev     int64
+		expectCompact int64
+	}{
+		{
+			name:          "basic compact revision test",
+			rev:           3,
+			compactRev:    0,
+			detailed:      false,
+			expectRev:     3,
+			expectCompact: -1,
+		},
+		{
+			name:          "compact revision 1",
+			rev:           3,
+			compactRev:    1,
+			detailed:      false,
+			expectRev:     3,
+			expectCompact: 1,
+		},
+		{
+			name:          "compact revision 2",
+			rev:           3,
+			compactRev:    2,
+			detailed:      false,
+			expectRev:     3,
+			expectCompact: 2,
+		},
+		{
+			name:          "detailed mode with compact revision",
+			rev:           3,
+			compactRev:    2,
+			detailed:      true,
+			expectRev:     3,
+			expectCompact: 2,
+		},
+		{
+			name:          "compact equals revision",
+			rev:           3,
+			compactRev:    3,
+			detailed:      false,
+			expectRev:     3,
+			expectCompact: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := calculateHashKV(dbPath, tt.rev, tt.compactRev, tt.detailed, "")
+			assert.NilError(t, err)
+			assert.Assert(t, result.Hash > 0)
+			assert.Equal(t, tt.expectRev, result.HashRevision)
+			assert.Equal(t, tt.expectCompact, result.CompactRevision)
 		})
 	}
 }

@@ -57,11 +57,12 @@ func newKVHasher(compactRev, rev int64, keep map[Revision]struct{}) kvHasher {
 	}
 }
 
-func (h *kvHasher) WriteKeyValue(k, v []byte) {
+// shouldWriteKeyValue determines whether a key-value pair should be included in the hash calculation
+func (h *kvHasher) shouldWriteKeyValue(k []byte) bool {
 	kr := BytesToRev(k)
 	upper := Revision{Main: h.revision + 1}
 	if !upper.GreaterThan(kr) {
-		return
+		return false
 	}
 
 	isTombstone := BytesToBucketKey(k).tombstone
@@ -71,7 +72,7 @@ func (h *kvHasher) WriteKeyValue(k, v []byte) {
 	// due to compacting; don't skip if there isn't one.
 	if lower.GreaterThan(kr) && len(h.keep) > 0 {
 		if _, ok := h.keep[kr]; !ok {
-			return
+			return false
 		}
 	}
 
@@ -82,6 +83,14 @@ func (h *kvHasher) WriteKeyValue(k, v []byte) {
 	// computing the hash to ensure that both older and newer versions
 	// can always generate the same hash values.
 	if kr.Main == h.compactRevision && isTombstone {
+		return false
+	}
+
+	return true
+}
+
+func (h *kvHasher) WriteKeyValue(k, v []byte) {
+	if !h.shouldWriteKeyValue(k) {
 		return
 	}
 
@@ -99,6 +108,22 @@ type KeyValueHash struct {
 	Revision        int64
 }
 
+// KeyRevisionHash represents the hash of a single key at a specific revision
+type KeyRevisionHash struct {
+	Key    string `json:"key"`
+	Hash   uint32 `json:"hash"`
+	ModRev int64  `json:"modRevision"`
+}
+
+// DetailedHashResult contains detailed hash calculation results
+type DetailedHashResult struct {
+	TotalHash       KeyValueHash
+	KeyHashes       []KeyRevisionHash
+	CompactRevision int64
+	Revision        int64
+	KeyCount        int
+}
+
 type HashStorage interface {
 	// Hash computes the hash of the whole backend keyspace,
 	// including key, lease, and other buckets in storage.
@@ -110,6 +135,14 @@ type HashStorage interface {
 
 	// HashByRev computes the hash of all MVCC revisions up to a given revision.
 	HashByRev(rev int64) (hash KeyValueHash, currentRev int64, err error)
+
+	// HashByRevWithCompactRev computes the hash of all MVCC revisions up to a given revision
+	// with an optional custom compact revision. If compactRev <= 0, uses the store's compact revision.
+	HashByRevWithCompactRev(rev int64, compactRev int64) (hash KeyValueHash, currentRev int64, err error)
+
+	// HashByRevDetailed computes the hash of all MVCC revisions up to a given revision and compact revision
+	// returns detailed information including individual key hashes.
+	HashByRevDetailed(rev int64, compactRev int64) (result DetailedHashResult, currentRev int64, err error)
 
 	// Store adds hash value in local cache, allowing it to be returned by HashByRev.
 	Store(valueHash KeyValueHash)
@@ -137,9 +170,14 @@ func (s *hashStorage) Hash() (hash uint32, revision int64, err error) {
 }
 
 func (s *hashStorage) HashByRev(rev int64) (KeyValueHash, int64, error) {
+	return s.HashByRevWithCompactRev(rev, 0)
+}
+
+func (s *hashStorage) HashByRevWithCompactRev(rev int64, compactRev int64) (KeyValueHash, int64, error) {
 	s.hashMu.RLock()
 	for _, h := range s.hashes {
-		if rev == h.Revision {
+		// For cache, only return cached results when both revision and compactRev match
+		if rev == h.Revision && (compactRev <= 0 || compactRev == h.CompactRevision) {
 			s.hashMu.RUnlock()
 
 			s.store.revMu.RLock()
@@ -150,7 +188,11 @@ func (s *hashStorage) HashByRev(rev int64) (KeyValueHash, int64, error) {
 	}
 	s.hashMu.RUnlock()
 
-	return s.store.hashByRev(rev)
+	return s.store.hashByRevWithCompactRev(rev, compactRev)
+}
+
+func (s *hashStorage) HashByRevDetailed(rev int64, compactRev int64) (DetailedHashResult, int64, error) {
+	return s.store.hashByRevDetailed(rev, compactRev)
 }
 
 func (s *hashStorage) Store(hash KeyValueHash) {
@@ -177,4 +219,76 @@ func (s *hashStorage) Hashes() []KeyValueHash {
 	hashes = append(hashes, s.hashes...)
 	s.hashMu.RUnlock()
 	return hashes
+}
+
+// kvHasherDetailed supports detailed hash calculation, including individual key hashes
+type kvHasherDetailed struct {
+	kvHasher
+	keyHashes []KeyRevisionHash
+}
+
+func newKVHasherDetailed(compactRev, rev int64, keep map[Revision]struct{}) *kvHasherDetailed {
+	return &kvHasherDetailed{
+		kvHasher:  newKVHasher(compactRev, rev, keep),
+		keyHashes: make([]KeyRevisionHash, 0),
+	}
+}
+
+func (h *kvHasherDetailed) WriteKeyValue(k, v []byte) {
+	if !h.shouldWriteKeyValue(k) {
+		return
+	}
+
+	// Calculate hash for individual key+value
+	keyHash := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+	keyHash.Write(k)
+	keyHash.Write(v)
+
+	var rkv revKeyValue
+	if err := rkv.kv.Unmarshal(v); err != nil {
+		return
+	}
+
+	// Add to detailed hash list
+	keyRevHash := KeyRevisionHash{
+		Key:    string(rkv.kv.Key),
+		Hash:   keyHash.Sum32(),
+		ModRev: BytesToRev(k).Main,
+	}
+	h.keyHashes = append(h.keyHashes, keyRevHash)
+
+	h.hash.Write(k)
+	h.hash.Write(v)
+}
+
+func (h *kvHasherDetailed) KeyHashes() []KeyRevisionHash {
+	return h.keyHashes
+}
+
+// unsafeHashByRevDetailed computes detailed hash information, including individual key hashes
+//
+// WARNING: This function loads all key-value pairs into memory to compute individual hashes.
+// It may consume significant memory for large datasets. Use this method only for
+// debugging, testing, or tooling purposes, not in production environments with large datasets.
+func unsafeHashByRevDetailed(tx backend.UnsafeReader, compactRevision, revision int64, keep map[Revision]struct{}) (DetailedHashResult, error) {
+	h := newKVHasherDetailed(compactRevision, revision, keep)
+	err := tx.UnsafeForEach(schema.Key, func(k, v []byte) error {
+		h.WriteKeyValue(k, v)
+		return nil
+	})
+
+	if err != nil {
+		return DetailedHashResult{}, err
+	}
+
+	totalHash := h.Hash()
+	keyHashes := h.KeyHashes()
+
+	return DetailedHashResult{
+		TotalHash:       totalHash,
+		KeyHashes:       keyHashes,
+		CompactRevision: compactRevision,
+		Revision:        revision,
+		KeyCount:        len(keyHashes),
+	}, nil
 }
