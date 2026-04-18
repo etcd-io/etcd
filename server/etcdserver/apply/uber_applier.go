@@ -139,7 +139,7 @@ func (a *uberApplier) dispatch(r *pb.InternalRaftRequest, shouldApplyV3 membersh
 		ar.Resp, ar.Trace, ar.Err = a.applyV3.DeleteRange(r.DeleteRange)
 	case r.Txn != nil:
 		op = "Txn"
-		ar.Resp, ar.Trace, ar.Err = a.applyV3.Txn(r.Txn)
+		ar.Resp, ar.Trace, ar.Err = a.applyV3.Txn(r.Txn, r.Header)
 	case r.Compaction != nil:
 		op = "Compaction"
 		ar.Resp, ar.Physc, ar.Trace, ar.Err = a.applyV3.Compaction(r.Compaction)

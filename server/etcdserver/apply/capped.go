@@ -34,11 +34,11 @@ func (a *applierV3Capped) Put(_ *pb.PutRequest) (*pb.PutResponse, *traceutil.Tra
 	return nil, nil, errors.ErrNoSpace
 }
 
-func (a *applierV3Capped) Txn(r *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
+func (a *applierV3Capped) Txn(r *pb.TxnRequest, header *pb.RequestHeader) (*pb.TxnResponse, *traceutil.Trace, error) {
 	if a.q.Cost(r) > 0 {
 		return nil, nil, errors.ErrNoSpace
 	}
-	return a.applierV3.Txn(r)
+	return a.applierV3.Txn(r, header)
 }
 
 func (a *applierV3Capped) LeaseGrant(_ *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {

@@ -15,6 +15,7 @@ message RequestHeader {
   string username = 2;
   // auth_revision is a revision number of auth.authStore. It is not related to mvcc
   uint64 auth_revision = 3 [(versionpb.etcd_version_field) = "3.1"];
+  uint64 requester_member_id = 4 [(versionpb.etcd_version_field) = "3.7"];
 }
 
 // An InternalRaftRequest is the union of all requests which can be
