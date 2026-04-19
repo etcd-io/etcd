@@ -282,6 +282,9 @@ Features:
     Skip verification of SAN field in client certificate for peer connections.
   --watch-progress-notify-interval '10m'
     Duration of periodical watch progress notification.
+    Note: when set via a JSON or YAML config file, this field must be an integer
+    in nanoseconds (e.g. 600000000000 for 10m); human-readable strings (e.g. "10m")
+    are only accepted on the command line.
   --warning-apply-duration '100ms'
     Warning is generated if requests take more than this duration.
   --bootstrap-defrag-threshold-megabytes

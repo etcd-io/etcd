@@ -364,6 +364,9 @@ type Config struct {
 	// CompactionSleepInterval is the sleep interval between every etcd compaction loop.
 	CompactionSleepInterval time.Duration `json:"compaction-sleep-interval"`
 	// WatchProgressNotifyInterval is the time duration of periodic watch progress notifications.
+	// When specified in a JSON or YAML configuration file this field must be an integer in
+	// nanoseconds (e.g. 600000000000 for 10m). The command-line flag accepts human-readable
+	// strings (e.g. "10m"), but JSON unmarshalling requires a plain integer.
 	WatchProgressNotifyInterval time.Duration `json:"watch-progress-notify-interval"`
 	// WarningApplyDuration is the time duration after which a warning is generated if applying request
 	WarningApplyDuration time.Duration `json:"warning-apply-duration"`
