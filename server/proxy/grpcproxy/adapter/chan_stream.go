@@ -158,7 +158,7 @@ func newPipeStream(ctx context.Context, ssHandler func(chanServerStream) error) 
 		if err == nil {
 			// nil means the handler completed successfully;
 			// the gRPC ClientStream contract requires io.EOF:
-			// https://github.com/grpc/grpc-go/blob/master/stream.go#L140-L148
+			// https://github.com/grpc/grpc-go/blob/v1.80.0/stream.go#L139-L147
 			err = io.EOF
 		}
 		select {

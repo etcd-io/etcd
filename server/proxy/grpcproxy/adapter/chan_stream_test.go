@@ -26,31 +26,31 @@ import (
 // RecvMsg. This matches the gRPC ClientStream contract:
 //
 //	"It returns io.EOF when the stream completes successfully."
-//	https://github.com/grpc/grpc-go/blob/master/stream.go
+//	https://github.com/grpc/grpc-go/blob/v1.80.0/stream.go#L139-L147
 func TestPipeStream_HandlerSuccessReturnsEOF(t *testing.T) {
 	cs := newPipeStream(context.Background(), func(ss chanServerStream) error {
-		ss.SendMsg("msg1") //nolint:staticcheck
-		ss.SendMsg("msg2") //nolint:staticcheck
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			ss.SendMsg("msg1") //nolint:staticcheck
+			ss.SendMsg("msg2") //nolint:staticcheck
+		}()
+		<-done
 		return nil
 	})
 
+	for _, want := range []string{"msg1", "msg2"} {
+		var v any
+		if err := cs.RecvMsg(&v); err != nil { //nolint:staticcheck
+			t.Fatalf("RecvMsg() = %v, want nil", err)
+		}
+		if v != want {
+			t.Fatalf("RecvMsg() got %v, want %s", v, want)
+		}
+	}
+
 	var v any
-
-	if err := cs.RecvMsg(&v); err != nil {
-		t.Fatalf("RecvMsg() = %v, want nil", err)
-	}
-	if v != "msg1" {
-		t.Fatalf("RecvMsg() got %v, want msg1", v)
-	}
-
-	if err := cs.RecvMsg(&v); err != nil {
-		t.Fatalf("RecvMsg() = %v, want nil", err)
-	}
-	if v != "msg2" {
-		t.Fatalf("RecvMsg() got %v, want msg2", v)
-	}
-
-	if err := cs.RecvMsg(&v); !errors.Is(err, io.EOF) {
+	if err := cs.RecvMsg(&v); !errors.Is(err, io.EOF) { //nolint:staticcheck
 		t.Fatalf("RecvMsg() = %v, want io.EOF (per gRPC ClientStream contract)", err)
 	}
 }
@@ -60,20 +60,24 @@ func TestPipeStream_HandlerSuccessReturnsEOF(t *testing.T) {
 func TestPipeStream_HandlerErrorPropagated(t *testing.T) {
 	handlerErr := errors.New("handler failed")
 	cs := newPipeStream(context.Background(), func(ss chanServerStream) error {
-		ss.SendMsg("partial") //nolint:staticcheck
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			ss.SendMsg("partial") //nolint:staticcheck
+		}()
+		<-done
 		return handlerErr
 	})
 
 	var v any
-
-	if err := cs.RecvMsg(&v); err != nil {
+	if err := cs.RecvMsg(&v); err != nil { //nolint:staticcheck
 		t.Fatalf("RecvMsg() = %v, want nil", err)
 	}
 	if v != "partial" {
 		t.Fatalf("RecvMsg() got %v, want partial", v)
 	}
 
-	if err := cs.RecvMsg(&v); !errors.Is(err, handlerErr) {
+	if err := cs.RecvMsg(&v); !errors.Is(err, handlerErr) { //nolint:staticcheck
 		t.Fatalf("RecvMsg() = %v, want %v", err, handlerErr)
 	}
 }
