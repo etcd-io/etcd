@@ -183,6 +183,25 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 	}
 }
 
+// TestMaintenanceSnapshotFromServerClient verifies that snapshot streams created
+// by Member.ServerClient (in-process adapter path) complete successfully.
+func TestMaintenanceSnapshotFromServerClient(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	srvClient := clus.Members[0].ServerClient
+	require.NotNilf(t, srvClient, "Member.ServerClient must be initialized")
+
+	rc, err := srvClient.Snapshot(t.Context())
+	require.NoError(t, err)
+	defer rc.Close()
+
+	_, err = io.Copy(io.Discard, rc)
+	require.NoErrorf(t, err, "snapshot stream should terminate cleanly")
+}
+
 // TestMaintenanceSnapshotWithVersionTimeout ensures that SnapshotWithVersion function
 // returns corresponding context errors when context timeout happened before snapshot reading
 func TestMaintenanceSnapshotWithVersionTimeout(t *testing.T) {
