@@ -726,7 +726,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 		m.MaxLearners = mcfg.MaxLearners
 	}
 	m.Metrics = mcfg.Metrics
-	m.V2Deprecation = config.V2_DEPR_DEFAULT //nolint:staticcheck // TODO: remove for a supported version
+	m.V2Deprecation = config.V2DeprDefault
 	m.GRPCServerRecorder = &grpctesting.GRPCRecorder{}
 
 	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
