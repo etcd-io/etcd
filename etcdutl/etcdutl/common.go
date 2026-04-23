@@ -30,7 +30,10 @@ import (
 )
 
 // FlockTimeout is the duration to wait to obtain a file lock on db file.
-var FlockTimeout time.Duration
+// Initialized to the ctl.go --timeout flag default so commands invoked
+// through code paths that skip flag parsing (tests, library use) don't
+// block forever on a locked db file. Issue 20276.
+var FlockTimeout = 10 * time.Second
 
 func GetLogger() *zap.Logger {
 	config := logutil.DefaultZapLoggerConfig
