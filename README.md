@@ -33,7 +33,7 @@ See [etcdctl][etcdctl] for a simple command line client.
 
 ![etcd reliability is important](logos/etcd-xkcd-2347.png)
 
-<sub>Original image credited to  xkcd.com/2347, alterations by Josh Berkus.</sub>
+<sub>Original image credited to xkcd.com/2347, alterations by Josh Berkus.</sub>
 
 [raft]: https://raft.github.io/
 [k8s]: http://kubernetes.io/
