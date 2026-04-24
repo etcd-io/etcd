@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/base64"
 	errorspkg "errors"
+	"math"
 	"strconv"
 	"time"
 
@@ -58,6 +59,7 @@ const (
 
 type RaftKV interface {
 	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error)
+	RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error
 	Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error)
 	DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error)
@@ -150,6 +152,143 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		return nil, err
 	}
 	return resp, err
+}
+
+func (s *EtcdServer) RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error {
+	ctx := rs.Context()
+	var span trace.Span
+	ctx, span = traceutil.Tracer.Start(ctx, "range_streaming", trace.WithAttributes(
+		attribute.String("range_begin", string(r.GetKey())),
+		attribute.String("range_end", string(r.GetRangeEnd())),
+		attribute.Int64("rev", r.GetRevision()),
+		attribute.Int64("limit", r.GetLimit()),
+		attribute.Bool("count_only", r.GetCountOnly()),
+	))
+	defer span.End()
+
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "range_streaming",
+		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
+		traceutil.Field{Key: "range_end", Value: string(r.RangeEnd)},
+	)
+
+	if !r.Serializable {
+		err := s.read.LinearizableReadNotify(ctx)
+		trace.Step("agreement among raft nodes before linearized reading")
+		if err != nil {
+			return err
+		}
+	}
+
+	chk := func(ai *auth.AuthInfo) error {
+		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
+	}
+
+	var err error
+	get := func() {
+		err = s.rangeStream(ctx, r, rs)
+	}
+	if serr := s.doSerialize(ctx, chk, get); serr != nil {
+		err = serr
+		return err
+	}
+	return err
+}
+
+func (s *EtcdServer) rangeStream(ctx context.Context, r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error {
+	if r.CountOnly {
+		resp, _, err := txn.Range(ctx, s.Logger(), s.KV(), r, false)
+		if err != nil {
+			return err
+		}
+		out := &pb.RangeResponse{
+			Header: &pb.ResponseHeader{Revision: resp.Header.Revision},
+			Count:  resp.Count,
+		}
+		return rs.Send(&pb.RangeStreamResponse{RangeResponse: out})
+	}
+
+	totalLimit := r.Limit
+	if totalLimit == 0 {
+		totalLimit = math.MaxInt64
+	}
+	r.Limit = initialStreamChunkLimit
+	if r.Limit > totalLimit {
+		r.Limit = totalLimit
+	}
+
+	count := int64(0)
+	var headerRev int64
+	for {
+		resp, _, err := txn.Range(ctx, s.Logger(), s.KV(), r, false)
+		if err != nil {
+			return err
+		}
+		// headerRev should represent the latest store revision at the moment
+		// the server starts handling the client request, and remain stable for
+		// the whole response stream.
+		//
+		// If the client did not explicitly pin a revision (r.Revision == 0),
+		// we pin it here to that same initial latest revision, rather than
+		// advancing it for each subsequent range response in the stream.
+		// As a result, writes committed after the stream begins are not reflected
+		// in later range responses of this stream.
+		if headerRev == 0 {
+			headerRev = resp.Header.Revision
+			if r.Revision == 0 {
+				r.Revision = headerRev
+			}
+		}
+		count += int64(len(resp.Kvs))
+
+		var nextKey []byte
+		if resp.More {
+			nextKey = append(resp.Kvs[len(resp.Kvs)-1].Key, '\x00')
+		}
+		out := &pb.RangeResponse{Kvs: resp.Kvs}
+		done := !resp.More || count == totalLimit
+		if done {
+			out.Header = &pb.ResponseHeader{Revision: headerRev}
+			out.More = resp.More
+			out.Count = count
+			if resp.More {
+				remaining, cerr := txn.Count(ctx, s.Logger(), s.KV(), nextKey, r.RangeEnd, r.Revision)
+				if cerr != nil {
+					return cerr
+				}
+				out.Count += remaining
+			}
+		}
+		if err := rs.Send(&pb.RangeStreamResponse{RangeResponse: out}); err != nil {
+			return err
+		}
+		if done {
+			return nil
+		}
+
+		r.Key = nextKey
+		r.Limit = adjustChunkLimit(r.Limit, resp.Size(), int(s.Cfg.MaxRequestBytes))
+		r.Limit = min(r.Limit, totalLimit-count)
+	}
+}
+
+const initialStreamChunkLimit = 10
+
+// adjustChunkLimit picks the next chunk's Limit so each chunk lands near
+// the target size: too small wastes round-trips, too large produces
+// oversized chunks. Doubling/halving only outside [0.5x, 2x] avoids
+// thrashing when responses sit near the boundary. Always returns >= 1,
+// since Limit=0 means "unlimited" in txn.Range.
+func adjustChunkLimit(lastLimit int64, lastSize, targetSize int) int64 {
+	switch {
+	case lastSize < targetSize/2:
+		lastLimit *= 2
+	case lastSize > targetSize*2:
+		lastLimit /= 2
+	}
+	if lastLimit == 0 {
+		lastLimit = 1
+	}
+	return lastLimit
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
