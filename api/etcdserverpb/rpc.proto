@@ -39,6 +39,14 @@ service KV {
     };
   }
 
+  // RangeStream gets the keys in the range from the key-value store.
+  //
+  // This RPC is intentionally gRPC-only and does not provide a
+  // grpc-gateway REST mapping, because streaming chunked responses
+  // are not a good fit for standard JSON/REST semantics.
+  rpc RangeStream(RangeRequest) returns (stream RangeStreamResponse) {
+  }
+
   // Put puts the given key into the key-value store.
   // A put request increments the revision of the key-value store
   // and generates one event in the event history.
@@ -1429,4 +1437,21 @@ message AuthRoleRevokePermissionResponse {
   option (versionpb.etcd_version_msg) = "3.0";
 
   ResponseHeader header = 1;
+}
+
+// RangeStreamResponse is the response for the RangeStream RPC.
+message RangeStreamResponse {
+  option (versionpb.etcd_version_msg) = "3.7";
+  // range_response is a partial response for the KV.RangeStream RPC.
+  // The result of proto.Merge() applied on all responses should result in the
+  // same RangeResponse response as to the Range() method.
+  //
+  // Field population across chunks:
+  //   - kvs: each chunk carries a disjoint slice of the result. Concatenating
+  //     them in order yields the full key set.
+  //   - header, more, count: set only on the final chunk. Non-merge clients
+  //     can rely on io.EOF (end of stream) to detect completion. These
+  //     fields are provided for clients that merge all responses into a
+  //     single RangeResponse.
+  RangeResponse range_response = 1;
 }
