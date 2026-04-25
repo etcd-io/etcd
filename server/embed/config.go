@@ -157,6 +157,13 @@ func init() {
 }
 
 // Config holds the arguments for configuring an etcd server.
+//
+// Note: time.Duration fields in this struct are unmarshalled from JSON/YAML
+// as integer nanoseconds (e.g. 600000000000 for 10 minutes). Human-readable
+// duration strings such as "10m" are only accepted by the equivalent
+// command-line flags, not by the configuration file.
+// This is a [known Go standard library limitation](https://github.com/golang/go/issues/10275)
+// where time.Duration is unmarshaled as a plain integer.
 type Config struct {
 	Name string `json:"name"`
 	Dir  string `json:"data-dir"`
