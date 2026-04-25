@@ -2088,7 +2088,7 @@ func getRequest(key string) model.EtcdRequest {
 		Type: model.Range,
 		Range: &model.RangeRequest{
 			RangeOptions: model.RangeOptions{
-				Start: "key",
+				Start: key,
 			},
 		},
 	}
