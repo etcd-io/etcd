@@ -106,3 +106,5 @@ require (
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
+
+replace github.com/anishathalye/porcupine => github.com/henrybear327/porcupine v0.0.0-20260506075837-cd3def88aca3
