@@ -15,6 +15,7 @@
 package model
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -44,8 +45,15 @@ var DeterministicModel = func(keys []string) porcupine.Model {
 		Init: func() any {
 			return freshEtcdState(keys)
 		},
-		Step: func(st any, in any, out any) (bool, any) {
-			return st.(EtcdState).apply(in.(EtcdRequest), out.(EtcdResponse))
+		StepContext: func(ctx context.Context, st any, in any, out any) (bool, any) {
+			if ctx.Err() != nil {
+				return false, nil
+			}
+			ok, newState := st.(EtcdState).apply(in.(EtcdRequest), out.(EtcdResponse))
+			if ctx.Err() != nil {
+				return false, nil
+			}
+			return ok, newState
 		},
 		Equal: func(st1, st2 any) bool {
 			return st1.(EtcdState).Equal(st2.(EtcdState))

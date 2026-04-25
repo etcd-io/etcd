@@ -15,6 +15,7 @@
 package model
 
 import (
+	"context"
 	"math/rand"
 	"slices"
 	"testing"
@@ -32,7 +33,7 @@ func TestModelDeterministic(t *testing.T) {
 			model := DeterministicModel(keys)
 			state := model.Init()
 			for _, op := range tc.operations {
-				ok, newState := model.Step(state, op.req, op.resp.EtcdResponse)
+				ok, newState := model.StepContext(context.Background(), state, op.req, op.resp.EtcdResponse)
 				if op.expectFailure == ok {
 					t.Logf("state: %v", state)
 					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, model.DescribeOperation(op.req, op.resp.EtcdResponse))
