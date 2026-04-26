@@ -31,6 +31,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -357,4 +358,80 @@ func TestRemoveNonExistingMember(t *testing.T) {
 
 	// Ensure that membership is properly bootstrapped.
 	assert.NoError(t, epc.Restart(ctx))
+}
+
+// TestCtlV3MemberAddAsLearnerWithOneMemberDown verifies the case
+// of adding new member when one or two existing members are down.
+// Refer to https://github.com/etcd-io/etcd/issues/21640
+func TestCtlV3MemberAddAsLearnerWithOneMemberDown(t *testing.T) {
+	testCases := []struct {
+		name        string
+		clusterSize int
+		downMembers int
+		expectErr   bool
+	}{
+		{
+			name:        "0 out of 1 member is down, allow adding member",
+			clusterSize: 1,
+			downMembers: 0,
+			expectErr:   false,
+		},
+		{
+			name:        "1 out of 3 members is down, reject adding member",
+			clusterSize: 3,
+			downMembers: 1,
+			expectErr:   true,
+		},
+		{
+			name:        "1 out of 4 members is down, allow adding member",
+			clusterSize: 4,
+			downMembers: 1,
+			expectErr:   false,
+		},
+		{
+			name:        "1 out of 5 members is down, allow adding member",
+			clusterSize: 5,
+			downMembers: 1,
+			expectErr:   false,
+		},
+		{
+			name:        "2 out of 5 members are down, reject adding member",
+			clusterSize: 5,
+			downMembers: 2,
+			expectErr:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e2e.BeforeTest(t)
+			ctx := t.Context()
+
+			t.Logf("Bootstrap a cluster with %d members", tc.clusterSize)
+			epc, err := e2e.NewEtcdProcessCluster(ctx, t,
+				e2e.WithClusterSize(tc.clusterSize),
+			)
+			require.NoError(t, err)
+			defer func() {
+				_ = epc.Close()
+			}()
+
+			t.Logf("Killing %d member", tc.downMembers)
+			for i := 0; i < tc.downMembers; i++ {
+				t.Logf("Killing member, name: %s, peerURL: %s", epc.Procs[i].Config().Name, epc.Procs[i].Config().PeerURL.String())
+				err = epc.Procs[i].Kill()
+				require.NoError(t, err)
+			}
+
+			time.Sleep(etcdserver.HealthInterval + 2*time.Second)
+
+			t.Log("Adding a new learner")
+			_, err = epc.Procs[len(epc.Procs)-1].Etcdctl().MemberAddAsLearner(ctx, "new-learner", []string{"http://10.0.0.12:2380"})
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
