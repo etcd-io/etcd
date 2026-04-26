@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -29,10 +30,28 @@ import (
 	"go.uber.org/zap"
 )
 
-// isConnectedToQuorumSince checks whether the local member is connected to the
-// quorum of the cluster since the given time.
+// isConnectedToQuorumSince reports whether the local member has been connected
+// to a quorum of the current cluster continuously since the given time.
 func isConnectedToQuorumSince(transport rafthttp.Transporter, since time.Time, self types.ID, members []*membership.Member) bool {
 	return numConnectedSince(transport, since, self, members) >= (len(members)/2)+1
+}
+
+// isConnectedToQuorumAfterAddingNewMemberSince reports whether the local member
+// has been connected to a quorum continuously since the given time, assuming a
+// new member is being added to the cluster.
+//
+// For a single-member cluster, it always returns true to allow membership
+// expansion.
+func isConnectedToQuorumAfterAddingNewMemberSince(transport rafthttp.Transporter, since time.Time, self types.ID, members []*membership.Member) bool {
+	if len(members) == 1 {
+		// If it's a single member cluster, we should allow adding a new member
+		return true
+	}
+	return numConnectedSince(transport, since, self, members) >= quorum(len(members)+1)
+}
+
+func quorum(num int) int {
+	return num/2 + 1
 }
 
 // isConnectedSince checks whether the local member is connected to the
@@ -40,12 +59,6 @@ func isConnectedToQuorumSince(transport rafthttp.Transporter, since time.Time, s
 func isConnectedSince(transport rafthttp.Transporter, since time.Time, remote types.ID) bool {
 	t := transport.ActiveSince(remote)
 	return !t.IsZero() && t.Before(since)
-}
-
-// isConnectedFullySince checks whether the local member is connected to all
-// members in the cluster since the given time.
-func isConnectedFullySince(transport rafthttp.Transporter, since time.Time, self types.ID, members []*membership.Member) bool {
-	return numConnectedSince(transport, since, self, members) == len(members)
 }
 
 // numConnectedSince counts how many members are connected to the local member
