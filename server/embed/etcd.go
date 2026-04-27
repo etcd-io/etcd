@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	defaultLog "log"
+	"maps"
 	"math"
 	"net"
 	"net/http"
@@ -669,8 +670,14 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		}
 	}
 
+	clientListeners := make(map[url.URL]net.Listener, len(cfg.ClientListeners)+len(cfg.ListenClientHttpUrls))
 	for _, u := range cfg.ListenClientUrls {
+		clientListeners[u] = nil
+	}
+	maps.Copy(clientListeners, cfg.ClientListeners)
+	for u, l := range clientListeners {
 		addr, secure, network := resolveURL(u)
+
 		sctx := sctxs[addr]
 		if sctx == nil {
 			sctx = newServeCtx(cfg.logger)
@@ -681,8 +688,15 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.scheme = u.Scheme
 		sctx.addr = addr
 		sctx.network = network
+		sctx.l = l
 	}
+
+	httpClientListeners := make(map[url.URL]net.Listener, len(cfg.ClientListeners)+len(cfg.ListenClientHttpUrls))
 	for _, u := range cfg.ListenClientHttpUrls {
+		httpClientListeners[u] = nil
+	}
+	maps.Copy(httpClientListeners, cfg.HTTPClientListeners)
+	for u, l := range httpClientListeners {
 		addr, secure, network := resolveURL(u)
 
 		sctx := sctxs[addr]
@@ -698,17 +712,20 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.addr = addr
 		sctx.network = network
 		sctx.httpOnly = true
+		sctx.l = l
 	}
 
 	for _, sctx := range sctxs {
-		if sctx.l, err = transport.NewListenerWithOpts(sctx.addr, sctx.scheme,
-			transport.WithSocketOpts(&cfg.SocketOpts),
-			transport.WithSkipTLSInfoCheck(true),
-		); err != nil {
-			return nil, err
+		if sctx.l == nil {
+			if sctx.l, err = transport.NewListenerWithOpts(sctx.addr, sctx.scheme,
+				transport.WithSocketOpts(&cfg.SocketOpts),
+				transport.WithSkipTLSInfoCheck(true),
+			); err != nil {
+				return nil, err
+			}
+			// net.Listener will rewrite ipv4 0.0.0.0 to ipv6 [::], breaking
+			// hosts that disable ipv6. So, use the address given by the user.
 		}
-		// net.Listener will rewrite ipv4 0.0.0.0 to ipv6 [::], breaking
-		// hosts that disable ipv6. So, use the address given by the user.
 
 		if fdLimit, fderr := runtimeutil.FDLimit(); fderr == nil {
 			if fdLimit <= reservedInternalFDNum {

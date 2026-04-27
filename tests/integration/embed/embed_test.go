@@ -20,7 +20,9 @@
 package embed_test
 
 import (
+	"context"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -30,6 +32,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/test/bufconn"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -124,12 +128,14 @@ func TestEmbedEtcd(t *testing.T) {
 	}
 }
 
-func TestEmbedEtcdGracefulStopSecure(t *testing.T)   { testEmbedEtcdGracefulStop(t, true) }
-func TestEmbedEtcdGracefulStopInsecure(t *testing.T) { testEmbedEtcdGracefulStop(t, false) }
+func TestEmbedEtcdGracefulStopSecureUnix(t *testing.T)   { testEmbedEtcdGracefulStop(t, true, false) }
+func TestEmbedEtcdGracefulStopInsecureUnix(t *testing.T) { testEmbedEtcdGracefulStop(t, false, false) }
+func TestEmbedEtcdGracefulStopSecureMem(t *testing.T)    { testEmbedEtcdGracefulStop(t, true, true) }
+func TestEmbedEtcdGracefulStopInsecureMem(t *testing.T)  { testEmbedEtcdGracefulStop(t, false, true) }
 
 // testEmbedEtcdGracefulStop ensures embedded server stops
 // cutting existing transports.
-func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
+func testEmbedEtcdGracefulStop(t *testing.T, secure, listener bool) {
 	testutil.SkipTestIfShortMode(t, "Cannot start embedded cluster in --short tests")
 
 	cfg := embed.NewConfig()
@@ -140,6 +146,11 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 
 	urls := newEmbedURLs(secure, 2)
 	setupEmbedCfg(cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
+	l := bufconn.Listen(10)
+	defer l.Close()
+	if listener {
+		cfg.ClientListeners = map[url.URL]net.Listener{urls[0]: l}
+	}
 
 	cfg.Dir = filepath.Join(t.TempDir(), "embed-etcd")
 
@@ -153,6 +164,11 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 	if secure {
 		clientCfg.TLS, err = testTLSInfo.ClientConfig()
 		require.NoError(t, err)
+	}
+	if listener {
+		clientCfg.DialOptions = []grpc.DialOption{grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+			return l.DialContext(ctx)
+		})}
 	}
 	cli, err := integration.NewClient(t, clientCfg)
 	require.NoError(t, err)
