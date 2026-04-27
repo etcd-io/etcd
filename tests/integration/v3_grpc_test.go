@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"reflect"
@@ -26,11 +27,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -1284,6 +1288,11 @@ func TestV3RangeRequest(t *testing.T) {
 		wresps  [][]string
 		wmores  []bool
 		wcounts []int64
+
+		// streamUnsupported[j] marks request reqs[j] as using features that
+		// RangeStream intentionally does not support (non-key-ascending sort,
+		// min/max mod/create revision filters). Must match len(reqs).
+		streamUnsupported []bool
 	}{
 		{
 			"single key",
@@ -1301,6 +1310,7 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{false, false},
 			[]int64{1, 0},
+			[]bool{false, false},
 		},
 		{
 			"multi-key",
@@ -1330,6 +1340,7 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{false, false, false, false, false, false},
 			[]int64{5, 2, 0, 0, 0, 5},
+			[]bool{false, false, false, false, false, false},
 		},
 		{
 			"revision",
@@ -1349,6 +1360,7 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{false, false, false, false},
 			[]int64{5, 0, 1, 2},
+			[]bool{false, false, false, false},
 		},
 		{
 			"limit",
@@ -1372,6 +1384,26 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{true, true, false, false},
 			[]int64{3, 3, 3, 3},
+			[]bool{false, false, false, false},
+		},
+		{
+			"count only",
+			[]string{"a", "b", "c"},
+			[]pb.RangeRequest{
+				// all match
+				{Key: []byte("a"), RangeEnd: []byte("z"), CountOnly: true},
+				// single-key match
+				{Key: []byte("b"), RangeEnd: []byte("c"), CountOnly: true},
+				// no match
+				{Key: []byte("x"), RangeEnd: []byte("z"), CountOnly: true},
+				// CountOnly with Limit: Limit must not truncate the count.
+				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 1, CountOnly: true},
+			},
+
+			[][]string{{}, {}, {}, {}},
+			[]bool{false, false, false, false},
+			[]int64{3, 1, 0, 3},
+			[]bool{false, false, false, false},
 		},
 		{
 			"sort",
@@ -1425,6 +1457,8 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{true, true, true, true, false, false},
 			[]int64{4, 4, 4, 4, 0, 4},
+			// Only ASCEND+KEY (index 0) and SortOrder_NONE (index 5) are supported by RangeStream.
+			[]bool{false, true, true, true, true, false},
 		},
 		{
 			"min/max mod rev",
@@ -1457,6 +1491,7 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{false, false, false, false},
 			[]int64{5, 5, 5, 5},
+			[]bool{true, true, true, true},
 		},
 		{
 			"min/max create rev",
@@ -1489,6 +1524,7 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{false, false, false, false},
 			[]int64{3, 3, 3, 3},
+			[]bool{true, true, true, true},
 		},
 	}
 
@@ -1511,6 +1547,12 @@ func TestV3RangeRequest(t *testing.T) {
 					t.Errorf("#%d.%d: Range error: %v", i, j, err)
 					continue
 				}
+				if !integration.ThroughProxy && !tt.streamUnsupported[j] {
+					got := rangeStream(t, kvc, &req)
+					require.Emptyf(t, cmp.Diff(resp, got, protocmp.Transform()),
+						"RangeStream response must match Range response")
+				}
+
 				if len(resp.Kvs) != len(tt.wresps[j]) {
 					t.Errorf("#%d.%d: bad len(resp.Kvs). got = %d, want = %d, ", i, j, len(resp.Kvs), len(tt.wresps[j]))
 					continue
@@ -1533,6 +1575,193 @@ func TestV3RangeRequest(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// rangeStream calls RangeStream and returns the merged response.
+func rangeStream(t *testing.T, kvc pb.KVClient, req *pb.RangeRequest) *pb.RangeResponse {
+	t.Helper()
+
+	stream, err := kvc.RangeStream(t.Context(), req)
+	require.NoError(t, err)
+
+	got := &pb.RangeResponse{}
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			break
+		}
+		require.NoError(t, rerr)
+		proto.Merge(got, chunk.RangeResponse)
+	}
+	return got
+}
+
+// TestV3RangeStreamCount verifies Count semantics on the last streamed chunk,
+// including the case where the stream truncates at Limit with more matching
+// keys pending (exercises the CountOnly fallback query at the pinned revision).
+func TestV3RangeStreamCount(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	const nKeys = 25
+	for i := 0; i < nKeys; i++ {
+		_, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("k%02d", i)),
+			Value: []byte("v"),
+		})
+		require.NoError(t, err)
+	}
+
+	// The server-side chunker starts at Limit=10 and adapts from there, so
+	// nKeys=25 reliably produces multi-chunk responses for unlimited/large
+	// limits, while small limits fit in the first chunk.
+	tests := []struct {
+		name        string
+		limit       int64
+		wantCount   int64
+		wantMore    bool
+		wantKeys    int
+		wantMinRecv int
+	}{
+		{
+			name:        "unlimited exhausts with running count",
+			limit:       0,
+			wantCount:   nKeys,
+			wantMore:    false,
+			wantKeys:    nKeys,
+			wantMinRecv: 2,
+		},
+		{
+			name:        "limit below total truncates with fallback count",
+			limit:       5,
+			wantCount:   nKeys,
+			wantMore:    true,
+			wantKeys:    5,
+			wantMinRecv: 1,
+		},
+		{
+			name:        "limit equal to total, no truncation",
+			limit:       nKeys,
+			wantCount:   nKeys,
+			wantMore:    false,
+			wantKeys:    nKeys,
+			wantMinRecv: 2,
+		},
+		{
+			name:        "limit above total, exhausts early",
+			limit:       100,
+			wantCount:   nKeys,
+			wantMore:    false,
+			wantKeys:    nKeys,
+			wantMinRecv: 2,
+		},
+		{
+			name:        "limit at first-chunk boundary with fallback count",
+			limit:       10,
+			wantCount:   nKeys,
+			wantMore:    true,
+			wantKeys:    10,
+			wantMinRecv: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+				Key:      []byte("k00"),
+				RangeEnd: []byte("l"),
+				Limit:    tt.limit,
+			})
+			require.NoError(t, err)
+
+			merged := &pb.RangeResponse{}
+			recvs := 0
+			for {
+				chunk, rerr := stream.Recv()
+				if errors.Is(rerr, io.EOF) {
+					break
+				}
+				require.NoError(t, rerr)
+				recvs++
+				proto.Merge(merged, chunk.RangeResponse)
+			}
+			require.Equalf(t, tt.wantCount, merged.Count, "Count")
+			require.Equalf(t, tt.wantMore, merged.More, "More")
+			require.Lenf(t, merged.Kvs, tt.wantKeys, "kv count")
+			require.GreaterOrEqualf(t, recvs, tt.wantMinRecv, "chunk count")
+		})
+	}
+}
+
+// TestV3RangeStreamPartialThenCompacted verifies that once the stream has
+// emitted partial results at a pinned revision, a compaction past that
+// revision causes the next chunk to surface ErrCompacted instead of silently
+// returning inconsistent data.
+func TestV3RangeStreamPartialThenCompacted(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	value := []byte(strings.Repeat("x", 10*1024))
+	for i := 0; i < 1000; i++ {
+		_, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("stream-%04d", i)),
+			Value: value,
+		})
+		require.NoError(t, err)
+	}
+
+	stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+		Key:      []byte("stream-"),
+		RangeEnd: []byte("stream."),
+	})
+	require.NoError(t, err)
+
+	received := 0
+	for received < 10 {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			t.Fatalf("stream ended before the test could compact; received %d keys", received)
+		}
+		require.NoError(t, rerr)
+		received += len(chunk.GetRangeResponse().GetKvs())
+	}
+
+	advance, err := kvc.Put(t.Context(), &pb.PutRequest{
+		Key:   []byte("zz-advance-revision"),
+		Value: []byte("x"),
+	})
+	require.NoError(t, err)
+
+	_, err = kvc.Compact(t.Context(), &pb.CompactionRequest{
+		Revision: advance.Header.Revision,
+		Physical: true,
+	})
+	require.NoError(t, err)
+
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			t.Fatalf("expected compacted error after receiving partial keys; received %d keys", received)
+		}
+
+		if rerr != nil {
+			require.Truef(t, eqErrGRPC(rerr, rpctypes.ErrGRPCCompacted), "got %v, expected %v", rerr, rpctypes.ErrGRPCCompacted)
+			require.GreaterOrEqual(t, received, 10)
+			return
+		}
+		received += len(chunk.GetRangeResponse().GetKvs())
 	}
 }
 

@@ -18,6 +18,9 @@ import (
 	"context"
 	"errors"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache"
@@ -68,6 +71,10 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 	cacheKeys.Set(float64(p.cache.Size()))
 
 	return gresp, nil
+}
+
+func (p *kvProxy) RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error {
+	return status.Error(codes.Unimplemented, "RangeStream is not supported by the gRPC proxy")
 }
 
 func (p *kvProxy) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {

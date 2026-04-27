@@ -29,6 +29,21 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
+// Count returns the number of keys in [key, rangeEnd) at the given revision.
+// A revision of 0 reads at the latest revision.
+func Count(ctx context.Context, lg *zap.Logger, kv mvcc.KV, key, rangeEnd []byte, revision int64) (int64, error) {
+	resp, _, err := Range(ctx, lg, kv, &pb.RangeRequest{
+		Key:       key,
+		RangeEnd:  rangeEnd,
+		Revision:  revision,
+		CountOnly: true,
+	}, false)
+	if err != nil {
+		return 0, err
+	}
+	return resp.Count, nil
+}
+
 func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest, withTotalCount bool) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
 	ctx, trace = traceutil.EnsureTrace(ctx, lg, "range")
 	defer func(start time.Time) {
@@ -69,7 +84,7 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 
 func rangeLimit(r *pb.RangeRequest) int64 {
 	limit := r.Limit
-	if !isDefaultOrdering(r.SortTarget, r.SortOrder) || hasRevisionFilters(r) {
+	if !IsDefaultOrdering(r.SortTarget, r.SortOrder) || HasRevisionFilters(r) {
 		limit = 0
 	}
 	if limit > 0 && limit < math.MaxInt64 {
@@ -78,7 +93,7 @@ func rangeLimit(r *pb.RangeRequest) int64 {
 	return limit
 }
 
-func isDefaultOrdering(sortTarget pb.RangeRequest_SortTarget, sortOrder pb.RangeRequest_SortOrder) bool {
+func IsDefaultOrdering(sortTarget pb.RangeRequest_SortTarget, sortOrder pb.RangeRequest_SortOrder) bool {
 	// Since current mvcc.Range implementation returns results
 	// sorted by keys in lexiographically ascending order,
 	// don't re-sort when target is 'KEY' and order is ASCEND
@@ -86,7 +101,7 @@ func isDefaultOrdering(sortTarget pb.RangeRequest_SortTarget, sortOrder pb.Range
 		(sortTarget == pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_ASCEND)
 }
 
-func hasRevisionFilters(r *pb.RangeRequest) bool {
+func HasRevisionFilters(r *pb.RangeRequest) bool {
 	return r.MinModRevision != 0 || r.MaxModRevision != 0 ||
 		r.MinCreateRevision != 0 || r.MaxCreateRevision != 0
 }
@@ -112,7 +127,7 @@ func sortRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest, lg *zap.Logger) 
 		sortOrder = pb.RangeRequest_ASCEND
 	}
 
-	if !isDefaultOrdering(r.SortTarget, sortOrder) {
+	if !IsDefaultOrdering(r.SortTarget, sortOrder) {
 		var sorter sort.Interface
 		switch {
 		case r.SortTarget == pb.RangeRequest_KEY:

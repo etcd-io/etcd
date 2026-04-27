@@ -22,7 +22,9 @@ import (
 	"sync"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/status"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 )
@@ -184,6 +186,10 @@ func (m *mockKVServer) DeleteRange(context.Context, *pb.DeleteRangeRequest) (*pb
 
 func (m *mockKVServer) Txn(context.Context, *pb.TxnRequest) (*pb.TxnResponse, error) {
 	return &pb.TxnResponse{}, nil
+}
+
+func (m *mockKVServer) RangeStream(*pb.RangeRequest, grpc.ServerStreamingServer[pb.RangeStreamResponse]) error {
+	return status.Error(codes.Unimplemented, "RangeStream is not supported by the mock server")
 }
 
 func (m *mockKVServer) Compact(context.Context, *pb.CompactionRequest) (*pb.CompactionResponse, error) {
