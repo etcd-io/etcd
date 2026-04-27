@@ -1705,9 +1705,10 @@ func (s *EtcdServer) mayAddMember(memb membership.Member) error {
 		return ErrNotEnoughStartedMembers
 	}
 
-	if !isConnectedFullySince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), s.cluster.VotingMembers()) {
+	// Treat the new member as unavailable when checking quorum safety.
+	if !isConnectedToQuorumAfterAddingNewMemberSince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), s.cluster.VotingMembers()) {
 		lg.Warn(
-			"rejecting member add request; local member has not been connected to all peers, reconfigure breaks active quorum",
+			"rejecting member add request; local member has not been connected to majority peers, reconfigure breaks active quorum",
 			zap.String("local-member-id", s.ID().String()),
 			zap.String("requested-member-add", fmt.Sprintf("%+v", memb)),
 			zap.Error(ErrUnhealthy),
