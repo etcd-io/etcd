@@ -64,25 +64,34 @@ func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest) *applyResult {
 }
 
 func (aa *authApplierV3) Put(txn mvcc.TxnWrite, r *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
-	if err := aa.as.IsPutPermitted(&aa.authInfo, r.Key); err != nil {
+	if err := checkPutAuth(aa.as, &aa.authInfo, aa.lessor, r); err != nil {
 		return nil, nil, err
 	}
 
-	if err := aa.checkLeasePuts(lease.LeaseID(r.Lease)); err != nil {
+	return aa.applierV3.Put(txn, r)
+}
+
+func checkPutAuth(as auth.AuthStore, ai *auth.AuthInfo, lessor lease.Lessor, r *pb.PutRequest) error {
+	if err := as.IsPutPermitted(ai, r.Key); err != nil {
+		return err
+	}
+
+	if err := checkLeasePuts(as, ai, lessor, lease.LeaseID(r.Lease)); err != nil {
 		// The specified lease is already attached with a key that cannot
 		// be written by this user. It means the user cannot revoke the
 		// lease so attaching the lease to the newly written key should
 		// be forbidden.
-		return nil, nil, err
+		return err
 	}
 
 	if r.PrevKv {
-		err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, nil)
+		err := as.IsRangePermitted(ai, r.Key, nil)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 	}
-	return aa.applierV3.Put(txn, r)
+
+	return nil
 }
 
 func (aa *authApplierV3) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -178,30 +187,30 @@ func (aa *authApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 }
 
 func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	if err := aa.checkLeasePuts(lease.LeaseID(lc.ID)); err != nil {
+	if err := checkLeasePuts(aa.as, &aa.authInfo, aa.lessor, lease.LeaseID(lc.ID)); err != nil {
 		return nil, err
 	}
 	return aa.applierV3.LeaseRevoke(lc)
 }
 
-func (aa *authApplierV3) checkLeasePuts(leaseID lease.LeaseID) error {
-	l := aa.lessor.Lookup(leaseID)
+func checkLeasePuts(as auth.AuthStore, ai *auth.AuthInfo, lessor lease.Lessor, leaseID lease.LeaseID) error {
+	l := lessor.Lookup(leaseID)
 	if l != nil {
-		return aa.checkLeasePutsKeys(l)
+		return checkLeasePutsKeys(as, ai, l)
 	}
 
 	return nil
 }
 
-func (aa *authApplierV3) checkLeasePutsKeys(l *lease.Lease) error {
+func checkLeasePutsKeys(as auth.AuthStore, ai *auth.AuthInfo, l *lease.Lease) error {
 	// early return for most-common scenario of either disabled auth or admin user.
 	// IsAdminPermitted also checks whether auth is enabled
-	if err := aa.as.IsAdminPermitted(&aa.authInfo); err == nil {
+	if err := as.IsAdminPermitted(ai); err == nil {
 		return nil
 	}
 
 	for _, key := range l.Keys() {
-		if err := aa.as.IsPutPermitted(&aa.authInfo, []byte(key)); err != nil {
+		if err := as.IsPutPermitted(ai, []byte(key)); err != nil {
 			return err
 		}
 	}

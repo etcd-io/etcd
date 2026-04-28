@@ -18,16 +18,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zaptest"
+	"golang.org/x/crypto/bcrypt"
+
 	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/auth/authpb"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/lease"
-	"golang.org/x/crypto/bcrypt"
-
 	betesting "go.etcd.io/etcd/mvcc/backend"
-
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestCheckLeasePutsKeys(t *testing.T) {
@@ -51,24 +50,24 @@ func TestCheckLeasePutsKeys(t *testing.T) {
 	defer as.AuthDisable()
 
 	aa := authApplierV3{as: as}
-	assert.NoError(t, aa.checkLeasePutsKeys(lease.NewLease(lease.LeaseID(1), 3600)), "auth is disabled, should allow puts")
+	assert.NoError(t, checkLeasePutsKeys(aa.as, &aa.authInfo, lease.NewLease(lease.LeaseID(1), 3600)), "auth is disabled, should allow puts")
 	assert.NoError(t, enableAuthAndCreateRoot(aa.as), "error while enabling auth")
 	aa.authInfo = auth.AuthInfo{Username: "root"}
-	assert.NoError(t, aa.checkLeasePutsKeys(lease.NewLease(lease.LeaseID(1), 3600)), "auth is enabled, should allow puts for root")
+	assert.NoError(t, checkLeasePutsKeys(aa.as, &aa.authInfo, lease.NewLease(lease.LeaseID(1), 3600)), "auth is enabled, should allow puts for root")
 
 	l := lease.NewLease(lease.LeaseID(1), 3600)
 	l.SetLeaseItem(lease.LeaseItem{Key: "a"})
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: 0}
-	assert.ErrorIs(t, aa.checkLeasePutsKeys(l), auth.ErrUserEmpty, "auth is enabled, should not allow bob, non existing at rev 0")
+	assert.ErrorIs(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrUserEmpty, "auth is enabled, should not allow bob, non existing at rev 0")
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: 1}
-	assert.ErrorIs(t, aa.checkLeasePutsKeys(l), auth.ErrAuthOldRevision, "auth is enabled, old revision")
+	assert.ErrorIs(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrAuthOldRevision, "auth is enabled, old revision")
 
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	assert.ErrorIs(t, aa.checkLeasePutsKeys(l), auth.ErrPermissionDenied, "auth is enabled, bob does not have permissions, bob does not exist")
+	assert.ErrorIs(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrPermissionDenied, "auth is enabled, bob does not have permissions, bob does not exist")
 	_, err := aa.as.UserAdd(&pb.AuthUserAddRequest{Name: "bob", Options: &authpb.UserAddOptions{NoPassword: true}})
 	assert.NoError(t, err, "bob should be added without error")
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	assert.ErrorIs(t, aa.checkLeasePutsKeys(l), auth.ErrPermissionDenied, "auth is enabled, bob exists yet does not have permissions")
+	assert.ErrorIs(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrPermissionDenied, "auth is enabled, bob exists yet does not have permissions")
 
 	// allow bob to access "a"
 	_, err = aa.as.RoleAdd(&pb.AuthRoleAddRequest{Name: "bobsrole"})
@@ -89,7 +88,7 @@ func TestCheckLeasePutsKeys(t *testing.T) {
 	assert.NoError(t, err, "bob should be granted bobsrole without error")
 
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	assert.NoError(t, aa.checkLeasePutsKeys(l), "bob should be able to access key 'a'")
+	assert.NoError(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), "bob should be able to access key 'a'")
 
 }
 
