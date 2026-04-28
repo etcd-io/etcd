@@ -21,7 +21,6 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/lease"
 )
 
@@ -107,10 +106,78 @@ func (aa *authApplierV3) DeleteRange(r *pb.DeleteRangeRequest) (*pb.DeleteRangeR
 }
 
 func (aa *authApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	if err := txn.CheckTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
+	if err := CheckTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
 		return nil, nil, err
 	}
 	return aa.applierV3.Txn(rt)
+}
+
+func CheckTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error {
+	return checkTxnPermission(as, ai, rt)
+}
+
+func checkTxnPermission(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error {
+	for _, c := range rt.Compare {
+		if err := as.IsRangePermitted(ai, c.Key, c.RangeEnd); err != nil {
+			return err
+		}
+	}
+	if err := checkTxnReqsPermission(as, ai, rt.Success); err != nil {
+		return err
+	}
+	return checkTxnReqsPermission(as, ai, rt.Failure)
+}
+
+func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.RequestOp) error {
+	for _, requ := range reqs {
+		switch tv := requ.Request.(type) {
+		case *pb.RequestOp_RequestRange:
+			if tv.RequestRange == nil {
+				continue
+			}
+
+			if err := as.IsRangePermitted(ai, tv.RequestRange.Key, tv.RequestRange.RangeEnd); err != nil {
+				return err
+			}
+
+		case *pb.RequestOp_RequestPut:
+			if tv.RequestPut == nil {
+				continue
+			}
+
+			if err := as.IsPutPermitted(ai, tv.RequestPut.Key); err != nil {
+				return err
+			}
+
+		case *pb.RequestOp_RequestDeleteRange:
+			if tv.RequestDeleteRange == nil {
+				continue
+			}
+
+			if tv.RequestDeleteRange.PrevKv {
+				err := as.IsRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
+				if err != nil {
+					return err
+				}
+			}
+
+			err := as.IsDeleteRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
+			if err != nil {
+				return err
+			}
+		case *pb.RequestOp_RequestTxn:
+			if tv.RequestTxn == nil {
+				continue
+			}
+
+			err := checkTxnPermission(as, ai, tv.RequestTxn)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
