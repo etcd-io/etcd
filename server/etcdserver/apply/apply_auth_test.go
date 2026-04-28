@@ -786,24 +786,24 @@ func TestAuthApplierV3_RoleGet(t *testing.T) {
 
 func TestCheckLeasePutsKeys(t *testing.T) {
 	aa := defaultAuthApplierV3(t)
-	require.NoErrorf(t, aa.checkLeasePutsKeys(lease.NewLease(lease.LeaseID(1), 3600)), "auth is disabled, should allow puts")
+	require.NoErrorf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, lease.NewLease(lease.LeaseID(1), 3600)), "auth is disabled, should allow puts")
 	mustCreateRolesAndEnableAuth(t, aa)
 	aa.authInfo = auth.AuthInfo{Username: "root"}
-	require.NoErrorf(t, aa.checkLeasePutsKeys(lease.NewLease(lease.LeaseID(1), 3600)), "auth is enabled, should allow puts for root")
+	require.NoErrorf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, lease.NewLease(lease.LeaseID(1), 3600)), "auth is enabled, should allow puts for root")
 
 	l := lease.NewLease(lease.LeaseID(1), 3600)
 	l.SetLeaseItem(lease.LeaseItem{Key: "a"})
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: 0}
-	require.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrUserEmpty, "auth is enabled, should not allow bob, non existing at rev 0")
+	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrUserEmpty, "auth is enabled, should not allow bob, non existing at rev 0")
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: 1}
-	require.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrAuthOldRevision, "auth is enabled, old revision")
+	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrAuthOldRevision, "auth is enabled, old revision")
 
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	require.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrPermissionDenied, "auth is enabled, bob does not have permissions, bob does not exist")
+	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrPermissionDenied, "auth is enabled, bob does not have permissions, bob does not exist")
 	_, err := aa.as.UserAdd(&pb.AuthUserAddRequest{Name: "bob", Options: &authpb.UserAddOptions{NoPassword: true}})
 	require.NoErrorf(t, err, "bob should be added without error")
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	require.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrPermissionDenied, "auth is enabled, bob exists yet does not have permissions")
+	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrPermissionDenied, "auth is enabled, bob exists yet does not have permissions")
 
 	// allow bob to access "a"
 	_, err = aa.as.RoleAdd(&pb.AuthRoleAddRequest{Name: "bobsrole"})
@@ -824,7 +824,7 @@ func TestCheckLeasePutsKeys(t *testing.T) {
 	require.NoErrorf(t, err, "bob should be granted bobsrole without error")
 
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	assert.NoErrorf(t, aa.checkLeasePutsKeys(l), "bob should be able to access key 'a'")
+	assert.NoErrorf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), "bob should be able to access key 'a'")
 }
 
 func TestCheckTxnAuth(t *testing.T) {
