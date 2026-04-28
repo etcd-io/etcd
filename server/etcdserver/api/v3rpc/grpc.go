@@ -46,6 +46,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	opts = append(opts, grpc.CustomCodec(&codec{})) //nolint:staticcheck // TODO: remove for a supported version
 	if tls != nil {
 		opts = append(opts, grpc.Creds(credentials.NewTransportCredential(tls)))
+		opts = append(opts, grpc.StatsHandler(&connStatsHandler{clientAuth: tls.ClientAuth}))
 	}
 
 	serverMetrics := getServerMetrics(s.Cfg.Metrics, s.Cfg.Logger)
@@ -74,7 +75,6 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	opts = append(opts, grpc.MaxRecvMsgSize(int(s.Cfg.MaxRequestBytesWithOverhead())))
 	opts = append(opts, grpc.MaxSendMsgSize(maxSendBytes))
 	opts = append(opts, grpc.MaxConcurrentStreams(s.Cfg.MaxConcurrentStreams))
-	opts = append(opts, grpc.StatsHandler(&connStatsHandler{}))
 
 	grpcServer := grpc.NewServer(append(opts, gopts...)...)
 

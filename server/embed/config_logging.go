@@ -16,7 +16,6 @@ package embed
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,7 +31,6 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
-	"go.etcd.io/etcd/server/v3/auth"
 )
 
 // GetLogger returns the logger.
@@ -173,11 +171,6 @@ func (cfg *Config) setupLogging() error {
 				logFunc := cfg.logger.Warn
 				if errors.Is(err, io.EOF) {
 					logFunc = cfg.logger.Debug
-				}
-
-				var certErr x509.CertificateInvalidError
-				if errors.As(err, &certErr) && certErr.Reason == x509.Expired {
-					auth.RecordMtlsFailure(auth.FailReasonExpiredCertificate)
 				}
 
 				state := conn.ConnectionState()
