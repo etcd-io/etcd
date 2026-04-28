@@ -115,29 +115,29 @@ func (aa *authApplierV3) DeleteRange(r *pb.DeleteRangeRequest) (*pb.DeleteRangeR
 }
 
 func (aa *authApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	if err := CheckTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
+	if err := CheckTxnAuth(aa.as, &aa.authInfo, aa.lessor, rt); err != nil {
 		return nil, nil, err
 	}
 	return aa.applierV3.Txn(rt)
 }
 
-func CheckTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error {
-	return checkTxnPermission(as, ai, rt)
+func CheckTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, lessor lease.Lessor, rt *pb.TxnRequest) error {
+	return checkTxnPermission(as, ai, lessor, rt)
 }
 
-func checkTxnPermission(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error {
+func checkTxnPermission(as auth.AuthStore, ai *auth.AuthInfo, lessor lease.Lessor, rt *pb.TxnRequest) error {
 	for _, c := range rt.Compare {
 		if err := as.IsRangePermitted(ai, c.Key, c.RangeEnd); err != nil {
 			return err
 		}
 	}
-	if err := checkTxnReqsPermission(as, ai, rt.Success); err != nil {
+	if err := checkTxnReqsPermission(as, ai, lessor, rt.Success); err != nil {
 		return err
 	}
-	return checkTxnReqsPermission(as, ai, rt.Failure)
+	return checkTxnReqsPermission(as, ai, lessor, rt.Failure)
 }
 
-func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.RequestOp) error {
+func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, lessor lease.Lessor, reqs []*pb.RequestOp) error {
 	for _, requ := range reqs {
 		switch tv := requ.Request.(type) {
 		case *pb.RequestOp_RequestRange:
@@ -154,10 +154,9 @@ func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.Req
 				continue
 			}
 
-			if err := as.IsPutPermitted(ai, tv.RequestPut.Key); err != nil {
+			if err := checkPutAuth(as, ai, lessor, tv.RequestPut); err != nil {
 				return err
 			}
-
 		case *pb.RequestOp_RequestDeleteRange:
 			if tv.RequestDeleteRange == nil {
 				continue
@@ -179,7 +178,7 @@ func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.Req
 				continue
 			}
 
-			err := checkTxnPermission(as, ai, tv.RequestTxn)
+			err := checkTxnPermission(as, ai, lessor, tv.RequestTxn)
 			if err != nil {
 				return err
 			}
