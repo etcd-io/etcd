@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
@@ -33,6 +34,7 @@ func TestGRPCError(t *testing.T) {
 	}{
 		{err: mvcc.ErrCompacted, exp: rpctypes.ErrGRPCCompacted},
 		{err: mvcc.ErrFutureRev, exp: rpctypes.ErrGRPCFutureRev},
+		{err: lease.ErrNotPrimary, exp: rpctypes.ErrGRPCLeaseNotPrimary},
 		{err: context.Canceled, exp: context.Canceled},
 		{err: context.DeadlineExceeded, exp: context.DeadlineExceeded},
 		{err: errors.New("foo"), exp: status.Error(codes.Unknown, "foo")},
