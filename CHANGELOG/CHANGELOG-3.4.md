@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.44 (TBC)
 
+### etcd server
+
+- Fix RBAC authorization bypass allowing read access via PrevKv or lease attachment in Put requests nested in etcd transactions (see [PR/21683](https://github.com/etcd-io/etcd/pull/21683) and [PR/21688](https://github.com/etcd-io/etcd/pull/21688))
+
 ---
 
 ## v3.4.43 (2026-04-01)
