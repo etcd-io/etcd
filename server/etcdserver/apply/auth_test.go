@@ -1043,7 +1043,7 @@ func TestCheckTxnAuth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CheckTxnAuth(as, &auth.AuthInfo{Username: "foo", Revision: 8}, tt.txnRequest)
+			err := CheckTxnAuth(as, &auth.AuthInfo{Username: "foo", Revision: 8}, &lease.FakeLessor{}, tt.txnRequest)
 			assert.Equal(t, tt.err, err)
 		})
 	}
