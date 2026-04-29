@@ -27,6 +27,17 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
+func TestLeaseNotPrimaryReturnsUnavailable(t *testing.T) {
+	err := togRPCError(lease.ErrNotPrimary)
+	s, ok := status.FromError(err)
+	if !ok {
+		t.Fatalf("expected gRPC status error, got %v", err)
+	}
+	if s.Code() != codes.Unavailable {
+		t.Errorf("expected codes.Unavailable, got %v", s.Code())
+	}
+}
+
 func TestGRPCError(t *testing.T) {
 	tt := []struct {
 		err error
