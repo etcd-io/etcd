@@ -9,6 +9,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### etcd server
 
 - [Fixed an issue that prevented adding a new member when one member was down, even though quorum was still satisfied](https://github.com/etcd-io/etcd/pull/21669)
+- Fix RBAC authorization bypass allowing read access via PrevKv or lease attachment in Put requests nested in etcd transactions (see [PR/21682](https://github.com/etcd-io/etcd/pull/21682) and [PR/21687](https://github.com/etcd-io/etcd/pull/21687))
 
 ---
 
