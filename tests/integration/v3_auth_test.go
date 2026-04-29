@@ -234,6 +234,7 @@ type user struct {
 	name     string
 	password string
 	role     string
+	perm     string
 	key      string
 	end      string
 }
@@ -370,8 +371,15 @@ func authSetupUsers(t *testing.T, auth pb.AuthClient, users []user) {
 			continue
 		}
 
+		permType := authpb.READWRITE
+		if len(user.perm) > 0 {
+			val, ok := authpb.Permission_Type_value[strings.ToUpper(user.perm)]
+			if ok {
+				permType = authpb.Permission_Type(val)
+			}
+		}
 		perm := &authpb.Permission{
-			PermType: authpb.READWRITE,
+			PermType: permType,
 			Key:      []byte(user.key),
 			RangeEnd: []byte(user.end),
 		}
@@ -1039,4 +1047,50 @@ func TestV3AuthCompact(t *testing.T) {
 
 	_, err = rootCli.Compact(ctx, 1, clientv3.WithCompactPhysical())
 	require.NoError(t, err)
+}
+
+func TestReadWithPrevKvInTXN(t *testing.T) {
+	BeforeTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	users := []user{
+		{
+			name:     "user1",
+			password: "user1-123",
+			role:     "role1",
+			perm:     "write",
+			key:      "foo",
+			end:      "zoo",
+		},
+	}
+	anonCli := toGRPC(clus.Client(0))
+	authSetupUsers(t, anonCli.Auth, users)
+	authSetupRoot(t, anonCli.Auth)
+
+	rootc, err := NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, err)
+	defer rootc.Close()
+
+	userc, err := NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "user1",
+		Password:  "user1-123",
+	})
+	require.NoError(t, err)
+	defer userc.Close()
+
+	_, err = rootc.Put(t.Context(), "foo", "bar")
+	require.NoError(t, err)
+
+	_, err = userc.Txn(t.Context()).
+		Then(clientv3.OpPut("foo", "new", clientv3.WithPrevKV())).
+		Commit()
+
+	require.Error(t, err)
+	require.Truef(t, eqErrGRPC(err, rpctypes.ErrGRPCPermissionDenied), "got %v, expected %v", err, rpctypes.ErrGRPCPermissionDenied)
 }
