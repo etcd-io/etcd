@@ -261,5 +261,6 @@ func getHashCommandFunc(_ *cobra.Command, args []string) {
 
 func getHash(dbPath string) (hash uint32, err error) {
 	b := backend.NewDefaultBackend(zap.NewNop(), dbPath, backend.WithTimeout(FlockTimeout))
+	defer b.Close()
 	return b.Hash(schema.DefaultIgnores)
 }
