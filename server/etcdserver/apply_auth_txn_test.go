@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/auth"
+	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 )
@@ -386,7 +387,7 @@ func TestCheckTxnAuth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := checkTxnAuth(as, &auth.AuthInfo{Username: "foo", Revision: 8}, tt.txnRequest)
+			err := checkTxnAuth(as, &auth.AuthInfo{Username: "foo", Revision: 8}, &lease.FakeLessor{}, tt.txnRequest)
 			assert.Equal(t, tt.err, err)
 		})
 	}
