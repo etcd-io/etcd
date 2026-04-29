@@ -52,6 +52,7 @@ func DefragData(dataDir string) error {
 		GetLogger(),
 		datadir.ToBackendFileName(dataDir),
 		backend.WithTimeout(FlockTimeout))
+	defer b.Close()
 
 	return b.Defrag()
 }
