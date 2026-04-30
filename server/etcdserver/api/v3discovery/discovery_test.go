@@ -748,6 +748,10 @@ func (fkv *fakeBaseKV) Get(ctx context.Context, key string, opts ...clientv3.OpO
 	return nil, nil
 }
 
+func (fkv *fakeBaseKV) GetStream(ctx context.Context, key string, opts ...clientv3.OpOption) (clientv3.GetStreamChan, error) {
+	return nil, nil
+}
+
 func (fkv *fakeBaseKV) Delete(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
 	return nil, nil
 }

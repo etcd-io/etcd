@@ -25,6 +25,7 @@ import (
 func init() {
 	testRunner = framework.IntegrationTestRunner
 	clusterTestCases = integrationClusterTestCases
+	supportsGetStream = true
 }
 
 func integrationClusterTestCases() []testCase {

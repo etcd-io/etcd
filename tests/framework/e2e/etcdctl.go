@@ -104,6 +104,9 @@ func (ctl *EtcdctlV3) DowngradeCancel(ctx context.Context) error {
 }
 
 func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) (*clientv3.GetResponse, error) {
+	if o.Stream {
+		return nil, fmt.Errorf("etcdctl has no RangeStream command; Stream=true is not supported by the e2e backend")
+	}
 	var args []string
 	if o.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))

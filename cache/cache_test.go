@@ -640,6 +640,10 @@ func (s *kvStub) Compact(ctx context.Context, rev int64, _ ...clientv3.CompactOp
 	return nil, nil
 }
 
+func (s *kvStub) GetStream(ctx context.Context, key string, opts ...clientv3.OpOption) (clientv3.GetStreamChan, error) {
+	return nil, errors.New("GetStream not implemented")
+}
+
 func (s *kvStub) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse, error) {
 	return clientv3.OpResponse{}, nil
 }
