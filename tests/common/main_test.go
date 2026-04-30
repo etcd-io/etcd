@@ -22,8 +22,9 @@ import (
 )
 
 var (
-	testRunner       intf.TestRunner
-	clusterTestCases func() []testCase
+	testRunner        intf.TestRunner
+	clusterTestCases  func() []testCase
+	supportsGetStream bool
 )
 
 func TestMain(m *testing.M) {

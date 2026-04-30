@@ -91,6 +91,11 @@ func (lkv *leasingKV) Put(ctx context.Context, key, val string, opts ...v3.OpOpt
 	return lkv.put(ctx, v3.OpPut(key, val, opts...))
 }
 
+// GetStream is not supported by leasingKV.
+func (lkv *leasingKV) GetStream(ctx context.Context, key string, opts ...v3.OpOption) (v3.GetStreamChan, error) {
+	return nil, status.Error(codes.Unimplemented, "GetStream is not supported by leasingKV")
+}
+
 func (lkv *leasingKV) Delete(ctx context.Context, key string, opts ...v3.OpOption) (*v3.DeleteResponse, error) {
 	return lkv.delete(ctx, v3.OpDelete(key, opts...))
 }

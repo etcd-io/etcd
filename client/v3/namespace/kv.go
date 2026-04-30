@@ -17,6 +17,9 @@ package namespace
 import (
 	"context"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -62,6 +65,11 @@ func (kv *kvPrefix) Get(ctx context.Context, key string, opts ...clientv3.OpOpti
 	get := r.Get()
 	kv.unprefixGetResponse(get)
 	return get, nil
+}
+
+// GetStream is not supported by kvPrefix.
+func (kv *kvPrefix) GetStream(ctx context.Context, key string, opts ...clientv3.OpOption) (clientv3.GetStreamChan, error) {
+	return nil, status.Error(codes.Unimplemented, "GetStream is not supported by kvPrefix")
 }
 
 func (kv *kvPrefix) Delete(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {

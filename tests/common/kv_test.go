@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -153,11 +154,20 @@ func TestKVGet(t *testing.T) {
 				}
 				for _, tt := range slices.Concat(tests, testsWithKeysOnly) {
 					t.Run(tt.name, func(t *testing.T) {
-						resp, err := cc.Get(ctx, tt.begin, tt.options)
-						require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
-						resp.Header.MemberId = 0
-						resp.Header.RaftTerm = 0
-						assert.Equal(t, tt.wantResponse, resp)
+						for _, stream := range []bool{true, false} {
+							t.Run(fmt.Sprintf("Stream=%v", stream), func(t *testing.T) {
+								if !supportsGetStream || !rangeStreamSupports(tt.options) {
+									t.Skip("Stream not supported")
+								}
+								opts := tt.options
+								opts.Stream = stream
+								resp, err := cc.Get(ctx, tt.begin, opts)
+								require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
+								resp.Header.MemberId = 0
+								resp.Header.RaftTerm = 0
+								assert.Equal(t, tt.wantResponse, resp)
+							})
+						}
 					})
 				}
 			})
@@ -173,6 +183,23 @@ func createKV(key, val string, createRev, modRev, ver int64) *mvccpb.KeyValue {
 		ModRevision:    modRev,
 		Version:        ver,
 	}
+}
+
+// rangeStreamSupports reports whether the server's RangeStream RPC accepts a
+// request with these options, mirroring v3rpc.checkRangeStreamRequest.
+func rangeStreamSupports(o config.GetOptions) bool {
+	if !txn.IsDefaultOrdering(
+		etcdserverpb.RangeRequest_SortTarget(o.SortBy),
+		etcdserverpb.RangeRequest_SortOrder(o.Order),
+	) {
+		return false
+	}
+	return !txn.HasRevisionFilters(&etcdserverpb.RangeRequest{
+		MinModRevision:    int64(o.MinModRevision),
+		MaxModRevision:    int64(o.MaxModRevision),
+		MinCreateRevision: int64(o.MinCreateRevision),
+		MaxCreateRevision: int64(o.MaxCreateRevision),
+	})
 }
 
 func dropValue(s []*mvccpb.KeyValue) []*mvccpb.KeyValue {

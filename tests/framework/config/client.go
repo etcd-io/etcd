@@ -43,6 +43,7 @@ type GetOptions struct {
 	MaxModRevision    int
 	MinCreateRevision int
 	MaxCreateRevision int
+	Stream            bool
 }
 
 type PutOptions struct {
