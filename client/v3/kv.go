@@ -179,7 +179,7 @@ func (kv *kv) GetStream(ctx context.Context, key string, opts ...OpOption) (GetS
 			resp, err := c.Recv()
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
-					respCh <- RangeStreamResponse{closeErr: err}
+					respCh <- RangeStreamResponse{closeErr: ContextError(ctx, err)}
 				}
 				return
 			}

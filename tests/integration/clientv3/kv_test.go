@@ -460,6 +460,35 @@ func TestKVCompact(t *testing.T) {
 	}
 }
 
+// TestKVGetStreamCompactedError ensures GetStream surfaces the typed
+// rpctypes.ErrCompacted error from the server (matching Get's behavior),
+// rather than the raw gRPC status.
+func TestKVGetStreamCompactedError(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clus.RandClient()
+	ctx := t.Context()
+
+	for i := 0; i < 5; i++ {
+		_, err := kv.Put(ctx, "foo", "bar")
+		require.NoError(t, err)
+	}
+	_, err := kv.Compact(ctx, 6)
+	require.NoError(t, err)
+
+	_, err = kv.Get(ctx, "foo", clientv3.WithRev(3))
+	require.ErrorIsf(t, err, rpctypes.ErrCompacted, "Get returned %T %v", err, err)
+
+	stream, err := kv.GetStream(ctx, "foo", clientv3.WithRev(3))
+	require.NoError(t, err)
+
+	_, err = clientv3.GetStreamToGetResponse(stream)
+	require.ErrorIsf(t, err, rpctypes.ErrCompacted, "GetStream returned %T %v", err, err)
+}
+
 // TestKVGetRetry ensures get will retry on disconnect.
 func TestKVGetRetry(t *testing.T) {
 	integration.BeforeTest(t)
