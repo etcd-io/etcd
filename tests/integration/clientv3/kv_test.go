@@ -464,6 +464,9 @@ func TestKVCompact(t *testing.T) {
 // rpctypes.ErrCompacted error from the server (matching Get's behavior),
 // rather than the raw gRPC status.
 func TestKVGetStreamCompactedError(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the KV client adapter")
+	}
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
