@@ -37,9 +37,11 @@ var (
 		// Please keep the sum of weights equal 100.
 		requests: []random.ChoiceWeight[etcdRequestType]{
 			{Choice: Get, Weight: 15},
-			{Choice: List, Weight: 15},
+			{Choice: List, Weight: 8},
+			{Choice: ListStream, Weight: 7},
 			{Choice: StaleGet, Weight: 10},
-			{Choice: StaleList, Weight: 10},
+			{Choice: StaleList, Weight: 5},
+			{Choice: StaleListStream, Weight: 5},
 			{Choice: Delete, Weight: 5},
 			{Choice: MultiOpTxn, Weight: 10},
 			{Choice: PutWithLease, Weight: 5},
@@ -54,9 +56,11 @@ var (
 		// Please keep the sum of weights equal 100.
 		requests: []random.ChoiceWeight[etcdRequestType]{
 			{Choice: Get, Weight: 15},
-			{Choice: List, Weight: 15},
+			{Choice: List, Weight: 8},
+			{Choice: ListStream, Weight: 7},
 			{Choice: StaleGet, Weight: 10},
-			{Choice: StaleList, Weight: 10},
+			{Choice: StaleList, Weight: 5},
+			{Choice: StaleListStream, Weight: 5},
 			{Choice: MultiOpTxn, Weight: 10},
 			{Choice: Put, Weight: 40},
 		},
@@ -85,17 +89,19 @@ func (t etcdTraffic) ExpectUniqueRevision() bool {
 type etcdRequestType string
 
 const (
-	Get           etcdRequestType = "get"
-	StaleGet      etcdRequestType = "staleGet"
-	List          etcdRequestType = "list"
-	StaleList     etcdRequestType = "staleList"
-	Put           etcdRequestType = "put"
-	Delete        etcdRequestType = "delete"
-	MultiOpTxn    etcdRequestType = "multiOpTxn"
-	PutWithLease  etcdRequestType = "putWithLease"
-	LeaseRevoke   etcdRequestType = "leaseRevoke"
-	CompareAndSet etcdRequestType = "compareAndSet"
-	Defragment    etcdRequestType = "defragment"
+	Get             etcdRequestType = "get"
+	StaleGet        etcdRequestType = "staleGet"
+	List            etcdRequestType = "list"
+	StaleList       etcdRequestType = "staleList"
+	ListStream      etcdRequestType = "listStream"
+	StaleListStream etcdRequestType = "staleListStream"
+	Put             etcdRequestType = "put"
+	Delete          etcdRequestType = "delete"
+	MultiOpTxn      etcdRequestType = "multiOpTxn"
+	PutWithLease    etcdRequestType = "putWithLease"
+	LeaseRevoke     etcdRequestType = "leaseRevoke"
+	CompareAndSet   etcdRequestType = "compareAndSet"
+	Defragment      etcdRequestType = "defragment"
 )
 
 func (t etcdTraffic) Name() string {
@@ -230,6 +236,19 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	case StaleList:
 		var resp *clientv3.GetResponse
 		resp, err = c.client.Range(opCtx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), lastRev, limit)
+		if resp != nil {
+			rev = resp.Header.Revision
+		}
+	case ListStream:
+		var resp *clientv3.GetResponse
+		resp, err = c.client.RangeStream(opCtx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), 0, limit)
+		if resp != nil {
+			c.keyStore.SyncKeys(resp)
+			rev = resp.Header.Revision
+		}
+	case StaleListStream:
+		var resp *clientv3.GetResponse
+		resp, err = c.client.RangeStream(opCtx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), lastRev, limit)
 		if resp != nil {
 			rev = resp.Header.Revision
 		}

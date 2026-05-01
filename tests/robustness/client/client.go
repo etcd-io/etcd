@@ -113,6 +113,30 @@ func (c *RecordingClient) Range(ctx context.Context, start, end string, revision
 	return resp, err
 }
 
+func (c *RecordingClient) RangeStream(ctx context.Context, start, end string, revision, limit int64) (*clientv3.GetResponse, error) {
+	ops := []clientv3.OpOption{}
+	if end != "" {
+		ops = append(ops, clientv3.WithRange(end))
+	}
+	if revision != 0 {
+		ops = append(ops, clientv3.WithRev(revision))
+	}
+	if limit != 0 {
+		ops = append(ops, clientv3.WithLimit(limit))
+	}
+	c.kvMux.Lock()
+	defer c.kvMux.Unlock()
+	callTime := time.Since(c.baseTime)
+	stream, err := c.client.GetStream(ctx, start, ops...)
+	var resp *clientv3.GetResponse
+	if err == nil {
+		resp, err = clientv3.GetStreamToGetResponse(stream)
+	}
+	returnTime := time.Since(c.baseTime)
+	c.kvOperations.AppendRange(start, end, revision, limit, callTime, returnTime, resp, err)
+	return resp, err
+}
+
 func (c *RecordingClient) Put(ctx context.Context, key, value string, _ ...clientv3.OpOption) (*clientv3.PutResponse, error) {
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
