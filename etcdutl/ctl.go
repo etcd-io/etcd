@@ -48,9 +48,6 @@ func init() {
 		etcdutl.NewVersionCommand(),
 		etcdutl.NewCompletionCommand(),
 		etcdutl.NewMigrateCommand(),
-		etcdutl.NewListBucketCommand(),
-		etcdutl.NewIterateBucketCommand(),
-		etcdutl.NewHashCommand(),
 	)
 }
 
