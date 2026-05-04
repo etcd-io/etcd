@@ -158,19 +158,19 @@ func (e *Election) Leader(ctx context.Context) (*v3.GetResponse, error) {
 }
 
 // Observe returns a channel that reliably observes ordered leader proposals
-// as GetResponse values on every current elected leader key. It will not
+// as GetResponse pointers on every current elected leader key. It will not
 // necessarily fetch all historical leader updates, but will always post the
 // most recent leader value.
 //
 // The channel closes when the context is canceled or the underlying watcher
 // is otherwise disrupted.
-func (e *Election) Observe(ctx context.Context) <-chan v3.GetResponse {
-	retc := make(chan v3.GetResponse)
+func (e *Election) Observe(ctx context.Context) <-chan *v3.GetResponse {
+	retc := make(chan *v3.GetResponse)
 	go e.observe(ctx, retc)
 	return retc
 }
 
-func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
+func (e *Election) observe(ctx context.Context, ch chan<- *v3.GetResponse) {
 	client := e.session.Client()
 
 	defer close(ch)
@@ -211,7 +211,7 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 		}
 
 		select {
-		case ch <- v3.GetResponse{Header: hdr, Kvs: []*mvccpb.KeyValue{kv}}:
+		case ch <- &v3.GetResponse{Header: hdr, Kvs: []*mvccpb.KeyValue{kv}}:
 		case <-ctx.Done():
 			return
 		}
@@ -230,10 +230,10 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 					keyDeleted = true
 					break
 				}
-				resp.Header = &wr.Header
-				resp.Kvs = []*mvccpb.KeyValue{ev.Kv}
 				select {
-				case ch <- *resp:
+				case ch <- &v3.GetResponse{
+					Header: &wr.Header,
+					Kvs:    []*mvccpb.KeyValue{ev.Kv}}:
 				case <-cctx.Done():
 					cancel()
 					return

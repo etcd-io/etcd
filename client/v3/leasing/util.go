@@ -18,6 +18,7 @@ import (
 	"bytes"
 
 	v3pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -98,8 +99,53 @@ func gatherResponseOps(resp []*v3pb.ResponseOp, ops []v3.Op) (ret []v3.Op) {
 }
 
 func copyHeader(hdr *v3pb.ResponseHeader) *v3pb.ResponseHeader {
-	h := *hdr
-	return &h
+	if hdr == nil {
+		return nil
+	}
+
+	return &v3pb.ResponseHeader{
+		ClusterId: hdr.GetClusterId(),
+		MemberId:  hdr.GetMemberId(),
+		Revision:  hdr.GetRevision(),
+		RaftTerm:  hdr.GetRaftTerm(),
+	}
+}
+
+func copyGetResponseMetadataOnly(resp *v3.GetResponse) *v3.GetResponse {
+	if resp == nil {
+		return nil
+	}
+
+	return &v3.GetResponse{
+		Header: copyHeader(resp.Header),
+		Kvs:    nil,
+		More:   resp.More,
+		Count:  resp.Count,
+	}
+}
+
+func copyKeyValue(kv *mvccpb.KeyValue, keysOnly bool) *mvccpb.KeyValue {
+	if kv == nil {
+		return nil
+	}
+
+	key := make([]byte, len(kv.Key))
+	copy(key, kv.Key)
+
+	var value []byte
+	if !keysOnly {
+		value = make([]byte, len(kv.Value))
+		copy(value, kv.Value)
+	}
+
+	return &mvccpb.KeyValue{
+		Key:            key,
+		CreateRevision: kv.CreateRevision,
+		ModRevision:    kv.ModRevision,
+		Version:        kv.Version,
+		Value:          value,
+		Lease:          kv.Lease,
+	}
 }
 
 func closeAll(chs []chan<- struct{}) {
