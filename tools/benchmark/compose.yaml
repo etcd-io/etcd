@@ -1,0 +1,44 @@
+---
+name: etcd-benchmark
+
+services:
+  etcd:
+    build:
+      context: ../..
+      dockerfile: tools/benchmark/Dockerfile
+      target: etcd
+    environment:
+      ETCD_NAME: benchmark-etcd
+      ETCD_DATA_DIR: /var/lib/etcd
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd:2380
+      ETCD_INITIAL_CLUSTER: benchmark-etcd=http://etcd:2380
+      ETCD_LOG_LEVEL: warn
+    tmpfs:
+      - /var/lib/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "--endpoints=http://127.0.0.1:2379", "endpoint", "health"]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: tools/benchmark/Dockerfile
+      target: benchmark
+    depends_on:
+      etcd:
+        condition: service_healthy
+    command:
+      - --endpoints=http://etcd:2379
+      - --conns=${CONNS:-1}
+      - --clients=${CLIENTS:-1}
+      - --sample
+      - put
+      - --key-size=${KEY_SIZE:-8}
+      - --sequential-keys
+      - --total=${TOTAL:-10000}
+      - --val-size=${VAL_SIZE:-256}
