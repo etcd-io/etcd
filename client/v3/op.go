@@ -55,7 +55,8 @@ type Op struct {
 	// fragmentation should be disabled by default
 	// if true, split watch events when total exceeds
 	// "--max-request-bytes" flag value + 512-byte
-	fragment bool
+	fragment           bool
+	watchBufLogEnabled bool
 
 	// for put
 	ignoreValue bool
@@ -553,6 +554,11 @@ func WithPrevKV() OpOption {
 // See "etcdserver/api/v3rpc/watch.go" for more details.
 func WithFragment() OpOption {
 	return func(op *Op) { op.fragment = true }
+}
+
+// WithWatchBufLog enables watch response buffer logging.
+func WithWatchBufLog() OpOption {
+	return func(op *Op) { op.watchBufLogEnabled = true }
 }
 
 // WithIgnoreValue updates the key using its current value.
