@@ -4,12 +4,21 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.11 (TBC)
+## v3.6.12 (TBC)
+
+---
+
+## v3.6.11 (2026-05-01)
 
 ### etcd server
 
 - [Fixed an issue that prevented adding a new member when one member was down, even though quorum was still satisfied](https://github.com/etcd-io/etcd/pull/21667)
 - Fix RBAC authorization bypass allowing read access via PrevKv or lease attachment in Put requests nested in etcd transactions (see [PR/21681](https://github.com/etcd-io/etcd/pull/21681) and [PR/21685](https://github.com/etcd-io/etcd/pull/21685))
+
+### Dependencies
+
+- [Bump golang.org/x/image to v0.39.0 to resolve GO-2026-4962](https://github.com/etcd-io/etcd/pull/21668)
+- Compile binaries using [go 1.25.9](https://github.com/etcd-io/etcd/pull/21586)
 
 ---
 
