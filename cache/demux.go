@@ -170,7 +170,7 @@ func (d *demux) BroadcastProgress() {
 		return
 	}
 	resp := clientv3.WatchResponse{
-		Header: etcdserverpb.ResponseHeader{
+		Header: &etcdserverpb.ResponseHeader{
 			Revision: d.maxRev,
 		},
 	}
@@ -189,7 +189,7 @@ func (d *demux) BroadcastProgressTo(w *watcher) {
 		return
 	}
 	resp := clientv3.WatchResponse{
-		Header: etcdserverpb.ResponseHeader{
+		Header: &etcdserverpb.ResponseHeader{
 			Revision: d.maxRev,
 		},
 	}
@@ -242,7 +242,7 @@ func (d *demux) broadcastProgressLocked(progressRev int64) {
 			continue
 		}
 		resp := clientv3.WatchResponse{
-			Header: etcdserverpb.ResponseHeader{
+			Header: &etcdserverpb.ResponseHeader{
 				Revision: progressRev,
 			},
 		}
@@ -345,7 +345,7 @@ func (d *demux) resyncLaggingWatchers() {
 		// Send progress to just resync.
 		if resyncSuccess {
 			resp := clientv3.WatchResponse{
-				Header: etcdserverpb.ResponseHeader{Revision: d.maxRev},
+				Header: &etcdserverpb.ResponseHeader{Revision: d.maxRev},
 			}
 			if d.maxRev > nextRev && w.enqueueResponse(resp) {
 				nextRev = d.maxRev + 1

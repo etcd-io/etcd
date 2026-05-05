@@ -402,6 +402,25 @@ func TestValidateWatchRange(t *testing.T) {
 	}
 }
 
+func TestCacheInvalidWatchResponseHasHeader(t *testing.T) {
+	ready := newReady()
+	ready.Set()
+	c := &Cache{
+		prefix: "/foo",
+		ready:  ready,
+	}
+
+	ch := c.Watch(t.Context(), "/bar")
+
+	resp := <-ch
+	if !resp.Canceled {
+		t.Fatalf("expected canceled response, got %+v", resp)
+	}
+	if resp.Header == nil {
+		t.Fatal("expected non-nil response header")
+	}
+}
+
 func TestCacheCompactionResync(t *testing.T) {
 	firstSnapshot := &clientv3.GetResponse{
 		Header: &pb.ResponseHeader{Revision: 5},

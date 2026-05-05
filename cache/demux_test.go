@@ -336,6 +336,16 @@ func TestSlowWatcherResync(t *testing.T) {
 	}
 }
 
+func TestWatcherCompactResponseHasHeader(t *testing.T) {
+	w := newWatcher(1, nil)
+
+	w.Compact(7)
+
+	require.NotNil(t, w.cancelResp.Header)
+	require.True(t, w.cancelResp.Canceled)
+	require.Equal(t, int64(7), w.cancelResp.CompactRevision)
+}
+
 func TestBroadcastProgress(t *testing.T) {
 	t.Run("sends progress to active watchers", func(t *testing.T) {
 		d := newDemux(16, 10*time.Millisecond)
@@ -496,6 +506,7 @@ func readBatches(t *testing.T, w *watcher, n int) (revs []int64, sizes []int) {
 			if len(resp.Events) == 0 {
 				continue
 			}
+			require.NotNil(t, resp.Header)
 			revs = append(revs, resp.Events[0].Kv.ModRevision)
 			sizes = append(sizes, len(resp.Events))
 		case <-timeout:

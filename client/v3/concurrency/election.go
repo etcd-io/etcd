@@ -197,7 +197,7 @@ func (e *Election) observe(ctx context.Context, ch chan<- *v3.GetResponse) {
 				// only accept puts; a delete will make observe() spin
 				for _, ev := range wr.Events {
 					if ev.Type == mvccpb.Event_PUT {
-						hdr, kv = &wr.Header, ev.Kv
+						hdr, kv = wr.Header, ev.Kv
 						// may have multiple revs; hdr.rev = the last rev
 						// set to kv's rev in case batch has multiple Puts
 						hdr.Revision = kv.ModRevision
@@ -232,7 +232,7 @@ func (e *Election) observe(ctx context.Context, ch chan<- *v3.GetResponse) {
 				}
 				select {
 				case ch <- &v3.GetResponse{
-					Header: &wr.Header,
+					Header: wr.Header,
 					Kvs:    []*mvccpb.KeyValue{ev.Kv}}:
 				case <-cctx.Done():
 					cancel()
