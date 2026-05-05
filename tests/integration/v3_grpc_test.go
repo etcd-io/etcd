@@ -1765,6 +1765,69 @@ func TestV3RangeStreamPartialThenCompacted(t *testing.T) {
 	}
 }
 
+func TestV3RangeStreamWriteBetweenChunks(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+
+	// Relies on an implementation detail that n > 10 yields multiple chunks.
+	const nKeys = 25
+	var pinnedRev int64
+	for i := 0; i < nKeys; i++ {
+		resp, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("k%02d", i)),
+			Value: []byte("v"),
+		})
+		require.NoError(t, err)
+		pinnedRev = resp.Header.Revision
+	}
+
+	stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+		Key:      []byte("k00"),
+		RangeEnd: []byte("l"),
+	})
+	require.NoError(t, err)
+
+	// Recv before Put so the Put is guaranteed to be after the revision pin.
+	first, err := stream.Recv()
+	require.NoError(t, err)
+	require.NotEmpty(t, first.GetRangeResponse().GetKvs())
+
+	_, err = kvc.Put(t.Context(), &pb.PutRequest{
+		Key:   []byte("k99-new"),
+		Value: []byte("v"),
+	})
+	require.NoError(t, err)
+
+	merged := &pb.RangeResponse{}
+	proto.Merge(merged, first.RangeResponse)
+	chunks := 1
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			break
+		}
+		require.NoError(t, rerr)
+		chunks++
+		proto.Merge(merged, chunk.RangeResponse)
+	}
+
+	require.GreaterOrEqualf(t, chunks, 2, "expected multi-chunk stream, got %d", chunks)
+	require.Lenf(t, merged.Kvs, nKeys, "stream must return only the keys that existed at pinned revision")
+	for i, kv := range merged.Kvs {
+		require.Equal(t, fmt.Sprintf("k%02d", i), string(kv.Key))
+		require.Equal(t, "v", string(kv.Value))
+	}
+	require.Equalf(t, pinnedRev, merged.Header.Revision, "stream header revision must equal the latest revision at stream start")
+	require.Equalf(t, int64(nKeys), merged.Count, "stream Count must reflect the pinned revision")
+}
+
 // TestTLSGRPCRejectInsecureClient checks that connection is rejected if server is TLS but not client.
 func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 	integration.BeforeTest(t)
