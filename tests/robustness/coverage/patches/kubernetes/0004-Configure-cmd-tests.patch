@@ -5,7 +5,7 @@ Subject: [PATCH 4/4] Configure cmd tests
 
 
 diff --git a/hack/lib/etcd.sh b/hack/lib/etcd.sh
-index 15c4e59bba9..a22e8d04775 100755
+index a3316e73bd4..f6b6bea6e26 100755
 --- a/hack/lib/etcd.sh
 +++ b/hack/lib/etcd.sh
 @@ -25,6 +25,8 @@ ETCD_PORT=${ETCD_PORT:-2379}
@@ -17,10 +17,10 @@ index 15c4e59bba9..a22e8d04775 100755
  kube::etcd::validate() {
    # validate if in path
    command -v etcd >/dev/null || {
-@@ -84,8 +86,8 @@ kube::etcd::start() {
-   else
-     ETCD_LOGFILE=${ETCD_LOGFILE:-"/dev/null"}
+@@ -89,8 +91,8 @@ kube::etcd::start() {
+       return
    fi
+ 
 -  kube::log::info "etcd --advertise-client-urls ${KUBE_INTEGRATION_ETCD_URL} --data-dir ${ETCD_DIR} --listen-client-urls http://${ETCD_HOST}:${ETCD_PORT} --listen-peer-urls http://localhost:0 --log-level=${ETCD_LOGLEVEL} 2> \"${ETCD_LOGFILE}\" >/dev/null"
 -  etcd --advertise-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --data-dir "${ETCD_DIR}" --listen-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --listen-peer-urls "http://localhost:0" --log-level="${ETCD_LOGLEVEL}" 2> "${ETCD_LOGFILE}" >/dev/null &
 +  kube::log::info "etcd --advertise-client-urls ${KUBE_INTEGRATION_ETCD_URL} --data-dir ${ETCD_DIR} --listen-client-urls http://${ETCD_HOST}:${ETCD_PORT} --listen-peer-urls http://localhost:0 --log-level=${ETCD_LOGLEVEL} --enable-distributed-tracing --distributed-tracing-address=\"192.168.32.1:4317\" --distributed-tracing-service-name=\"etcd\" --distributed-tracing-sampling-rate=1000000 2> \"${ETCD_LOGFILE}\" >/dev/null"
