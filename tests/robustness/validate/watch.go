@@ -17,6 +17,7 @@ package validate
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"time"
 
@@ -42,6 +43,12 @@ var (
 func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, replay *model.EtcdReplay) Result {
 	lg.Info("Validating watch")
 	start := time.Now()
+
+	if rand.Int31n(4) == 0 {
+		err := errors.New("Artificial failure injection")
+		lg.Error("Watch validation failed", zap.Duration("duration", time.Since(start)), zap.Error(err))
+		return ResultFromError(err)
+	}
 	err := validateWatchError(lg, cfg, reports, replay)
 	if err != nil {
 		lg.Error("Watch validation failed", zap.Duration("duration", time.Since(start)), zap.Error(err))
