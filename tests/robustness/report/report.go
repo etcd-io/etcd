@@ -49,7 +49,7 @@ func (r *TestReport) SetClientReports(reports []ClientReport) {
 	r.clientReports = reports
 }
 
-func (r *TestReport) SetVisualizer(visualize func(lg *zap.Logger, path string) error) {
+func (r *TestReport) SetVisualize(visualize func(lg *zap.Logger, path string) error) {
 	r.visualize = visualize
 }
 
