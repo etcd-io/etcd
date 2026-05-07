@@ -25,7 +25,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
@@ -166,56 +168,21 @@ func TestMemberUpdateLearner(t *testing.T) {
 
 	urls := []string{"http://127.0.0.1:1234"}
 	addResp, err := capi.MemberAddAsLearner(t.Context(), urls)
-	if err != nil {
-		t.Fatalf("failed to add member %v", err)
-	}
+	require.NoError(t, err)
 	learnerID := addResp.Member.ID
 
-	resp, err := capi.MemberList(t.Context())
-	if err != nil {
-		t.Fatalf("failed to list member %v", err)
-	}
-	var learnerFound bool
-	for _, m := range resp.Members {
-		if m.ID == learnerID {
-			learnerFound = true
-			if !m.IsLearner {
-				t.Fatalf("added a member as learner, got member.IsLearner = %v", m.IsLearner)
-			}
-			break
-		}
-	}
-	if !learnerFound {
-		t.Fatalf("failed to find learner member %x", learnerID)
-	}
+	learner, err := getMemberByID(t.Context(), capi, learnerID)
+	require.NoError(t, err)
+	require.Truef(t, learner.IsLearner, "added a member as learner, IsLearner is %t", learner.IsLearner)
 
 	updatedURLs := []string{"http://127.0.0.1:5678"}
 	_, err = capi.MemberUpdate(t.Context(), learnerID, updatedURLs)
-	if err != nil {
-		t.Fatalf("failed to update learner member %v", err)
-	}
+	require.NoError(t, err)
 
-	resp, err = capi.MemberList(t.Context())
-	if err != nil {
-		t.Fatalf("failed to list member %v", err)
-	}
-
-	learnerFound = false
-	for _, m := range resp.Members {
-		if m.ID == learnerID {
-			learnerFound = true
-			if !reflect.DeepEqual(m.PeerURLs, updatedURLs) {
-				t.Errorf("urls = %v, want %v", updatedURLs, m.PeerURLs)
-			}
-			if !m.IsLearner {
-				t.Fatalf("updated peer address of a learner member, but IsLearner was updated to %t by mistake", m.IsLearner)
-			}
-			break
-		}
-	}
-	if !learnerFound {
-		t.Fatalf("failed to find updated learner member %x", learnerID)
-	}
+	learner, err = getMemberByID(t.Context(), capi, learnerID)
+	require.NoError(t, err)
+	require.Equal(t, learner.PeerURLs, updatedURLs)
+	require.Truef(t, learner.IsLearner, "updated peer address of a learner member, IsLearner is %t", learner.IsLearner)
 }
 
 func TestMemberAddUpdateWrongURLs(t *testing.T) {
@@ -490,4 +457,25 @@ func TestMaxLearnerInCluster(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to add member %v", err)
 	}
+}
+
+func getMemberByID(ctx context.Context, cli *clientv3.Client, id uint64) (member *etcdserverpb.Member, err error) {
+	var resp *clientv3.MemberListResponse
+	resp, err = cli.MemberList(ctx)
+	if err != nil {
+		return member, err
+	}
+
+	for _, m := range resp.Members {
+		if m.ID == id {
+			member = m
+			break
+		}
+	}
+
+	if member == nil {
+		err = fmt.Errorf("failed to find member by id %d", id)
+	}
+
+	return member, err
 }
