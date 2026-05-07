@@ -156,6 +156,68 @@ func TestMemberUpdate(t *testing.T) {
 	}
 }
 
+func TestMemberUpdateLearner(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
+	defer clus.Terminate(t)
+
+	capi := clus.RandClient()
+
+	urls := []string{"http://127.0.0.1:1234"}
+	addResp, err := capi.MemberAddAsLearner(t.Context(), urls)
+	if err != nil {
+		t.Fatalf("failed to add member %v", err)
+	}
+	learnerID := addResp.Member.ID
+
+	resp, err := capi.MemberList(t.Context())
+	if err != nil {
+		t.Fatalf("failed to list member %v", err)
+	}
+	var learnerFound bool
+	for _, m := range resp.Members {
+		if m.ID == learnerID {
+			learnerFound = true
+			if !m.IsLearner {
+				t.Fatalf("added a member as learner, got member.IsLearner = %v", m.IsLearner)
+			}
+			break
+		}
+	}
+	if !learnerFound {
+		t.Fatalf("failed to find learner member %x", learnerID)
+	}
+
+	updatedURLs := []string{"http://127.0.0.1:5678"}
+	_, err = capi.MemberUpdate(t.Context(), learnerID, updatedURLs)
+	if err != nil {
+		t.Fatalf("failed to update learner member %v", err)
+	}
+
+	resp, err = capi.MemberList(t.Context())
+	if err != nil {
+		t.Fatalf("failed to list member %v", err)
+	}
+
+	learnerFound = false
+	for _, m := range resp.Members {
+		if m.ID == learnerID {
+			learnerFound = true
+			if !reflect.DeepEqual(m.PeerURLs, updatedURLs) {
+				t.Errorf("urls = %v, want %v", updatedURLs, m.PeerURLs)
+			}
+			if !m.IsLearner {
+				t.Fatalf("updated peer address of a learner member, but IsLearner was updated to %t by mistake", m.IsLearner)
+			}
+			break
+		}
+	}
+	if !learnerFound {
+		t.Fatalf("failed to find updated learner member %x", learnerID)
+	}
+}
+
 func TestMemberAddUpdateWrongURLs(t *testing.T) {
 	integration.BeforeTest(t)
 
