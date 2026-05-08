@@ -1574,3 +1574,43 @@ func TestAddFeatureGateMetrics(t *testing.T) {
 	err := ptestutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(expected), "etcd_server_feature_enabled")
 	require.NoErrorf(t, err, "unexpected metric collection result: \n%s", err)
 }
+
+// TestMonitorAutoPromoteLearners_ExitsCleanly verifies that the
+// auto-promote-learners monitor loop wakes on firstCommitInTerm,
+// short-circuits when the local member is not the leader (which is
+// what keeps it from touching the nil cluster / authStore in this
+// minimal fixture), and exits promptly when the stopping channel is
+// closed. A regression here would either deadlock the goroutine or
+// crash the test with a nil-pointer dereference once the leader gate
+// is removed.
+func TestMonitorAutoPromoteLearners_ExitsCleanly(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	s := &EtcdServer{
+		lgMu:              new(sync.RWMutex),
+		lg:                lg,
+		firstCommitInTerm: notify.NewNotifier(),
+		stopping:          make(chan struct{}),
+		memberID:          types.ID(1),
+	}
+	// s.lead defaults to 0; isLeader() returns memberID==lead → false.
+
+	done := make(chan struct{})
+	go func() {
+		s.monitorAutoPromoteLearners()
+		close(done)
+	}()
+
+	// Wake the loop once to exercise the firstCommitInTerm path; the
+	// non-leader gate must skip tryAutoPromoteLearners. A short sleep
+	// gives the goroutine a chance to observe the notification and
+	// re-enter the select before we close stopping.
+	s.firstCommitInTerm.Notify()
+	time.Sleep(50 * time.Millisecond)
+
+	close(s.stopping)
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("monitorAutoPromoteLearners did not exit within 2s")
+	}
+}
