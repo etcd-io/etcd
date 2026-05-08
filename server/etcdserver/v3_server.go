@@ -219,6 +219,7 @@ func (s *EtcdServer) rangeStream(ctx context.Context, r *pb.RangeRequest, rs pb.
 	count := int64(0)
 	var headerRev int64
 	for {
+		// gofail: var beforeRangeStreamChunk struct{}
 		resp, _, err := txn.Range(ctx, s.Logger(), s.KV(), r, false)
 		if err != nil {
 			return err

@@ -42,6 +42,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+	gofail "go.etcd.io/gofail/runtime"
 )
 
 // TestV3PutOverwrite puts a key with the v3 api to a random Cluster member,
@@ -1771,6 +1772,7 @@ func TestV3RangeStreamWriteBetweenChunks(t *testing.T) {
 	}
 
 	integration.BeforeTest(t)
+	integration.SkipIfNoGoFail(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1787,6 +1789,10 @@ func TestV3RangeStreamWriteBetweenChunks(t *testing.T) {
 		require.NoError(t, err)
 		pinnedRev = resp.Header.Revision
 	}
+
+	// Sleep between chunks to prevent gRPC queueing.
+	require.NoError(t, gofail.Enable("beforeRangeStreamChunk", `sleep("1s")`))
+	defer func() { require.NoError(t, gofail.Disable("beforeRangeStreamChunk")) }()
 
 	stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
 		Key:      []byte("k00"),
