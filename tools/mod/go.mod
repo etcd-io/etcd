@@ -2,7 +2,7 @@ module go.etcd.io/etcd/tools/v3
 
 go 1.25.0
 
-toolchain go1.25.9
+toolchain go1.25.10
 
 require (
 	github.com/alexkohler/nakedret v1.0.0
@@ -59,12 +59,12 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/trustmaster/go-aspell v0.0.0-20200701131845-c2b1f55bec8f // indirect
 	go.mongodb.org/mongo-driver v1.5.4 // indirect
-	golang.org/x/mod v0.32.0 // indirect
-	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
-	golang.org/x/tools v0.41.0 // indirect
+	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/tools v0.43.0 // indirect
 	golang.org/x/tools/go/expect v0.1.1-deprecated // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
