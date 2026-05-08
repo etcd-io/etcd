@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package lwi.common;
+
+import "buf/validate/validate.proto";
+import "channel_common.proto";
+
+option go_package = "lwi-channel-common/pkg/mp-dp-proto;mp_dp_proto";
+
+enum Phase {
+  PHASE_UNSPECIFIED = 0;
+  PHASE_VOTING = 1;
+  PHASE_COMMIT = 2;
+  PHASE_ABORT = 3;
+  PHASE_ACTIVE = 4;
+  PHASE_FAILED = 5;
+}
+
+enum DPState {
+  DP_STATE_UNSPECIFIED = 0;
+  DP_STATE_NIL = 1;
+  DP_STATE_YES = 2;
+  DP_STATE_NO = 3;
+  DP_STATE_ACK = 4;
+}
+
+enum TwoPcError {
+  TWO_PC_ERROR_UNSPECIFIED = 0;
+  TWO_PC_ERROR_TIMEOUT = 1;
+  TWO_PC_ERROR_UNAVAILABLE = 2;
+  TWO_PC_ERROR_INTERNAL = 3;
+  TWO_PC_ERROR_INVALID_ARG = 4;
+  TWO_PC_ERROR_PRECONDITION_FAILED = 5;
+}
+
+enum Protocol {
+  CHANNEL_PROTOCOL_UNSPECIFIED = 0;
+  CHANNEL_PROTOCOL_TCP = 1;
+  CHANNEL_PROTOCOL_UDP = 2;
+}
+
+message TwoPcFailure {
+  optional string node_id = 1 [(buf.validate.field).required = true];
+  optional TwoPcError error_code = 2 [(buf.validate.field).required = true];
+  optional string error_message = 3;
+  optional Phase phase = 4 [(buf.validate.field).required = true];
+}
+
+message TwoPcRound {
+  optional uint64 spec_version = 1 [(buf.validate.field).required = true];
+  optional string channel_instance_id = 2 [(buf.validate.field).required = true];
+  optional Operation operation = 3 [(buf.validate.field).required = true];
+  optional Phase phase = 4 [(buf.validate.field).required = true];
+  map<string, DPState> dp_states = 5 [(buf.validate.field).map.min_pairs = 1];
+  optional string vip = 6 [(buf.validate.field).required = true];
+  optional uint32 vip_port = 7 [(buf.validate.field).uint32 = { gt: 0, lt: 65536 }];
+  optional Protocol vip_protocol = 8 [(buf.validate.field).required = true];
+  repeated Backend backends = 9;
+  repeated TwoPcFailure failures = 10;
+  repeated HealthPolicy hc_policies = 11;
+}
+
+message DpNodePresence {
+  optional string node_id = 1 [(buf.validate.field).required = true];
+}

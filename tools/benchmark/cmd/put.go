@@ -16,10 +16,8 @@ package cmd
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"math"
-	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -37,11 +35,11 @@ import (
 var putCmd = &cobra.Command{
 	Use:   "put",
 	Short: "Benchmark put",
-
-	Run: putFunc,
+	Run:   putFunc,
 }
 
 var (
+	// Keep these because txn_put.go and txn_mixed.go still use them.
 	keySize int
 	valSize int
 
@@ -49,7 +47,6 @@ var (
 	putRate  int
 
 	keySpaceSize int
-	seqKeys      bool
 
 	compactInterval   time.Duration
 	compactIndexDelta int64
@@ -59,13 +56,15 @@ var (
 
 func init() {
 	RootCmd.AddCommand(putCmd)
+
+	// Keep these flags because other benchmark commands still depend on the vars.
 	putCmd.Flags().IntVar(&keySize, "key-size", 8, "Key size of put request")
 	putCmd.Flags().IntVar(&valSize, "val-size", 8, "Value size of put request")
-	putCmd.Flags().IntVar(&putRate, "rate", 0, "Maximum puts per second (0 is no limit)")
 
+	putCmd.Flags().IntVar(&putRate, "rate", 0, "Maximum puts per second (0 is no limit)")
 	putCmd.Flags().IntVar(&putTotal, "total", 10000, "Total number of put requests")
-	putCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
-	putCmd.Flags().BoolVar(&seqKeys, "sequential-keys", false, "Use sequential keys")
+	putCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible channel IDs")
+
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
 	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "'true' to check hashkv")
@@ -83,7 +82,6 @@ func putFunc(cmd *cobra.Command, _ []string) {
 	}
 	limit := rate.NewLimiter(rate.Limit(putRate), 1)
 	clients := mustCreateClients(totalClients, totalConns)
-	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
 
 	bar = pb.New(putTotal)
 	bar.Start()
@@ -106,12 +104,15 @@ func putFunc(cmd *cobra.Command, _ []string) {
 
 	go func() {
 		for i := 0; i < putTotal; i++ {
-			if seqKeys {
-				binary.PutVarint(k, int64(i%keySpaceSize))
-			} else {
-				binary.PutVarint(k, int64(rand.Intn(keySpaceSize)))
+			channelID := i % keySpaceSize
+			version := uint64(i)
+
+			payload, key, err := generateTwoPcRound(channelID, version)
+			if err != nil {
+				panic(err)
 			}
-			requests <- v3.OpPut(string(k), v)
+
+			requests <- v3.OpPut(key, string(payload))
 		}
 		close(requests)
 	}()

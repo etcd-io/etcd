@@ -213,30 +213,39 @@ func Percentiles(nums []float64) (pcs []float64, data []float64) {
 	return pctls, percentiles(nums)
 }
 
+
 func percentiles(nums []float64) (data []float64) {
-	data = make([]float64, len(pctls))
-	j := 0
-	n := len(nums)
-	for i := 0; i < n && j < len(pctls); i++ {
-		current := float64(i) * 100.0 / float64(n)
-		if current >= pctls[j] {
-			data[j] = nums[i]
-			j++
-		}
-	}
-	return data
+    data = make([]float64, len(pctls))
+    n := len(nums)
+    if n == 0 {
+        return data
+    }
+
+    for i, p := range pctls {
+        idx := int(math.Ceil(p*float64(n)/100.0)) - 1
+        if idx < 0 {
+            idx = 0
+        }
+        if idx >= n {
+            idx = n - 1
+        }
+        data[i] = nums[idx]
+    }
+
+    return data
 }
 
 func (r *report) sprintLatencies() string {
-	data := percentiles(r.stats.Lats)
-	s := "\nLatency distribution:\n"
-	for i := 0; i < len(pctls); i++ {
-		if data[i] > 0 {
-			s += fmt.Sprintf("  %v%% in %s.\n", pctls[i], r.sec2str(data[i]))
-		}
-	}
-	return s
+    data := percentiles(r.stats.Lats)
+    s := "\nLatency distribution:\n"
+    for i := 0; i < len(pctls); i++ {
+        if data[i] > 0 {
+            s += fmt.Sprintf("  %v%% in %.3f ms.\n", pctls[i], data[i]*1000)
+        }
+    }
+    return s
 }
+
 
 func (r *report) histogram() string {
 	bc := 10
