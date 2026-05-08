@@ -35,15 +35,18 @@ func newPBPrinter() printer {
 	}
 }
 
-func (p *pbPrinter) Watch(r v3.WatchResponse) {
-	wr := pb.WatchResponse{
-		Header:          r.Header,
-		Events:          r.Events,
-		CompactRevision: r.CompactRevision,
-		Canceled:        r.Canceled,
-		Created:         r.Created,
+func (p *pbPrinter) Watch(r *v3.WatchResponse) {
+	wr := &pb.WatchResponse{}
+	if r != nil {
+		wr = &pb.WatchResponse{
+			Header:          r.Header,
+			Events:          r.Events,
+			CompactRevision: r.CompactRevision,
+			Canceled:        r.Canceled,
+			Created:         r.Created,
+		}
 	}
-	printPB(&wr)
+	printPB(wr)
 }
 
 func printPB(v any) {
