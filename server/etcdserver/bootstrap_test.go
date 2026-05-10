@@ -261,7 +261,7 @@ func createWALFileWithSnapshotRecord(cfg config.ServerConfig, snapshotTerm, snap
 		},
 	}
 
-	if err = w.SaveSnapshot(walSnap); err != nil {
+	if err = w.SaveSnapshot(&walSnap); err != nil {
 		return err
 	}
 

@@ -30,7 +30,7 @@ record it. So WAL can match with the saved snapshot when restarting.
 
 	index := uint64(10)
 	term := uint64(2)
-	err := w.SaveSnapshot(walpb.Snapshot{Index: &index, Term: &term})
+	err := w.SaveSnapshot(&walpb.Snapshot{Index: &index, Term: &term})
 
 When a user has finished using a WAL it must be closed:
 
@@ -58,11 +58,11 @@ If a second cut issues 0x10 entries with incremental index later, then the file 
 0000000000000002-0000000000000031.wal.
 
 At a later time a WAL can be opened at a particular snapshot. If there is no
-snapshot, an empty snapshot should be passed in.
+snapshot, nil or an empty snapshot should be passed in.
 
 	index := uint64(10)
 	term := uint64(2)
-	w, err := wal.Open("/var/lib/etcd", walpb.Snapshot{Index: &index, Term: &term})
+	w, err := wal.Open(zap.NewExample(), "/var/lib/etcd", &walpb.Snapshot{Index: &index, Term: &term})
 	...
 
 The snapshot must have been written to the WAL.
