@@ -619,24 +619,31 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes,
 	c.Lock()
 	defer c.Unlock()
 
-	if c.v2store != nil {
-		if _, ok := c.members[id]; ok {
-			m := *(c.members[id])
-			m.RaftAttributes = raftAttr
-			mustUpdateMemberInStore(c.lg, c.v2store, &m)
-		} else {
-			c.lg.Info("Skipped updating non-existent member in v2store",
-				zap.String("cluster-id", c.cid.String()),
-				zap.String("local-member-id", c.localID.String()),
-				zap.String("updated-remote-peer-id", id.String()),
-				zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
-				zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
-			)
-		}
+	var (
+		m  *Member
+		ok bool
+	)
+
+	if m, ok = c.members[id]; !ok {
+		c.lg.Info("Skipped updating non-existent member in v2store",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("updated-remote-peer-id", id.String()),
+			zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
+			zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
+			zap.Bool("should-apply-v3", bool(shouldApplyV3)),
+		)
+		return
 	}
+	// `MemberUpdateRequest` only supports updating PeerURLs.
+	m.RaftAttributes.PeerURLs = raftAttr.PeerURLs
+
+	if c.v2store != nil {
+		mustUpdateMemberInStore(c.lg, c.v2store, m)
+	}
+
 	if c.be != nil && shouldApplyV3 {
-		c.members[id].RaftAttributes = raftAttr
-		c.be.MustSaveMemberToBackend(c.members[id])
+		c.be.MustSaveMemberToBackend(m)
 
 		c.lg.Info(
 			"updated member",
