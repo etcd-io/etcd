@@ -297,6 +297,7 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 			"set cluster version from store",
 			zap.String("cluster-version", version.Cluster(c.version.String())),
 		)
+		ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(c.version.String())}).Set(1)
 	}
 }
 
