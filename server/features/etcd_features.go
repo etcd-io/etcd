@@ -35,8 +35,13 @@ const (
 	// of code conflicts because changes are more likely to be scattered
 	// across the file.
 
-	// AutoPromoteLearners enables the leader to automatically promote a learner member
-	// to a voting member once the learner has caught up with the leader's log.
+	// AutoPromoteLearners enables the leader to automatically promote a learner
+	// member to a voting member once the learner has caught up with the leader's
+	// log. The leader periodically scans for learners and reuses the same
+	// readiness check as `etcdctl member promote` (isLearnerReady), so behaviour
+	// matches a manual promotion. Only the leader performs the scan; followers
+	// short-circuit. The gate must be enabled on every member that may become
+	// leader for auto-promotion to take effect cluster-wide.
 	// owner: @john7doe
 	// alpha: v3.7
 	// issue: https://github.com/etcd-io/etcd/issues/21611
