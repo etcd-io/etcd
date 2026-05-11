@@ -2406,9 +2406,27 @@ func (s *EtcdServer) tryAutoPromoteLearners() {
 			continue
 		}
 		switch {
+		// Expected during normal operation:
+		// - ErrLearnerNotReady: learner is still catching up.
+		// - ErrNotEnoughStartedMembers: cluster is briefly degraded.
+		// - ErrNotLeader / ErrLeaderChanged: leadership flipped between
+		//   isLeader() and the proposal.
+		// - ErrMemberNotLearner: member was already promoted (e.g. by
+		//   another caller racing with this loop).
+		// - ErrIDNotFound: member was removed between Members() and the
+		//   proposal.
+		// - ErrTimeout / ErrTimeoutWaitAppliedIndex: transient
+		//   backpressure or proposal timeout; the next tick will retry.
+		// - ErrStopped / ErrCanceled: server is shutting down; the
+		//   monitor's stopping select will exit on the next iteration.
 		case errorspkg.Is(err, errors.ErrLearnerNotReady),
 			errorspkg.Is(err, errors.ErrNotEnoughStartedMembers),
 			errorspkg.Is(err, errors.ErrNotLeader),
+			errorspkg.Is(err, errors.ErrLeaderChanged),
+			errorspkg.Is(err, errors.ErrTimeout),
+			errorspkg.Is(err, errors.ErrTimeoutWaitAppliedIndex),
+			errorspkg.Is(err, errors.ErrStopped),
+			errorspkg.Is(err, errors.ErrCanceled),
 			errorspkg.Is(err, membership.ErrMemberNotLearner),
 			errorspkg.Is(err, membership.ErrIDNotFound):
 			lg.Debug(
