@@ -58,7 +58,7 @@ func put(ctx context.Context, txnWrite mvcc.TxnWrite, p *pb.PutRequest, prevKV *
 	}
 	if p.PrevKv {
 		if prevKV != nil && len(prevKV.KVs) != 0 {
-			resp.PrevKv = &prevKV.KVs[0]
+			resp.PrevKv = prevKV.KVs[0]
 		}
 	}
 
