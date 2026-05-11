@@ -1384,3 +1384,72 @@ func TestRemoveMemberSyncsBackendAndStoreV2(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateRaftAttributes(t *testing.T) {
+	clientURLs := []string{"http://127.0.0.1:2379"}
+	oldPeerURLs := []string{"http://127.0.0.1:2380"}
+	newPeerURLs := []string{"http://127.0.0.1:2382"}
+	testCases := []struct {
+		name           string
+		members        []*Member
+		updateMemberID types.ID
+		wantMembers    map[types.ID]*Member
+	}{
+		{
+			name: "update an existing voting member",
+			members: []*Member{
+				newTestMember(1, oldPeerURLs, "1", clientURLs),
+				newTestMember(2, oldPeerURLs, "2", clientURLs),
+			},
+			updateMemberID: 2,
+			wantMembers: map[types.ID]*Member{
+				1: newTestMember(1, oldPeerURLs, "1", clientURLs),
+				2: newTestMember(2, newPeerURLs, "2", clientURLs),
+			},
+		},
+		{
+			name: "update an existing learner member",
+			members: []*Member{
+				newTestMember(1, oldPeerURLs, "1", clientURLs),
+				newTestMemberAsLearner(2, oldPeerURLs, "2", clientURLs),
+			},
+			updateMemberID: 2,
+			wantMembers: map[types.ID]*Member{
+				1: newTestMember(1, oldPeerURLs, "1", clientURLs),
+				2: newTestMemberAsLearner(2, newPeerURLs, "2", clientURLs),
+			},
+		},
+		{
+			name: "update a non-exist member",
+			members: []*Member{
+				newTestMember(1, oldPeerURLs, "1", clientURLs),
+				newTestMember(2, oldPeerURLs, "2", clientURLs),
+			},
+			updateMemberID: 3,
+			wantMembers: map[types.ID]*Member{
+				1: newTestMember(1, oldPeerURLs, "1", clientURLs),
+				2: newTestMember(2, oldPeerURLs, "2", clientURLs),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			c := newTestCluster(t, tc.members)
+			be, _ := betesting.NewDefaultTmpBackend(t)
+			defer betesting.Close(t, be)
+			c.SetBackend(be)
+			for _, m := range tc.members {
+				unsafeSaveMemberToBackend(lg, be, m)
+			}
+			be.ForceCommit()
+
+			c.UpdateRaftAttributes(tc.updateMemberID, RaftAttributes{PeerURLs: newPeerURLs}, true)
+
+			mst, _ := mustReadMembersFromBackend(lg, c.be)
+			require.Equal(t, tc.wantMembers, mst, tc.name)
+			require.Equal(t, tc.wantMembers, c.members)
+		})
+	}
+}

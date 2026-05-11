@@ -16,13 +16,17 @@ package clientv3test
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
@@ -414,4 +418,52 @@ func TestMaxLearnerInCluster(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to add member %v", err)
 	}
+}
+
+func TestMemberUpdateLearner(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	capi := clus.Client(0)
+
+	urls := []string{"http://127.0.0.1:1234"}
+	addResp, err := capi.MemberAddAsLearner(t.Context(), urls)
+	require.NoError(t, err)
+	learnerID := addResp.Member.ID
+
+	learner, err := getMemberByID(t.Context(), capi, learnerID)
+	require.NoError(t, err)
+	require.Truef(t, learner.IsLearner, "added a member as learner, IsLearner is %t", learner.IsLearner)
+
+	updatedURLs := []string{"http://127.0.0.1:5678"}
+	_, err = capi.MemberUpdate(t.Context(), learnerID, updatedURLs)
+	require.NoError(t, err)
+
+	learner, err = getMemberByID(t.Context(), capi, learnerID)
+	require.NoError(t, err)
+	require.Equal(t, learner.PeerURLs, updatedURLs)
+	require.Truef(t, learner.IsLearner, "updated peer address of a learner member, IsLearner is %t", learner.IsLearner)
+}
+
+func getMemberByID(ctx context.Context, cli *clientv3.Client, id uint64) (member *etcdserverpb.Member, err error) {
+	var resp *clientv3.MemberListResponse
+	resp, err = cli.MemberList(ctx)
+	if err != nil {
+		return member, err
+	}
+
+	for _, m := range resp.Members {
+		if m.ID == id {
+			member = m
+			break
+		}
+	}
+
+	if member == nil {
+		err = fmt.Errorf("failed to find member by id %d", id)
+	}
+
+	return member, err
 }
