@@ -324,6 +324,24 @@
 		]
 	},
 	{
+		"project": "github.com/olekukonko/errors",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/olekukonko/ll",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/olekukonko/tablewriter",
 		"licenses": [
 			{
