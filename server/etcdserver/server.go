@@ -2357,11 +2357,7 @@ func (s *EtcdServer) monitorDowngrade() {
 	}
 }
 
-// monitorAutoPromoteLearners periodically scans for learner members that have
-// caught up with the leader and promotes them in-band. Only the leader is
-// authoritative about learner readiness, so the loop short-circuits on
-// followers. The loop is gated by the AutoPromoteLearners feature gate; when
-// disabled, this goroutine is never started.
+// monitorAutoPromoteLearners periodically scans for learner members that have caught up with the leader and promotes them in-band.
 func (s *EtcdServer) monitorAutoPromoteLearners() {
 	lg := s.Logger()
 	lg.Info("starting auto-promote-learners monitor")
@@ -2381,13 +2377,6 @@ func (s *EtcdServer) monitorAutoPromoteLearners() {
 	}
 }
 
-// tryAutoPromoteLearners attempts to promote each learner member in the
-// cluster. Readiness is decided by the existing isLearnerReady check (reused
-// via promoteMember), so behaviour matches a manual `etcdctl member promote`
-// initiated against the leader. Errors are classified into "expected-pending"
-// (logged at DEBUG to avoid spam) and unexpected (logged at WARN). The
-// learnerPromoteSucceed / learnerPromoteFailed metrics flow through the same
-// counters used by the manual path.
 func (s *EtcdServer) tryAutoPromoteLearners() {
 	lg := s.Logger()
 	ctx := s.authStore.WithRoot(s.ctx)
