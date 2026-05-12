@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/gogo/protobuf/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -64,10 +65,11 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 	}
 
 	// cache linearizable as serializable
-	req := *r
+	// TODO(fuweid): consider using shadow copy here
+	req := proto.Clone(r).(*pb.RangeRequest)
 	req.Serializable = true
 	gresp := (*pb.RangeResponse)(resp.Get())
-	p.cache.Add(&req, gresp)
+	p.cache.Add(req, gresp)
 	cacheKeys.Set(float64(p.cache.Size()))
 
 	return gresp, nil

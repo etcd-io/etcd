@@ -397,7 +397,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 				return lease.ErrNotPrimary
 			}
 
-			srv.raftRequest(ctx, pb.InternalRaftRequest{LeaseCheckpoint: cp})
+			srv.raftRequest(ctx, &pb.InternalRaftRequest{LeaseCheckpoint: cp})
 			return nil
 		})
 	}
@@ -1818,7 +1818,7 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 		}
 
 		ctx, cancel := context.WithTimeout(s.ctx, timeout)
-		_, err := s.raftRequest(ctx, pb.InternalRaftRequest{ClusterMemberAttrSet: req})
+		_, err := s.raftRequest(ctx, &pb.InternalRaftRequest{ClusterMemberAttrSet: req})
 		cancel()
 		switch err {
 		case nil:
@@ -1995,7 +1995,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 			Action:   pb.AlarmRequest_ACTIVATE,
 			Alarm:    pb.AlarmType_NOSPACE,
 		}
-		s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
+		s.raftRequest(s.ctx, &pb.InternalRaftRequest{Alarm: a})
 		s.w.Trigger(id, ar)
 	})
 }
@@ -2316,7 +2316,7 @@ func (s *EtcdServer) updateClusterVersionV3(ver string) {
 	req := membershippb.ClusterVersionSetRequest{Ver: ver}
 
 	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
-	_, err := s.raftRequest(ctx, pb.InternalRaftRequest{ClusterVersionSet: &req})
+	_, err := s.raftRequest(ctx, &pb.InternalRaftRequest{ClusterVersionSet: &req})
 	cancel()
 
 	switch {

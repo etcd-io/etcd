@@ -89,9 +89,12 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		}
 
 		if !w.prevKV {
-			evCopy := *ev
-			evCopy.PrevKv = nil
-			ev = &evCopy
+			evCopy := &mvccpb.Event{
+				Type:   ev.Type,
+				Kv:     ev.Kv,
+				PrevKv: nil,
+			}
+			ev = evCopy
 		}
 		events = append(events, ev)
 	}
