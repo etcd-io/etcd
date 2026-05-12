@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.31 (TBC)
 
+### etcd server
+
+- [bugfix: MemberUpdate implicitly and unexpectedly promotes a learner](https://github.com/etcd-io/etcd/pull/21737)
+
 ---
 
 ## v3.5.30 (2026-05-01)
