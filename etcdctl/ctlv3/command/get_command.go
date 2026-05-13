@@ -39,6 +39,7 @@ var (
 	getMaxCreateRev int64
 	getMinModRev    int64
 	getMaxModRev    int64
+	getStream       bool
 )
 
 // NewGetCommand returns the cobra command for "get".
@@ -64,6 +65,7 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().Int64Var(&getMaxCreateRev, "max-create-rev", 0, "Maximum create revision")
 	cmd.Flags().Int64Var(&getMinModRev, "min-mod-rev", 0, "Minimum modification revision")
 	cmd.Flags().Int64Var(&getMaxModRev, "max-mod-rev", 0, "Maximum modification revision")
+	cmd.Flags().BoolVar(&getStream, "stream", false, "Use the RangeStream RPC")
 
 	cmd.RegisterFlagCompletionFunc("consistency", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"l", "s"}, cobra.ShellCompDirectiveDefault
@@ -82,7 +84,20 @@ func NewGetCommand() *cobra.Command {
 func getCommandFunc(cmd *cobra.Command, args []string) {
 	key, opts := getGetOp(args)
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).Get(ctx, key, opts...)
+	client := mustClientFromCmd(cmd)
+	var (
+		resp *clientv3.GetResponse
+		err  error
+	)
+	if getStream {
+		var stream clientv3.GetStreamChan
+		stream, err = client.GetStream(ctx, key, opts...)
+		if err == nil {
+			resp, err = clientv3.GetStreamToGetResponse(stream)
+		}
+	} else {
+		resp, err = client.Get(ctx, key, opts...)
+	}
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
