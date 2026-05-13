@@ -496,13 +496,13 @@ func TestV3TxnRangeCompare(t *testing.T) {
 	}
 
 	tests := []struct {
-		cmp pb.Compare
+		cmp *pb.Compare
 
 		wSuccess bool
 	}{
 		{
 			// >= /a/; all create revs fit
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte{0},
 				Target:      pb.Compare_CREATE,
@@ -513,7 +513,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// >= /a/; one create rev doesn't fit
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte{0},
 				Target:      pb.Compare_CREATE,
@@ -524,7 +524,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// prefix /a/*; all create revs fit
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_CREATE,
@@ -535,7 +535,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// prefix /a/*; one create rev doesn't fit
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_CREATE,
@@ -546,7 +546,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// does not exist, does not succeed
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/b/"),
 				RangeEnd:    []byte("/b0"),
 				Target:      pb.Compare_VALUE,
@@ -557,7 +557,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// all keys are leased
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_LEASE,
@@ -568,7 +568,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// no keys are leased
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_LEASE,
@@ -582,7 +582,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 	kvc := integration.ToGRPC(clus.Client(0)).KV
 	for i, tt := range tests {
 		txn := &pb.TxnRequest{}
-		txn.Compare = append(txn.Compare, &tt.cmp)
+		txn.Compare = append(txn.Compare, tt.cmp)
 		tresp, err := kvc.Txn(t.Context(), txn)
 		require.NoError(t, err)
 		if tt.wSuccess != tresp.Succeeded {
@@ -636,7 +636,7 @@ func TestV3TxnNestedPath(t *testing.T) {
 	curTxnResp := tresp
 	for i := range txnPath {
 		if curTxnResp.Succeeded != txnPath[i] {
-			t.Fatalf("expected path %+v, got response %+v", txnPath, *tresp)
+			t.Fatalf("expected path %+v, got response %s", txnPath, tresp.String())
 		}
 		curTxnResp = curTxnResp.Responses[0].Response.(*pb.ResponseOp_ResponseTxn).ResponseTxn
 	}
@@ -651,7 +651,13 @@ func TestV3PutIgnoreValue(t *testing.T) {
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 	key, val := []byte("foo"), []byte("bar")
-	putReq := pb.PutRequest{Key: key, Value: val}
+
+	newPutReq := func() *pb.PutRequest {
+		return &pb.PutRequest{
+			Key:   bytes.Clone(key),
+			Value: bytes.Clone(val),
+		}
+	}
 
 	// create lease
 	lc := integration.ToGRPC(clus.RandClient()).Lease
@@ -666,9 +672,9 @@ func TestV3PutIgnoreValue(t *testing.T) {
 	}{
 		{ // put failure for non-existent key
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.IgnoreValue = true
-				_, err := kvc.Put(t.Context(), &preq)
+				_, err := kvc.Put(t.Context(), preq)
 				return err
 			},
 			rpctypes.ErrGRPCKeyNotFound,
@@ -676,12 +682,12 @@ func TestV3PutIgnoreValue(t *testing.T) {
 		},
 		{ // txn failure for non-existent key
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Value = nil
 				preq.IgnoreValue = true
 				txn := &pb.TxnRequest{}
 				txn.Success = append(txn.Success, &pb.RequestOp{
-					Request: &pb.RequestOp_RequestPut{RequestPut: &preq},
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
 				})
 				_, err := kvc.Txn(t.Context(), txn)
 				return err
@@ -691,7 +697,7 @@ func TestV3PutIgnoreValue(t *testing.T) {
 		},
 		{ // put success
 			func() error {
-				_, err := kvc.Put(t.Context(), &putReq)
+				_, err := kvc.Put(t.Context(), newPutReq())
 				return err
 			},
 			nil,
@@ -699,13 +705,13 @@ func TestV3PutIgnoreValue(t *testing.T) {
 		},
 		{ // txn success, attach lease
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Value = nil
 				preq.Lease = lresp.ID
 				preq.IgnoreValue = true
 				txn := &pb.TxnRequest{}
 				txn.Success = append(txn.Success, &pb.RequestOp{
-					Request: &pb.RequestOp_RequestPut{RequestPut: &preq},
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
 				})
 				_, err := kvc.Txn(t.Context(), txn)
 				return err
@@ -715,9 +721,9 @@ func TestV3PutIgnoreValue(t *testing.T) {
 		},
 		{ // non-empty value with ignore_value should error
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.IgnoreValue = true
-				_, err := kvc.Put(t.Context(), &preq)
+				_, err := kvc.Put(t.Context(), preq)
 				return err
 			},
 			rpctypes.ErrGRPCValueProvided,
@@ -725,10 +731,10 @@ func TestV3PutIgnoreValue(t *testing.T) {
 		},
 		{ // overwrite with previous value, ensure no prev-kv is returned and lease is detached
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Value = nil
 				preq.IgnoreValue = true
-				presp, err := kvc.Put(t.Context(), &preq)
+				presp, err := kvc.Put(t.Context(), preq)
 				if err != nil {
 					return err
 				}
@@ -789,7 +795,12 @@ func TestV3PutIgnoreLease(t *testing.T) {
 	require.Empty(t, lresp.Error)
 
 	key, val, val1 := []byte("zoo"), []byte("bar"), []byte("bar1")
-	putReq := pb.PutRequest{Key: key, Value: val}
+	newPutReq := func() *pb.PutRequest {
+		return &pb.PutRequest{
+			Key:   bytes.Clone(key),
+			Value: bytes.Clone(val),
+		}
+	}
 
 	tests := []struct {
 		putFunc  func() error
@@ -799,9 +810,9 @@ func TestV3PutIgnoreLease(t *testing.T) {
 	}{
 		{ // put failure for non-existent key
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.IgnoreLease = true
-				_, err := kvc.Put(t.Context(), &preq)
+				_, err := kvc.Put(t.Context(), preq)
 				return err
 			},
 			rpctypes.ErrGRPCKeyNotFound,
@@ -810,11 +821,11 @@ func TestV3PutIgnoreLease(t *testing.T) {
 		},
 		{ // txn failure for non-existent key
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.IgnoreLease = true
 				txn := &pb.TxnRequest{}
 				txn.Success = append(txn.Success, &pb.RequestOp{
-					Request: &pb.RequestOp_RequestPut{RequestPut: &preq},
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
 				})
 				_, err := kvc.Txn(t.Context(), txn)
 				return err
@@ -825,9 +836,9 @@ func TestV3PutIgnoreLease(t *testing.T) {
 		},
 		{ // put success
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Lease = lresp.ID
-				_, err := kvc.Put(t.Context(), &preq)
+				_, err := kvc.Put(t.Context(), preq)
 				return err
 			},
 			nil,
@@ -836,12 +847,12 @@ func TestV3PutIgnoreLease(t *testing.T) {
 		},
 		{ // txn success, modify value using 'ignore_lease' and ensure lease is not detached
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Value = val1
 				preq.IgnoreLease = true
 				txn := &pb.TxnRequest{}
 				txn.Success = append(txn.Success, &pb.RequestOp{
-					Request: &pb.RequestOp_RequestPut{RequestPut: &preq},
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
 				})
 				_, err := kvc.Txn(t.Context(), txn)
 				return err
@@ -852,10 +863,10 @@ func TestV3PutIgnoreLease(t *testing.T) {
 		},
 		{ // non-empty lease with ignore_lease should error
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Lease = lresp.ID
 				preq.IgnoreLease = true
-				_, err := kvc.Put(t.Context(), &preq)
+				_, err := kvc.Put(t.Context(), preq)
 				return err
 			},
 			rpctypes.ErrGRPCLeaseProvided,
@@ -864,7 +875,7 @@ func TestV3PutIgnoreLease(t *testing.T) {
 		},
 		{ // overwrite with previous value, ensure no prev-kv is returned and lease is detached
 			func() error {
-				presp, err := kvc.Put(t.Context(), &putReq)
+				presp, err := kvc.Put(t.Context(), newPutReq())
 				if err != nil {
 					return err
 				}
@@ -1284,7 +1295,7 @@ func TestV3RangeRequest(t *testing.T) {
 		name string
 
 		putKeys []string
-		reqs    []pb.RangeRequest
+		reqs    []*pb.RangeRequest
 
 		wresps  [][]string
 		wmores  []bool
@@ -1298,7 +1309,7 @@ func TestV3RangeRequest(t *testing.T) {
 		{
 			"single key",
 			[]string{"foo", "bar"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				// exists
 				{Key: []byte("foo")},
 				// doesn't exist
@@ -1316,7 +1327,7 @@ func TestV3RangeRequest(t *testing.T) {
 		{
 			"multi-key",
 			[]string{"a", "b", "c", "d", "e"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				// all in range
 				{Key: []byte("a"), RangeEnd: []byte("z")},
 				// [b, d)
@@ -1346,7 +1357,7 @@ func TestV3RangeRequest(t *testing.T) {
 		{
 			"revision",
 			[]string{"a", "b", "c", "d", "e"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 0},
 				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 1},
 				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 2},
@@ -1366,7 +1377,7 @@ func TestV3RangeRequest(t *testing.T) {
 		{
 			"limit",
 			[]string{"a", "b", "c"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				// more
 				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 1},
 				// half
@@ -1390,7 +1401,7 @@ func TestV3RangeRequest(t *testing.T) {
 		{
 			"count only",
 			[]string{"a", "b", "c"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				// all match
 				{Key: []byte("a"), RangeEnd: []byte("z"), CountOnly: true},
 				// single-key match
@@ -1409,7 +1420,7 @@ func TestV3RangeRequest(t *testing.T) {
 		{
 			"sort",
 			[]string{"b", "a", "c", "d", "c"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				{
 					Key: []byte("a"), RangeEnd: []byte("z"),
 					Limit:      1,
@@ -1464,7 +1475,7 @@ func TestV3RangeRequest(t *testing.T) {
 		{
 			"min/max mod rev",
 			[]string{"rev2", "rev3", "rev4", "rev5", "rev6"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				{
 					Key: []byte{0}, RangeEnd: []byte{0},
 					MinModRevision: 3,
@@ -1497,7 +1508,7 @@ func TestV3RangeRequest(t *testing.T) {
 		{
 			"min/max create rev",
 			[]string{"rev2", "rev3", "rev2", "rev2", "rev6", "rev3"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				{
 					Key: []byte{0}, RangeEnd: []byte{0},
 					MinCreateRevision: 3,
@@ -1543,13 +1554,13 @@ func TestV3RangeRequest(t *testing.T) {
 
 			for j, req := range tt.reqs {
 				kvc := integration.ToGRPC(clus.RandClient()).KV
-				resp, err := kvc.Range(t.Context(), &req)
+				resp, err := kvc.Range(t.Context(), req)
 				if err != nil {
 					t.Errorf("#%d.%d: Range error: %v", i, j, err)
 					continue
 				}
 				if !integration.ThroughProxy && !tt.streamUnsupported[j] {
-					got := rangeStream(t, kvc, &req)
+					got := rangeStream(t, kvc, req)
 					require.Emptyf(t, cmp.Diff(resp, got, protocmp.Transform()),
 						"RangeStream response must match Range response")
 				}
