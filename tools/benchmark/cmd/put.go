@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -76,12 +77,18 @@ func putFunc(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	requests := make(chan v3.Op, totalClients)
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	requests := make(chan casPutRequest, totalClients)
 	if putRate == 0 {
 		putRate = math.MaxInt32
 	}
 	limit := rate.NewLimiter(rate.Limit(putRate), 1)
 	clients := mustCreateClients(totalClients, totalConns)
+	revisionTracker := newCASRevisionTracker()
 
 	bar = pb.New(putTotal)
 	bar.Start()
@@ -92,18 +99,33 @@ func putFunc(cmd *cobra.Command, _ []string) {
 		go func(c *v3.Client) {
 			defer wg.Done()
 			for op := range requests {
-				limit.Wait(context.Background())
+				if err := limit.Wait(ctx); err != nil {
+					if !errors.Is(err, context.Canceled) {
+						r.Results() <- report.Result{Err: err, Start: time.Now(), End: time.Now()}
+					}
+					return
+				}
 
 				st := time.Now()
-				_, err := c.Do(context.Background(), op)
+				err := revisionTracker.put(ctx, c, op.key, op.value)
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
 				bar.Increment()
+				if errors.Is(err, context.Canceled) {
+					return
+				}
 			}
 		}(clients[i])
 	}
 
 	go func() {
+		defer close(requests)
 		for i := 0; i < putTotal; i++ {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			channelID := i % keySpaceSize
 			version := uint64(i)
 
@@ -112,16 +134,23 @@ func putFunc(cmd *cobra.Command, _ []string) {
 				panic(err)
 			}
 
-			requests <- v3.OpPut(key, string(payload))
+			select {
+			case requests <- casPutRequest{key: key, value: string(payload)}:
+			case <-ctx.Done():
+				return
+			}
 		}
-		close(requests)
 	}()
 
 	if compactInterval > 0 {
 		go func() {
 			for {
-				time.Sleep(compactInterval)
-				compactKV(clients)
+				select {
+				case <-time.After(compactInterval):
+					compactKV(clients)
+				case <-ctx.Done():
+					return
+				}
 			}
 		}()
 	}
@@ -132,7 +161,7 @@ func putFunc(cmd *cobra.Command, _ []string) {
 	bar.Finish()
 	fmt.Println(<-rc)
 
-	if checkHashkv {
+	if checkHashkv && ctx.Err() == nil {
 		hashKV(cmd, clients)
 	}
 }

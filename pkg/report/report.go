@@ -23,6 +23,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -49,6 +50,14 @@ type report struct {
 	stats Stats
 	sps   *secondPoints
 }
+
+// StatsObserver is called after a report finishes processing benchmark results.
+type StatsObserver func(benchmarkOp string, stats Stats)
+
+var (
+	statsObserverMu sync.RWMutex
+	statsObserver   StatsObserver
+)
 
 // Stats exposes results raw data.
 type Stats struct {
@@ -111,12 +120,37 @@ func (r *report) Run() <-chan string {
 	go func() {
 		defer close(donec)
 		r.processResults()
+		notifyStatsObserver(r.benchmarkOp, r.stats)
 		if r.generatePerfReport {
 			r.writePerfDashReport(r.benchmarkOp)
 		}
 		donec <- r.String()
 	}()
 	return donec
+}
+
+// SetStatsObserver installs a process-wide observer for completed benchmark
+// reports and returns a restore function for the previous observer.
+func SetStatsObserver(observer StatsObserver) func() {
+	statsObserverMu.Lock()
+	previous := statsObserver
+	statsObserver = observer
+	statsObserverMu.Unlock()
+
+	return func() {
+		statsObserverMu.Lock()
+		statsObserver = previous
+		statsObserverMu.Unlock()
+	}
+}
+
+func notifyStatsObserver(benchmarkOp string, stats Stats) {
+	statsObserverMu.RLock()
+	observer := statsObserver
+	statsObserverMu.RUnlock()
+	if observer != nil {
+		observer(benchmarkOp, stats.copy())
+	}
 }
 
 func (r *report) Stats() <-chan Stats {
@@ -213,39 +247,37 @@ func Percentiles(nums []float64) (pcs []float64, data []float64) {
 	return pctls, percentiles(nums)
 }
 
-
 func percentiles(nums []float64) (data []float64) {
-    data = make([]float64, len(pctls))
-    n := len(nums)
-    if n == 0 {
-        return data
-    }
+	data = make([]float64, len(pctls))
+	n := len(nums)
+	if n == 0 {
+		return data
+	}
 
-    for i, p := range pctls {
-        idx := int(math.Ceil(p*float64(n)/100.0)) - 1
-        if idx < 0 {
-            idx = 0
-        }
-        if idx >= n {
-            idx = n - 1
-        }
-        data[i] = nums[idx]
-    }
+	for i, p := range pctls {
+		idx := int(math.Ceil(p*float64(n+1)/100.0)) - 1
+		if idx < 0 {
+			idx = 0
+		}
+		if idx >= n {
+			idx = n - 1
+		}
+		data[i] = nums[idx]
+	}
 
-    return data
+	return data
 }
 
 func (r *report) sprintLatencies() string {
-    data := percentiles(r.stats.Lats)
-    s := "\nLatency distribution:\n"
-    for i := 0; i < len(pctls); i++ {
-        if data[i] > 0 {
-            s += fmt.Sprintf("  %v%% in %.3f ms.\n", pctls[i], data[i]*1000)
-        }
-    }
-    return s
+	data := percentiles(r.stats.Lats)
+	s := "\nLatency distribution:\n"
+	for i := 0; i < len(pctls); i++ {
+		if data[i] > 0 {
+			s += fmt.Sprintf("  %v%% in %.3f ms.\n", pctls[i], data[i]*1000)
+		}
+	}
+	return s
 }
-
 
 func (r *report) histogram() string {
 	bc := 10

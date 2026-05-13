@@ -6,14 +6,13 @@ import (
 	"fmt"
 	//"math/big"
 	mrand "math/rand"
-	"net"
 	"sync"
 	"time"
 
 	mp_dp_proto "lwi-channel-common/pkg/mp-dp-proto"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"github.com/spf13/cobra"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -62,12 +61,14 @@ func runTwoPcPut(ctx context.Context) error {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: twoPcDialTimeout,
+		DialOptions: noProxyDialOptions(),
 	})
 	if err != nil {
 		return fmt.Errorf("create etcd client: %w", err)
 	}
 	defer cli.Close()
 
+	revisionTracker := newCASRevisionTracker()
 	for i := 0; i < twoPcTotal; i++ {
 		channelID := twoPcChannelStart + (i % twoPcChannelCount)
 		version := twoPcVersionStart + uint64(i)
@@ -77,9 +78,8 @@ func runTwoPcPut(ctx context.Context) error {
 			return err
 		}
 
-		_, err = cli.Put(ctx, key, string(payload))
-		if err != nil {
-			return fmt.Errorf("put key %q: %w", key, err)
+		if err = revisionTracker.put(ctx, cli, key, string(payload)); err != nil {
+			return fmt.Errorf("cas put key %q: %w", key, err)
 		}
 	}
 
@@ -96,13 +96,10 @@ func generateTwoPcRound(channelID int, version uint64) ([]byte, string, error) {
 		ChannelInstanceId: ptr(twoPcRandomString(32)),
 		Operation:         &op,
 		Phase:             &phase,
-		DpStates: map[string]mp_dp_proto.DPState{
-			twoPcRandomString(8): twoPcRandomDPState(),
-			twoPcRandomString(8): twoPcRandomDPState(),
-		},
-		Vip:         ptr(twoPcRandomIPv4()),
-		VipPort:     ptr(uint32(1000 + twoPcRandIntn(50000))),
-		VipProtocol: &protocol,
+		DpStates:          twoPcDPStatesForKiltNodes(),
+		Vip:               ptr(kiltEtcdNodeIP(channelID + int(version))),
+		VipPort:           ptr(uint32(1000 + twoPcRandIntn(50000))),
+		VipProtocol:       &protocol,
 		Backends: []*mp_dp_proto.Backend{
 			twoPcRandomBackend(),
 			twoPcRandomBackend(),
@@ -125,8 +122,16 @@ func generateTwoPcRound(channelID int, version uint64) ([]byte, string, error) {
 	return payload, key, nil
 }
 
+func twoPcDPStatesForKiltNodes() map[string]mp_dp_proto.DPState {
+	states := make(map[string]mp_dp_proto.DPState, len(kiltEtcdNodes))
+	for _, node := range kiltEtcdNodes {
+		states[node.name] = twoPcRandomDPState()
+	}
+	return states
+}
+
 func twoPcBuildKey(channelID int, version uint64) string {
-	prefix := fmt.Sprintf("%d/STATE/%d/", channelID, version)
+	prefix := benchmarkKey(fmt.Sprintf("%d/STATE/%d/", channelID, version))
 	if len(prefix) >= twoPcKeySizeBytes {
 		return prefix[:twoPcKeySizeBytes]
 	}
@@ -182,10 +187,11 @@ func twoPcRandomProtocol() mp_dp_proto.Protocol {
 }
 
 func twoPcRandomBackend() *mp_dp_proto.Backend {
+	node := kiltEtcdNodes[twoPcRandIntn(len(kiltEtcdNodes))]
 	return &mp_dp_proto.Backend{
-		ChannelTaskInstanceId: ptr(twoPcRandomString(16)),
+		ChannelTaskInstanceId: ptr(node.name + "-" + twoPcRandomString(8)),
 		HcPolicyId:            ptr(twoPcRandomString(8)),
-		Ip:                    ptr(twoPcRandomIPv4()),
+		Ip:                    ptr(node.ip),
 		Port:                  ptr(uint32(1000 + twoPcRandIntn(50000))),
 		Weight:                ptr(uint32(1 + twoPcRandIntn(127))),
 		AcceptNewConnections:  ptr(twoPcRandIntn(2) == 0),
@@ -225,15 +231,6 @@ func twoPcRandomString(n int) string {
 	}
 
 	return string(b)
-}
-
-func twoPcRandomIPv4() string {
-	return net.IPv4(
-		byte(1+twoPcRandIntn(254)),
-		byte(1+twoPcRandIntn(254)),
-		byte(1+twoPcRandIntn(254)),
-		byte(1+twoPcRandIntn(254)),
-	).String()
 }
 
 func twoPcRandIntn(max int) int {

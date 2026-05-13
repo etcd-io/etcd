@@ -1,0 +1,88 @@
+<mxfile host="app.diagrams.net" agent="Codex" version="24.7.17">
+  <diagram id="kilt-etcd-5-node-topology" name="KILT 5-node etcd topology">
+    <mxGraphModel dx="1434" dy="855" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="&lt;b&gt;5-member etcd cluster topology&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Single client generates records against distributed etcd members over shared network and shared fsync/storage contention domain&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#334155;fontColor=#0f172a;strokeWidth=2;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="40" y="20" width="1280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="client" value="&lt;b&gt;Client box&lt;/b&gt;&lt;br&gt;kilt-phx-dev-1-etcdc1-1&lt;br&gt;&lt;b&gt;10.201.21.120&lt;/b&gt;&lt;br&gt;&lt;br&gt;Benchmark script&lt;br&gt;generates records/writes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#f97316;fontColor=#7c2d12;strokeWidth=3;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="50" y="320" width="230" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="network" value="&lt;b&gt;Shared Network Fabric&lt;/b&gt;&lt;br&gt;client traffic :2379&lt;br&gt;Raft peer traffic :2380" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;strokeWidth=3;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="420" y="125" width="340" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="cluster" value="&lt;b&gt;5-member etcd distributed cluster&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#64748b;fontColor=#0f172a;strokeWidth=2;spacingTop=12;verticalAlign=top;" parent="1" vertex="1">
+          <mxGeometry x="330" y="290" width="570" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="n1" value="&lt;b&gt;etcdn1&lt;/b&gt;&lt;br&gt;10.201.162.151&lt;br&gt;&lt;b&gt;etcd1 / Leader&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;strokeWidth=4;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="375" y="350" width="190" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="n2" value="&lt;b&gt;etcdn2&lt;/b&gt;&lt;br&gt;10.201.47.57&lt;br&gt;etcd2 / Follower" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#22c55e;fontColor=#14532d;strokeWidth=3;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="665" y="350" width="190" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="n3" value="&lt;b&gt;etcdn3&lt;/b&gt;&lt;br&gt;10.201.98.50&lt;br&gt;etcd3 / Follower" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#22c55e;fontColor=#14532d;strokeWidth=3;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="375" y="515" width="190" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="n4" value="&lt;b&gt;etcdn4&lt;/b&gt;&lt;br&gt;10.201.5.177&lt;br&gt;etcd4 / Follower" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#22c55e;fontColor=#14532d;strokeWidth=3;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="665" y="515" width="190" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="n5" value="&lt;b&gt;etcdn5&lt;/b&gt;&lt;br&gt;10.201.117.10&lt;br&gt;etcd5 / Follower" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#22c55e;fontColor=#14532d;strokeWidth=3;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="520" y="630" width="190" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="fsync" value="&lt;b&gt;Shared fsync / storage contention domain&lt;/b&gt;&lt;br&gt;&lt;br&gt;WAL fsync&lt;br&gt;backend commits&lt;br&gt;quorum write latency impact" style="shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=18;fillColor=#fee2e2;strokeColor=#dc2626;fontColor=#7f1d1d;strokeWidth=4;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="1030" y="405" width="270" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-client-network" value="client writes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#f97316;fontColor=#7c2d12;strokeWidth=3;endArrow=block;endFill=1;" parent="1" source="client" target="network" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-network-n1" value="client endpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;fontColor=#1e3a8a;strokeWidth=2;endArrow=block;endFill=1;" parent="1" source="network" target="n1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-network-n2" value="client endpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;fontColor=#1e3a8a;strokeWidth=2;endArrow=block;endFill=1;" parent="1" source="network" target="n2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-network-n3" value="client endpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;fontColor=#1e3a8a;strokeWidth=2;endArrow=block;endFill=1;" parent="1" source="network" target="n3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-network-n4" value="client endpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;fontColor=#1e3a8a;strokeWidth=2;endArrow=block;endFill=1;" parent="1" source="network" target="n4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-network-n5" value="client endpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;fontColor=#1e3a8a;strokeWidth=2;endArrow=block;endFill=1;" parent="1" source="network" target="n5" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-raft-n1-n2" value="Raft replication" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#16a34a;fontColor=#14532d;strokeWidth=2;startArrow=block;startFill=1;endArrow=block;endFill=1;" parent="1" source="n1" target="n2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-raft-n1-n3" value="Raft replication" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#16a34a;fontColor=#14532d;strokeWidth=2;startArrow=block;startFill=1;endArrow=block;endFill=1;" parent="1" source="n1" target="n3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-raft-n1-n4" value="Raft replication" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#16a34a;fontColor=#14532d;strokeWidth=2;startArrow=block;startFill=1;endArrow=block;endFill=1;" parent="1" source="n1" target="n4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-raft-n1-n5" value="Raft replication" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#16a34a;fontColor=#14532d;strokeWidth=2;startArrow=block;startFill=1;endArrow=block;endFill=1;" parent="1" source="n1" target="n5" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-fsync-n1" value="WAL fsync" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#dc2626;fontColor=#7f1d1d;strokeWidth=2;endArrow=block;endFill=1;" parent="1" source="n1" target="fsync" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-fsync-n2" value="WAL fsync" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#dc2626;fontColor=#7f1d1d;strokeWidth=2;endArrow=block;endFill=1;" parent="1" source="n2" target="fsync" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-fsync-n3" value="WAL fsync" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#dc2626;fontColor=#7f1d1d;strokeWidth=2;endArrow=block;endFill=1;" parent="1" source="n3" target="fsync" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-fsync-n4" value="WAL fsync" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#dc2626;fontColor=#7f1d1d;strokeWidth=2;endArrow=block;endFill=1;" parent="1" source="n4" target="fsync" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-fsync-n5" value="WAL fsync" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#dc2626;fontColor=#7f1d1d;strokeWidth=2;endArrow=block;endFill=1;" parent="1" source="n5" target="fsync" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="&lt;b&gt;Legend&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#f97316&quot;&gt;Orange&lt;/font&gt;: client load generator&lt;br&gt;&lt;font color=&quot;#2563eb&quot;&gt;Blue&lt;/font&gt;: shared network path&lt;br&gt;&lt;font color=&quot;#16a34a&quot;&gt;Green&lt;/font&gt;: etcd/Raft members&lt;br&gt;&lt;font color=&quot;#dc2626&quot;&gt;Red&lt;/font&gt;: fsync/storage pressure" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#94a3b8;fontColor=#0f172a;strokeWidth=2;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="50" y="570" width="230" height="125" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KILT Capacity 20260513 Combined Graphs</title>
+  <style>
+    :root {
+      --ink: #102347;
+      --muted: #59697f;
+      --line: #d7dde7;
+      --paper: #ffffff;
+      --wash: #f4f7fb;
+      --blue: #2457c5;
+      --red: #c43c32;
+      --green: #278b65;
+      --gold: #b7791f;
+      --teal: #0f766e;
+      --violet: #6d28d9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #eef3fa 0%, #f8fafc 34%, #ffffff 100%);
+      color: var(--ink);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    header {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--paper);
+      padding: 26px 28px;
+      box-shadow: 0 18px 48px rgba(16, 35, 71, .08);
+    }
+
+    h1, h2, h3 { margin: 0; }
+
+    h1 {
+      font-size: 30px;
+      letter-spacing: -.02em;
+    }
+
+    h2 {
+      margin-top: 34px;
+      font-size: 22px;
+      letter-spacing: -.01em;
+    }
+
+    h3 {
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin: 8px 0 0;
+      max-width: 900px;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .badge {
+      border: 1px solid #c9d5e7;
+      border-radius: 999px;
+      padding: 7px 11px;
+      color: #253a5c;
+      background: #f8fbff;
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+      padding: 18px 18px 14px;
+      box-shadow: 0 12px 32px rgba(16, 35, 71, .06);
+    }
+
+    .wide { grid-column: 1 / -1; }
+
+    .note {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 0 0 12px;
+    }
+
+    .callout {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--red);
+      border-radius: 10px;
+      background: #fff7ed;
+      color: #703b12;
+      font-weight: 600;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+
+    .axis { stroke: #98a6bb; stroke-width: 1; }
+    .gridline { stroke: #e5eaf2; stroke-width: 1; }
+    .label { fill: #526173; font-size: 12px; }
+    .legend text { fill: #334155; font-size: 12px; }
+    .legend line { stroke-width: 3; stroke-linecap: round; }
+    .series { fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+    .point { stroke: #fff; stroke-width: 2; }
+    .point.elbow { stroke: var(--red); stroke-width: 3; }
+    .threshold { stroke: var(--red); stroke-width: 1.5; stroke-dasharray: 6 5; }
+
+    .mini-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
+    .mini-table th,
+    .mini-table td {
+      text-align: right;
+      border-bottom: 1px solid #e8edf5;
+      padding: 6px 7px;
+      white-space: nowrap;
+    }
+
+    .mini-table th:first-child,
+    .mini-table td:first-child {
+      text-align: left;
+    }
+
+    .mini-table th {
+      color: #263954;
+      background: #f4f7fb;
+    }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      main { padding: 20px 12px 42px; }
+      header { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>KILT Capacity 20260513 Combined Graphs</h1>
+    <p class="subtitle">4 OCPU / 4 GiB capacity run. Benchmark charts show latency behavior by scenario; network charts show TX/RX bandwidth and packet rate by scenario.</p>
+    <div class="badges">
+      <span class="badge">put healthy through 16k/s</span>
+      <span class="badge">txn-put practical ceiling: 8k/s</span>
+      <span class="badge">range elbow: 8k/s</span>
+      <span class="badge">no packet drops reported</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Benchmark Latency Graphs</h2>
+    <p class="note">Single-operation scenarios plot Avg, P99, and P999. Multi-operation scenarios plot P99 per operation to keep the chart readable.</p>
+    <div id="benchmark-grid" class="grid"></div>
+  </section>
+
+  <section>
+    <h2>Network Graphs</h2>
+    <p class="note">Each scenario has a bandwidth chart and a packet-rate chart. Bandwidth values are normalized to MiB/s.</p>
+    <div id="network-grid" class="grid"></div>
+  </section>
+</main>
+
+<script>
+const colors = ["#2457c5", "#c43c32", "#278b65", "#b7791f", "#0f766e", "#6d28d9"];
+
+const benchmarkData = {
+  "put": [
+    { rate: 500, label: "500/s", op: "put", requests: 150000, reqSec: 500.00, avg: 2.21, p50: 1.94, p90: 3.44, p99: 4.80, p999: 6.63, max: 22.28 },
+    { rate: 1000, label: "1k/s", op: "put", requests: 300000, reqSec: 999.99, avg: 3.38, p50: 3.11, p90: 5.31, p99: 7.88, p999: 11.22, max: 43.62 },
+    { rate: 2000, label: "2k/s", op: "put", requests: 600000, reqSec: 1999.40, avg: 5.43, p50: 5.13, p90: 8.03, p99: 11.38, p999: 19.64, max: 216.35 },
+    { rate: 4000, label: "4k/s", op: "put", requests: 1200000, reqSec: 3999.99, avg: 6.76, p50: 6.66, p90: 9.49, p99: 13.12, p999: 18.74, max: 229.90 },
+    { rate: 8000, label: "8k/s", op: "put", requests: 2400000, reqSec: 8000.42, avg: 7.91, p50: 7.81, p90: 10.86, p99: 16.10, p999: 22.44, max: 170.83 },
+    { rate: 16000, label: "16k/s", op: "put", requests: 4800000, reqSec: 16001.71, avg: 9.73, p50: 9.04, p90: 14.53, p99: 23.83, p999: 41.66, max: 242.79 }
+  ],
+  "txn-put": [
+    { rate: 500, label: "500/s", op: "txn-put", requests: 150000, reqSec: 500.00, avg: 2.35, p50: 2.04, p90: 3.59, p99: 5.35, p999: 9.74, max: 45.80 },
+    { rate: 1000, label: "1k/s", op: "txn-put", requests: 300000, reqSec: 999.99, avg: 3.80, p50: 3.49, p90: 5.92, p99: 9.22, p999: 12.91, max: 32.28 },
+    { rate: 2000, label: "2k/s", op: "txn-put", requests: 217069, reqSec: 723.56, avg: 5.91, p50: 5.77, p90: 8.58, p99: 12.14, p999: 17.79, max: 37.25 },
+    { rate: 4000, label: "4k/s", op: "txn-put", requests: 1200000, reqSec: 3999.97, avg: 7.18, p50: 6.94, p90: 9.75, p99: 13.79, p999: 24.85, max: 481.88 },
+    { rate: 8000, label: "8k/s", op: "txn-put", requests: 2400000, reqSec: 8000.09, avg: 7.98, p50: 7.79, p90: 11.19, p99: 16.86, p999: 23.52, max: 80.38 },
+    { rate: 16000, label: "16k/s", op: "txn-put", requests: 1255384, reqSec: 4182.96, avg: 10.54, p50: 9.56, p90: 15.56, p99: 25.61, p999: 174.25, max: 284.49 }
+  ],
+  "watch-latency": [
+    { rate: 500, label: "500/s", op: "put", requests: 150000, reqSec: 474.99, avg: 2.10, p50: 1.81, p90: 3.37, p99: 5.61, p999: 7.31, max: 215.70 },
+    { rate: 500, label: "500/s", op: "watch", requests: 7500000, reqSec: 23706.29, avg: 0.08, p50: 0.01, p90: 0.17, p99: 1.02, p999: 2.52, max: 213.90 },
+    { rate: 1000, label: "1k/s", op: "put", requests: 300000, reqSec: 502.50, avg: 1.99, p50: 1.76, p90: 3.22, p99: 3.94, p999: 4.97, max: 67.86 },
+    { rate: 1000, label: "1k/s", op: "watch", requests: 15000000, reqSec: 25075.18, avg: 0.10, p50: 0.05, p90: 0.21, p99: 1.16, p999: 2.46, max: 13.69 },
+    { rate: 2000, label: "2k/s", op: "put", requests: 600000, reqSec: 494.32, avg: 2.02, p50: 1.78, p90: 3.27, p99: 4.04, p999: 5.17, max: 216.59 },
+    { rate: 2000, label: "2k/s", op: "watch", requests: 30000000, reqSec: 24668.48, avg: 0.10, p50: 0.04, p90: 0.21, p99: 1.19, p999: 2.52, max: 223.04 }
+  ],
+  "mixed": [
+    { rate: 500, label: "500/s", op: "put", requests: 150000, reqSec: 490.78, avg: 2.04, p50: 1.79, p90: 3.33, p99: 4.23, p999: 5.43, max: 72.58 },
+    { rate: 500, label: "500/s", op: "range", requests: 15000, reqSec: 48.99, avg: 2.39, p50: 2.35, p90: 3.17, p99: 4.28, p999: 7.51, max: 9.43 },
+    { rate: 500, label: "500/s", op: "watch", requests: 7500000, reqSec: 24492.54, avg: 0.11, p50: 0.04, p90: 0.22, p99: 1.46, p999: 2.74, max: 17.88 },
+    { rate: 1000, label: "1k/s", op: "put", requests: 300000, reqSec: 498.66, avg: 2.00, p50: 1.77, p90: 3.24, p99: 4.03, p999: 5.19, max: 24.53 },
+    { rate: 1000, label: "1k/s", op: "range", requests: 30000, reqSec: 49.77, avg: 2.25, p50: 2.21, p90: 3.05, p99: 4.12, p999: 16.68, max: 20.34 },
+    { rate: 1000, label: "1k/s", op: "watch", requests: 15000000, reqSec: 24884.41, avg: 0.11, p50: 0.05, p90: 0.22, p99: 1.40, p999: 2.66, max: 20.33 },
+    { rate: 2000, label: "2k/s", op: "put", requests: 600000, reqSec: 489.18, avg: 2.04, p50: 1.80, p90: 3.27, p99: 4.09, p999: 5.44, max: 83.93 },
+    { rate: 2000, label: "2k/s", op: "range", requests: 60000, reqSec: 48.82, avg: 1.93, p50: 1.82, p90: 2.63, p99: 3.69, p999: 22.49, max: 34.70 },
+    { rate: 2000, label: "2k/s", op: "watch", requests: 30000000, reqSec: 24410.03, avg: 0.09, p50: 0.01, p90: 0.17, p99: 1.23, p999: 2.54, max: 19.04 }
+  ],
+  "range": [
+    { rate: 500, label: "500/s", op: "range", requests: 150000, reqSec: 500.00, avg: 2.62, p50: 2.28, p90: 4.31, p99: 6.13, p999: 7.37, max: 9.96 },
+    { rate: 1000, label: "1k/s", op: "range", requests: 300000, reqSec: 1000.00, avg: 2.38, p50: 2.12, p90: 3.88, p99: 5.42, p999: 6.55, max: 9.26 },
+    { rate: 2000, label: "2k/s", op: "range", requests: 600000, reqSec: 2000.02, avg: 2.44, p50: 2.18, p90: 3.75, p99: 5.52, p999: 7.39, max: 19.16 },
+    { rate: 4000, label: "4k/s", op: "range", requests: 1200000, reqSec: 4000.20, avg: 2.77, p50: 2.20, p90: 4.88, p99: 8.47, p999: 14.56, max: 59.51 },
+    { rate: 8000, label: "8k/s", op: "range", requests: 2400000, reqSec: 7926.87, avg: 67.47, p50: 2.34, p90: 218.33, p99: 1037.46, p999: 1932.41, max: 52692.97, elbow: true }
+  ]
+};
+
+const networkData = {
+  "put": [
+    { rate: 500, label: "500/s", txBw: 0.764, rxBw: 0.170, txPps: 2532.09, rxPps: 1532.32 },
+    { rate: 1000, label: "1k/s", txBw: 1.52, rxBw: 0.323, txPps: 5034.19, rxPps: 3034.36 },
+    { rate: 2000, label: "2k/s", txBw: 3.04, rxBw: 0.630, txPps: 10031.99, rxPps: 6037.23 },
+    { rate: 4000, label: "4k/s", txBw: 6.07, rxBw: 1.24, txPps: 20032.31, rxPps: 12040.09 },
+    { rate: 8000, label: "8k/s", txBw: 12.12, rxBw: 2.48, txPps: 40009.87, rxPps: 24030.52 },
+    { rate: 16000, label: "16k/s", txBw: 24.21, rxBw: 4.95, txPps: 79772.32, rxPps: 48005.60 }
+  ],
+  "txn-put": [
+    { rate: 500, label: "500/s", txBw: 0.867, rxBw: 0.170, txPps: 2457.10, rxPps: 1524.59 },
+    { rate: 1000, label: "1k/s", txBw: 1.57, rxBw: 0.317, txPps: 4389.36, rxPps: 2745.99 },
+    { rate: 2000, label: "2k/s", txBw: 3.08, rxBw: 0.426, txPps: 7327.36, rxPps: 4147.07 },
+    { rate: 4000, label: "4k/s", txBw: 4.65, rxBw: 0.845, txPps: 13098.79, rxPps: 8080.66 },
+    { rate: 8000, label: "8k/s", txBw: 6.39, rxBw: 1.25, txPps: 17967.17, rxPps: 11104.98 },
+    { rate: 16000, label: "16k/s", txBw: 11.57, rxBw: 1.59, txPps: 30205.51, rxPps: 16393.58 }
+  ],
+  "watch-latency": [
+    { rate: 500, label: "500/s", txBw: 0.921, rxBw: 15.87, txPps: 6812.37, rxPps: 6554.38 },
+    { rate: 1000, label: "1k/s", txBw: 0.968, rxBw: 16.77, txPps: 7113.13, rxPps: 6834.70 },
+    { rate: 2000, label: "2k/s", txBw: 0.951, rxBw: 16.50, txPps: 6988.39, rxPps: 6670.73 }
+  ],
+  "mixed": [
+    { rate: 500, label: "500/s", txBw: 0.925, rxBw: 18.14, txPps: 6609.07, rxPps: 6605.91 },
+    { rate: 1000, label: "1k/s", txBw: 0.950, rxBw: 19.00, txPps: 6856.13, rxPps: 6881.82 },
+    { rate: 2000, label: "2k/s", txBw: 0.949, rxBw: 18.96, txPps: 6948.27, rxPps: 6822.43 }
+  ],
+  "range": [
+    { rate: 500, label: "500/s", txBw: 0.325, rxBw: 30.14, txPps: 3733.14, rxPps: 5469.27 },
+    { rate: 1000, label: "1k/s", txBw: 0.645, rxBw: 60.28, txPps: 7445.08, rxPps: 10972.00 },
+    { rate: 2000, label: "2k/s", txBw: 1.29, rxBw: 122.05, txPps: 14981.13, rxPps: 23123.42 },
+    { rate: 4000, label: "4k/s", txBw: 2.57, rxBw: 241.02, txPps: 29906.32, rxPps: 43965.27 },
+    { rate: 8000, label: "8k/s", txBw: 5.19, rxBw: 476.93, txPps: 59884.08, rxPps: 80683.42, elbow: true }
+  ]
+};
+
+function uniqueRates(rows) {
+  return Array.from(new Map(rows.sort((a, b) => a.rate - b.rate).map(row => [row.rate, row.label])).entries())
+    .map(([rate, label]) => ({ rate, label }));
+}
+
+function pathFor(values, xFor, yFor) {
+  return values.map((point, index) => `${index === 0 ? "M" : "L"} ${xFor(point.rate).toFixed(1)} ${yFor(point.value).toFixed(1)}`).join(" ");
+}
+
+function niceMax(value) {
+  if (value <= 0) return 1;
+  const power = Math.pow(10, Math.floor(Math.log10(value)));
+  const scaled = value / power;
+  if (scaled <= 2) return 2 * power;
+  if (scaled <= 5) return 5 * power;
+  return 10 * power;
+}
+
+function formatAxis(value, unit) {
+  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k${unit}`;
+  if (value >= 100) return `${value.toFixed(0)}${unit}`;
+  if (value >= 10) return `${value.toFixed(1)}${unit}`;
+  return `${value.toFixed(2)}${unit}`;
+}
+
+function chartSVG({ title, subtitle, rates, series, unit = " ms", threshold = null, height = 330 }) {
+  const width = 760;
+  const margin = { top: 34, right: 28, bottom: 58, left: 66 };
+  const plotW = width - margin.left - margin.right;
+  const plotH = height - margin.top - margin.bottom;
+  const yMax = niceMax(Math.max(...series.flatMap(s => s.values.map(v => v.value)), threshold || 0) * 1.08);
+  const xMap = new Map(rates.map((rate, index) => [rate.rate, margin.left + (rates.length === 1 ? plotW / 2 : index * plotW / (rates.length - 1))]));
+  const xFor = rate => xMap.get(rate);
+  const yFor = value => margin.top + plotH - (value / yMax) * plotH;
+  const rows = [];
+
+  rows.push(`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${title}">`);
+  for (let i = 0; i <= 4; i++) {
+    const value = yMax * i / 4;
+    const y = yFor(value);
+    rows.push(`<line class="gridline" x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}"></line>`);
+    rows.push(`<text class="label" x="${margin.left - 10}" y="${y + 4}" text-anchor="end">${formatAxis(value, unit)}</text>`);
+  }
+  rows.push(`<line class="axis" x1="${margin.left}" y1="${margin.top + plotH}" x2="${width - margin.right}" y2="${margin.top + plotH}"></line>`);
+  rows.push(`<line class="axis" x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + plotH}"></line>`);
+  if (threshold && threshold < yMax) {
+    const y = yFor(threshold);
+    rows.push(`<line class="threshold" x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}"></line>`);
+    rows.push(`<text class="label" x="${margin.left + 8}" y="${y - 8}">25 ms reference</text>`);
+  }
+
+  series.forEach((s, index) => {
+    const color = s.color || colors[index % colors.length];
+    rows.push(`<path class="series" d="${pathFor(s.values, xFor, yFor)}" stroke="${color}"></path>`);
+    s.values.forEach(point => {
+      rows.push(`<circle class="point${point.elbow ? " elbow" : ""}" cx="${xFor(point.rate)}" cy="${yFor(point.value)}" r="${point.elbow ? 6 : 4}" fill="${color}"><title>${s.name}: ${point.value}${unit} at ${point.label}</title></circle>`);
+    });
+  });
+
+  rates.forEach(rate => {
+    rows.push(`<text class="label" x="${xFor(rate.rate)}" y="${height - 26}" text-anchor="middle">${rate.label}</text>`);
+  });
+
+  series.forEach((s, index) => {
+    const x = margin.left + 8 + (index % 3) * 180;
+    const y = 18 + Math.floor(index / 3) * 18;
+    const color = s.color || colors[index % colors.length];
+    rows.push(`<g class="legend"><line x1="${x}" y1="${y}" x2="${x + 24}" y2="${y}" stroke="${color}"></line><text x="${x + 32}" y="${y + 4}">${s.name}</text></g>`);
+  });
+  rows.push("</svg>");
+  return rows.join("");
+}
+
+function benchmarkSeries(name, rows) {
+  const ops = Array.from(new Set(rows.map(row => row.op)));
+  if (ops.length === 1) {
+    return [
+      { name: "Avg", color: "#278b65", values: rows.map(row => ({ rate: row.rate, label: row.label, value: row.avg, elbow: false })) },
+      { name: "P99", color: "#2457c5", values: rows.map(row => ({ rate: row.rate, label: row.label, value: row.p99, elbow: row.elbow })) },
+      { name: "P999", color: "#c43c32", values: rows.map(row => ({ rate: row.rate, label: row.label, value: row.p999, elbow: row.elbow })) }
+    ];
+  }
+  return ops.map((op, index) => ({
+    name: `${op} P99`,
+    color: colors[index % colors.length],
+    values: rows.filter(row => row.op === op).map(row => ({ rate: row.rate, label: row.label, value: row.p99, elbow: row.elbow }))
+  }));
+}
+
+function renderBenchmarkCards() {
+  const grid = document.getElementById("benchmark-grid");
+  Object.entries(benchmarkData).forEach(([name, rows]) => {
+    const card = document.createElement("article");
+    card.className = name === "range" ? "card wide" : "card";
+    const note = name === "range"
+      ? "Detected elbow at 8k/s: P99 jumped from 8.47 ms to 1037.46 ms."
+      : name === "txn-put"
+        ? "No formal detector elbow, but 16k/s shows operational saturation."
+        : name === "put"
+          ? "No formal detector elbow, but 16k/s is close to the 25 ms P99 reference."
+          : "No elbow detected in the tested range.";
+    card.innerHTML = `<h3>${name} benchmark latency</h3><p class="note">${note}</p>` +
+      chartSVG({ title: `${name} benchmark latency`, rates: uniqueRates(rows), series: benchmarkSeries(name, rows), threshold: 25 });
+    if (name === "range") {
+      card.innerHTML += `<div class="callout">Range read elbow: 8k/s sustained near target throughput, but P99 increased 122.4x versus 4k/s.</div>`;
+    }
+    grid.appendChild(card);
+  });
+}
+
+function renderNetworkCards() {
+  const grid = document.getElementById("network-grid");
+  Object.entries(networkData).forEach(([name, rows]) => {
+    const bandwidth = [
+      { name: "TX bandwidth", color: "#2457c5", values: rows.map(row => ({ rate: row.rate, label: row.label, value: row.txBw, elbow: false })) },
+      { name: "RX bandwidth", color: "#c43c32", values: rows.map(row => ({ rate: row.rate, label: row.label, value: row.rxBw, elbow: row.elbow })) }
+    ];
+    const pps = [
+      { name: "TX PPS", color: "#278b65", values: rows.map(row => ({ rate: row.rate, label: row.label, value: row.txPps, elbow: false })) },
+      { name: "RX PPS", color: "#b7791f", values: rows.map(row => ({ rate: row.rate, label: row.label, value: row.rxPps, elbow: row.elbow })) }
+    ];
+    const card = document.createElement("article");
+    card.className = name === "range" ? "card wide" : "card";
+    const note = name === "range"
+      ? "Range 8k/s produced the largest RX load: 476.93 MiB/s and 80,683 RX PPS."
+      : "No packet drops were reported in captured metrics.";
+    card.innerHTML = `<h3>${name} network</h3><p class="note">${note}</p>` +
+      chartSVG({ title: `${name} bandwidth`, rates: uniqueRates(rows), series: bandwidth, unit: " MiB/s", height: 300 }) +
+      chartSVG({ title: `${name} packet rate`, rates: uniqueRates(rows), series: pps, unit: "/s", height: 300 });
+    grid.appendChild(card);
+  });
+}
+
+renderBenchmarkCards();
+renderNetworkCards();
+</script>
+</body>
+</html>

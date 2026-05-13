@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -99,6 +100,10 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		rangeRate = math.MaxInt32
 	}
 	limit := rate.NewLimiter(rate.Limit(rangeRate), 1)
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	requests := make(chan struct{}, totalClients)
 	clients := mustCreateClients(totalClients, totalConns)
@@ -137,32 +142,44 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		go func(c *v3.Client) {
 			defer wg.Done()
 			for range requests {
-				limit.Wait(context.Background())
+				if err := limit.Wait(ctx); err != nil {
+					if !errors.Is(err, context.Canceled) {
+						r.Results() <- report.Result{Err: err, Start: time.Now(), End: time.Now()}
+					}
+					return
+				}
 				st := time.Now()
 				var err error
 				switch {
 				case rangeStream:
 					var stream v3.GetStreamChan
-					stream, err = c.GetStream(context.Background(), key, baseOpts...)
+					stream, err = c.GetStream(ctx, key, baseOpts...)
 					if err == nil {
 						_, err = v3.GetStreamToGetResponse(stream)
 					}
 				case rangePaginate:
-					err = paginatedRange(c, key, k8sWatchCachePageSize, baseOpts)
+					err = paginatedRange(ctx, c, key, k8sWatchCachePageSize, baseOpts)
 				default:
-					_, err = c.Get(context.Background(), key, baseOpts...)
+					_, err = c.Get(ctx, key, baseOpts...)
 				}
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
 				bar.Increment()
+				if errors.Is(err, context.Canceled) {
+					return
+				}
 			}
 		}(clients[i])
 	}
 
 	go func() {
+		defer close(requests)
 		for i := 0; i < rangeTotal; i++ {
-			requests <- struct{}{}
+			select {
+			case requests <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
 		}
-		close(requests)
 	}()
 
 	rc := r.Run()
@@ -172,7 +189,7 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 	fmt.Printf("%s", <-rc)
 }
 
-func paginatedRange(c *v3.Client, key string, pageSize int64, baseOpts []v3.OpOption) error {
+func paginatedRange(ctx context.Context, c *v3.Client, key string, pageSize int64, baseOpts []v3.OpOption) error {
 	merged := &etcdserverpb.RangeResponse{}
 	var rev int64
 	for {
@@ -180,7 +197,7 @@ func paginatedRange(c *v3.Client, key string, pageSize int64, baseOpts []v3.OpOp
 		if rev != 0 {
 			opts = append(opts, v3.WithRev(rev))
 		}
-		resp, err := c.Get(context.Background(), key, opts...)
+		resp, err := c.Get(ctx, key, opts...)
 		if err != nil {
 			return err
 		}
