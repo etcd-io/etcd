@@ -40,6 +40,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -1826,6 +1827,67 @@ func TestV3RangeStreamWriteBetweenChunks(t *testing.T) {
 	}
 	require.Equalf(t, pinnedRev, merged.Header.Revision, "stream header revision must equal the latest revision at stream start")
 	require.Equalf(t, int64(nKeys), merged.Count, "stream Count must reflect the pinned revision")
+}
+
+// TestV3RangeStreamLargeValues verifies the stream progresses and emits all
+// KVs when individual stored values exceed the chunk target.
+func TestV3RangeStreamLargeValues(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+	integration.BeforeTest(t)
+
+	const (
+		valueSize = 4 * 1024 * 1024
+		nKeys     = 20
+	)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:            1,
+		MaxRequestBytes: 8 * 1024 * 1024,
+	})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.Client(0)).KV
+	value := make([]byte, valueSize)
+	for i := 0; i < nKeys; i++ {
+		_, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("big-%02d", i)),
+			Value: value,
+		})
+		require.NoError(t, err)
+	}
+
+	m := clus.Members[0]
+	m.Stop(t)
+	m.MaxRequestBytes = embed.DefaultMaxRequestBytes
+	require.Lessf(t, int(m.MaxRequestBytes), valueSize, "valueSize must exceed MaxRequestBytes to exercise large-value path")
+	require.NoError(t, m.Restart(t))
+	clus.WaitMembersForLeader(t, clus.Members)
+	kvc = integration.ToGRPC(clus.Client(0)).KV
+	waitForRestart(t, kvc)
+
+	stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+		Key:      []byte("big-"),
+		RangeEnd: []byte("big."),
+	}, grpc.MaxCallRecvMsgSize(nKeys*valueSize+512*1024))
+	require.NoError(t, err)
+
+	var kvs, recvs int
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			break
+		}
+		require.NoError(t, rerr)
+		recvs++
+		for j, kv := range chunk.GetRangeResponse().GetKvs() {
+			require.Equal(t, fmt.Sprintf("big-%02d", kvs+j), string(kv.Key))
+			require.Equal(t, value, kv.Value)
+		}
+		kvs += len(chunk.GetRangeResponse().GetKvs())
+	}
+	require.Equalf(t, nKeys, kvs, "kv count")
+	require.GreaterOrEqualf(t, recvs, 2, "expected multi-chunk stream for %d-byte values", valueSize)
 }
 
 // TestTLSGRPCRejectInsecureClient checks that connection is rejected if server is TLS but not client.
