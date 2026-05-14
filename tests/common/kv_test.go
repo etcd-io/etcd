@@ -30,6 +30,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/interfaces"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -59,6 +60,14 @@ func TestKVPut(t *testing.T) {
 }
 
 func TestKVGet(t *testing.T) {
+	testKVGet(t, false)
+}
+
+func TestKVGetStream(t *testing.T) {
+	testKVGet(t, true)
+}
+
+func testKVGet(t *testing.T, stream bool) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
@@ -67,6 +76,10 @@ func TestKVGet(t *testing.T) {
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
 			cc := testutils.MustClient(clus.Client())
+
+			if stream && !clusterSupportsGetStream(ctx, t, clus) {
+				t.Skip("RangeStream is not supported by this cluster")
+			}
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				resp, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
@@ -153,20 +166,16 @@ func TestKVGet(t *testing.T) {
 				}
 				for _, tt := range slices.Concat(tests, testsWithKeysOnly) {
 					t.Run(tt.name, func(t *testing.T) {
-						for _, stream := range []bool{true, false} {
-							t.Run(fmt.Sprintf("Stream=%v", stream), func(t *testing.T) {
-								if stream && (!supportsGetStream || !rangeStreamSupports(tt.options)) {
-									t.Skip("Stream not supported")
-								}
-								opts := tt.options
-								opts.Stream = stream
-								resp, err := cc.Get(ctx, tt.begin, opts)
-								require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
-								resp.Header.MemberId = 0
-								resp.Header.RaftTerm = 0
-								assert.Equal(t, tt.wantResponse, resp)
-							})
+						if stream && !rangeStreamSupports(tt.options) {
+							t.Skip("options not supported by RangeStream")
 						}
+						opts := tt.options
+						opts.Stream = stream
+						resp, err := cc.Get(ctx, tt.begin, opts)
+						require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
+						resp.Header.MemberId = 0
+						resp.Header.RaftTerm = 0
+						assert.Equal(t, tt.wantResponse, resp)
 					})
 				}
 			})
@@ -182,6 +191,18 @@ func createKV(key, val string, createRev, modRev, ver int64) *mvccpb.KeyValue {
 		ModRevision:    modRev,
 		Version:        ver,
 	}
+}
+
+// clusterSupportsGetStream probes every cluster member with a RangeStream RPC and returns false if any member rejects it.
+func clusterSupportsGetStream(ctx context.Context, t *testing.T, clus interfaces.Cluster) bool {
+	for _, m := range clus.Members() {
+		_, err := m.Client().Get(ctx, "probe", config.GetOptions{Stream: true})
+		if err != nil {
+			t.Logf("member does not support RangeStream: %v", err)
+			return false
+		}
+	}
+	return true
 }
 
 // rangeStreamSupports reports whether the server's RangeStream RPC accepts a
