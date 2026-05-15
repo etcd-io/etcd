@@ -237,7 +237,10 @@ function produce_junit_xmlreport {
   junit_xml_filename="${junit_filename_prefix}.xml"
 
   # Ensure that gotestsum is run without cross-compiling
-  run_go_tool gotest.tools/gotestsum --junitfile "${junit_xml_filename}" --raw-command cat "${junit_filename_prefix}"*.stdout || exit 1
+  run_go_tool gotest.tools/gotestsum \
+    --hide-summary=output \
+    --junitfile "${junit_xml_filename}" \
+    --raw-command cat "${junit_filename_prefix}"*.stdout || exit 1
   if [ "${VERBOSE:-}" != "1" ]; then
     rm "${junit_filename_prefix}"*.stdout
   fi
