@@ -515,13 +515,9 @@ func (s *watchableStore) progressIfSync(watchers map[WatchID]*watcher, responseW
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	rev := s.rev()
 	// Any watcher unsynced?
 	for _, w := range watchers {
 		if _, ok := s.synced.watchers[w]; !ok {
-			return false
-		}
-		if rev < w.startRev {
 			return false
 		}
 	}
@@ -532,6 +528,9 @@ func (s *watchableStore) progressIfSync(watchers map[WatchID]*watcher, responseW
 	// notification will be broadcasted client-side if required
 	// (see dispatchEvent in client/v3/watch.go)
 	for _, w := range watchers {
+		// Use the watcher's minRev - 1 to ensure that we don't send a progress
+		// notification for a revision that hasn't been notified yet via notify().
+		rev := w.minRev - 1
 		w.send(WatchResponse{WatchID: responseWatchID, Revision: rev})
 		return true
 	}
