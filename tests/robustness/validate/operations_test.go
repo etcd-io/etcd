@@ -294,6 +294,73 @@ func keyValueRevision(key, value string, rev int64) model.KeyValue {
 	}
 }
 
+func TestValidateLinearizableOperationsTimeoutIsRespected(t *testing.T) {
+	timeout := time.Second
+	const failedPutCount = 17
+	// Repeat the range read to make the final applyRequestWithResponse step slow.
+	const rangeReadCount = 3072
+
+	history := []porcupine.Operation{}
+	for i := 0; i < failedPutCount; i++ {
+		history = append(history, porcupine.Operation{
+			ClientId: i,
+			Input:    putRequest(fmt.Sprintf("failed%03d", i), "value"),
+			Output:   errorResponse(fmt.Errorf("timeout")),
+			Call:     int64(i),
+			Return:   int64(failedPutCount + i),
+		})
+	}
+
+	rangeOperations := make([]model.EtcdOperation, 0, rangeReadCount)
+	for i := 0; i < rangeReadCount; i++ {
+		rangeOperations = append(rangeOperations, model.EtcdOperation{
+			Type: model.RangeOperation,
+			Range: model.RangeOptions{
+				Start: "failed",
+				End:   "faile~",
+			},
+		})
+	}
+	readRequest := model.EtcdRequest{
+		Type: model.Txn,
+		Txn: &model.TxnRequest{
+			OperationsOnSuccess: rangeOperations,
+		},
+	}
+
+	// Each failed put can be lost or persisted, so the large read-only
+	// transaction reaches applyRequestWithResponse with many possible states in
+	// a single Step call.
+	replay := model.NewReplayFromOperations(history)
+	state, err := replay.StateForRevision(failedPutCount + 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, readResponse := state.Step(readRequest)
+	history = append(history, porcupine.Operation{
+		ClientId: failedPutCount,
+		Input:    readRequest,
+		Output:   readResponse,
+		Call:     int64(2 * failedPutCount),
+		Return:   int64(2*failedPutCount + 1),
+	})
+	keys := model.ModelKeys(history)
+
+	start := time.Now()
+	result := validateLinearizableOperationsAndVisualize(zap.NewNop(), keys, history, timeout)
+	elapsed := time.Since(start)
+
+	if !result.Timeout {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) timed out = false, message = %q", result.Message)
+	}
+	if result.Message != "timed out" {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) message = %q, want %q", result.Message, "timed out")
+	}
+	if elapsed > timeout+250*time.Millisecond {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) does not respect timeout: %v, timeout was %v", elapsed, timeout)
+	}
+}
+
 func BenchmarkValidateLinearizableOperations(b *testing.B) {
 	lg := zap.NewNop()
 	b.Run("SequentialSuccessPuts", func(b *testing.B) {
