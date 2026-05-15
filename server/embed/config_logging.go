@@ -107,6 +107,9 @@ func (cfg *Config) setupLogging() error {
 			copied.ErrorOutputPaths = errOutputPaths
 			copied = logutil.MergeOutputPaths(copied)
 			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
+			if cfg.DisableLogSampling {
+				copied.Sampling = nil
+			}
 			encoding, err := logutil.ConvertToZapFormat(cfg.LogFormat)
 			if err != nil {
 				return err
