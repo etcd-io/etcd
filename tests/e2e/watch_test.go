@@ -562,3 +562,94 @@ func TestResumeCompactionOnTombstone(t *testing.T) {
 		t.Fatal("timed out getting watch response")
 	}
 }
+
+func TestConfigurableCompactionInterval(t *testing.T) {
+	t.Run("periodic compaction keep 1ms retention, 1s compact interval, 5 second runtime", func(t *testing.T) {
+		testConfigurableCompactionInterval(t, "periodic", "1ms", 1*time.Second, 5*time.Second)
+	})
+	t.Run("revision compaction keep 1 key retention, 1s compact interval, 5 second runtime", func(t *testing.T) {
+		testConfigurableCompactionInterval(t, "revision", "1", 1*time.Second, 5*time.Second)
+	})
+}
+
+func testConfigurableCompactionInterval(t *testing.T, mode string, retention string, interval, runtime time.Duration) {
+	e2e.BeforeTest(t)
+	cfg := e2e.DefaultConfig()
+	cfg.Client = e2e.ClientConfig{ConnectionType: e2e.ClientTLS}
+	cfg.ServerConfig.AutoCompactionMode = mode
+	cfg.ServerConfig.AutoCompactionInterval = interval.String()
+	cfg.ServerConfig.AutoCompactionRetention = retention
+	clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg), e2e.WithClusterSize(1))
+	require.NoError(t, err)
+	defer clus.Close()
+
+	c := newClient(t, clus.EndpointsGRPC(), cfg.Client)
+	defer c.Close()
+
+	ctx := context.Background()
+	key := "foo"
+	totalRev := 100
+
+	// This goroutine will submit changes on $key $totalRev times
+	done := make(chan struct{})
+	go func() {
+		for vi := 1; vi <= totalRev; vi++ {
+			value := fmt.Sprintf("%d", vi)
+			t.Logf("PUT key=%s, val=%s", key, value)
+			_, perr := c.KV.Put(ctx, key, value)
+			assert.NoError(t, perr)
+			time.Sleep(runtime / time.Duration(totalRev)) // sleep in even parts to interweave compaction
+		}
+		done <- struct{}{}
+	}()
+
+	receivedEvents := make([]*clientv3.Event, 0)
+
+	var fromRev int64
+mainLoop:
+	for {
+		watchChan := c.Watch(ctx, key, clientv3.WithRev(fromRev))
+		t.Logf("Start to watch key %s starting from revision %d", key, fromRev)
+	watchLoop:
+		for {
+			currentEventCount := len(receivedEvents)
+			if currentEventCount == totalRev {
+				break mainLoop
+			}
+
+			select {
+			case watchResp := <-watchChan:
+				t.Logf("Received number of events: %d", len(watchResp.Events))
+				receivedEvents = append(receivedEvents, watchResp.Events...)
+				if len(watchResp.Events) == 0 {
+					require.Equal(t, v3rpc.ErrCompacted, watchResp.Err())
+					break watchLoop
+				}
+			case <-time.After(10 * time.Second):
+				t.Fatal("timed out getting watch response")
+			}
+		}
+	}
+
+	<-done
+
+	t.Logf("Received total number of events: %d", len(receivedEvents))
+	var putCount int64
+	var compactCount int64
+	expectedPutCount := int64(totalRev)
+	expectedCompactCount := int64(totalRev)
+	for _, received := range receivedEvents {
+		switch received.Type {
+		case clientv3.EventTypePut:
+			// make sure put value is correct
+			require.Equal(t, string(received.Kv.Value), fmt.Sprintf("%d", putCount+1))
+			putCount++
+		case clientv3.EventTypeDelete:
+			compactCount++
+		default:
+			t.Fatalf("unknown key type: %s", received.Type)
+		}
+	}
+	require.Equal(t, expectedPutCount, putCount)
+	require.Equal(t, expectedCompactCount, compactCount)
+}
