@@ -16,10 +16,9 @@ package cmd
 
 import (
 	"context"
-	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
-	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -37,11 +36,11 @@ import (
 var putCmd = &cobra.Command{
 	Use:   "put",
 	Short: "Benchmark put",
-
-	Run: putFunc,
+	Run:   putFunc,
 }
 
 var (
+	// Keep these because txn_put.go and txn_mixed.go still use them.
 	keySize int
 	valSize int
 
@@ -49,7 +48,6 @@ var (
 	putRate  int
 
 	keySpaceSize int
-	seqKeys      bool
 
 	compactInterval   time.Duration
 	compactIndexDelta int64
@@ -59,13 +57,15 @@ var (
 
 func init() {
 	RootCmd.AddCommand(putCmd)
+
+	// Keep these flags because other benchmark commands still depend on the vars.
 	putCmd.Flags().IntVar(&keySize, "key-size", 8, "Key size of put request")
 	putCmd.Flags().IntVar(&valSize, "val-size", 8, "Value size of put request")
-	putCmd.Flags().IntVar(&putRate, "rate", 0, "Maximum puts per second (0 is no limit)")
 
+	putCmd.Flags().IntVar(&putRate, "rate", 0, "Maximum puts per second (0 is no limit)")
 	putCmd.Flags().IntVar(&putTotal, "total", 10000, "Total number of put requests")
-	putCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
-	putCmd.Flags().BoolVar(&seqKeys, "sequential-keys", false, "Use sequential keys")
+	putCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible channel IDs")
+
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
 	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "'true' to check hashkv")
@@ -77,13 +77,18 @@ func putFunc(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	requests := make(chan v3.Op, totalClients)
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	requests := make(chan casPutRequest, totalClients)
 	if putRate == 0 {
 		putRate = math.MaxInt32
 	}
 	limit := rate.NewLimiter(rate.Limit(putRate), 1)
 	clients := mustCreateClients(totalClients, totalConns)
-	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
+	revisionTracker := newCASRevisionTracker()
 
 	bar = pb.New(putTotal)
 	bar.Start()
@@ -94,33 +99,58 @@ func putFunc(cmd *cobra.Command, _ []string) {
 		go func(c *v3.Client) {
 			defer wg.Done()
 			for op := range requests {
-				limit.Wait(context.Background())
+				if err := limit.Wait(ctx); err != nil {
+					if !errors.Is(err, context.Canceled) {
+						r.Results() <- report.Result{Err: err, Start: time.Now(), End: time.Now()}
+					}
+					return
+				}
 
 				st := time.Now()
-				_, err := c.Do(context.Background(), op)
+				err := revisionTracker.put(ctx, c, op.key, op.value)
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
 				bar.Increment()
+				if errors.Is(err, context.Canceled) {
+					return
+				}
 			}
 		}(clients[i])
 	}
 
 	go func() {
+		defer close(requests)
 		for i := 0; i < putTotal; i++ {
-			if seqKeys {
-				binary.PutVarint(k, int64(i%keySpaceSize))
-			} else {
-				binary.PutVarint(k, int64(rand.Intn(keySpaceSize)))
+			select {
+			case <-ctx.Done():
+				return
+			default:
 			}
-			requests <- v3.OpPut(string(k), v)
+
+			channelID := i % keySpaceSize
+			version := uint64(i)
+
+			payload, key, err := generateTwoPcRound(channelID, version)
+			if err != nil {
+				panic(err)
+			}
+
+			select {
+			case requests <- casPutRequest{key: key, value: string(payload)}:
+			case <-ctx.Done():
+				return
+			}
 		}
-		close(requests)
 	}()
 
 	if compactInterval > 0 {
 		go func() {
 			for {
-				time.Sleep(compactInterval)
-				compactKV(clients)
+				select {
+				case <-time.After(compactInterval):
+					compactKV(clients)
+				case <-ctx.Done():
+					return
+				}
 			}
 		}()
 	}
@@ -131,7 +161,7 @@ func putFunc(cmd *cobra.Command, _ []string) {
 	bar.Finish()
 	fmt.Println(<-rc)
 
-	if checkHashkv {
+	if checkHashkv && ctx.Err() == nil {
 		hashKV(cmd, clients)
 	}
 }

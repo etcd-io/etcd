@@ -25,9 +25,10 @@ import (
 )
 
 type Metrics struct {
-	Perc50 float64 `json:"Perc50"`
-	Perc90 float64 `json:"Perc90"`
-	Perc99 float64 `json:"Perc99"`
+	Perc50  float64 `json:"Perc50"`
+	Perc90  float64 `json:"Perc90"`
+	Perc99  float64 `json:"Perc99"`
+	Perc999 float64 `json:"Perc999"`
 }
 
 type Labels struct {
@@ -56,9 +57,10 @@ func (r *report) writePerfDashReport(benchmarkOp string) {
 		DataItems: []DataItem{
 			{
 				Data: Metrics{
-					Perc50: math.Round(pclsData[50]*10000) / 10000,
-					Perc90: math.Round(pclsData[90]*10000) / 10000,
-					Perc99: math.Round(pclsData[99]*10000) / 10000,
+					Perc50:  math.Round(pclsData[50]*10000) / 10000,
+					Perc90:  math.Round(pclsData[90]*10000) / 10000,
+					Perc99:  math.Round(pclsData[99]*10000) / 10000,
+					Perc999: math.Round(pclsData[99.9]*10000) / 10000,
 				},
 				Unit: "ms",
 				Labels: Labels{

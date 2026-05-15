@@ -14,6 +14,7 @@ replace (
 	go.etcd.io/etcd/pkg/v3 => ./pkg
 	go.etcd.io/etcd/server/v3 => ./server
 	go.etcd.io/etcd/tests/v3 => ./tests
+	lwi-channel-common => ./lwi-channel-common
 )
 
 require (
@@ -22,6 +23,7 @@ require (
 	github.com/coreos/go-semver v0.3.1
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang/protobuf v1.5.4
+	github.com/shirou/gopsutil/v4 v4.26.4
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.4.3
@@ -39,6 +41,7 @@ require (
 	golang.org/x/tools v0.44.0
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
+	lwi-channel-common v0.0.0
 )
 
 require (

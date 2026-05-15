@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/bgentry/speakeasy"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -56,6 +57,7 @@ func mustCreateConn() *clientv3.Client {
 		AutoSyncInterval: autoSyncInterval,
 		Endpoints:        endpoints,
 		DialTimeout:      dialTimeout,
+		DialOptions:      noProxyDialOptions(),
 	}
 	if !tls.Empty() || tls.TrustedCAFile != "" {
 		cfgtls, err := tls.ClientConfig()
@@ -87,6 +89,10 @@ func mustCreateConn() *clientv3.Client {
 	return client
 }
 
+func noProxyDialOptions() []grpc.DialOption {
+	return []grpc.DialOption{grpc.WithNoProxy()}
+}
+
 func mustCreateClients(totalClients, totalConns uint) []*clientv3.Client {
 	conns := make([]*clientv3.Client, totalConns)
 	for i := range conns {
@@ -108,6 +114,10 @@ func mustRandBytes(n int) []byte {
 		os.Exit(1)
 	}
 	return rb
+}
+
+func benchmarkKey(key string) string {
+	return benchmarkKeyPrefix + key
 }
 
 func newReport(benchmarkOp string) report.Report {

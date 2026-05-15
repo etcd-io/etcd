@@ -104,3 +104,37 @@ func TestWeightedReport(t *testing.T) {
 	}
 	require.Truef(t, reflect.DeepEqual(stats, wStats), "got %+v, want %+v", stats, wStats)
 }
+
+func TestStatsObserverReceivesFinishedReport(t *testing.T) {
+	type observedReport struct {
+		op    string
+		stats Stats
+	}
+	observed := make(chan observedReport, 1)
+	restore := SetStatsObserver(func(benchmarkOp string, stats Stats) {
+		observed <- observedReport{op: benchmarkOp, stats: stats}
+	})
+	defer restore()
+
+	r := newReport("%f", "put", false)
+	donec := r.Run()
+	start := time.Now()
+	r.Results() <- Result{Start: start, End: start.Add(2 * time.Millisecond)}
+	close(r.Results())
+	<-donec
+
+	select {
+	case got := <-observed:
+		if got.op != "put" {
+			t.Fatalf("observed op = %q, want %q", got.op, "put")
+		}
+		if len(got.stats.Lats) != 1 {
+			t.Fatalf("observed %d latencies, want 1", len(got.stats.Lats))
+		}
+		if got.stats.Lats[0] != 0.002 {
+			t.Fatalf("observed latency = %v, want %v", got.stats.Lats[0], 0.002)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for stats observer")
+	}
+}

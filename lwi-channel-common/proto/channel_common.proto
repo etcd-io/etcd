@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package lwi.common;
+
+import "buf/validate/validate.proto";
+
+option go_package = "lwi-channel-common/pkg/mp-dp-proto;mp_dp_proto";
+
+enum Operation {
+  OPERATION_UNSPECIFIED = 0;
+  OPERATION_ENSURE_CHANNEL = 1;
+  OPERATION_DELETE_CHANNEL = 2;
+  OPERATION_ENSURE_BACKEND = 3;
+  OPERATION_DELETE_BACKEND = 4;
+}
+
+message Backend {
+  optional string channel_task_instance_id = 1 [(buf.validate.field).required = true];
+
+  // associated policy id if not empty.
+  optional string hc_policy_id = 2;
+
+  optional string ip = 3 [(buf.validate.field).required = true];
+  optional uint32 port = 4 [(buf.validate.field).uint32 = { gt: 0, lt: 65536 }];
+  optional uint32 weight = 5 [(buf.validate.field).uint32 = { gt: 0, lt: 128 }];
+  optional bool accept_new_connections = 6;
+}
+
+message HealthPolicy {
+  // policy id is a key that identifies a policy within a TwoPcRound. The id does
+  // not have to be unique outside of channel scope. For example, all channels
+  // can adopt "1" and "2" as policy id.
+  optional string policy_id = 1 [(buf.validate.field).required = true];
+
+  // http policy only for now, TODO: add tcp, udp, etc.
+  oneof policy_type {
+    HealthPolicyHttp http = 2;
+  }
+
+  optional uint32 interval_msecs = 3 [(buf.validate.field).uint32 = { gte: 1000, lte: 120000 }];
+  optional uint32 timeout_msecs = 4 [(buf.validate.field).uint32 = { gte: 100, lte: 120000 }];
+
+  // consecutive attempts to transition an unhealthy backend to healthy
+  optional uint32 healthy_tries = 5[(buf.validate.field).uint32 = { gt: 0, lte: 20 }];
+
+  // consecutive tries to transition a healthy backend to unhealthy
+  optional uint32 unhealthy_tries = 6[(buf.validate.field).uint32 = { gt: 0, lte: 20 }];
+
+  // fail open threshold percentage. Some examples
+  // 0    - disabled
+  // 30   - if 30% or more backends are unhealthy
+  // 100  - if 100% of backends are unhealthy
+  optional uint32 fail_open_threshold = 7[(buf.validate.field).uint32 = { gte: 0, lte: 100 }];
+}
+
+message HealthPolicyHttp {
+  // URI path for http queries, eg. /healthcheck
+  optional string uri_path = 1 [(buf.validate.field).required = true];
+
+  // destination port for health checks
+  optional uint32 port = 2 [(buf.validate.field).uint32 = { gt: 0, lt: 65536 }];
+
+  // expected status code if set
+  optional uint32 status_code = 3;
+
+  // regex to run for response context if set
+  optional string resp_regex = 4;
+
+  // invert response regex matching if set
+  optional bool resp_regex_invert = 5;
+}

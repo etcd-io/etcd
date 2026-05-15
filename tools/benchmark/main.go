@@ -15,14 +15,25 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"go.etcd.io/etcd/v3/tools/benchmark/cmd"
 )
 
 func main() {
-	if err := cmd.RootCmd.Execute(); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		// Restore default signal handling so a second Ctrl-C can force exit.
+		stop()
+	}()
+
+	if err := cmd.RootCmd.ExecuteContext(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(-1)
 	}
