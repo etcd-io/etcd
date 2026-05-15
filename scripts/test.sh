@@ -497,6 +497,23 @@ function gomodguard_pass {
   run_for_workspace_modules module_gomodguard "${tool_bin}"
 }
 
+function modern_sbom_pass {
+  log_callout "validating modern SBOM generation..."
+
+  local temp_sbom_dir
+  temp_sbom_dir=$(mktemp -d)
+
+  if ./scripts/generate-modern-sbom.sh "dev" "${temp_sbom_dir}"; then
+    log_success "modern SBOM generation validation PASSED"
+    rm -rf "${temp_sbom_dir}"
+    return 0
+  else
+    log_error "modern SBOM generation validation FAILED"
+    rm -rf "${temp_sbom_dir}"
+    return 255
+  fi
+}
+
 ######## VARIOUS CHECKERS ######################################################
 
 function dump_module_deps() {
