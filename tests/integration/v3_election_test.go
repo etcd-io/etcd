@@ -419,7 +419,7 @@ func TestElectionWithAuthEnabled(t *testing.T) {
 			if serr != nil {
 				errC <- fmt.Errorf("[NewSession] %s: %w", campaign.name, serr)
 			}
-			s.Orphan()
+			defer s.Close()
 
 			e := concurrency.NewElection(s, campaign.pfx)
 			eerr := e.Campaign(t.Context(), "whatever")
