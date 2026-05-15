@@ -88,40 +88,39 @@ func TestRobustnessRegression(t *testing.T) {
 }
 
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenarios.TestScenario, c *e2e.EtcdProcessCluster) {
-	serverDataPaths := report.ServerDataPaths(c)
-	r := report.TestReport{
-		Logger:          lg,
-		ServersDataPath: serverDataPaths,
-		Traffic:         &report.TrafficDetail{ExpectUniqueRevision: s.Traffic.ExpectUniqueRevision()},
-	}
+	r := report.NewTestReport(lg, testResultsDirectory(t), report.ServerDataPaths(c), &report.TrafficDetail{ExpectUniqueRevision: s.Traffic.ExpectUniqueRevision()})
 	// t.Failed() returns false during panicking. We need to forcibly
 	// save data on panicking.
 	// Refer to: https://github.com/golang/go/issues/49929
 	panicked := true
 	defer func() {
-		_, persistResults := os.LookupEnv("PERSIST_RESULTS")
-		shouldReport := t.Failed() || panicked || persistResults
-		if shouldReport {
-			path := testResultsDirectory(t)
-			if err := r.Report(path); err != nil {
-				t.Error(err)
-			}
+		if err := r.Finalize(shouldKeepReport(t, panicked)); err != nil {
+			t.Error(err)
 		}
 	}()
-	r.Client = runScenario(ctx, t, s, lg, c)
+	clientReports := runScenario(ctx, t, s, lg, c)
+	r.SetClientReports(clientReports)
+	if err := r.ReportData(); err != nil {
+		t.Error(err)
+	}
 	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
 	if err != nil {
 		t.Error(err)
 	}
 
 	validateConfig := validate.Config{ExpectRevisionUnique: s.Traffic.ExpectUniqueRevision()}
-	result := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
-	r.Visualize = result.Linearization.Visualize
+	result := validate.ValidateAndReturnVisualize(lg, validateConfig, clientReports, persistedRequests, 5*time.Minute)
+	r.SetVisualizer(result.Linearization.Visualize)
 	err = result.Error()
 	if err != nil {
 		t.Error(err)
 	}
 	panicked = false
+}
+
+func shouldKeepReport(t *testing.T, panicked bool) bool {
+	_, persistResults := os.LookupEnv("PERSIST_RESULTS")
+	return t.Failed() || panicked || persistResults
 }
 
 func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []report.ClientReport) {

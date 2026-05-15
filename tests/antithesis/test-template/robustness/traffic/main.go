@@ -76,15 +76,16 @@ func main() {
 	choice := rand.IntN(len(traffics))
 	tf := traffics[choice]
 	lg.Info("Traffic", zap.String("Type", trafficNames[choice]))
-	r := report.TestReport{Logger: lg, ServersDataPath: etcdetcdDataPaths, Traffic: &report.TrafficDetail{ExpectUniqueRevision: tf.ExpectUniqueRevision()}}
+	r := report.NewTestReport(lg, reportPath, etcdetcdDataPaths, &report.TrafficDetail{ExpectUniqueRevision: tf.ExpectUniqueRevision()})
 	defer func() {
-		if err = r.Report(reportPath); err != nil {
+		if err = r.ReportData(); err != nil {
 			lg.Error("Failed to save traffic generation report", zap.Error(err))
 		}
 	}()
 
 	lg.Info("Start traffic generation", zap.Duration("duration", duration), zap.String("base-time", baseTime.UTC().Format("2006-01-02T15:04:05.000000Z0700")))
-	r.Client, err = runTraffic(ctx, lg, tf, hosts, baseTime, duration)
+	clientReports, err := runTraffic(ctx, lg, tf, hosts, baseTime, duration)
+	r.SetClientReports(clientReports)
 	if err != nil {
 		lg.Error("Failed to generate traffic")
 		panic(err)
