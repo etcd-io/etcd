@@ -170,6 +170,8 @@ type ClusterConfig struct {
 	LeaseCheckpointInterval time.Duration
 	LeaseCheckpointPersist  bool
 
+	EnableAutoPromoteLearners bool
+
 	WatchProgressNotifyInterval time.Duration
 	MaxLearners                 int
 	DisableStrictReconfigCheck  bool
@@ -283,6 +285,7 @@ func (c *Cluster) MustNewMember(t testutil.TB) *Member {
 			EnableLeaseCheckpoint:       c.Cfg.EnableLeaseCheckpoint,
 			LeaseCheckpointInterval:     c.Cfg.LeaseCheckpointInterval,
 			LeaseCheckpointPersist:      c.Cfg.LeaseCheckpointPersist,
+			EnableAutoPromoteLearners:   c.Cfg.EnableAutoPromoteLearners,
 			WatchProgressNotifyInterval: c.Cfg.WatchProgressNotifyInterval,
 			MaxLearners:                 c.Cfg.MaxLearners,
 			DisableStrictReconfigCheck:  c.Cfg.DisableStrictReconfigCheck,
@@ -608,6 +611,7 @@ type MemberConfig struct {
 	EnableLeaseCheckpoint       bool
 	LeaseCheckpointInterval     time.Duration
 	LeaseCheckpointPersist      bool
+	EnableAutoPromoteLearners   bool
 	WatchProgressNotifyInterval time.Duration
 	MaxLearners                 int
 	DisableStrictReconfigCheck  bool
@@ -731,7 +735,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 
 	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
 	m.ServerFeatureGate = features.NewDefaultServerFeatureGate(m.Name, m.Logger)
-	featureGates := fmt.Sprintf("LeaseCheckpoint=%v,LeaseCheckpointPersist=%v", mcfg.EnableLeaseCheckpoint, mcfg.LeaseCheckpointPersist)
+	featureGates := fmt.Sprintf("LeaseCheckpoint=%v,LeaseCheckpointPersist=%v,AutoPromoteLearners=%v", mcfg.EnableLeaseCheckpoint, mcfg.LeaseCheckpointPersist, mcfg.EnableAutoPromoteLearners)
 	if err := m.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(featureGates); err != nil {
 		t.Fatalf("Set FeatureGate FAILED: %v", err)
 	}
