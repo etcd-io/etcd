@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,10 +27,9 @@ func Test_readRaw(t *testing.T) {
 	mustCreateWALLog(t, path)
 	var out bytes.Buffer
 	readRaw(nil, walDir(path), &out)
-	assert.Equal(t,
-		`CRC: 0
+	assertReadRawOutput(t, `CRC: 0
 Metadata: 
-Snapshot: index:0 term:0 
+Snapshot: index:0 term:0
 Entry: Term:1 Index:1 Type:EntryConfChange Data:"\010\001\020\000\030\002\"\000" 
 Entry: Term:2 Index:2 Type:EntryConfChange Data:"\010\002\020\001\030\002\"\000" 
 Entry: Term:2 Index:3 Type:EntryConfChange Data:"\010\003\020\002\030\002\"\000" 
@@ -62,3 +62,21 @@ Entry: Term:27 Index:34 Data:"?"
 EOF: All entries were processed.
 `, out.String())
 }
+
+func assertReadRawOutput(t *testing.T, expected, actual string) {
+	t.Helper()
+
+	// google.golang.org/protobuf intentionally makes String output unstable across
+	// binaries by varying whitespace, so accept the alternate snapshot line.
+	// See https://github.com/protocolbuffers/protobuf-go/blob/v1.36.11/internal/encoding/text/encode.go#L229-L232.
+	expectedWithExtraSpace := strings.Replace(expected, readRawSnapshotLine, readRawSnapshotLineWithExtraSpace, 1)
+	if actual == expected || actual == expectedWithExtraSpace {
+		return
+	}
+	assert.Equal(t, expected, actual)
+}
+
+const (
+	readRawSnapshotLine               = "Snapshot: index:0 term:0\n"
+	readRawSnapshotLineWithExtraSpace = "Snapshot: index:0  term:0\n"
+)

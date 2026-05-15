@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -1287,7 +1288,7 @@ func TestWatch(t *testing.T) {
 			} else {
 				require.ErrorContains(t, err, tc.wantError.Error())
 			}
-			if diff := cmp.Diff(tc.wantEvents, events); diff != "" {
+			if diff := cmp.Diff(tc.wantEvents, events, protocmp.Transform()); diff != "" {
 				t.Errorf("unexpected events (-want +got):\n%s", diff)
 			}
 		})

@@ -25,6 +25,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -583,7 +584,7 @@ func sendFragments(
 ) error {
 	// no need to fragment if total request size is smaller
 	// than max request limit or response contains only one event
-	if uint(wr.Size()) < maxRequestBytes || len(wr.Events) < 2 {
+	if uint(proto.Size(wr)) < maxRequestBytes || len(wr.Events) < 2 {
 		return sendFunc(wr)
 	}
 
@@ -612,7 +613,7 @@ func sendFragments(
 
 		for _, ev := range wr.Events[idx:] {
 			cur.Events = append(cur.Events, ev)
-			if len(cur.Events) > 1 && uint(cur.Size()) >= maxRequestBytes {
+			if len(cur.Events) > 1 && uint(proto.Size(cur)) >= maxRequestBytes {
 				cur.Events = cur.Events[:len(cur.Events)-1]
 				break
 			}

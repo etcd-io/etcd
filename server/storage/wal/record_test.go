@@ -20,8 +20,10 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
-	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
@@ -59,8 +61,8 @@ func TestReadRecord(t *testing.T) {
 		}
 		decoder := NewDecoder(fileutil.NewFileReader(f))
 		e := decoder.Decode(rec)
-		if !reflect.DeepEqual(rec, tt.wr) {
-			t.Errorf("#%d: block = %v, want %v", i, rec, tt.wr)
+		if diff := cmp.Diff(tt.wr, rec, protocmp.Transform()); diff != "" {
+			t.Errorf("#%d: block mismatch (-want +got):\n%s", i, diff)
 		}
 		if !errors.Is(e, tt.we) {
 			t.Errorf("#%d: err = %v, want %v", i, e, tt.we)
@@ -89,7 +91,7 @@ func TestWriteRecord(t *testing.T) {
 	if b.GetType() != typ {
 		t.Errorf("type = %d, want %d", b.Type, typ)
 	}
-	if !reflect.DeepEqual(b.Data, d) {
+	if !bytes.Equal(b.Data, d) {
 		t.Errorf("data = %v, want %v", b.Data, d)
 	}
 }
