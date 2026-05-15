@@ -42,3 +42,8 @@ updates:
     target-branch: "release-3.6"
     schedule:
       interval: monthly
+
+  - package-ecosystem: docker
+    directory: /tools/container-images/devcontainer
+    schedule:
+      interval: weekly
