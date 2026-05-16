@@ -73,6 +73,44 @@ func benchmarkStoreRange(b *testing.B, n int) {
 	}
 }
 
+// BenchmarkRangeKeysOnly_* benchmarks compare a range with KeysOnly=false vs
+// KeysOnly=true for different value sizes, isolating the savings from skipping
+// value deserialization. They use a key range (begin=[] end=[]) to fetch all
+// stored keys.
+func BenchmarkRangeKeysOnly1KB_WithValue(b *testing.B) {
+	benchmarkRangeKeysOnly(b, 100, 1024, false)
+}
+func BenchmarkRangeKeysOnly1KB_KeysOnly(b *testing.B) {
+	benchmarkRangeKeysOnly(b, 100, 1024, true)
+}
+func BenchmarkRangeKeysOnly10KB_WithValue(b *testing.B) {
+	benchmarkRangeKeysOnly(b, 100, 10*1024, false)
+}
+func BenchmarkRangeKeysOnly10KB_KeysOnly(b *testing.B) {
+	benchmarkRangeKeysOnly(b, 100, 10*1024, true)
+}
+
+func benchmarkRangeKeysOnly(b *testing.B, nKeys, valueSize int, keysOnly bool) {
+	be, _ := betesting.NewDefaultTmpBackend(b)
+	s := NewStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, be)
+
+	keys := createBytesSlice(32, nKeys)
+	val := createBytesSlice(valueSize, 1)
+	for i := range keys {
+		s.Put(keys[i], val[0], lease.NoLease)
+	}
+	s.Commit()
+
+	ro := RangeOptions{KeysOnly: keysOnly}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.Range(b.Context(), []byte{}, []byte{}, ro)
+	}
+}
+
 func BenchmarkConsistentIndex(b *testing.B) {
 	be, _ := betesting.NewDefaultTmpBackend(b)
 	ci := cindex.NewConsistentIndex(be)
