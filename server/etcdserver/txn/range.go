@@ -65,6 +65,10 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 		Rev:            r.Revision,
 		CountOnly:      r.CountOnly,
 		WithTotalCount: withTotalCount,
+		// Skip loading Value bytes from storage when the caller only wants
+		// keys, unless the request sorts by value (which requires the value
+		// to be present during the sort step that follows the range query).
+		KeysOnly: r.KeysOnly && r.SortTarget != pb.RangeRequest_VALUE,
 	}
 
 	rr, err := txnRead.Range(ctx, r.Key, mkGteRange(r.RangeEnd), ro)

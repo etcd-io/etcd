@@ -28,6 +28,10 @@ type RangeOptions struct {
 	Rev            int64
 	CountOnly      bool
 	WithTotalCount bool
+	// KeysOnly, when true, instructs the backend to skip loading Value bytes
+	// from storage. Callers must not set this flag when they need the value
+	// for sorting (SortTarget == VALUE) or for any other purpose.
+	KeysOnly bool
 }
 
 type RangeResult struct {

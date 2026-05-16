@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -122,16 +123,94 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 			)
 		}
 		kv := &mvccpb.KeyValue{}
-		if err := proto.Unmarshal(vs[0], kv); err != nil {
-			tr.s.lg.Fatal(
-				"failed to unmarshal mvccpb.KeyValue",
-				zap.Error(err),
-			)
+		if ro.KeysOnly {
+			if err := unmarshalKVSkipValue(vs[0], kv); err != nil {
+				tr.s.lg.Fatal(
+					"failed to unmarshal mvccpb.KeyValue",
+					zap.Error(err),
+				)
+			}
+		} else {
+			if err := proto.Unmarshal(vs[0], kv); err != nil {
+				tr.s.lg.Fatal(
+					"failed to unmarshal mvccpb.KeyValue",
+					zap.Error(err),
+				)
+			}
 		}
 		kvs[i] = kv
 	}
 	tr.trace.Step("range keys from bolt db")
 	return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
+}
+
+// unmarshalKVSkipValue decodes a serialized mvccpb.KeyValue proto message into
+// kv without allocating memory for the Value field. It is used when the caller
+// only needs key metadata (key name, revisions, version, lease) and the Value
+// bytes would be immediately discarded — for example, in KeysOnly range queries.
+//
+// Fields are decoded by hand using protowire so that the Value bytes (proto
+// field 5) are never copied from the backend buffer into Go heap memory. All
+// other fields are decoded as normal. Unknown future fields are skipped safely.
+func unmarshalKVSkipValue(b []byte, kv *mvccpb.KeyValue) error {
+	for len(b) > 0 {
+		num, typ, n := protowire.ConsumeTag(b)
+		if n < 0 {
+			return protowire.ParseError(n)
+		}
+		b = b[n:]
+		switch num {
+		case 1: // key (bytes)
+			v, n := protowire.ConsumeBytes(b)
+			if n < 0 {
+				return protowire.ParseError(n)
+			}
+			kv.Key = append(kv.Key[:0], v...)
+			b = b[n:]
+		case 2: // create_revision (int64)
+			v, n := protowire.ConsumeVarint(b)
+			if n < 0 {
+				return protowire.ParseError(n)
+			}
+			kv.CreateRevision = int64(v)
+			b = b[n:]
+		case 3: // mod_revision (int64)
+			v, n := protowire.ConsumeVarint(b)
+			if n < 0 {
+				return protowire.ParseError(n)
+			}
+			kv.ModRevision = int64(v)
+			b = b[n:]
+		case 4: // version (int64)
+			v, n := protowire.ConsumeVarint(b)
+			if n < 0 {
+				return protowire.ParseError(n)
+			}
+			kv.Version = int64(v)
+			b = b[n:]
+		case 5: // value (bytes) — intentionally skipped
+			_, n := protowire.ConsumeBytes(b)
+			if n < 0 {
+				return protowire.ParseError(n)
+			}
+			b = b[n:]
+		case 6: // lease (int64)
+			v, n := protowire.ConsumeVarint(b)
+			if n < 0 {
+				return protowire.ParseError(n)
+			}
+			kv.Lease = int64(v)
+			b = b[n:]
+		default:
+			// Unknown or future field: skip the entire field value.
+			n := protowire.ConsumeFieldValue(num, typ, b)
+			if n < 0 {
+				return protowire.ParseError(n)
+			}
+			b = b[n:]
+		}
+	}
+	return nil
 }
 
 func (tr *storeTxnRead) End() {
