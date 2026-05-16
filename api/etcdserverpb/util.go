@@ -14,7 +14,17 @@
 
 package etcdserverpb
 
-import "google.golang.org/protobuf/proto"
+import (
+	"google.golang.org/protobuf/proto"
+)
+
+// InternalRaftRequestWrapper carries per-apply metadata for an InternalRaftRequest.
+type InternalRaftRequestWrapper struct {
+	*InternalRaftRequest
+	// SkipRangeExecution skips execution of range requests inside a txn for
+	// members that do not need the response; validation via checkRange still runs.
+	SkipRangeExecution bool
+}
 
 // Clone returns a deep copy of h, or an empty ResponseHeader if h is nil.
 func (h *ResponseHeader) Clone() *ResponseHeader {
