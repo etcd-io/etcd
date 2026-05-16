@@ -93,10 +93,11 @@ func TestCreate(t *testing.T) {
 
 func TestLog(t *testing.T) {
 	tests := []struct {
-		name        string
-		trace       *Trace
-		fields      []Field
-		expectedMsg []string
+		name            string
+		trace           *Trace
+		fields          []Field
+		expectedMsg     []string
+		notExpectedMsg  []string
 	}{
 		{
 			name: "When dump all logs",
@@ -135,12 +136,18 @@ func TestLog(t *testing.T) {
 				{"count", 1},
 			},
 			expectedMsg: []string{
-				"Test",
+				// stable message name
+				"\"trace\"",
+				// operation and trace_id emitted as structured fields
+				"\"operation\":\"Test\"",
+				"\"trace_id\":",
 				"msg1", "msg2",
 				"traceKey1:traceValue1", "count:1",
 				"stepKey1:stepValue1", "stepKey2:stepValue2",
 				"\"step_count\":2",
 			},
+			// step entries must not embed the trace ID inline
+			notExpectedMsg: []string{"trace["},
 		},
 		{
 			name: "When trace has subtrace",
@@ -178,13 +185,16 @@ func TestLog(t *testing.T) {
 				{"count", 1},
 			},
 			expectedMsg: []string{
-				"Test",
+				"\"trace\"",
+				"\"operation\":\"Test\"",
+				"\"trace_id\":",
 				"msg1", "msg2", "submsg",
 				"traceKey1:traceValue1", "count:1",
 				"stepKey1:stepValue1", "stepKey2:stepValue2", "subStepKey:subStepValue",
 				"beginSubTrace:true", "endSubTrace:true",
 				"\"step_count\":3",
 			},
+			notExpectedMsg: []string{"trace["},
 		},
 	}
 
@@ -209,7 +219,47 @@ func TestLog(t *testing.T) {
 			for _, msg := range tt.expectedMsg {
 				assert.Truef(t, bytes.Contains(data, []byte(msg)), "Expected to find %v in log", msg)
 			}
+			for _, msg := range tt.notExpectedMsg {
+				assert.Falsef(t, bytes.Contains(data, []byte(msg)), "Expected NOT to find %v in log", msg)
+			}
 		})
+	}
+}
+
+// TestLogStableMessageCardinality verifies that repeated calls to Log with
+// different operations always emit the same stable message name ("trace"),
+// so that log-aggregation systems can group all trace events under one key
+// regardless of operation name or random trace ID.
+func TestLogStableMessageCardinality(t *testing.T) {
+	operations := []string{"range", "put", "compact", "txn"}
+
+	for _, op := range operations {
+		logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-%d-%s", time.Now().UnixNano(), op))
+		defer os.RemoveAll(logPath)
+
+		lcfg := logutil.DefaultZapLoggerConfig
+		lcfg.OutputPaths = []string{logPath}
+		lcfg.ErrorOutputPaths = []string{logPath}
+		lg, _ := lcfg.Build()
+
+		trace := &Trace{
+			operation: op,
+			lg:        lg,
+			startTime: time.Now().Add(-10 * time.Millisecond),
+		}
+		trace.Log()
+
+		data, err := os.ReadFile(logPath)
+		require.NoError(t, err)
+
+		// The stable message key must always be "trace".
+		assert.Truef(t, bytes.Contains(data, []byte(`"trace"`)), "expected stable message \"trace\" for operation %q", op)
+		// The operation must appear as a structured field, not embedded in the message.
+		assert.Truef(t, bytes.Contains(data, []byte(`"operation":"`+op+`"`)), "expected operation field for %q", op)
+		// The random trace_id must appear as a structured field.
+		assert.Truef(t, bytes.Contains(data, []byte(`"trace_id":`)), "expected trace_id field for operation %q", op)
+		// No inline trace[N] prefix should appear in the log output.
+		assert.Falsef(t, bytes.Contains(data, []byte("trace[")), "unexpected inline trace ID in log for operation %q", op)
 	}
 }
 
