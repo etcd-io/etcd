@@ -56,6 +56,8 @@ var (
 	autoSyncInterval time.Duration
 
 	generatePerfReport bool
+
+	metricsURL string
 )
 
 func init() {
@@ -76,4 +78,5 @@ func init() {
 	RootCmd.PersistentFlags().DurationVar(&autoSyncInterval, "auto-sync-interval", time.Duration(0), "AutoSyncInterval is the interval to update endpoints with its latest members")
 
 	RootCmd.PersistentFlags().BoolVar(&generatePerfReport, "report-perfdash", false, "Generate benchmark report in perfdash format")
+	RootCmd.PersistentFlags().StringVar(&metricsURL, "metrics-url", "", "Prometheus metrics endpoint to sample during benchmark runs")
 }

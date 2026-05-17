@@ -115,10 +115,14 @@ func newReport(benchmarkOp string) report.Report {
 	if precise {
 		p = "%g"
 	}
-	if sample {
-		return report.NewReportSample(p, benchmarkOp, generatePerfReport)
+	opts := report.Options{
+		GeneratePerfReport: generatePerfReport,
+		MetricsURL:         metricsURL,
 	}
-	return report.NewReport(p, benchmarkOp, generatePerfReport)
+	if sample {
+		return report.NewReportSampleWithOptions(p, benchmarkOp, opts)
+	}
+	return report.NewReportWithOptions(p, benchmarkOp, opts)
 }
 
 func newWeightedReport(benchmarkOp string) report.Report {
@@ -126,8 +130,12 @@ func newWeightedReport(benchmarkOp string) report.Report {
 	if precise {
 		p = "%g"
 	}
-	if sample {
-		return report.NewReportSample(p, benchmarkOp, generatePerfReport)
+	opts := report.Options{
+		GeneratePerfReport: generatePerfReport,
+		MetricsURL:         metricsURL,
 	}
-	return report.NewWeightedReport(report.NewReport(p, benchmarkOp, generatePerfReport), p, benchmarkOp, generatePerfReport)
+	if sample {
+		return report.NewReportSampleWithOptions(p, benchmarkOp, opts)
+	}
+	return report.NewWeightedReportWithOptions(report.NewReportWithOptions(p, benchmarkOp, opts), p, benchmarkOp, opts)
 }
