@@ -31,9 +31,13 @@ type weightedReport struct {
 // NewWeightedReport returns a report that includes
 // both weighted and unweighted statistics.
 func NewWeightedReport(r Report, precision, benchmarkOp string, generatePerfReport bool) Report {
+	return NewWeightedReportWithOptions(r, precision, benchmarkOp, Options{GeneratePerfReport: generatePerfReport})
+}
+
+func NewWeightedReportWithOptions(r Report, precision, benchmarkOp string, opts Options) Report {
 	return &weightedReport{
 		baseReport: r,
-		report:     newReport(precision, benchmarkOp, generatePerfReport),
+		report:     newReport(precision, benchmarkOp, opts),
 		results:    make(chan Result, 16),
 	}
 }

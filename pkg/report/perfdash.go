@@ -24,20 +24,10 @@ import (
 	"time"
 )
 
-type Metrics struct {
-	Perc50 float64 `json:"Perc50"`
-	Perc90 float64 `json:"Perc90"`
-	Perc99 float64 `json:"Perc99"`
-}
-
-type Labels struct {
-	Operation string `json:"Operation"`
-}
-
 type DataItem struct {
-	Data   Metrics `json:"data"`
-	Labels Labels  `json:"labels"`
-	Unit   string  `json:"unit"`
+	Data   map[string]float64 `json:"data"`
+	Labels map[string]string  `json:"labels"`
+	Unit   string             `json:"unit"`
 }
 
 type perfdashFormattedReport struct {
@@ -45,27 +35,40 @@ type perfdashFormattedReport struct {
 	DataItems []DataItem `json:"dataItems"`
 }
 
-func (r *report) writePerfDashReport(benchmarkOp string) {
+func (r *report) writePerfDashReport(benchmarkOp string, metricSummaries []MetricSummary) {
 	pcls, data := Percentiles(r.stats.Lats)
 	pclsData := make(map[float64]float64)
 	for i := 0; i < len(pcls); i++ {
 		pclsData[pcls[i]] = data[i] * 1000 // Since the reported data is in seconds, convert to ms.
 	}
-	report := perfdashFormattedReport{
-		Version: "v1",
-		DataItems: []DataItem{
-			{
-				Data: Metrics{
-					Perc50: math.Round(pclsData[50]*10000) / 10000,
-					Perc90: math.Round(pclsData[90]*10000) / 10000,
-					Perc99: math.Round(pclsData[99]*10000) / 10000,
-				},
-				Unit: "ms",
-				Labels: Labels{
-					Operation: strings.ToUpper(benchmarkOp),
-				},
+	dataItems := []DataItem{
+		{
+			Data: map[string]float64{
+				"Perc50": math.Round(pclsData[50]*10000) / 10000,
+				"Perc90": math.Round(pclsData[90]*10000) / 10000,
+				"Perc99": math.Round(pclsData[99]*10000) / 10000,
+			},
+			Unit: "ms",
+			Labels: map[string]string{
+				"Operation": strings.ToUpper(benchmarkOp),
 			},
 		},
+	}
+	for _, summary := range metricSummaries {
+		dataItems = append(dataItems, DataItem{
+			Data: map[string]float64{
+				"Max": math.Round(summary.Max*10000) / 10000,
+			},
+			Unit: metricUnit(summary.Name),
+			Labels: map[string]string{
+				"Operation": strings.ToUpper(benchmarkOp),
+				"Metric":    summary.Name,
+			},
+		})
+	}
+	report := perfdashFormattedReport{
+		Version:   "v1",
+		DataItems: dataItems,
 	}
 	reportB, _ := json.MarshalIndent(report, "", "  ")
 
@@ -85,4 +88,43 @@ func (r *report) writePerfDashReport(benchmarkOp string) {
 		fmt.Println("Error writing to file:", err)
 	}
 	fmt.Println("Successfully created a JSON perf report at", destPath)
+}
+
+type metricTimeSeriesReport struct {
+	Version   string         `json:"version"`
+	Operation string         `json:"operation"`
+	Samples   []MetricSample `json:"samples"`
+}
+
+func writeMetricTimeSeriesReport(benchmarkOp string, samples []MetricSample) {
+	report := metricTimeSeriesReport{
+		Version:   "v1",
+		Operation: strings.ToUpper(benchmarkOp),
+		Samples:   samples,
+	}
+	reportB, _ := json.MarshalIndent(report, "", "  ")
+
+	artifactsDir := os.Getenv("ARTIFACTS")
+	if artifactsDir == "" {
+		artifactsDir = "./_artifacts"
+	}
+
+	fileName := fmt.Sprintf("EtcdResourceMetrics_benchmark_%s_%s.json", benchmarkOp, time.Now().UTC().Format(time.RFC3339))
+	err := os.MkdirAll(artifactsDir, 0o755)
+	if err != nil {
+		fmt.Println("Error creating artifacts directory:", err)
+	}
+	destPath := filepath.Join(artifactsDir, fileName)
+	err = os.WriteFile(destPath, reportB, 0o644)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+	}
+	fmt.Println("Successfully created a JSON resource metrics report at", destPath)
+}
+
+func metricUnit(name string) string {
+	if strings.HasSuffix(name, "_bytes") || strings.HasSuffix(name, "_in_bytes") {
+		return "bytes"
+	}
+	return ""
 }
