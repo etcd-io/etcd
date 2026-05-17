@@ -43,7 +43,7 @@ func newApplierV3Backend(opts ApplierOptions) applierV3 {
 	}
 }
 
-func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result {
+func (a *applierV3backend) Apply(r *pb.InternalRaftRequestWrapper, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result {
 	return applyFunc(r, shouldApplyV3)
 }
 
@@ -59,8 +59,8 @@ func (a *applierV3backend) Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceu
 	return mvcctxn.Range(context.TODO(), a.options.Logger, a.options.KV, r, true)
 }
 
-func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return mvcctxn.Txn(context.TODO(), a.options.Logger, rt, a.options.TxnModeWriteWithSharedBuffer, a.options.KV, a.options.Lessor)
+func (a *applierV3backend) Txn(rt *pb.TxnRequest, skipRangeExecution bool) (*pb.TxnResponse, *traceutil.Trace, error) {
+	return mvcctxn.Txn(context.TODO(), a.options.Logger, rt, a.options.TxnModeWriteWithSharedBuffer, a.options.KV, a.options.Lessor, skipRangeExecution)
 }
 
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {

@@ -37,12 +37,12 @@ import (
 type applierV3 interface {
 	// Apply executes the generic portion of application logic for the current applier, but
 	// delegates the actual execution to the applyFunc method.
-	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result
+	Apply(r *pb.InternalRaftRequestWrapper, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result
 
 	Put(p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error)
 	DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error)
-	Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error)
+	Txn(rt *pb.TxnRequest, skipRangeExecution bool) (*pb.TxnResponse, *traceutil.Trace, error)
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error)
 
 	LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
@@ -115,4 +115,4 @@ type Result struct {
 	Trace *traceutil.Trace
 }
 
-type applyFunc func(*pb.InternalRaftRequest, membership.ShouldApplyV3) *Result
+type applyFunc func(*pb.InternalRaftRequestWrapper, membership.ShouldApplyV3) *Result

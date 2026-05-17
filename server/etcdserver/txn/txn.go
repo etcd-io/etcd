@@ -29,7 +29,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor) (txnResp *pb.TxnResponse, trace *traceutil.Trace, err error) {
+func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor, skipRangeExecution bool) (txnResp *pb.TxnResponse, trace *traceutil.Trace, err error) {
 	ctx, trace = traceutil.EnsureTrace(ctx, lg, "transaction")
 	isWrite := !IsTxnReadonly(rt)
 	// When the transaction contains write operations, we use ReadTx instead of
@@ -68,7 +68,7 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	} else {
 		txnWrite = mvcc.NewReadOnlyTxnWrite(txnRead)
 	}
-	txnResp, err = txn(ctx, lg, txnWrite, rt, isWrite, txnPath)
+	txnResp, err = txn(ctx, lg, txnWrite, rt, isWrite, txnPath, skipRangeExecution)
 	txnWrite.End()
 
 	trace.AddField(
@@ -78,9 +78,9 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	return txnResp, trace, err
 }
 
-func txn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, isWrite bool, txnPath []bool) (*pb.TxnResponse, error) {
+func txn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, isWrite bool, txnPath []bool, skipRangeExecution bool) (*pb.TxnResponse, error) {
 	txnResp, _ := newTxnResp(rt, txnPath)
-	_, err := executeTxn(ctx, lg, txnWrite, rt, txnPath, txnResp)
+	_, err := executeTxn(ctx, lg, txnWrite, rt, txnPath, txnResp, skipRangeExecution)
 	if err != nil {
 		if isWrite {
 			// CAUTION: When a txn performing write operations starts, we always expect it to be successful.
@@ -132,7 +132,7 @@ func newTxnResp(rt *pb.TxnRequest, txnPath []bool) (txnResp *pb.TxnResponse, txn
 	return txnResp, txnCount
 }
 
-func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, txnPath []bool, tresp *pb.TxnResponse) (txns int, err error) {
+func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, txnPath []bool, tresp *pb.TxnResponse, skipRangeExecution bool) (txns int, err error) {
 	trace := traceutil.Get(ctx)
 	reqs := rt.Success
 	if !txnPath[0] {
@@ -147,9 +147,16 @@ func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt 
 				traceutil.Field{Key: "req_type", Value: "range"},
 				traceutil.Field{Key: "range_begin", Value: string(tv.RequestRange.Key)},
 				traceutil.Field{Key: "range_end", Value: string(tv.RequestRange.RangeEnd)})
-			resp, err := executeRange(ctx, lg, txnWrite, tv.RequestRange, true)
-			if err != nil {
-				return 0, fmt.Errorf("applyTxn: failed Range: %w", err)
+			var resp *pb.RangeResponse
+			if skipRangeExecution {
+				resp = &pb.RangeResponse{
+					Header: &pb.ResponseHeader{Revision: txnWrite.Rev()},
+				}
+			} else {
+				resp, err = executeRange(ctx, lg, txnWrite, tv.RequestRange, true)
+				if err != nil {
+					return 0, fmt.Errorf("applyTxn: failed Range: %w", err)
+				}
 			}
 			respi.(*pb.ResponseOp_ResponseRange).ResponseRange = resp
 			trace.StopSubTrace()
@@ -173,7 +180,7 @@ func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt 
 			respi.(*pb.ResponseOp_ResponseDeleteRange).ResponseDeleteRange = resp
 		case *pb.RequestOp_RequestTxn:
 			resp := respi.(*pb.ResponseOp_ResponseTxn).ResponseTxn
-			applyTxns, err := executeTxn(ctx, lg, txnWrite, tv.RequestTxn, txnPath[1:], resp)
+			applyTxns, err := executeTxn(ctx, lg, txnWrite, tv.RequestTxn, txnPath[1:], resp, skipRangeExecution)
 			if err != nil {
 				// don't wrap the error. It's a recursive call and err should be already wrapped
 				return 0, err

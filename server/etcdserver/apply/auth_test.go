@@ -45,7 +45,7 @@ func dummyIndexWaiter(_ uint64) <-chan struct{} {
 	return ch
 }
 
-func dummyApplyFunc(_ *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result {
+func dummyApplyFunc(_ *pb.InternalRaftRequestWrapper, shouldApplyV3 membership.ShouldApplyV3) *Result {
 	return &Result{}
 }
 
@@ -180,36 +180,36 @@ func setAuthInfo(authApplier *authApplierV3, userName string) {
 func TestAuthApplierV3_Apply(t *testing.T) {
 	tcs := []struct {
 		name         string
-		request      *pb.InternalRaftRequest
+		request      *pb.InternalRaftRequestWrapper
 		expectResult *Result
 	}{
 		{
 			name: "request does not need admin permission",
-			request: &pb.InternalRaftRequest{
+			request: &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{
 				Header: &pb.RequestHeader{},
-			},
+			}},
 			expectResult: &Result{},
 		},
 		{
 			name: "request needs admin permission but permission denied",
-			request: &pb.InternalRaftRequest{
+			request: &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{
 				Header: &pb.RequestHeader{
 					Username: userReadOnly,
 				},
 				AuthEnable: &pb.AuthEnableRequest{},
-			},
+			}},
 			expectResult: &Result{
 				Err: auth.ErrPermissionDenied,
 			},
 		},
 		{
 			name: "request needs admin permission and permitted",
-			request: &pb.InternalRaftRequest{
+			request: &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{
 				Header: &pb.RequestHeader{
 					Username: userRoot,
 				},
 				AuthEnable: &pb.AuthEnableRequest{},
-			},
+			}},
 			expectResult: &Result{},
 		},
 	}
@@ -229,147 +229,147 @@ func TestAuthApplierV3_Apply(t *testing.T) {
 func TestAuthApplierV3_AdminPermission(t *testing.T) {
 	tcs := []struct {
 		name                  string
-		request               *pb.InternalRaftRequest
+		request               *pb.InternalRaftRequestWrapper
 		adminPermissionNeeded bool
 	}{
 		{
 			name:                  "Range does not need admin permission",
-			request:               &pb.InternalRaftRequest{Range: &pb.RangeRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Range: &pb.RangeRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "Put does not need admin permission",
-			request:               &pb.InternalRaftRequest{Put: &pb.PutRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Put: &pb.PutRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "DeleteRange does not need admin permission",
-			request:               &pb.InternalRaftRequest{DeleteRange: &pb.DeleteRangeRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{DeleteRange: &pb.DeleteRangeRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "Txn does not need admin permission",
-			request:               &pb.InternalRaftRequest{Txn: &pb.TxnRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Txn: &pb.TxnRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "Compaction does not need admin permission",
-			request:               &pb.InternalRaftRequest{Compaction: &pb.CompactionRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Compaction: &pb.CompactionRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "LeaseGrant does not need admin permission",
-			request:               &pb.InternalRaftRequest{LeaseGrant: &pb.LeaseGrantRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{LeaseGrant: &pb.LeaseGrantRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "LeaseRevoke does not need admin permission",
-			request:               &pb.InternalRaftRequest{LeaseRevoke: &pb.LeaseRevokeRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{LeaseRevoke: &pb.LeaseRevokeRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "Alarm does not need admin permission",
-			request:               &pb.InternalRaftRequest{Alarm: &pb.AlarmRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Alarm: &pb.AlarmRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "LeaseCheckpoint does not need admin permission",
-			request:               &pb.InternalRaftRequest{LeaseCheckpoint: &pb.LeaseCheckpointRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{LeaseCheckpoint: &pb.LeaseCheckpointRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "Authenticate does not need admin permission",
-			request:               &pb.InternalRaftRequest{Authenticate: &pb.InternalAuthenticateRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Authenticate: &pb.InternalAuthenticateRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "ClusterVersionSet does not need admin permission",
-			request:               &pb.InternalRaftRequest{ClusterVersionSet: &membershippb.ClusterVersionSetRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{ClusterVersionSet: &membershippb.ClusterVersionSetRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "ClusterMemberAttrSet does not need admin permission",
-			request:               &pb.InternalRaftRequest{ClusterMemberAttrSet: &membershippb.ClusterMemberAttrSetRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{ClusterMemberAttrSet: &membershippb.ClusterMemberAttrSetRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "DowngradeInfoSet does not need admin permission",
-			request:               &pb.InternalRaftRequest{DowngradeInfoSet: &membershippb.DowngradeInfoSetRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{DowngradeInfoSet: &membershippb.DowngradeInfoSetRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "AuthUserGet does not need admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserGet: &pb.AuthUserGetRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserGet: &pb.AuthUserGetRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "AuthRoleGet does not need admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleGet: &pb.AuthRoleGetRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleGet: &pb.AuthRoleGetRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "AuthEnable needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthEnable: &pb.AuthEnableRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthEnable: &pb.AuthEnableRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthDisable needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthDisable: &pb.AuthDisableRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthDisable: &pb.AuthDisableRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserAdd needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserAdd: &pb.AuthUserAddRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserAdd: &pb.AuthUserAddRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserDelete needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserDelete: &pb.AuthUserDeleteRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserDelete: &pb.AuthUserDeleteRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserChangePassword needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserChangePassword: &pb.AuthUserChangePasswordRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserChangePassword: &pb.AuthUserChangePasswordRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserGrantRole needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserGrantRole: &pb.AuthUserGrantRoleRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserGrantRole: &pb.AuthUserGrantRoleRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserRevokeRole needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserRevokeRole: &pb.AuthUserRevokeRoleRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserRevokeRole: &pb.AuthUserRevokeRoleRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserList needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserList: &pb.AuthUserListRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserList: &pb.AuthUserListRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthRoleList needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleList: &pb.AuthRoleListRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleList: &pb.AuthRoleListRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthRoleAdd needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleAdd: &pb.AuthRoleAddRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleAdd: &pb.AuthRoleAddRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthRoleDelete needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleDelete: &pb.AuthRoleDeleteRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleDelete: &pb.AuthRoleDeleteRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthRoleGrantPermission needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleGrantPermission: &pb.AuthRoleGrantPermissionRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleGrantPermission: &pb.AuthRoleGrantPermissionRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthRoleRevokePermission needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleRevokePermission: &pb.AuthRoleRevokePermissionRequest{}},
+			request:               &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleRevokePermission: &pb.AuthRoleRevokePermissionRequest{}}},
 			adminPermissionNeeded: true,
 		},
 	}
@@ -653,7 +653,7 @@ func TestAuthApplierV3_Txn(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, _, err := authApplier.Txn(tc.request)
+			_, _, err := authApplier.Txn(tc.request, false)
 			require.Equalf(t, tc.expectError, err, "Range returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}

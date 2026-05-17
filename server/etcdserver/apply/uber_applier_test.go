@@ -83,55 +83,55 @@ func defaultUberApplier(t *testing.T) UberApplier {
 func TestUberApplier_Alarm_Corrupt(t *testing.T) {
 	tcs := []struct {
 		name        string
-		request     *pb.InternalRaftRequest
+		request     *pb.InternalRaftRequestWrapper
 		expectError error
 	}{
 		{
 			name:        "Put request returns ErrCorrupt after alarm CORRUPT is activated",
-			request:     &pb.InternalRaftRequest{Put: &pb.PutRequest{}},
+			request:     &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Put: &pb.PutRequest{}}},
 			expectError: errors.ErrCorrupt,
 		},
 		{
 			name:        "Range request returns ErrCorrupt after alarm CORRUPT is activated",
-			request:     &pb.InternalRaftRequest{Range: &pb.RangeRequest{}},
+			request:     &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Range: &pb.RangeRequest{}}},
 			expectError: errors.ErrCorrupt,
 		},
 		{
 			name:        "DeleteRange request returns ErrCorrupt after alarm CORRUPT is activated",
-			request:     &pb.InternalRaftRequest{DeleteRange: &pb.DeleteRangeRequest{}},
+			request:     &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{DeleteRange: &pb.DeleteRangeRequest{}}},
 			expectError: errors.ErrCorrupt,
 		},
 		{
 			name:        "Txn request returns ErrCorrupt after alarm CORRUPT is activated",
-			request:     &pb.InternalRaftRequest{Txn: &pb.TxnRequest{}},
+			request:     &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Txn: &pb.TxnRequest{}}},
 			expectError: errors.ErrCorrupt,
 		},
 		{
 			name:        "Compaction request returns ErrCorrupt after alarm CORRUPT is activated",
-			request:     &pb.InternalRaftRequest{Compaction: &pb.CompactionRequest{}},
+			request:     &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Compaction: &pb.CompactionRequest{}}},
 			expectError: errors.ErrCorrupt,
 		},
 		{
 			name:        "LeaseGrant request returns ErrCorrupt after alarm CORRUPT is activated",
-			request:     &pb.InternalRaftRequest{LeaseGrant: &pb.LeaseGrantRequest{}},
+			request:     &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{LeaseGrant: &pb.LeaseGrantRequest{}}},
 			expectError: errors.ErrCorrupt,
 		},
 		{
 			name:        "LeaseRevoke request returns ErrCorrupt after alarm CORRUPT is activated",
-			request:     &pb.InternalRaftRequest{LeaseRevoke: &pb.LeaseRevokeRequest{}},
+			request:     &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{LeaseRevoke: &pb.LeaseRevokeRequest{}}},
 			expectError: errors.ErrCorrupt,
 		},
 	}
 
 	ua := defaultUberApplier(t)
-	result := ua.Apply(&pb.InternalRaftRequest{
+	result := ua.Apply(&pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_ACTIVATE,
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_CORRUPT,
 		},
-	}, membership.ApplyBoth)
+	}}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
@@ -148,17 +148,17 @@ func TestUberApplier_Alarm_Corrupt(t *testing.T) {
 func TestUberApplier_Alarm_Quota(t *testing.T) {
 	tcs := []struct {
 		name        string
-		request     *pb.InternalRaftRequest
+		request     *pb.InternalRaftRequestWrapper
 		expectError error
 	}{
 		{
 			name:        "Put request returns ErrCorrupt after alarm NOSPACE is activated",
-			request:     &pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}},
+			request:     &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}}},
 			expectError: errors.ErrNoSpace,
 		},
 		{
 			name: "Txn request cost > 0 returns ErrCorrupt after alarm NOSPACE is activated",
-			request: &pb.InternalRaftRequest{Txn: &pb.TxnRequest{
+			request: &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Txn: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
 					{
 						Request: &pb.RequestOp_RequestPut{
@@ -168,12 +168,12 @@ func TestUberApplier_Alarm_Quota(t *testing.T) {
 						},
 					},
 				},
-			}},
+			}}},
 			expectError: errors.ErrNoSpace,
 		},
 		{
 			name: "Txn request cost = 0 is still allowed after alarm NOSPACE is activated",
-			request: &pb.InternalRaftRequest{Txn: &pb.TxnRequest{
+			request: &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Txn: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
 					{
 						Request: &pb.RequestOp_RequestRange{
@@ -183,12 +183,12 @@ func TestUberApplier_Alarm_Quota(t *testing.T) {
 						},
 					},
 				},
-			}},
+			}}},
 			expectError: nil,
 		},
 		{
 			name: "Txn request cost = 0 in both branches is still allowed after alarm NOSPACE is activated",
-			request: &pb.InternalRaftRequest{Txn: &pb.TxnRequest{
+			request: &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Txn: &pb.TxnRequest{
 				Compare: []*pb.Compare{
 					{
 						Key:         []byte(key),
@@ -215,25 +215,25 @@ func TestUberApplier_Alarm_Quota(t *testing.T) {
 						},
 					},
 				},
-			}},
+			}}},
 			expectError: nil,
 		},
 		{
 			name:        "LeaseGrant request returns ErrCorrupt after alarm NOSPACE is activated",
-			request:     &pb.InternalRaftRequest{LeaseGrant: &pb.LeaseGrantRequest{}},
+			request:     &pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{LeaseGrant: &pb.LeaseGrantRequest{}}},
 			expectError: errors.ErrNoSpace,
 		},
 	}
 
 	ua := defaultUberApplier(t)
-	result := ua.Apply(&pb.InternalRaftRequest{
+	result := ua.Apply(&pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_ACTIVATE,
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	}, membership.ApplyBoth)
+	}}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
@@ -249,33 +249,33 @@ func TestUberApplier_Alarm_Quota(t *testing.T) {
 // TestUberApplier_Alarm_Deactivate tests the applier should be able to apply after alarm is deactivated
 func TestUberApplier_Alarm_Deactivate(t *testing.T) {
 	ua := defaultUberApplier(t)
-	result := ua.Apply(&pb.InternalRaftRequest{
+	result := ua.Apply(&pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_ACTIVATE,
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	}, membership.ApplyBoth)
+	}}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
-	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}}, membership.ApplyBoth)
+	result = ua.Apply(&pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}}}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.Equalf(t, errors.ErrNoSpace, result.Err, "Apply: got %v, expect: %v", result.Err, errors.ErrNoSpace)
 
-	result = ua.Apply(&pb.InternalRaftRequest{
+	result = ua.Apply(&pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_DEACTIVATE,
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	}, membership.ApplyBoth)
+	}}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
-	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}}, membership.ApplyBoth)
+	result = ua.Apply(&pb.InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}}}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	assert.NoError(t, result.Err)
 }

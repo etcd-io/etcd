@@ -28,7 +28,7 @@ import (
 )
 
 type UberApplier interface {
-	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result
+	Apply(r *pb.InternalRaftRequestWrapper, shouldApplyV3 membership.ShouldApplyV3) *Result
 }
 
 type uberApplier struct {
@@ -79,7 +79,7 @@ func (a *uberApplier) restoreAlarms() {
 	}
 }
 
-func (a *uberApplier) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result {
+func (a *uberApplier) Apply(r *pb.InternalRaftRequestWrapper, shouldApplyV3 membership.ShouldApplyV3) *Result {
 	// We first execute chain of Apply() calls down the hierarchy:
 	// (i.e. CorruptApplier -> CappedApplier -> Auth -> Quota -> Backend),
 	// then dispatch() unpacks the request to a specific method (like Put),
@@ -90,15 +90,15 @@ func (a *uberApplier) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.
 
 // dispatch translates the request (r) into appropriate call (like Put) on
 // the underlying applyV3 object.
-func (a *uberApplier) dispatch(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result {
+func (a *uberApplier) dispatch(r *pb.InternalRaftRequestWrapper, shouldApplyV3 membership.ShouldApplyV3) *Result {
 	op := "unknown"
 	ar := &Result{}
 	defer func(start time.Time) {
 		success := ar.Err == nil || errors.Is(ar.Err, mvcc.ErrCompacted)
 		txn.ApplySecObserve("v3", op, success, time.Since(start))
-		txn.WarnOfExpensiveRequest(a.lg, a.warningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.Resp, ar.Err)
+		txn.WarnOfExpensiveRequest(a.lg, a.warningApplyDuration, start, &pb.InternalRaftStringer{Request: r.InternalRaftRequest}, ar.Resp, ar.Err)
 		if !success {
-			txn.WarnOfFailedRequest(a.lg, start, &pb.InternalRaftStringer{Request: r}, ar.Resp, ar.Err)
+			txn.WarnOfFailedRequest(a.lg, start, &pb.InternalRaftStringer{Request: r.InternalRaftRequest}, ar.Resp, ar.Err)
 		}
 	}(time.Now())
 
@@ -139,7 +139,7 @@ func (a *uberApplier) dispatch(r *pb.InternalRaftRequest, shouldApplyV3 membersh
 		ar.Resp, ar.Trace, ar.Err = a.applyV3.DeleteRange(r.DeleteRange)
 	case r.Txn != nil:
 		op = "Txn"
-		ar.Resp, ar.Trace, ar.Err = a.applyV3.Txn(r.Txn)
+		ar.Resp, ar.Trace, ar.Err = a.applyV3.Txn(r.Txn, r.SkipRangeExecution)
 	case r.Compaction != nil:
 		op = "Compaction"
 		ar.Resp, ar.Physc, ar.Trace, ar.Err = a.applyV3.Compaction(r.Compaction)
