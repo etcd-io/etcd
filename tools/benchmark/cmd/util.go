@@ -17,6 +17,7 @@ package cmd
 import (
 	"crypto/rand"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -115,10 +116,11 @@ func newReport(benchmarkOp string) report.Report {
 	if precise {
 		p = "%g"
 	}
+	opts := reportOptions()
 	if sample {
-		return report.NewReportSample(p, benchmarkOp, generatePerfReport)
+		return report.NewReportSampleWithOptions(p, benchmarkOp, opts)
 	}
-	return report.NewReport(p, benchmarkOp, generatePerfReport)
+	return report.NewReportWithOptions(p, benchmarkOp, opts)
 }
 
 func newWeightedReport(benchmarkOp string) report.Report {
@@ -126,8 +128,46 @@ func newWeightedReport(benchmarkOp string) report.Report {
 	if precise {
 		p = "%g"
 	}
+	opts := reportOptions()
 	if sample {
-		return report.NewReportSample(p, benchmarkOp, generatePerfReport)
+		return report.NewReportSampleWithOptions(p, benchmarkOp, opts)
 	}
-	return report.NewWeightedReport(report.NewReport(p, benchmarkOp, generatePerfReport), p, benchmarkOp, generatePerfReport)
+	return report.NewWeightedReportWithOptions(report.NewReportWithOptions(p, benchmarkOp, opts), p, benchmarkOp, opts)
+}
+
+func reportOptions() report.Options {
+	return report.Options{
+		GeneratePerfReport: generatePerfReport,
+		MetricsURL:         metricsEndpointURL(),
+		Metrics:            metrics,
+	}
+}
+
+func metricsEndpointURL() string {
+	if len(endpoints) == 0 {
+		return ""
+	}
+	endpoint := strings.TrimSpace(endpoints[0])
+	if endpoint == "" {
+		return ""
+	}
+	scheme := "http"
+	if !tls.Empty() {
+		scheme = "https"
+	}
+	if strings.Contains(endpoint, "://") {
+		u, err := url.Parse(endpoint)
+		if err != nil {
+			return ""
+		}
+		u.Path = "/metrics"
+		u.RawQuery = ""
+		u.Fragment = ""
+		return u.String()
+	}
+	return (&url.URL{
+		Scheme: scheme,
+		Host:   endpoint,
+		Path:   "/metrics",
+	}).String()
 }
