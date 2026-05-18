@@ -65,6 +65,7 @@ type Client struct {
 
 	epMu      *sync.RWMutex
 	endpoints []string
+	channels  map[string]channel
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -87,6 +88,9 @@ type Client struct {
 func New(cfg Config) (*Client, error) {
 	if len(cfg.Endpoints) == 0 {
 		return nil, ErrNoAvailableEndpoints
+	}
+	if err := validateChannelKeys(cfg.ChannelKeys); err != nil {
+		return nil, err
 	}
 
 	return newClient(&cfg)
@@ -153,8 +157,22 @@ func (c *Client) Close() error {
 	if c.Lease != nil {
 		c.Lease.Close()
 	}
-	if c.conn != nil {
-		return ContextError(c.ctx, c.conn.Close())
+	c.epMu.Lock()
+	channels := c.channels
+	c.channels = nil
+	c.epMu.Unlock()
+
+	var err error
+	for _, ch := range channels {
+		if cerr := ch.close(c.ctx); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if len(channels) > 0 {
+		return nil
 	}
 	return c.ctx.Err()
 }
@@ -180,7 +198,9 @@ func (c *Client) SetEndpoints(eps ...string) {
 	defer c.epMu.Unlock()
 	c.endpoints = eps
 
-	c.resolver.SetEndpoints(eps)
+	for _, ch := range c.channels {
+		ch.resolver.SetEndpoints(eps)
+	}
 }
 
 // Sync synchronizes client's endpoints with the known endpoints from the etcd membership.
@@ -280,7 +300,7 @@ func (c *Client) Dial(ep string) (*grpc.ClientConn, error) {
 
 	// Using ad-hoc created resolver, to guarantee only explicitly given
 	// endpoint is used.
-	return c.dial(creds, grpc.WithResolvers(resolver.New(ep)))
+	return c.dialWithContext(c.ctx, defaultChannelKey, ep, creds, grpc.WithResolvers(resolver.New(ep)))
 }
 
 func (c *Client) getToken(ctx context.Context) error {
@@ -310,13 +330,19 @@ func (c *Client) getToken(ctx context.Context) error {
 // dialWithBalancer dials the client's current load balanced resolver group.  The scheme of the host
 // of the provided endpoint determines the scheme used for all endpoints of the client connection.
 func (c *Client) dialWithBalancer(dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	creds := c.credentialsForEndpoint(c.Endpoints()[0])
-	opts := append(dopts, grpc.WithResolvers(c.resolver))
-	return c.dial(creds, opts...)
+	return c.dialWithBalancerForKey(c.ctx, defaultChannelKey, c.resolver, c.Endpoints(), dopts...)
 }
 
-// dial configures and dials any grpc balancer target.
-func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (c *Client) dialWithBalancerForKey(ctx context.Context, key string, r *resolver.EtcdManualResolver, endpoints []string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	if len(endpoints) == 0 {
+		return nil, ErrNoAvailableEndpoints
+	}
+	creds := c.credentialsForEndpoint(endpoints[0])
+	opts := append(dopts, grpc.WithResolvers(r))
+	return c.dialWithContext(ctx, key, endpoints[0], creds, opts...)
+}
+
+func (c *Client) dialWithContext(ctx context.Context, key string, targetEndpoint string, creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	opts := c.dialSetupOpts(creds, dopts...)
 
 	if c.authTokenBundle != nil {
@@ -325,13 +351,13 @@ func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.
 
 	opts = append(opts, c.cfg.DialOptions...)
 
-	target := fmt.Sprintf("%s://%p/%s", resolver.Schema, c, authority(c.endpoints[0]))
+	target := fmt.Sprintf("%s://%p/%s/%s", resolver.Schema, c, key, authority(targetEndpoint))
 	conn, err := grpc.NewClient(target, opts...)
 	if err != nil {
 		return nil, err
 	}
 	if dialTimeout := c.cfg.DialTimeout; dialTimeout > 0 {
-		dctx, cancel := context.WithTimeout(c.ctx, dialTimeout)
+		dctx, cancel := context.WithTimeout(ctx, dialTimeout)
 		defer cancel()
 
 		if err := waitForConnection(dctx, conn); err != nil {
@@ -432,6 +458,7 @@ func newClient(cfg *Config) (*Client, error) {
 		ctx:      ctx,
 		cancel:   cancel,
 		epMu:     new(sync.RWMutex),
+		channels: make(map[string]channel),
 		callOpts: defaultCallOpts,
 	}
 
@@ -499,6 +526,14 @@ func newClient(cfg *Config) (*Client, error) {
 		return nil, err
 	}
 	client.conn = conn
+	client.channels[defaultChannelKey] = channel{conn: conn, resolver: client.resolver}
+
+	for _, key := range cfg.ChannelKeys {
+		if initErr := client.initChannelKey(client.ctx, key); initErr != nil {
+			client.Close()
+			return nil, initErr
+		}
+	}
 
 	client.Cluster = NewCluster(client)
 	client.KV = NewKV(client)
