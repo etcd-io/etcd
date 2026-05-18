@@ -15,6 +15,7 @@
 package etcdutl
 
 import (
+	"os"
 	"time"
 
 	"go.uber.org/zap"
@@ -28,6 +29,19 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 )
+
+// validateDataDir checks if the data directory's backend database file exists.
+func validateDataDir(dataDir string) error {
+	dbPath := datadir.ToBackendFileName(dataDir)
+	return validateFilePath(dbPath)
+}
+
+// validateFilePath checks if the specified file exists.
+// It returns an error encountered by os.Stat, such as os.ErrNotExist, os.ErrPermission, etc.
+func validateFilePath(filePath string) error {
+	_, err := os.Stat(filePath)
+	return err
+}
 
 // FlockTimeout is the duration to wait to obtain a file lock on db file.
 var FlockTimeout time.Duration
