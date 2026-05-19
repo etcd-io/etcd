@@ -82,14 +82,25 @@ func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerIntercepto
 		resp, err := handler(ctx, req)
 		lg := s.Logger()
 		if lg != nil { // acquire stats if debug level is enabled or RequestInfo is expensive
-			defer logUnaryRequestStats(ctx, lg, s.Cfg.WarningUnaryRequestDuration, info, startTime, req, resp)
+			defer logUnaryRequestStats(ctx, lg, s.Cfg.WarningUnaryRequestDuration, s.Cfg.ExperimentalLogRequestInfo, info, startTime, req, resp)
 		}
 		return resp, err
 	}
 }
 
-func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, warnLatency time.Duration, info *grpc.UnaryServerInfo, startTime time.Time, req any, resp any) {
+func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, warnLatency time.Duration, logRequestInfo bool, info *grpc.UnaryServerInfo, startTime time.Time, req any, resp any) {
 	duration := time.Since(startTime)
+
+	// Lightweight audit logging path - O(1) field extraction, no proto.Size or .String()
+	if logRequestInfo {
+		remote := "No remote client info."
+		peerInfo, ok := peer.FromContext(ctx)
+		if ok {
+			remote = peerInfo.Addr.String()
+		}
+		logLightweightRequestInfo(lg, info.FullMethod, remote, duration, req)
+	}
+
 	var enabledDebugLevel, expensiveRequest bool
 	if lg.Core().Enabled(zap.DebugLevel) {
 		enabledDebugLevel = true
@@ -211,6 +222,52 @@ func logExpensiveRequestStats(lg *zap.Logger, startTime time.Time, duration time
 		zap.Int("response size", respSize),
 		zap.String("request content", reqContent),
 	)
+}
+
+// logLightweightRequestInfo logs a unary request with only O(1) fields at warn level.
+// It avoids expensive proto serialization (proto.Size, .String) that the debug-level
+// and slow-request paths use.
+func logLightweightRequestInfo(lg *zap.Logger, method string, remote string, duration time.Duration, req any) {
+	fields := []zap.Field{
+		zap.String("method", method),
+		zap.String("remote", remote),
+		zap.Duration("time_spent", duration),
+	}
+
+	switch r := req.(type) {
+	case *pb.RangeRequest:
+		fields = append(fields, zap.ByteString("key", r.Key))
+		if len(r.RangeEnd) > 0 {
+			fields = append(fields, zap.ByteString("range_end", r.RangeEnd))
+		}
+	case *pb.PutRequest:
+		fields = append(fields, zap.ByteString("key", r.Key))
+	case *pb.DeleteRangeRequest:
+		fields = append(fields, zap.ByteString("key", r.Key))
+		if len(r.RangeEnd) > 0 {
+			fields = append(fields, zap.ByteString("range_end", r.RangeEnd))
+		}
+	case *pb.TxnRequest:
+		var keys, rangeEnds []string
+		for _, c := range r.Compare {
+			keys = append(keys, string(c.Key))
+			if len(c.RangeEnd) > 0 {
+				rangeEnds = append(rangeEnds, string(c.RangeEnd))
+			}
+		}
+		if len(keys) > 0 {
+			fields = append(fields, zap.Strings("compare_keys", keys))
+		}
+		if len(rangeEnds) > 0 {
+			fields = append(fields, zap.Strings("compare_range_ends", rangeEnds))
+		}
+	case *pb.LeaseGrantRequest:
+		fields = append(fields, zap.Int64("ttl", r.TTL), zap.Int64("lease_id", int64(r.ID)))
+	case *pb.LeaseRevokeRequest:
+		fields = append(fields, zap.Int64("lease_id", int64(r.ID)))
+	}
+
+	lg.Warn("request info", fields...)
 }
 
 func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor {
