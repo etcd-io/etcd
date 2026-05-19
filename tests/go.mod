@@ -31,14 +31,14 @@ require (
 	github.com/soheilhy/cmux v0.1.5
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.4.3
-	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0
-	go.etcd.io/etcd/cache/v3 v3.6.1
-	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
-	go.etcd.io/etcd/client/v3 v3.6.0-alpha.0
-	go.etcd.io/etcd/etcdctl/v3 v3.6.0-alpha.0
-	go.etcd.io/etcd/etcdutl/v3 v3.6.0-alpha.0
-	go.etcd.io/etcd/pkg/v3 v3.6.0-alpha.0
-	go.etcd.io/etcd/server/v3 v3.6.0-alpha.0
+	go.etcd.io/etcd/api/v3 v3.7.0-beta.0
+	go.etcd.io/etcd/cache/v3 v3.7.0-beta.0
+	go.etcd.io/etcd/client/pkg/v3 v3.7.0-beta.0
+	go.etcd.io/etcd/client/v3 v3.7.0-beta.0
+	go.etcd.io/etcd/etcdctl/v3 v3.7.0-beta.0
+	go.etcd.io/etcd/etcdutl/v3 v3.7.0-beta.0
+	go.etcd.io/etcd/pkg/v3 v3.7.0-beta.0
+	go.etcd.io/etcd/server/v3 v3.7.0-beta.0
 	go.etcd.io/gofail v0.2.0
 	go.etcd.io/raft/v3 v3.6.0-beta.0.0.20260116184858-6d944ca211ee
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0
