@@ -15,9 +15,6 @@
 package embed
 
 import (
-	"fmt"
-	"net/url"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,29 +28,12 @@ func TestStartEtcdWrongToken(t *testing.T) {
 
 	cfg := NewConfig()
 
-	// Similar to function in integration/embed/embed_test.go for setting up Config.
-	urls := newEmbedURLs(2)
-	curls := []url.URL{urls[0]}
-	purls := []url.URL{urls[1]}
-	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = curls, curls
-	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = purls, purls
-	cfg.InitialCluster = ""
-	for i := range purls {
-		cfg.InitialCluster += ",default=" + purls[i].String()
-	}
-	cfg.InitialCluster = cfg.InitialCluster[1:]
+	testURLConfig := newConfigTestURLs()
+	applyTestURLConfig(cfg, testURLConfig)
+
 	cfg.Dir = tdir
 	cfg.AuthToken = "wrong-token"
 
 	_, err := StartEtcd(cfg)
 	require.ErrorIsf(t, err, auth.ErrInvalidAuthOpts, "expected %v, got %v", auth.ErrInvalidAuthOpts, err)
-}
-
-func newEmbedURLs(n int) (urls []url.URL) {
-	scheme := "unix"
-	for i := 0; i < n; i++ {
-		u, _ := url.Parse(fmt.Sprintf("%s://localhost:%d%06d", scheme, os.Getpid(), i))
-		urls = append(urls, *u)
-	}
-	return urls
 }
