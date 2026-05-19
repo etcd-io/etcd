@@ -133,6 +133,8 @@ type ServerConfig struct {
 
 	WarningApplyDuration        time.Duration
 	WarningUnaryRequestDuration time.Duration
+	// ExperimentalLogRequestInfo enables lightweight audit logging of all unary gRPC requests.
+	ExperimentalLogRequestInfo bool
 
 	StrictReconfigCheck bool
 
