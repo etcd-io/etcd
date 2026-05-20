@@ -10,6 +10,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 - [bugfix: MemberUpdate implicitly and unexpectedly promotes a learner](https://github.com/etcd-io/etcd/pull/21737)
 
+### etcdutl
+
+- [etcdutl: validate data file path instead of panic](https://github.com/etcd-io/etcd/pull/21769)
+
 ---
 
 ## v3.5.30 (2026-05-01)
