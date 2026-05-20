@@ -155,7 +155,7 @@ func TestCopyKeyValue(t *testing.T) {
 
 func countProtobufFields(v any) int {
 	t := reflect.TypeOf(v)
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {
