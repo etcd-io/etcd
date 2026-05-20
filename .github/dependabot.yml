@@ -5,6 +5,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    exclude-paths:
+      - ".github/workflows/devcontainer-test.yml" # This is updated by the devcontainer update workflow
 
   - package-ecosystem: gomod
     directory: /
