@@ -122,6 +122,9 @@ func (c *migrateConfig) finalize() error {
 }
 
 func migrateCommandFunc(c *migrateConfig) error {
+	if err := validateDataDir(c.dataDir); err != nil {
+		return err
+	}
 	dbPath := datadir.ToBackendFileName(c.dataDir)
 	be := backend.NewDefaultBackend(GetLogger(), dbPath)
 	defer be.Close()

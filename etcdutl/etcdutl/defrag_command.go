@@ -50,8 +50,13 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func DefragData(dataDir string) error {
-	var be backend.Backend
-	lg := GetLogger()
+	var (
+		be backend.Backend
+		lg = GetLogger()
+	)
+	if err := validateDataDir(dataDir); err != nil {
+		return err
+	}
 	bch := make(chan struct{})
 	dbDir := datadir.ToBackendFileName(dataDir)
 	go func() {
