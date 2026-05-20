@@ -109,6 +109,9 @@ func SnapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 		err := fmt.Errorf("snapshot status requires exactly one argument")
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
+	if err := validateFilePath(args[0]); err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
 	printer := initPrinterFromCmd(cmd)
 
 	lg := GetLogger()

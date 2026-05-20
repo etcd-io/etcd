@@ -24,6 +24,7 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -68,7 +69,9 @@ func NewBackupCommand() *cobra.Command {
 }
 
 func doBackup(cmd *cobra.Command, args []string) {
-	HandleBackup(withV3, dataDir, backupDir, walDir, backupWalDir)
+	if err := HandleBackup(withV3, dataDir, backupDir, walDir, backupWalDir); err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
 }
 
 type desiredCluster struct {
@@ -102,6 +105,10 @@ func newDesiredCluster() desiredCluster {
 // HandleBackup handles a request that intends to do a backup.
 func HandleBackup(withV3 bool, srcDir string, destDir string, srcWAL string, destWAL string) error {
 	lg := GetLogger()
+
+	if err := validateDataDir(srcDir); err != nil {
+		return err
+	}
 
 	srcSnap := datadir.ToSnapDir(srcDir)
 	destSnap := datadir.ToSnapDir(destDir)
