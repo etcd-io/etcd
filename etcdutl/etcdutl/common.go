@@ -16,6 +16,7 @@ package etcdutl
 
 import (
 	"errors"
+	"os"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -28,6 +29,19 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
 )
+
+// validateDataDir checks if the data directory's backend database file exists.
+func validateDataDir(dataDir string) error {
+	dbPath := datadir.ToBackendFileName(dataDir)
+	return validateFilePath(dbPath)
+}
+
+// validateFilePath checks if the specified file exists.
+// It returns an error encountered by os.Stat, such as os.ErrNotExist, os.ErrPermission, etc.
+func validateFilePath(filePath string) error {
+	_, err := os.Stat(filePath)
+	return err
+}
 
 func GetLogger() *zap.Logger {
 	config := logutil.DefaultZapLoggerConfig

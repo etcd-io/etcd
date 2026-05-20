@@ -54,6 +54,9 @@ type HashKV struct {
 }
 
 func calculateHashKV(dbPath string, rev int64) (HashKV, error) {
+	if err := validateFilePath(dbPath); err != nil {
+		return HashKV{}, err
+	}
 	cfg := backend.DefaultBackendConfig(zap.NewNop())
 	cfg.Path = dbPath
 	b := backend.New(cfg)
