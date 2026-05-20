@@ -111,7 +111,7 @@ func TestIndexRange(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		keys, revs := ti.Range(tt.key, tt.end, atRev)
+		keys, revs, _, _ := ti.Range(tt.key, tt.end, atRev)
 		if !reflect.DeepEqual(keys, tt.wkeys) {
 			t.Errorf("#%d: keys = %+v, want %+v", i, keys, tt.wkeys)
 		}
