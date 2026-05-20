@@ -114,9 +114,7 @@ function verify_images_architecture {
 function main {
   local version="$1"
   local repository=${REPOSITORY:-"gcr.io/etcd-development/etcd"}
-  local arch
-  arch=$(go env GOARCH)
-  local tag="v${version}-${arch}"
+  local tag="v${version}"
   local image="${TEST_IMAGE:-"${repository}:${tag}"}"
   local container_name="test_etcd"
 

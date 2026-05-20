@@ -25,6 +25,7 @@ if [ -z "$VERSION" ]; then
   echo "Usage: ${0} VERSION" >&2
   exit 1
 fi
+NO_DOCKER_PUSH=${2:-}
 
 BUILD_DIR=${BUILD_DIR:-release}
 mkdir -p "${BUILD_DIR}"
@@ -60,26 +61,17 @@ if [ -n "${CI:-}" ]; then
     --bootstrap --use
 fi
 
-docker buildx build --build-arg="VERSION=${VERSION}" \
-  --build-arg="BUILD_DIR=${BUILD_DIR}" \
-  --platform="${PLATFORMS}" \
-  --load \
-  "${tag_args[@]}" \
-  .
 
-for platform in $(echo "${PLATFORMS}" | tr ',' ' '); do
-  platform_tag_args=()
-  for arg in "${tag_args[@]}"; do
-    if [ "${arg}" != "-t" ]; then
-      arg+="-${platform#linux/}"
-    fi
-    platform_tag_args+=("$arg")
-  done
-
+if [ "${DRY_RUN}" == "true" ] || [ "${NO_DOCKER_PUSH}" == 1 ]; then
+  docker build --build-arg="VERSION=${VERSION}" \
+    --build-arg="BUILD_DIR=${BUILD_DIR}" \
+    "${tag_args[@]}" \
+    .
+else
   docker buildx build --build-arg="VERSION=${VERSION}" \
     --build-arg="BUILD_DIR=${BUILD_DIR}" \
-    --platform="${platform}" \
-    --load \
-    "${platform_tag_args[@]}" \
+    --platform="${PLATFORMS}" \
+    --push \
+    "${tag_args[@]}" \
     .
-done
+fi
