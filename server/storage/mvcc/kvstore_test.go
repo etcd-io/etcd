@@ -1001,6 +1001,7 @@ func (b *fakeBackend) Size() int64                                              
 func (b *fakeBackend) SizeInUse() int64                                           { return 0 }
 func (b *fakeBackend) OpenReadTxN() int64                                         { return 0 }
 func (b *fakeBackend) Snapshot() backend.Snapshot                                 { return nil }
+func (b *fakeBackend) SnapshotDefragmented() (backend.Snapshot, error)             { return nil, nil }
 func (b *fakeBackend) ForceCommit()                                               {}
 func (b *fakeBackend) Defrag() error                                              { return nil }
 func (b *fakeBackend) Close() error                                               { return nil }
