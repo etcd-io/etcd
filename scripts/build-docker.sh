@@ -15,14 +15,14 @@
 
 set -euo pipefail
 
-if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 VERSION" >&2
+if [ "$#" -lt 1 ]; then
+  echo "Usage: $0 <VERSION> [NO_DOCKER_PUSH]" >&2
   exit 1
 fi
 
 VERSION=${1}
 if [ -z "$VERSION" ]; then
-  echo "Usage: ${0} VERSION" >&2
+  echo "Usage: ${0} <VERSION> [NO_DOCKER_PUSH]" >&2
   exit 1
 fi
 NO_DOCKER_PUSH=${2:-}
