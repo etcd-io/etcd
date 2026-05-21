@@ -27,21 +27,21 @@ if [ -z "$VERSION" ]; then
 fi
 NO_DOCKER_PUSH=${2:-}
 
-BUILD_DIR=${BUILD_DIR:-release}
-mkdir -p "${BUILD_DIR}"
+BUILDDIR=${BUILDDIR:-release}
+mkdir -p "${BUILDDIR}"
 
 PLATFORMS=${PLATFORMS:-"linux/amd64,linux/arm64,linux/ppc64le,linux/s390x"}
 
 for platform in $(echo "${PLATFORMS}" | tr ',' ' '); do
   RELEASE="etcd-${VERSION}-linux-${platform#linux/}"
-  if [ ! -d "${BUILD_DIR}/${RELEASE}" ]; then
+  if [ ! -d "${BUILDDIR}/${RELEASE}" ]; then
     TARFILE="${RELEASE}.tar.gz"
     TARURL="https://github.com/etcd-io/etcd/releases/download/${VERSION}/${TARFILE}"
-    if ! curl -f -L -o "${BUILD_DIR}/${TARFILE}" "${TARURL}" ; then
+    if ! curl -f -L -o "${BUILDDIR}/${TARFILE}" "${TARURL}" ; then
       echo "Failed to download ${TARURL}."
       exit 1
     fi
-    tar -C "${BUILD_DIR}" -zvxf "${BUILD_DIR}/${TARFILE}"
+    tar -C "${BUILDDIR}" -zvxf "${BUILDDIR}/${TARFILE}"
   fi
 done
 
@@ -64,12 +64,12 @@ fi
 
 if [ "${DRY_RUN}" == "true" ] || [ "${NO_DOCKER_PUSH}" == 1 ]; then
   docker build --build-arg="VERSION=${VERSION}" \
-    --build-arg="BUILD_DIR=${BUILD_DIR}" \
+    --build-arg="BUILDDIR=${BUILDDIR}" \
     "${tag_args[@]}" \
     .
 else
   docker buildx build --build-arg="VERSION=${VERSION}" \
-    --build-arg="BUILD_DIR=${BUILD_DIR}" \
+    --build-arg="BUILDDIR=${BUILDDIR}" \
     --platform="${PLATFORMS}" \
     --push \
     "${tag_args[@]}" \

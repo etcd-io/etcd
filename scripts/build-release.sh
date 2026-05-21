@@ -39,5 +39,5 @@ pushd "${ETCD_ROOT}" >/dev/null
   ./scripts/build-binary.sh "${VERSION}"
 
   log_callout "Building Docker images..."
-  BUILD_DIR=release ./scripts/build-docker.sh "${VERSION}" "${NO_DOCKER_PUSH}"
+  BUILDDIR=release ./scripts/build-docker.sh "${VERSION}" "${NO_DOCKER_PUSH}"
 popd >/dev/null

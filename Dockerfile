@@ -2,11 +2,11 @@ FROM gcr.io/distroless/static-debian12@sha256:20bc6c0bc4d625a22a8fde3e55f6515709
 
 ARG TARGETARCH
 ARG VERSION
-ARG BUILD_DIR
+ARG BUILDDIR
 
-ADD ${BUILD_DIR}/etcd-${VERSION}-linux-${TARGETARCH}/etcd /usr/local/bin/
-ADD ${BUILD_DIR}/etcd-${VERSION}-linux-${TARGETARCH}/etcdctl /usr/local/bin/
-ADD ${BUILD_DIR}/etcd-${VERSION}-linux-${TARGETARCH}/etcdutl /usr/local/bin/
+ADD ${BUILDDIR}/etcd-${VERSION}-linux-${TARGETARCH}/etcd /usr/local/bin/
+ADD ${BUILDDIR}/etcd-${VERSION}-linux-${TARGETARCH}/etcdctl /usr/local/bin/
+ADD ${BUILDDIR}/etcd-${VERSION}-linux-${TARGETARCH}/etcdutl /usr/local/bin/
 
 WORKDIR /var/etcd/
 WORKDIR /var/lib/etcd/
