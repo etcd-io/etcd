@@ -25,7 +25,6 @@ if [ -z "${VERSION}" ]; then
   echo "Usage: ${0} VERSION" >> /dev/stderr
   exit 255
 fi
-NO_DOCKER_PUSH=${2:-}
 
 if ! command -v docker >/dev/null; then
     echo "cannot find docker"
@@ -39,5 +38,5 @@ pushd "${ETCD_ROOT}" >/dev/null
   ./scripts/build-binary.sh "${VERSION}"
 
   log_callout "Building Docker images..."
-  BUILDDIR=release ./scripts/build-docker.sh "${VERSION}" "${NO_DOCKER_PUSH}"
+  BUILDDIR=release ./scripts/build-docker.sh "${VERSION}"
 popd >/dev/null

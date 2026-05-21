@@ -15,17 +15,16 @@
 
 set -euo pipefail
 
-if [ "$#" -lt 1 ]; then
-  echo "Usage: $0 <VERSION> [NO_DOCKER_PUSH]" >&2
+if [ "$#" -ne 1 ]; then
+  echo "Usage: $0 VERSION" >&2
   exit 1
 fi
 
 VERSION=${1}
 if [ -z "$VERSION" ]; then
-  echo "Usage: ${0} <VERSION> [NO_DOCKER_PUSH]" >&2
+  echo "Usage: ${0} VERSION" >&2
   exit 1
 fi
-NO_DOCKER_PUSH=${2:-}
 
 BUILDDIR=${BUILDDIR:-release}
 mkdir -p "${BUILDDIR}"
@@ -61,17 +60,7 @@ if [ -n "${CI:-}" ]; then
     --bootstrap --use
 fi
 
-
-if [ "${DRY_RUN}" == "true" ] || [ "${NO_DOCKER_PUSH}" == 1 ]; then
-  docker build --build-arg="VERSION=${VERSION}" \
-    --build-arg="BUILDDIR=${BUILDDIR}" \
-    "${tag_args[@]}" \
-    .
-else
-  docker buildx build --build-arg="VERSION=${VERSION}" \
-    --build-arg="BUILDDIR=${BUILDDIR}" \
-    --platform="${PLATFORMS}" \
-    --push \
-    "${tag_args[@]}" \
-    .
-fi
+docker build --build-arg="VERSION=${VERSION}" \
+  --build-arg="BUILDDIR=${BUILDDIR}" \
+  "${tag_args[@]}" \
+  .
