@@ -18,24 +18,25 @@ For more details on Antithesis integration, see the [antithesis directory](../an
 
 ## Robustness track record
 
-| Correctness / Consistency issue                                              | Report   | Introduced in   | Discovered by                                             | Last reproduction commit     | Reproduction Script               |
-| -----------------------------------------------------------------            | -------- | --------------- | --------------------------------------------------------- | -----------------------------| --------------------------------- |
-| Inconsistent revision caused by crash during high load [#13766]              | Mar 2022 | v3.5            | User                                                      | Load not high enough         | `make test-robustness-issue13766` |
-| Single node cluster can lose a write on crash [#14370]                       | Aug 2022 | v3.4 or earlier | User                                                      | [a438759] from Jan 3, 2026   | `make test-robustness-issue14370` |
-| Enabling auth can lead to inconsistency [#14571]                             | Oct 2022 | v3.4 or earlier | User                                                      | Authorization is not covered |                                   |
-| Inconsistent revision caused by crash during defrag [#14685]                 | Nov 2022 | v3.5            | Robustness, after covering defragmentation                | [a438759] from Jan 3, 2026   | `make test-robustness-issue14685` |
-| Watch progress notification not synced with stream [#15220]                  | Jan 2023 | v3.4 or earlier | User                                                      | [a438759] from Jan 3, 2026   | `make test-robustness-issue15220` |
-| Watch traveling back in time after network partition [#15271]                | Feb 2023 | v3.4 or earlier | Robustness, after covering network partitions             |                              | `make test-robustness-issue15271` |
-| Duplicated watch event due to bug in TXN caching [#17247]                    | Jan 2024 | main branch     | Robustness, prevented regression on main branch           |                              |                                   |
-| Watch events lost during stream starvation [#17529]                          | Mar 2024 | v3.4 or earlier | User                                                      | [c272ade] from May 30, 2025  | `make test-robustness-issue17529` |
-| Revision decreasing caused by crash during compaction [#17780]               | Apr 2024 | v3.4 or earlier | Robustness, after covering compaction                     |                              |                                   |
-| Watch dropping an event when compacting on delete [#18089]                   | May 2024 | v3.4 or earlier | Robustness, after covering compaction                     | [a438759] from Jan 3, 2026   | `make test-robustness-issue18089` |
-| Panic when two snapshots are received in a short period [#18055]             | May 2024 | v3.4 or earlier | Robustness                                                |                              |                                   |
-| Inconsistency when reading compacted revision in TXN [#18667]                | Oct 2024 | v3.4 or earlier | User                                                      |                              |                                   |
-| Missing delete event on watch opened on same revision as compaction [#19179] | Jan 2025 | v3.4 or earlier | Robustness, after covering compaction                     |                              | `make test-robustness-issue19179` |
-| Watch on future revision returns notifications [#20221]                      | Jun 2025 | v3.4 or earlier | Robustness, after covering connection to multiple members |                              |                                   |
-| Watch on future revision returns old events [#20221]                         | Jun 2025 | v3.4 or earlier | Antithesis, after covering connection to multiple members |                              |                                   |
-| Panic from db page expected to be 5 [#20271]                                 | Jul 2025 | v3.4 or earlier | Antithesis                                                |                              |                                   |
+| Correctness / Consistency issue                                              | Report   | Introduced in      | Discovered by                                             | Last reproduction commit     | Reproduction Script               |
+| -----------------------------------------------------------------            | -------- | ------------------ | --------------------------------------------------------- | -----------------------------| --------------------------------- |
+| Inconsistent revision caused by crash during high load [#13766]              | Mar 2022 | v3.5               | User                                                      | Load not high enough         | `make test-robustness-issue13766` |
+| Single node cluster can lose a write on crash [#14370]                       | Aug 2022 | v3.4 or earlier    | User                                                      | [a438759] from Jan 3, 2026   | `make test-robustness-issue14370` |
+| Enabling auth can lead to inconsistency [#14571]                             | Oct 2022 | v3.4 or earlier    | User                                                      | Authorization is not covered |                                   |
+| Inconsistent revision caused by crash during defrag [#14685]                 | Nov 2022 | v3.5               | Robustness, after covering defragmentation                | [a438759] from Jan 3, 2026   | `make test-robustness-issue14685` |
+| Watch progress notification not synced with stream [#15220]                  | Jan 2023 | v3.4 or earlier    | User                                                      | [a438759] from Jan 3, 2026   | `make test-robustness-issue15220` |
+| Watch traveling back in time after network partition [#15271]                | Feb 2023 | v3.4 or earlier    | Robustness, after covering network partitions             |                              | `make test-robustness-issue15271` |
+| Duplicated watch event due to bug in TXN caching [#17247]                    | Jan 2024 | main branch        | Robustness, prevented regression on main branch           |                              |                                   |
+| Watch events lost during stream starvation [#17529]                          | Mar 2024 | v3.4 or earlier    | User                                                      | [c272ade] from May 30, 2025  | `make test-robustness-issue17529` |
+| Revision decreasing caused by crash during compaction [#17780]               | Apr 2024 | v3.4 or earlier    | Robustness, after covering compaction                     |                              |                                   |
+| Watch dropping an event when compacting on delete [#18089]                   | May 2024 | v3.4 or earlier    | Robustness, after covering compaction                     | [a438759] from Jan 3, 2026   | `make test-robustness-issue18089` |
+| Panic when two snapshots are received in a short period [#18055]             | May 2024 | v3.4 or earlier    | Robustness                                                |                              |                                   |
+| Inconsistency when reading compacted revision in TXN [#18667]                | Oct 2024 | v3.4 or earlier    | User                                                      |                              |                                   |
+| Missing delete event on watch opened on same revision as compaction [#19179] | Jan 2025 | v3.4 or earlier    | Robustness, after covering compaction                     |                              | `make test-robustness-issue19179` |
+| Watch on future revision returns notifications [#20221]                      | Jun 2025 | v3.4 or earlier    | Robustness, after covering connection to multiple members |                              | `make test-robustness-issue20221` |
+| Watch on future revision returns old events [#20221]                         | Jun 2025 | v3.4 or earlier    | Antithesis, after covering connection to multiple members |                              |                                   |
+| Panic from db page expected to be 5 [#20271]                                 | Jul 2025 | v3.4 or earlier    | Antithesis                                                |                              |                                   |
+| Stale reads caused by process pausing [#20418]                               | Jul 2025 | v3.5.0 and v3.4.20 | Antithesis                                                |                              |                                   |
 
 [c272ade]: https://github.com/etcd-io/etcd/tree/c272adec29afaa69f08b7458422c53b8978c7af1
 [a438759]: https://github.com/etcd-io/etcd/tree/a438759bf0bcafce851fae1a84a8511452b6b704
@@ -54,6 +55,7 @@ For more details on Antithesis integration, see the [antithesis directory](../an
 [#20221]: https://github.com/etcd-io/etcd/issues/20221
 [#18055]: https://github.com/etcd-io/etcd/issues/18055
 [#20271]: https://github.com/etcd-io/etcd/issues/20271
+[#20418]: https://github.com/etcd-io/etcd/issues/20418
 
 ## Maintaining Bug Reproducibility During Non-Trivial Changes
 
@@ -108,7 +110,7 @@ These tests cover various scenarios, including:
 
 Etcd provides strict serializability for KV operations and eventual consistency for Watch.
 
-**Etcd Guarantees**
+#### Etcd Guarantees
 
 * **Key-value API operations** <https://etcd.io/docs/latest/learning/api_guarantees/#kv-apis>
 * **Watch API guarantees** <https://etcd.io/docs/latest/learning/api_guarantees/#watch-apis>
@@ -159,7 +161,7 @@ Errors in the etcd model could be causing false positives, which makes the abili
 
    * **For local runs:** this would be by identifying log line, in the following example that would be `/tmp/TestRobustnessExploratory_Etcd_HighTraffic_ClusterOfSize1`:
 
-      ```
+      ```text
       logger.go:146: 2024-04-08T09:45:27.734+0200 INFO    Saving robustness test report   {"path": "/tmp/TestRobustnessExploratory_Etcd_HighTraffic_ClusterOfSize1"}
       ```
 
@@ -192,7 +194,7 @@ Errors in the etcd model could be causing false positives, which makes the abili
 If robustness tests fail, we want to analyse the report to confirm if the issue is on etcd side. The location of the directory with the report
 is mentioned in the `Saving robustness test report` log. Logs from report generation should look like:
 
-```
+```text
     logger.go:146: 2024-05-08T10:42:54.429+0200 INFO    Saving robustness test report   {"path": "/tmp/TestRobustnessRegression_Issue14370/1715157774429416550"}
     logger.go:146: 2024-05-08T10:42:54.429+0200 INFO    Saving member data dir  {"member": "TestRobustnessRegressionIssue14370-test-0", "path": "/tmp/TestRobustnessRegression_Issue14370/1715157774429416550/server-TestRobustnessRegressionIssue14370-test-0"}
     logger.go:146: 2024-05-08T10:42:54.430+0200 INFO    no watch operations for client, skip persisting {"client-id": 1}
@@ -237,7 +239,7 @@ After a couple of tries robustness tests should fail with a log `Linearization i
 
 Example:
 
-```
+```text
     logger.go:146: 2025-08-01T22:54:26.550+0900 INFO Validating linearizable operations {"timeout": "5m0s"}
     logger.go:146: 2025-08-01T22:54:26.755+0900 ERROR Linearization illegal {"duration": "205.05225ms"}
     logger.go:146: 2025-08-01T22:54:26.755+0900 INFO Skipping other validations as linearization failed
@@ -262,7 +264,6 @@ All following requests are invalid (connected with red line) as they have revisi
 Etcd guarantees that revision is non-decreasing, so this shows a bug in etcd as there is no way revision should decrease.
 This is consistent with the root cause of [#14370] as it was an issue with the process crash causing the last write to be lost.
 
-
 ### Example analysis of a watch issue
 
 Let's reproduce and analyse robustness test report for issue [#15271].
@@ -271,7 +272,7 @@ After a couple of tries robustness tests should fail with a logs `Broke watch gu
 
 Example:
 
-```
+```text
     logger.go:146: 2024-05-08T10:50:11.301+0200 INFO    Validating linearizable operations      {"timeout": "5m0s"}
     logger.go:146: 2024-05-08T10:50:15.754+0200 INFO    Linearization success   {"duration": "4.453346487s"}
     logger.go:146: 2024-05-08T10:50:15.754+0200 INFO    Validating watch
@@ -292,7 +293,7 @@ Each line consists of json blob corresponding to a single watch request sent by 
 Look for events with `Revision` equal to revision mentioned in the first log with `Broke watch guarantee`, in this case, look for `"Revision":3,`.
 You should see watch responses where the `Revision` decreases like ones below:
 
-```
+```text
 {"Events":[{"Type":"put-operation","Key":"key5","Value":{"Value":"793","Hash":0},"Revision":799,"IsCreate":false,"PrevValue":null}],"IsProgressNotify":false,"Revision":799,"Time":3202907249,"Error":""}
 {"Events":[{"Type":"put-operation","Key":"key4","Value":{"Value":"1","Hash":0},"Revision":3,"IsCreate":true,"PrevValue":null}, ...
 ```
@@ -302,4 +303,3 @@ However, the following line includes an event with `Revision` equal `3`.
 If you follow the `revision` throughout the file you should notice that watch replayed revisions for a second time.
 This is incorrect and breaks `Ordered` [watch API guarantees].
 This is consistent with the root cause of [#15271] where the member reconnecting to cluster will resend revisions.
-

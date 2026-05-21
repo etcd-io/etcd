@@ -33,30 +33,30 @@ import (
 func TestGetLatestWalSnap(t *testing.T) {
 	testCases := []struct {
 		name                  string
-		walSnaps              []walpb.Snapshot
+		walSnaps              []*walpb.Snapshot
 		snapshots             []raftpb.Snapshot
-		expectedLatestWALSnap walpb.Snapshot
+		expectedLatestWALSnap *walpb.Snapshot
 	}{
 		{
 			name: "wal snapshot records match the snapshot files",
-			walSnaps: []walpb.Snapshot{
-				{Index: 10, Term: 2},
-				{Index: 20, Term: 3},
-				{Index: 30, Term: 5},
+			walSnaps: []*walpb.Snapshot{
+				{Index: new(uint64(10)), Term: new(uint64(2))},
+				{Index: new(uint64(20)), Term: new(uint64(3))},
+				{Index: new(uint64(30)), Term: new(uint64(5))},
 			},
 			snapshots: []raftpb.Snapshot{
 				{Metadata: raftpb.SnapshotMetadata{Index: 10, Term: 2}},
 				{Metadata: raftpb.SnapshotMetadata{Index: 20, Term: 3}},
 				{Metadata: raftpb.SnapshotMetadata{Index: 30, Term: 5}},
 			},
-			expectedLatestWALSnap: walpb.Snapshot{Index: 30, Term: 5},
+			expectedLatestWALSnap: &walpb.Snapshot{Index: new(uint64(30)), Term: new(uint64(5))},
 		},
 		{
 			name: "there are orphan snapshot files",
-			walSnaps: []walpb.Snapshot{
-				{Index: 10, Term: 2},
-				{Index: 20, Term: 3},
-				{Index: 35, Term: 5},
+			walSnaps: []*walpb.Snapshot{
+				{Index: new(uint64(10)), Term: new(uint64(2))},
+				{Index: new(uint64(20)), Term: new(uint64(3))},
+				{Index: new(uint64(35)), Term: new(uint64(5))},
 			},
 			snapshots: []raftpb.Snapshot{
 				{Metadata: raftpb.SnapshotMetadata{Index: 10, Term: 2}},
@@ -65,7 +65,7 @@ func TestGetLatestWalSnap(t *testing.T) {
 				{Metadata: raftpb.SnapshotMetadata{Index: 40, Term: 6}},
 				{Metadata: raftpb.SnapshotMetadata{Index: 50, Term: 7}},
 			},
-			expectedLatestWALSnap: walpb.Snapshot{Index: 35, Term: 5},
+			expectedLatestWALSnap: &walpb.Snapshot{Index: new(uint64(35)), Term: new(uint64(5))},
 		},
 	}
 
@@ -79,10 +79,10 @@ func TestGetLatestWalSnap(t *testing.T) {
 			require.NoError(t, fileutil.TouchDirAll(lg, datadir.ToSnapDir(dataDir)))
 
 			// populate wal file
-			w, err := wal.Create(lg, datadir.ToWALDir(dataDir), pbutil.MustMarshal(
+			w, err := wal.Create(lg, datadir.ToWALDir(dataDir), pbutil.MustMarshalMessage(
 				&etcdserverpb.Metadata{
-					NodeID:    1,
-					ClusterID: 2,
+					NodeID:    new(uint64(1)),
+					ClusterID: new(uint64(2)),
 				},
 			))
 			require.NoError(t, err)
@@ -91,7 +91,7 @@ func TestGetLatestWalSnap(t *testing.T) {
 				walSnap.ConfState = &raftpb.ConfState{Voters: []uint64{1}}
 				walErr := w.SaveSnapshot(walSnap)
 				require.NoError(t, walErr)
-				walErr = w.Save(raftpb.HardState{Term: walSnap.Term, Commit: walSnap.Index, Vote: 1}, nil)
+				walErr = w.Save(raftpb.HardState{Term: walSnap.GetTerm(), Commit: walSnap.GetIndex(), Vote: 1}, nil)
 				require.NoError(t, walErr)
 			}
 			err = w.Close()
@@ -108,8 +108,8 @@ func TestGetLatestWalSnap(t *testing.T) {
 			walSnap, err := getLatestWALSnap(lg, dataDir)
 			require.NoError(t, err)
 
-			require.Equal(t, tc.expectedLatestWALSnap.Term, walSnap.Term)
-			require.Equal(t, tc.expectedLatestWALSnap.Index, walSnap.Index)
+			require.Equal(t, tc.expectedLatestWALSnap.GetTerm(), walSnap.GetTerm())
+			require.Equal(t, tc.expectedLatestWALSnap.GetIndex(), walSnap.GetIndex())
 		})
 	}
 }

@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -128,12 +129,12 @@ func CorruptBBolt(fpath string) error {
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			keys = append(keys, k)
 			var kv mvccpb.KeyValue
-			if uerr := kv.Unmarshal(v); uerr != nil {
+			if uerr := proto.Unmarshal(v, &kv); uerr != nil {
 				return uerr
 			}
 			kv.Key[0]++
 			kv.Value[0]++
-			v2, v2err := kv.Marshal()
+			v2, v2err := proto.Marshal(&kv)
 			if v2err != nil {
 				return v2err
 			}

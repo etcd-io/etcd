@@ -18,9 +18,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"maps"
-	"reflect"
+	"slices"
 	"sort"
+	"unsafe"
 
 	"github.com/anishathalye/porcupine"
 
@@ -39,34 +39,46 @@ import (
 //   - Incomplete response when the request is correct, but the model doesn't have all
 //     the data to provide a full response. For example, stale reads as the model doesn't store
 //     the whole change history as real etcd does.
-var DeterministicModel = porcupine.Model{
-	Init: func() any {
-		return freshEtcdState()
-	},
-	Step: func(st any, in any, out any) (bool, any) {
-		return st.(EtcdState).apply(in.(EtcdRequest), out.(EtcdResponse))
-	},
-	Equal: func(st1, st2 any) bool {
-		return st1.(EtcdState).Equal(st2.(EtcdState))
-	},
-	DescribeOperation: func(in, out any) string {
-		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), MaybeEtcdResponse{EtcdResponse: out.(EtcdResponse)}))
-	},
-	DescribeState: func(st any) string {
-		data, err := json.MarshalIndent(st, "", "  ")
-		if err != nil {
-			panic(err)
-		}
-		return "<pre>" + html.EscapeString(string(data)) + "</pre>"
-	},
+var DeterministicModel = func(keys []string) porcupine.Model {
+	return porcupine.Model{
+		Init: func() any {
+			return freshEtcdState(keys)
+		},
+		Step: func(st any, in any, out any) (bool, any) {
+			return st.(EtcdState).apply(in.(EtcdRequest), out.(EtcdResponse))
+		},
+		Equal: func(st1, st2 any) bool {
+			return st1.(EtcdState).Equal(st2.(EtcdState))
+		},
+		DescribeOperation: func(in, out any) string {
+			return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), MaybeEtcdResponse{EtcdResponse: out.(EtcdResponse)}))
+		},
+		DescribeOperationMetadata: func(info any) string {
+			if info == nil {
+				return ""
+			}
+			return DescribeOperationMetadata(MaybeEtcdResponse{EtcdResponse: info.(EtcdResponse)})
+		},
+		DescribeState: func(st any) string {
+			data, err := json.MarshalIndent(st, "", "  ")
+			if err != nil {
+				panic(err)
+			}
+			return "<pre>" + html.EscapeString(string(data)) + "</pre>"
+		},
+	}
 }
 
 type EtcdState struct {
-	Revision        int64                    `json:",omitempty"`
-	CompactRevision int64                    `json:",omitempty"`
-	KeyValues       map[string]ValueRevision `json:",omitempty"`
-	KeyLeases       map[string]int64         `json:",omitempty"`
-	Leases          map[int64]EtcdLease      `json:",omitempty"`
+	Revision        int64 `json:",omitempty"`
+	CompactRevision int64 `json:",omitempty"`
+	// Slices below are positionally aligned. If KeyValue is nil on index i,
+	// it means the key `Keys[i]` doesn't exist.
+	Keys      []string         `json:",omitempty"`
+	KeyValues []*ValueRevision `json:",omitempty"`
+	KeyLeases []*int64         `json:",omitempty"`
+	// All leases sorted by LeaseID.
+	Leases []int64 `json:",omitempty"`
 }
 
 func (s EtcdState) Equal(other EtcdState) bool {
@@ -76,13 +88,22 @@ func (s EtcdState) Equal(other EtcdState) bool {
 	if s.CompactRevision != other.CompactRevision {
 		return false
 	}
-	if !reflect.DeepEqual(s.KeyValues, other.KeyValues) {
+	if unsafe.SliceData(s.Keys) != unsafe.SliceData(other.Keys) {
+		panic("Can only compare states created from the same key slice")
+	}
+	return slices.EqualFunc(s.KeyValues, other.KeyValues, equalPtr) &&
+		slices.EqualFunc(s.KeyLeases, other.KeyLeases, equalPtr) &&
+		slices.Equal(s.Leases, other.Leases)
+}
+
+func equalPtr[T comparable](a, b *T) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
 		return false
 	}
-	if !reflect.DeepEqual(s.KeyLeases, other.KeyLeases) {
-		return false
-	}
-	return reflect.DeepEqual(s.Leases, other.Leases)
+	return *a == *b
 }
 
 func (s EtcdState) apply(request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
@@ -96,25 +117,22 @@ func (s EtcdState) DeepCopy() EtcdState {
 		CompactRevision: s.CompactRevision,
 	}
 
-	newState.KeyValues = maps.Clone(s.KeyValues)
-	newState.KeyLeases = maps.Clone(s.KeyLeases)
-
-	newLeases := map[int64]EtcdLease{}
-	for key, val := range s.Leases {
-		newLeases[key] = val.DeepCopy()
-	}
-	newState.Leases = newLeases
+	newState.Keys = s.Keys
+	newState.KeyValues = slices.Clone(s.KeyValues)
+	newState.KeyLeases = slices.Clone(s.KeyLeases)
+	newState.Leases = slices.Clone(s.Leases)
 	return newState
 }
 
-func freshEtcdState() EtcdState {
+func freshEtcdState(keys []string) EtcdState {
 	return EtcdState{
 		Revision: 1,
 		// Start from CompactRevision equal -1 as etcd allows client to compact revision 0 for some reason.
 		CompactRevision: -1,
-		KeyValues:       map[string]ValueRevision{},
-		KeyLeases:       map[string]int64{},
-		Leases:          map[int64]EtcdLease{},
+		Keys:            keys,
+		KeyValues:       make([]*ValueRevision, len(keys)),
+		KeyLeases:       make([]*int64, len(keys)),
+		Leases:          make([]int64, 0),
 	}
 }
 
@@ -157,7 +175,10 @@ func (s EtcdState) stepTxn(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 	newState := s.DeepCopy()
 	failure := false
 	for _, cond := range request.Txn.Conditions {
-		val := newState.KeyValues[cond.Key]
+		val, ok := newState.GetValue(cond.Key)
+		if !ok {
+			val = &ValueRevision{}
+		}
 		if cond.ExpectedVersion > 0 {
 			if val.Version != cond.ExpectedVersion {
 				failure = true
@@ -181,29 +202,27 @@ func (s EtcdState) stepTxn(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 				RangeResponse: newState.getRange(op.Range),
 			}
 		case PutOperation:
-			_, leaseExists := newState.Leases[op.Put.LeaseID]
-			if op.Put.LeaseID != 0 && !leaseExists {
-				break
+			var leaseID *int64
+			if op.Put.LeaseID != 0 {
+				if !newState.leaseExists(op.Put.LeaseID) {
+					break
+				}
+				leaseID = &op.Put.LeaseID
 			}
 			ver := int64(1)
-			if val, exists := newState.KeyValues[op.Put.Key]; exists && val.Version > 0 {
+			if val, exists := newState.GetValue(op.Put.Key); exists && val.Version > 0 {
 				ver = val.Version + 1
 			}
-			newState.KeyValues[op.Put.Key] = ValueRevision{
+			newState.setValueLease(op.Put.Key, ValueRevision{
 				Value:       op.Put.Value,
 				ModRevision: newState.Revision + 1,
 				Version:     ver,
-			}
+			}, leaseID)
 			increaseRevision = true
-			newState = detachFromOldLease(newState, op.Put.Key)
-			if leaseExists {
-				newState = attachToNewLease(newState, op.Put.LeaseID, op.Put.Key)
-			}
 		case DeleteOperation:
-			if _, ok := newState.KeyValues[op.Delete.Key]; ok {
-				delete(newState.KeyValues, op.Delete.Key)
+			if _, ok := newState.GetValue(op.Delete.Key); ok {
+				newState.deleteKey(op.Delete.Key)
 				increaseRevision = true
-				newState = detachFromOldLease(newState, op.Delete.Key)
 				opResp[i].Deleted = 1
 			}
 		default:
@@ -220,32 +239,29 @@ func (s EtcdState) stepLeaseGrant(request EtcdRequest) (EtcdState, MaybeEtcdResp
 	newState := s.DeepCopy()
 	// Empty LeaseID means the request failed and client didn't get response. Ignore it as client cannot use lease without knowing its id.
 	if request.LeaseGrant.LeaseID == 0 {
-		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantReponse{}}}
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantResponse{}}}
 	}
-	lease := EtcdLease{
-		LeaseID: request.LeaseGrant.LeaseID,
-		Keys:    map[string]struct{}{},
-	}
-	newState.Leases[request.LeaseGrant.LeaseID] = lease
-	return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantReponse{}}}
+	newState.Leases = append(newState.Leases, request.LeaseGrant.LeaseID)
+	sort.Slice(newState.Leases, func(i, j int) bool { return newState.Leases[i] < newState.Leases[j] })
+	return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantResponse{}}}
 }
 
 func (s EtcdState) stepLeaseRevoke(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 	newState := s.DeepCopy()
-	// Delete the keys attached to the lease
 	keyDeleted := false
-	for key := range newState.Leases[request.LeaseRevoke.LeaseID].Keys {
-		// same as delete.
-		if _, ok := newState.KeyValues[key]; ok {
-			if !keyDeleted {
-				keyDeleted = true
-			}
-			delete(newState.KeyValues, key)
-			delete(newState.KeyLeases, key)
+	for i, l := range newState.KeyLeases {
+		if l != nil && *l == request.LeaseRevoke.LeaseID {
+			keyDeleted = true
+			newState.KeyValues[i] = nil
+			newState.KeyLeases[i] = nil
 		}
 	}
-	// delete the lease
-	delete(newState.Leases, request.LeaseRevoke.LeaseID)
+	for i, l := range newState.Leases {
+		if l == request.LeaseRevoke.LeaseID {
+			newState.Leases = append(newState.Leases[:i], newState.Leases[i+1:]...)
+			break
+		}
+	}
 	if keyDeleted {
 		newState.Revision++
 	}
@@ -274,9 +290,13 @@ func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 	}
 	if options.End != "" {
 		var count int64
-		for k, v := range s.KeyValues {
+		for i, v := range s.KeyValues {
+			if v == nil {
+				continue
+			}
+			k := s.Keys[i]
 			if k >= options.Start && k < options.End {
-				response.KVs = append(response.KVs, KeyValue{Key: k, ValueRevision: v})
+				response.KVs = append(response.KVs, KeyValue{Key: k, ValueRevision: *v})
 				count++
 			}
 		}
@@ -288,11 +308,11 @@ func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 		}
 		response.Count = count
 	} else {
-		value, ok := s.KeyValues[options.Start]
+		value, ok := s.GetValue(options.Start)
 		if ok {
 			response.KVs = append(response.KVs, KeyValue{
 				Key:           options.Start,
-				ValueRevision: value,
+				ValueRevision: *value,
 			})
 			response.Count = 1
 		}
@@ -300,16 +320,76 @@ func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 	return response
 }
 
-func detachFromOldLease(s EtcdState, key string) EtcdState {
-	if oldLeaseID, ok := s.KeyLeases[key]; ok {
-		delete(s.Leases[oldLeaseID].Keys, key)
-		delete(s.KeyLeases, key)
+func (s EtcdState) KeysValueLeases() (keys []string, values []ValueRevision, leases []int64) {
+	keys = make([]string, 0, len(s.KeyValues))
+	values = make([]ValueRevision, 0, len(s.KeyValues))
+	leases = make([]int64, 0, len(s.KeyLeases))
+
+	for i, v := range s.KeyValues {
+		if v == nil {
+			continue
+		}
+		keys = append(keys, s.Keys[i])
+		values = append(values, *v)
+		lease := int64(0)
+		if s.KeyLeases[i] != nil {
+			lease = *s.KeyLeases[i]
+		}
+		leases = append(leases, lease)
 	}
-	return s
+	return keys, values, leases
 }
 
-func attachToNewLease(s EtcdState, leaseID int64, key string) EtcdState {
-	s.KeyLeases[key] = leaseID
-	s.Leases[leaseID].Keys[key] = leased
-	return s
+func (s EtcdState) leases() []int64 {
+	return slices.Clone(s.Leases)
+}
+
+func (s EtcdState) GetValue(key string) (*ValueRevision, bool) {
+	for i, k := range s.Keys {
+		if k == key {
+			return s.KeyValues[i], s.KeyValues[i] != nil
+		}
+	}
+	return nil, false
+}
+
+func (s EtcdState) leaseExists(lease int64) bool {
+	for _, l := range s.Leases {
+		if l == lease {
+			return true
+		}
+	}
+	return false
+}
+
+func (s EtcdState) setValueLease(key string, val ValueRevision, lease *int64) {
+	for i, k := range s.Keys {
+		if k == key {
+			s.KeyValues[i] = &val
+			s.KeyLeases[i] = lease
+			return
+		}
+	}
+	panic(fmt.Sprintf("couldn't find key %s in EtcdState (%v) when calling setValue", key, s.Keys))
+}
+
+func (s EtcdState) deleteKey(key string) {
+	for i, k := range s.Keys {
+		if k == key {
+			s.KeyValues[i] = nil
+			s.KeyLeases[i] = nil
+			return
+		}
+	}
+	panic(fmt.Sprintf("couldn't find key %s in EtcdState (%v) when calling setValue", key, s.Keys))
+}
+
+func (s EtcdState) leaseKeys(leaseID int64) []string {
+	keys := []string{}
+	for i, l := range s.KeyLeases {
+		if l != nil && *l == leaseID {
+			keys = append(keys, s.Keys[i])
+		}
+	}
+	return keys
 }

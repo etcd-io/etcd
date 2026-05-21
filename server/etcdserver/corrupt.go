@@ -438,7 +438,7 @@ func (s *EtcdServer) triggerCorruptAlarm(id types.ID) {
 		Alarm:    pb.AlarmType_CORRUPT,
 	}
 	s.GoAttach(func() {
-		s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
+		s.raftRequest(s.ctx, &pb.InternalRaftRequest{Alarm: a})
 	})
 }
 

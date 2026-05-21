@@ -81,16 +81,7 @@
 		]
 	},
 	{
-		"project": "github.com/clipperhouse/stringish",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/clipperhouse/uax29/v2",
+		"project": "github.com/clipperhouse/uax29/v2/graphemes",
 		"licenses": [
 			{
 				"type": "MIT License",
@@ -189,29 +180,11 @@
 		]
 	},
 	{
-		"project": "github.com/golang/groupcache/lru",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 0.9966703662597114
-			}
-		]
-	},
-	{
 		"project": "github.com/golang/protobuf",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9663865546218487
-			}
-		]
-	},
-	{
-		"project": "github.com/google/btree",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
 			}
 		]
 	},
@@ -239,15 +212,6 @@
 			{
 				"type": "BSD 2-clause \"Simplified\" License",
 				"confidence": 0.9852216748768473
-			}
-		]
-	},
-	{
-		"project": "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
 			}
 		]
 	},
@@ -837,6 +801,24 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.7469879518072289
+			}
+		]
+	},
+	{
+		"project": "k8s.io/utils/internal/third_party/forked/golang/golang-lru",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
+		"project": "k8s.io/utils/lru",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},

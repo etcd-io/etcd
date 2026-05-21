@@ -92,7 +92,7 @@ func (b *DoubleBarrier) Enter() error {
 		client,
 		b.key+"/ready",
 		ek.Revision(),
-		[]mvccpb.Event_EventType{mvccpb.PUT})
+		[]mvccpb.Event_EventType{mvccpb.Event_PUT})
 	return err
 }
 
@@ -147,7 +147,7 @@ func (b *DoubleBarrier) Leave() error {
 			client,
 			string(highest.Key),
 			highest.ModRevision,
-			[]mvccpb.Event_EventType{mvccpb.DELETE})
+			[]mvccpb.Event_EventType{mvccpb.Event_DELETE})
 		if err != nil {
 			return err
 		}
@@ -164,7 +164,7 @@ func (b *DoubleBarrier) Leave() error {
 		client,
 		key,
 		lowest.ModRevision,
-		[]mvccpb.Event_EventType{mvccpb.DELETE})
+		[]mvccpb.Event_EventType{mvccpb.Event_DELETE})
 	if err != nil {
 		return err
 	}

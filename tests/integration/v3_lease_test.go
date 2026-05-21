@@ -266,7 +266,7 @@ func TestV3LeaseExpire(t *testing.T) {
 				errc <- err
 			case len(resp.Events) != 1:
 				fallthrough
-			case resp.Events[0].Type != mvccpb.DELETE:
+			case resp.Events[0].Type != mvccpb.Event_DELETE:
 				errc <- fmt.Errorf("expected key delete, got %v", resp)
 			default:
 				errc <- nil
@@ -341,7 +341,6 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 		require.Positive(t, resp.TTL)
 	})
 
-	// Shows current behavior: client cancel during forwarding incorrectly returns Unavailable.
 	t.Run("client cancels while forwarding", func(t *testing.T) {
 		integration.SkipIfNoGoFail(t)
 		leader, follower, _ := setupLeaseForwardingCluster(t)
@@ -371,15 +370,14 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		cancel()
 
-		// Client sees Canceled (gRPC returns this immediately after cancel()),
-		// but server actually generated Unavailable (verified by metrics below).
+		// Client sees Canceled (gRPC returns this immediately after cancel())
 		_, err = keepAliveClient.Recv()
 		require.Equal(t, codes.Canceled, status.Code(err))
 
 		require.Eventually(t, func() bool {
-			return getLeaseKeepAliveMetric(t, follower, "Unavailable") == prevUnavailableCount+1
+			return getLeaseKeepAliveMetric(t, follower, "Canceled") == prevCanceledCount+1
 		}, 3*time.Second, 100*time.Millisecond)
-		require.Equal(t, prevCanceledCount, getLeaseKeepAliveMetric(t, follower, "Canceled"))
+		require.Equal(t, prevUnavailableCount, getLeaseKeepAliveMetric(t, follower, "Unavailable"))
 	})
 
 	t.Run("forwarding times out", func(t *testing.T) {

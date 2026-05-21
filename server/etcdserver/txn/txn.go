@@ -20,11 +20,11 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
@@ -147,7 +147,7 @@ func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt 
 				traceutil.Field{Key: "req_type", Value: "range"},
 				traceutil.Field{Key: "range_begin", Value: string(tv.RequestRange.Key)},
 				traceutil.Field{Key: "range_end", Value: string(tv.RequestRange.RangeEnd)})
-			resp, err := executeRange(ctx, lg, txnWrite, tv.RequestRange)
+			resp, err := executeRange(ctx, lg, txnWrite, tv.RequestRange, true)
 			if err != nil {
 				return 0, fmt.Errorf("applyTxn: failed Range: %w", err)
 			}
@@ -157,7 +157,7 @@ func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt 
 			trace.StartSubTrace(
 				traceutil.Field{Key: "req_type", Value: "put"},
 				traceutil.Field{Key: "key", Value: string(tv.RequestPut.Key)},
-				traceutil.Field{Key: "req_size", Value: tv.RequestPut.Size()})
+				traceutil.Field{Key: "req_size", Value: proto.Size(tv.RequestPut)})
 			prevKV, err := getPrevKV(trace, txnWrite, tv.RequestPut)
 			if err != nil {
 				return 0, fmt.Errorf("applyTxn: failed to get prevKV on put: %w", err)
@@ -270,7 +270,7 @@ func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
 			// nil == empty string in grpc; no way to represent missing value
 			return false
 		}
-		return compareKV(c, mvccpb.KeyValue{})
+		return compareKV(c, &mvccpb.KeyValue{})
 	}
 	for _, kv := range rr.KVs {
 		if !compareKV(c, kv) {
@@ -280,7 +280,7 @@ func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
 	return true
 }
 
-func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
+func compareKV(c *pb.Compare, ckv *mvccpb.KeyValue) bool {
 	var result int
 	rev := int64(0)
 	switch c.Target {
@@ -350,59 +350,4 @@ func IsTxnReadonly(r *pb.TxnRequest) bool {
 		}
 	}
 	return true
-}
-
-func CheckTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error {
-	for _, c := range rt.Compare {
-		if err := as.IsRangePermitted(ai, c.Key, c.RangeEnd); err != nil {
-			return err
-		}
-	}
-	if err := checkTxnReqsPermission(as, ai, rt.Success); err != nil {
-		return err
-	}
-	return checkTxnReqsPermission(as, ai, rt.Failure)
-}
-
-func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.RequestOp) error {
-	for _, requ := range reqs {
-		switch tv := requ.Request.(type) {
-		case *pb.RequestOp_RequestRange:
-			if tv.RequestRange == nil {
-				continue
-			}
-
-			if err := as.IsRangePermitted(ai, tv.RequestRange.Key, tv.RequestRange.RangeEnd); err != nil {
-				return err
-			}
-
-		case *pb.RequestOp_RequestPut:
-			if tv.RequestPut == nil {
-				continue
-			}
-
-			if err := as.IsPutPermitted(ai, tv.RequestPut.Key); err != nil {
-				return err
-			}
-
-		case *pb.RequestOp_RequestDeleteRange:
-			if tv.RequestDeleteRange == nil {
-				continue
-			}
-
-			if tv.RequestDeleteRange.PrevKv {
-				err := as.IsRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
-				if err != nil {
-					return err
-				}
-			}
-
-			err := as.IsDeleteRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }

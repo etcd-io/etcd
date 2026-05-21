@@ -29,9 +29,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
@@ -69,15 +71,27 @@ func TestNew(t *testing.T) {
 		t.Fatalf("err = %v, want nil", err)
 	}
 
+	if os.Getenv("ETCD_UPDATE_FIXTURE_DATA") == "true" {
+		os.WriteFile("testdata/TestNew.wal", gd, os.FileMode(0644))
+	}
+	fixtureData, err := os.ReadFile("testdata/TestNew.wal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(gd, fixtureData) {
+		t.Log("data did not match fixture, rerun with ETCD_UPDATE_FIXTURE_DATA=true to regenerate fixture")
+		t.Errorf("data = %v, want %v", gd, fixtureData)
+	}
+
 	var wb bytes.Buffer
 	e := newEncoder(&wb, 0, 0)
-	err = e.encode(&walpb.Record{Type: CrcType, Crc: 0})
+	err = e.encode(&walpb.Record{Type: new(CrcType), Crc: new(uint32(0))})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
-	err = e.encode(&walpb.Record{Type: MetadataType, Data: []byte("somedata")})
+	err = e.encode(&walpb.Record{Type: new(MetadataType), Data: []byte("somedata")})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	r := &walpb.Record{
-		Type: SnapshotType,
-		Data: pbutil.MustMarshal(&walpb.Snapshot{}),
+		Type: new(SnapshotType),
+		Data: pbutil.MustMarshalMessage(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}),
 	}
 	err = e.encode(r)
 	require.NoErrorf(t, err, "err = %v, want nil", err)
@@ -216,7 +230,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	f.Close()
 
-	w, err := Open(zaptest.NewLogger(t), dir, walpb.Snapshot{})
+	w, err := Open(zaptest.NewLogger(t), dir, &walpb.Snapshot{})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	if g := filepath.Base(w.tail().Name()); g != walName(0, 0) {
 		t.Errorf("name = %+v, want %+v", g, walName(0, 0))
@@ -233,7 +247,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	f.Close()
 
-	w, err = Open(zaptest.NewLogger(t), dir, walpb.Snapshot{Index: 5})
+	w, err = Open(zaptest.NewLogger(t), dir, &walpb.Snapshot{Index: new(uint64(5))})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	if g := filepath.Base(w.tail().Name()); g != wname {
 		t.Errorf("name = %+v, want %+v", g, wname)
@@ -244,7 +258,7 @@ func TestOpenAtIndex(t *testing.T) {
 	w.Close()
 
 	emptydir := t.TempDir()
-	if _, err = Open(zaptest.NewLogger(t), emptydir, walpb.Snapshot{}); !errors.Is(err, ErrFileNotFound) {
+	if _, err = Open(zaptest.NewLogger(t), emptydir, &walpb.Snapshot{}); !errors.Is(err, ErrFileNotFound) {
 		t.Errorf("err = %v, want %v", err, ErrFileNotFound)
 	}
 }
@@ -278,7 +292,7 @@ func TestVerify(t *testing.T) {
 	require.NoError(t, w.Save(hs, nil))
 
 	// to verify the WAL is not corrupted at this point
-	hardstate, err := Verify(lg, walDir, walpb.Snapshot{})
+	hardstate, err := Verify(lg, walDir, &walpb.Snapshot{})
 	if err != nil {
 		t.Errorf("expected a nil error, got %v", err)
 	}
@@ -295,7 +309,7 @@ func TestVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = Verify(lg, walDir, walpb.Snapshot{})
+	_, err = Verify(lg, walDir, &walpb.Snapshot{})
 	if err == nil {
 		t.Error("expected a non-nil error, got nil")
 	}
@@ -331,8 +345,8 @@ func TestCut(t *testing.T) {
 	if err = w.cut(); err != nil {
 		t.Fatal(err)
 	}
-	snap := walpb.Snapshot{Index: 2, Term: 1, ConfState: &confState}
-	if err = w.SaveSnapshot(snap); err != nil {
+	snap := walpb.Snapshot{Index: new(uint64(2)), Term: new(uint64(1)), ConfState: &confState}
+	if err = w.SaveSnapshot(&snap); err != nil {
 		t.Fatal(err)
 	}
 	wname = walName(2, 2)
@@ -350,7 +364,7 @@ func TestCut(t *testing.T) {
 	defer f.Close()
 	nw := &WAL{
 		decoder: NewDecoder(fileutil.NewFileReader(f)),
-		start:   snap,
+		start:   &snap,
 	}
 	_, gst, _, err := nw.ReadAll()
 	if err != nil {
@@ -392,7 +406,7 @@ func TestSaveWithCut(t *testing.T) {
 
 	w.Close()
 
-	neww, err := Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	neww, err := Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	defer neww.Close()
 	wname := walName(1, index)
@@ -445,7 +459,7 @@ func TestRecover(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
+			if err = w.SaveSnapshot(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}); err != nil {
 				t.Fatal(err)
 			}
 
@@ -468,7 +482,7 @@ func TestRecover(t *testing.T) {
 			}
 			w.Close()
 
-			if w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{}); err != nil {
+			if w, err = Open(zaptest.NewLogger(t), p, &walpb.Snapshot{}); err != nil {
 				t.Fatal(err)
 			}
 			metadata, state, entries, err := w.ReadAll()
@@ -567,7 +581,7 @@ func TestRecoverAfterCut(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < 10; i++ {
-		if err = md.SaveSnapshot(walpb.Snapshot{Index: uint64(i), Term: 1, ConfState: &confState}); err != nil {
+		if err = md.SaveSnapshot(&walpb.Snapshot{Index: new(uint64(i)), Term: new(uint64(1)), ConfState: &confState}); err != nil {
 			t.Fatal(err)
 		}
 		es := []raftpb.Entry{{Index: uint64(i)}}
@@ -585,7 +599,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		w, err := Open(zaptest.NewLogger(t), p, walpb.Snapshot{Index: uint64(i), Term: 1})
+		w, err := Open(zaptest.NewLogger(t), p, &walpb.Snapshot{Index: new(uint64(i)), Term: new(uint64(1))})
 		if err != nil {
 			if i <= 4 {
 				if !strings.Contains(err.Error(), "do not increase continuously") {
@@ -620,7 +634,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
+	if err = w.SaveSnapshot(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}); err != nil {
 		t.Fatal(err)
 	}
 	if err = w.Save(raftpb.HardState{}, []raftpb.Entry{{Index: 0}}); err != nil {
@@ -628,7 +642,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	}
 	w.Close()
 
-	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -666,7 +680,7 @@ func TestOpenForRead(t *testing.T) {
 	w.ReleaseLockTo(unlockIndex)
 
 	// All are available for read
-	w2, err := OpenForRead(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w2, err := OpenForRead(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -698,7 +712,7 @@ func TestOpenWithMaxIndex(t *testing.T) {
 	w1.Close()
 	w1 = nil
 
-	w2, err := Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w2, err := Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -816,7 +830,7 @@ func TestTailWriteNoSlackSpace(t *testing.T) {
 	w.Close()
 
 	// open, write more
-	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -835,7 +849,7 @@ func TestTailWriteNoSlackSpace(t *testing.T) {
 	w.Close()
 
 	// confirm all writes
-	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -872,7 +886,7 @@ func TestRestartCreateWal(t *testing.T) {
 		t.Fatalf("got %q exists, expected it to not exist", tmpdir)
 	}
 
-	if w, err = OpenForRead(zaptest.NewLogger(t), p, walpb.Snapshot{}); err != nil {
+	if w, err = OpenForRead(zaptest.NewLogger(t), p, &walpb.Snapshot{}); err != nil {
 		t.Fatal(err)
 	}
 	defer w.Close()
@@ -931,7 +945,7 @@ func TestOpenOnTornWrite(t *testing.T) {
 	}
 	f.Close()
 
-	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -952,7 +966,7 @@ func TestOpenOnTornWrite(t *testing.T) {
 	w.Close()
 
 	// read back the entries, confirm number of entries matches expectation
-	w, err = OpenForRead(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = OpenForRead(zaptest.NewLogger(t), p, &walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1009,13 +1023,13 @@ func TestReadAllFail(t *testing.T) {
 // for hardstate
 func TestValidSnapshotEntries(t *testing.T) {
 	p := t.TempDir()
-	snap0 := walpb.Snapshot{}
-	snap1 := walpb.Snapshot{Index: 1, Term: 1, ConfState: &confState}
+	snap0 := walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}
+	snap1 := walpb.Snapshot{Index: new(uint64(1)), Term: new(uint64(1)), ConfState: &confState}
 	state1 := raftpb.HardState{Commit: 1, Term: 1}
-	snap2 := walpb.Snapshot{Index: 2, Term: 1, ConfState: &confState}
-	snap3 := walpb.Snapshot{Index: 3, Term: 2, ConfState: &confState}
+	snap2 := walpb.Snapshot{Index: new(uint64(2)), Term: new(uint64(1)), ConfState: &confState}
+	snap3 := walpb.Snapshot{Index: new(uint64(3)), Term: new(uint64(2)), ConfState: &confState}
 	state2 := raftpb.HardState{Commit: 3, Term: 2}
-	snap4 := walpb.Snapshot{Index: 4, Term: 2, ConfState: &confState} // will be orphaned since the last committed entry will be snap3
+	snap4 := walpb.Snapshot{Index: new(uint64(4)), Term: new(uint64(2)), ConfState: &confState} // will be orphaned since the last committed entry will be snap3
 	func() {
 		w, err := Create(zaptest.NewLogger(t), p, nil)
 		if err != nil {
@@ -1024,22 +1038,22 @@ func TestValidSnapshotEntries(t *testing.T) {
 		defer w.Close()
 
 		// snap0 is implicitly created at index 0, term 0
-		if err = w.SaveSnapshot(snap1); err != nil {
+		if err = w.SaveSnapshot(&snap1); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.Save(state1, nil); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.SaveSnapshot(snap2); err != nil {
+		if err = w.SaveSnapshot(&snap2); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.SaveSnapshot(snap3); err != nil {
+		if err = w.SaveSnapshot(&snap3); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.Save(state2, nil); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.SaveSnapshot(snap4); err != nil {
+		if err = w.SaveSnapshot(&snap4); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -1047,9 +1061,9 @@ func TestValidSnapshotEntries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected := []walpb.Snapshot{snap0, snap1, snap2, snap3}
-	if !reflect.DeepEqual(walSnaps, expected) {
-		t.Errorf("expected walSnaps %+v, got %+v", expected, walSnaps)
+	expected := []*walpb.Snapshot{&snap0, &snap1, &snap2, &snap3}
+	if diff := cmp.Diff(expected, walSnaps, protocmp.Transform()); diff != "" {
+		t.Errorf("walSnaps mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -1063,10 +1077,10 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 	}()
 	p := t.TempDir()
 	snap0 := walpb.Snapshot{}
-	snap1 := walpb.Snapshot{Index: 1, Term: 1, ConfState: &confState}
+	snap1 := walpb.Snapshot{Index: new(uint64(1)), Term: new(uint64(1)), ConfState: &confState}
 	state1 := raftpb.HardState{Commit: 1, Term: 1}
-	snap2 := walpb.Snapshot{Index: 2, Term: 1, ConfState: &confState}
-	snap3 := walpb.Snapshot{Index: 3, Term: 2, ConfState: &confState}
+	snap2 := walpb.Snapshot{Index: new(uint64(2)), Term: new(uint64(1)), ConfState: &confState}
+	snap3 := walpb.Snapshot{Index: new(uint64(3)), Term: new(uint64(2)), ConfState: &confState}
 	state2 := raftpb.HardState{Commit: 3, Term: 2}
 	func() {
 		w, err := Create(zaptest.NewLogger(t), p, nil)
@@ -1076,16 +1090,16 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 		defer w.Close()
 
 		// snap0 is implicitly created at index 0, term 0
-		if err = w.SaveSnapshot(snap1); err != nil {
+		if err = w.SaveSnapshot(&snap1); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.Save(state1, nil); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.SaveSnapshot(snap2); err != nil {
+		if err = w.SaveSnapshot(&snap2); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.SaveSnapshot(snap3); err != nil {
+		if err = w.SaveSnapshot(&snap3); err != nil {
 			t.Fatal(err)
 		}
 		for i := 0; i < 128; i++ {
@@ -1094,7 +1108,7 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 			}
 		}
 	}()
-	files, _, err := selectWALFiles(nil, p, snap0)
+	files, _, err := selectWALFiles(nil, p, &snap0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1152,7 +1166,7 @@ func TestLastRecordLengthExceedFileEnd(t *testing.T) {
 			require.ErrorIs(t, err, io.ErrUnexpectedEOF)
 			break
 		}
-		if rec.Type == EntryType {
+		if rec.GetType() == EntryType {
 			e := MustUnmarshalEntry(rec.Data)
 			t.Logf("Validating normal entry: %v", e)
 			recData := fmt.Sprintf("waldata%d", e.Index)
@@ -1168,9 +1182,9 @@ func TestLastRecordLengthExceedFileEnd(t *testing.T) {
 	newFileName := filepath.Join(filepath.Dir(fileName), "0000000000000000-0000000000000000.wal")
 	require.NoError(t, os.Rename(fileName, newFileName))
 
-	w, err := Open(zaptest.NewLogger(t), filepath.Dir(fileName), walpb.Snapshot{
-		Index: 0,
-		Term:  0,
+	w, err := Open(zaptest.NewLogger(t), filepath.Dir(fileName), &walpb.Snapshot{
+		Index: new(uint64(0)),
+		Term:  new(uint64(0)),
 	})
 	require.NoError(t, err)
 	defer w.Close()

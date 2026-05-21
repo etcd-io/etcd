@@ -352,6 +352,9 @@ function cov_pass {
   # integration_cluster_proxy
   run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration_cluster_proxy" \
       -tags cluster_proxy -timeout=30m "${gocov_build_flags[@]}" || failed="$failed integration_cluster_proxy"
+  # integration_common
+  run_for_module "tests" go_test "./common/..." "parallel" "pkg_to_coverprofileflag integration_common" \
+      -tags=integration -timeout=30m "${gocov_build_flags[@]}" "$@" || failed="$failed integration_common"
 
   local cover_out_file="${coverdir}/all.coverprofile"
   merge_cov "${coverdir}"

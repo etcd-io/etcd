@@ -118,8 +118,8 @@ func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, 
 
 func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
 	walSnap := walpb.Snapshot{
-		Index:     snap.Metadata.Index,
-		Term:      snap.Metadata.Term,
+		Index:     new(snap.Metadata.Index),
+		Term:      new(snap.Metadata.Term),
 		ConfState: &snap.Metadata.ConfState,
 	}
 	// save the snapshot file before writing the snapshot to the wal.
@@ -128,7 +128,7 @@ func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
 	if err := rc.snapshotter.SaveSnap(snap); err != nil {
 		return err
 	}
-	if err := rc.wal.SaveSnapshot(walSnap); err != nil {
+	if err := rc.wal.SaveSnapshot(&walSnap); err != nil {
 		return err
 	}
 	return rc.wal.ReleaseLockTo(snap.Metadata.Index)
@@ -232,10 +232,10 @@ func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 
 	walsnap := walpb.Snapshot{}
 	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+		walsnap.Index, walsnap.Term = new(snapshot.Metadata.Index), new(snapshot.Metadata.Term)
 	}
-	log.Printf("loading WAL at term %d and index %d", walsnap.Term, walsnap.Index)
-	w, err := wal.Open(zap.NewExample(), rc.waldir, walsnap)
+	log.Printf("loading WAL at term %d and index %d", walsnap.GetTerm(), walsnap.GetIndex())
+	w, err := wal.Open(zap.NewExample(), rc.waldir, &walsnap)
 	if err != nil {
 		log.Fatalf("raftexample: error loading wal (%v)", err)
 	}

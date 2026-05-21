@@ -18,8 +18,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/server/v3/auth"
@@ -115,7 +116,9 @@ func TestGetAllUsers(t *testing.T) {
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.ReadTx().UnsafeGetAllUsers()
 
-			assert.Equal(t, tc.want, users)
+			if diff := cmp.Diff(tc.want, users, protocmp.Transform()); diff != "" {
+				t.Fatalf("users mismatch (-want +got):\n%s", diff)
+			}
 		})
 	}
 }
@@ -200,7 +203,9 @@ func TestGetUser(t *testing.T) {
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetUser("alice")
 
-			assert.Equal(t, tc.want, users)
+			if diff := cmp.Diff(tc.want, users, protocmp.Transform()); diff != "" {
+				t.Fatalf("users mismatch (-want +got):\n%s", diff)
+			}
 		})
 	}
 }

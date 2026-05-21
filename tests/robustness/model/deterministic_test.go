@@ -15,11 +15,11 @@
 package model
 
 import (
-	"encoding/json"
+	"math/rand"
+	"slices"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 )
@@ -28,15 +28,15 @@ func TestModelDeterministic(t *testing.T) {
 	for _, tc := range commonTestScenarios {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			state := DeterministicModel.Init()
+			keys := keysFromTestOperations(tc.operations)
+			model := DeterministicModel(keys)
+			state := model.Init()
 			for _, op := range tc.operations {
-				ok, newState := DeterministicModel.Step(state, op.req, op.resp.EtcdResponse)
+				ok, newState := model.Step(state, op.req, op.resp.EtcdResponse)
 				if op.expectFailure == ok {
 					t.Logf("state: %v", state)
-					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, DeterministicModel.DescribeOperation(op.req, op.resp.EtcdResponse))
-					var loadedState EtcdState
-					err := json.Unmarshal([]byte(state.(string)), &loadedState)
-					require.NoErrorf(t, err, "Failed to load state")
+					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, model.DescribeOperation(op.req, op.resp.EtcdResponse))
+					loadedState := state.(EtcdState)
 					_, resp := loadedState.Step(op.req)
 					t.Errorf("Response diff: %s", cmp.Diff(op.resp, resp))
 					break
@@ -48,6 +48,170 @@ func TestModelDeterministic(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEtcdStateEqual(t *testing.T) {
+	keys := []string{"key"}
+	testCases := []struct {
+		name  string
+		s1    EtcdState
+		s2    EtcdState
+		equal bool
+	}{
+		{
+			name:  "Fresh states should be equal",
+			s1:    freshEtcdState(keys),
+			s2:    freshEtcdState(keys),
+			equal: true,
+		},
+		{
+			name: "States from identical history should be equal",
+			s1: func() EtcdState {
+				s := freshEtcdState(keys)
+				s, _ = s.Step(putRequest("key", "1"))
+				s, _ = s.Step(putRequest("key", "2"))
+				return s
+			}(),
+			s2: func() EtcdState {
+				s := freshEtcdState(keys)
+				s, _ = s.Step(putRequest("key", "1"))
+				s, _ = s.Step(putRequest("key", "2"))
+				return s
+			}(),
+			equal: true,
+		},
+		{
+			name: "States from different history should not be equal",
+			s1: func() EtcdState {
+				s := freshEtcdState(keys)
+				s, _ = s.Step(putRequest("key", "1"))
+				s, _ = s.Step(putRequest("key", "2"))
+				return s
+			}(),
+			s2: func() EtcdState {
+				s := freshEtcdState(keys)
+				s, _ = s.Step(putRequest("key", "2"))
+				s, _ = s.Step(putRequest("key", "1"))
+				return s
+			}(),
+			equal: false,
+		},
+		{
+			name: "Empty states with higher revision should be equal",
+			s1: func() EtcdState {
+				s := freshEtcdState(keys)
+				s, _ = s.Step(putRequest("key", "1"))
+				s, _ = s.Step(putRequest("key", "2"))
+				s, _ = s.Step(deleteRequest("key"))
+				return s
+			}(),
+			s2: func() EtcdState {
+				s := freshEtcdState(keys)
+				s, _ = s.Step(putRequest("key", "2"))
+				s, _ = s.Step(putRequest("key", "1"))
+				s, _ = s.Step(deleteRequest("key"))
+				return s
+			}(),
+			equal: true,
+		},
+		{
+			name: "Grant and Revoke empty lease should be equal to fresh state",
+			s1:   freshEtcdState(keys),
+			s2: func() EtcdState {
+				s := freshEtcdState(keys)
+				s, _ = s.Step(leaseGrantRequest(1))
+				s, _ = s.Step(leaseRevokeRequest(1))
+				return s
+			}(),
+			equal: true,
+		},
+		{
+			name: "Delete via Revoke vs Delete directly should be equal",
+			s1: func() EtcdState {
+				s := freshEtcdState(keys)
+				s, _ = s.Step(leaseGrantRequest(1))
+				s, _ = s.Step(putWithLeaseRequest("key", "val", 1))
+				s, _ = s.Step(leaseRevokeRequest(1))
+				return s
+			}(),
+			s2: func() EtcdState {
+				s := freshEtcdState(keys)
+				s, _ = s.Step(putRequest("key", "val"))
+				s, _ = s.Step(deleteRequest("key"))
+				return s
+			}(),
+			equal: true,
+		},
+		{
+			name: "Put via Txn vs Put directly should be equal",
+			s1: func() EtcdState {
+				s := freshEtcdState(keys)
+				s, _ = s.Step(compareRevisionAndPutRequest("key", 0, "val"))
+				return s
+			}(),
+			s2: func() EtcdState {
+				s := freshEtcdState(keys)
+				s, _ = s.Step(putRequest("key", "val"))
+				return s
+			}(),
+			equal: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.s1.Equal(tc.s2) != tc.equal {
+				t.Errorf("Expected equal=%v, got %v", tc.equal, !tc.equal)
+				t.Errorf("Diff:\n%v", cmp.Diff(tc.s1, tc.s2))
+			}
+		})
+	}
+}
+
+func TestEtcdStateEqualCommutativeRequests(t *testing.T) {
+	commutativeRequests := []EtcdRequest{
+		leaseGrantRequest(1),
+		leaseGrantRequest(2),
+		leaseRevokeRequest(3),
+		leaseRevokeRequest(4),
+		getRequest("key1"),
+		getRequest("key2"),
+		defragmentRequest(),
+		defragmentRequest(),
+		compactRequest(1),
+		compactRequest(2),
+	}
+	keys := []string{"key1", "key2"}
+
+	baseState := applyRequests(keys, commutativeRequests)
+
+	for i := 0; i < 10_000; i++ {
+		perm := slices.Clone(commutativeRequests)
+		rand.Shuffle(len(perm), func(i, j int) {
+			perm[i], perm[j] = perm[j], perm[i]
+		})
+		s2 := applyRequests(keys, perm)
+
+		if !baseState.Equal(s2) {
+			t.Errorf("Expected states to be equal after random reordering, but they are not")
+		}
+	}
+}
+
+func applyRequests(keys []string, reqs []EtcdRequest) EtcdState {
+	state := freshEtcdState(keys)
+	for _, req := range reqs {
+		state, _ = state.Step(req)
+	}
+	return state
+}
+
+func keysFromTestOperations(ops []testOperation) []string {
+	requests := make([]EtcdRequest, 0, len(ops))
+	for _, op := range ops {
+		requests = append(requests, op.req)
+	}
+	return keysFromRequests(requests)
 }
 
 type modelTestCase struct {

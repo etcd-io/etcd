@@ -1,0 +1,44 @@
+---
+name: Bump devcontainer version
+on: pull_request
+permissions:
+  contents: write
+  pull-requests: read
+jobs:
+  dependabot-metadata:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'etcd-io/etcd'
+    outputs:
+      directory: ${{steps.metadata.outputs.directory}}
+      new-version: ${{steps.metadata.outputs.new-version}}
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@ffa630c65fa7e0ecfa0625b5ceda64399aea1b36 # v3.0.0
+        with:
+          github-token: "${{secrets.GITHUB_TOKEN}}"
+  devcontainer-update:
+    runs-on: ubuntu-latest
+    needs: dependabot-metadata
+    if: needs.dependabot-metadata.outputs.directory == '/tools/container-images/devcontainer'
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{github.event.pull_request.head.ref}}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
+          fetch-depth: 0
+      - name: Update devcontainer.json
+        run: |
+          sed -i -E "s|(mcr\.microsoft\.com/devcontainers/go:)[^"'"'"]+|\1${{needs.dependabot-metadata.outputs.new-version}}|" .devcontainer/devcontainer.json
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          git add .devcontainer/devcontainer.json
+          git diff --cached --quiet && exit 0
+
+          git commit --signoff -m "build(deps): bump devcontainer.json
+
+          Bumps .devcontainer/devcontainer.json to ${{needs.dependabot-metadata.outputs.new-version}}."
+          git push origin "HEAD:refs/heads/${{github.event.pull_request.head.ref}}"

@@ -18,17 +18,14 @@ import (
 	"fmt"
 	"os"
 
+	"google.golang.org/protobuf/proto"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 type pbPrinter struct{ printer }
-
-type pbMarshal interface {
-	Marshal() ([]byte, error)
-}
 
 func newPBPrinter() printer {
 	return &pbPrinter{
@@ -36,27 +33,29 @@ func newPBPrinter() printer {
 	}
 }
 
-func (p *pbPrinter) Watch(r v3.WatchResponse) {
-	evs := make([]*mvccpb.Event, len(r.Events))
-	for i, ev := range r.Events {
-		evs[i] = (*mvccpb.Event)(ev)
+func (p *pbPrinter) Watch(r *v3.WatchResponse) {
+	wr := &pb.WatchResponse{}
+	if r != nil {
+		wr = &pb.WatchResponse{
+			Header:          r.Header,
+			Events:          r.Events,
+			CompactRevision: r.CompactRevision,
+			Canceled:        r.Canceled,
+			Created:         r.Created,
+		}
 	}
-	wr := pb.WatchResponse{
-		Header:          &r.Header,
-		Events:          evs,
-		CompactRevision: r.CompactRevision,
-		Canceled:        r.Canceled,
-		Created:         r.Created,
-	}
-	printPB(&wr)
+	printPB(wr)
 }
 
 func printPB(v any) {
-	m, ok := v.(pbMarshal)
-	if !ok {
+	var b []byte
+	var err error
+	switch m := v.(type) {
+	case proto.Message:
+		b, err = proto.Marshal(m)
+	default:
 		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("marshal unsupported for type %T (%v)", v, v))
 	}
-	b, err := m.Marshal()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return

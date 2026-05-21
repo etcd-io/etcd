@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -45,6 +46,24 @@ func TestCtlV3GetCountOnly(t *testing.T)          { testCtl(t, getCountOnlyTest)
 
 func TestCtlV3DelTimeout(t *testing.T) { testCtl(t, delTest, withDefaultDialTimeout()) }
 
+func TestCtlV3TimeoutWhenNoProcessListensOnEndpoint(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	endpoint := unusedLocalTCPAddr(t)
+	cmdArgs := []string{
+		e2e.BinPath.Etcdctl,
+		"--debug",
+		"--endpoints", endpoint,
+		"--dial-timeout", "5s",
+		"get", "foo",
+	}
+	assertEtcdctlDialTimedout(t, cmdArgs, nil)
+}
+
+func TestCtlV3TimeoutWhenTLSClientCertMissing(t *testing.T) {
+	testCtl(t, timeoutWhenTLSClientCertMissingTest, withCfg(*e2e.NewConfigClientTLS()))
+}
+
 func TestCtlV3GetRevokedCRL(t *testing.T) {
 	cfg := e2e.NewConfig(
 		e2e.WithClusterSize(1),
@@ -62,6 +81,43 @@ func testGetRevokedCRL(cx ctlCtx) {
 	// test accept
 	cx.epc.Cfg.Client.RevokeCerts = false
 	require.NoError(cx.t, ctlV3Put(cx, "k", "v", ""))
+}
+
+func timeoutWhenTLSClientCertMissingTest(cx ctlCtx) {
+	cmdArgs := []string{
+		e2e.BinPath.Etcdctl,
+		"--debug",
+		"--endpoints", strings.Join(cx.epc.EndpointsGRPC(), ","),
+		"--dial-timeout", "5s",
+		"get", "foo",
+	}
+	assertEtcdctlDialTimedout(cx.t, cmdArgs, nil)
+}
+
+func unusedLocalTCPAddr(t *testing.T) string {
+	t.Helper()
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer l.Close()
+
+	return l.Addr().String()
+}
+
+func assertEtcdctlDialTimedout(t *testing.T, cmdArgs []string, envVars map[string]string) {
+	t.Helper()
+
+	proc, err := e2e.SpawnCmd(cmdArgs, envVars)
+	require.NoError(t, err)
+	proc.Wait()
+
+	err = proc.Close()
+	require.Error(t, err)
+
+	out := strings.Join(proc.Lines(), "\n")
+	require.Containsf(t, out, context.DeadlineExceeded.Error(),
+		"expected timeout output, got close error: %v, output: %q", err, out,
+	)
 }
 
 func putTest(cx ctlCtx) {

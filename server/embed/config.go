@@ -157,15 +157,20 @@ func init() {
 }
 
 // Config holds the arguments for configuring an etcd server.
+//
+// Note: time.Duration fields in this struct are unmarshalled from JSON/YAML
+// as integer nanoseconds (e.g. 600000000000 for 10 minutes). Human-readable
+// duration strings such as "10m" are only accepted by the equivalent
+// command-line flags, not by the configuration file.
+// This is a [known Go standard library limitation](https://github.com/golang/go/issues/10275)
+// where time.Duration is unmarshaled as a plain integer.
 type Config struct {
 	Name string `json:"name"`
 	Dir  string `json:"data-dir"`
 	//revive:disable-next-line:var-naming
 	WalDir string `json:"wal-dir"`
 
-	// SnapshotCount is the number of committed transactions that trigger a snapshot to disk.
-	// TODO: remove it in 3.7.
-	// Deprecated: Will be decommissioned in v3.7.
+	// SnapshotCount is the number of committed transactions that trigger a snapshot.
 	SnapshotCount uint64 `json:"snapshot-count"`
 
 	// SnapshotCatchUpEntries is the number of entires for a slow follower
@@ -510,10 +515,11 @@ func NewConfig() *Config {
 		SnapshotCount:          etcdserver.DefaultSnapshotCount,
 		SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
 
-		MaxTxnOps:            DefaultMaxTxnOps,
-		MaxRequestBytes:      DefaultMaxRequestBytes,
-		MaxConcurrentStreams: DefaultMaxConcurrentStreams,
-		WarningApplyDuration: DefaultWarningApplyDuration,
+		MaxTxnOps:                   DefaultMaxTxnOps,
+		MaxRequestBytes:             DefaultMaxRequestBytes,
+		MaxConcurrentStreams:        DefaultMaxConcurrentStreams,
+		WarningApplyDuration:        DefaultWarningApplyDuration,
+		WarningUnaryRequestDuration: DefaultWarningUnaryRequestDuration,
 
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
@@ -619,7 +625,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.UintVar(&cfg.MaxSnapFiles, "max-snapshots", cfg.MaxSnapFiles, "Maximum number of snapshot files to retain (0 is unlimited). Deprecated in v3.6 and will be decommissioned in v3.8.")
 	fs.UintVar(&cfg.MaxWalFiles, "max-wals", cfg.MaxWalFiles, "Maximum number of wal files to retain (0 is unlimited).")
 	fs.StringVar(&cfg.Name, "name", cfg.Name, "Human-readable name for this member.")
-	fs.Uint64Var(&cfg.SnapshotCount, "snapshot-count", cfg.SnapshotCount, "Number of committed transactions to trigger a snapshot to disk. Deprecated in v3.6 and will be decommissioned in v3.7.")
+	fs.Uint64Var(&cfg.SnapshotCount, "snapshot-count", cfg.SnapshotCount, "Number of committed transactions to trigger a snapshot.")
 	fs.UintVar(&cfg.TickMs, "heartbeat-interval", cfg.TickMs, "Time (in milliseconds) of a heartbeat interval.")
 	fs.UintVar(&cfg.ElectionMs, "election-timeout", cfg.ElectionMs, "Time (in milliseconds) for an election to timeout.")
 	fs.BoolVar(&cfg.InitialElectionTickAdvance, "initial-election-tick-advance", cfg.InitialElectionTickAdvance, "Whether to fast-forward initial election ticks on boot for faster election.")

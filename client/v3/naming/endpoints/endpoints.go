@@ -29,11 +29,8 @@ type Endpoint struct {
 	// Since etcd 3.1
 	Addr string
 
-	// Metadata is the information associated with Addr, which may be used
-	// to make load balancing decision.
+	// Metadata is the information associated with Addr.
 	// Since etcd 3.1
-	//
-	// Deprecated: The field is deprecated and will be removed in 3.7.
 	Metadata any
 }
 

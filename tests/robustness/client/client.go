@@ -113,6 +113,30 @@ func (c *RecordingClient) Range(ctx context.Context, start, end string, revision
 	return resp, err
 }
 
+func (c *RecordingClient) RangeStream(ctx context.Context, start, end string, revision, limit int64) (*clientv3.GetResponse, error) {
+	ops := []clientv3.OpOption{}
+	if end != "" {
+		ops = append(ops, clientv3.WithRange(end))
+	}
+	if revision != 0 {
+		ops = append(ops, clientv3.WithRev(revision))
+	}
+	if limit != 0 {
+		ops = append(ops, clientv3.WithLimit(limit))
+	}
+	c.kvMux.Lock()
+	defer c.kvMux.Unlock()
+	callTime := time.Since(c.baseTime)
+	stream, err := c.client.GetStream(ctx, start, ops...)
+	var resp *clientv3.GetResponse
+	if err == nil {
+		resp, err = clientv3.GetStreamToGetResponse(stream)
+	}
+	returnTime := time.Since(c.baseTime)
+	c.kvOperations.AppendRange(start, end, revision, limit, callTime, returnTime, resp, err)
+	return resp, err
+}
+
 func (c *RecordingClient) Put(ctx context.Context, key, value string, _ ...clientv3.OpOption) (*clientv3.PutResponse, error) {
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
@@ -214,6 +238,10 @@ func (c *RecordingClient) Defragment(ctx context.Context) (*clientv3.DefragmentR
 	returnTime := time.Since(c.baseTime)
 	c.kvOperations.AppendDefragment(callTime, returnTime, resp, err)
 	return resp, err
+}
+
+func (c *RecordingClient) GetStream(ctx context.Context, key string, opts ...clientv3.OpOption) (clientv3.GetStreamChan, error) {
+	panic("not implemented")
 }
 
 func (c *RecordingClient) Compact(ctx context.Context, rev int64, _ ...clientv3.CompactOption) (*clientv3.CompactResponse, error) {
@@ -341,7 +369,7 @@ func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) model.WatchRe
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
 	resp := model.WatchResponse{Time: time.Since(baseTime)}
 	for _, event := range r.Events {
-		resp.Events = append(resp.Events, toWatchEvent(*event))
+		resp.Events = append(resp.Events, toWatchEvent(event))
 	}
 	resp.IsProgressNotify = r.IsProgressNotify()
 	resp.Revision = r.Header.Revision
@@ -352,7 +380,7 @@ func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) model.WatchRe
 	return resp
 }
 
-func toWatchEvent(event clientv3.Event) (watch model.WatchEvent) {
+func toWatchEvent(event *clientv3.Event) (watch model.WatchEvent) {
 	watch.Revision = event.Kv.ModRevision
 	watch.Key = string(event.Kv.Key)
 	watch.Value = model.ToValueOrHash(string(event.Kv.Value))
@@ -367,9 +395,9 @@ func toWatchEvent(event clientv3.Event) (watch model.WatchEvent) {
 	watch.IsCreate = event.IsCreate()
 
 	switch event.Type {
-	case mvccpb.PUT:
+	case mvccpb.Event_PUT:
 		watch.Type = model.PutOperation
-	case mvccpb.DELETE:
+	case mvccpb.Event_DELETE:
 		watch.Type = model.DeleteOperation
 	default:
 		panic(fmt.Sprintf("Unexpected event type: %s", event.Type))

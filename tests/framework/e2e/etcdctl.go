@@ -17,18 +17,15 @@ package e2e
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
@@ -53,7 +50,6 @@ func NewEtcdctl(cfg ClientConfig, endpoints []string, opts ...config.ClientOptio
 		client, err := clientv3.New(clientv3.Config{
 			Endpoints:   ctl.endpoints,
 			DialTimeout: 5 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 			Username:    ctl.authConfig.Username,
 			Password:    ctl.authConfig.Password,
 			Token:       ctl.authConfig.Token,
@@ -86,6 +82,13 @@ func WithEndpoints(endpoints []string) config.ClientOption {
 	return func(c any) {
 		ctl := c.(*EtcdctlV3)
 		ctl.endpoints = endpoints
+	}
+}
+
+func WithDialTimeout(tio time.Duration) config.ClientOption {
+	return func(c any) {
+		ctl := c.(*EtcdctlV3)
+		ctl.cfg.DialTimeout = tio
 	}
 }
 
@@ -145,6 +148,9 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 	}
 	if o.MinModRevision != 0 {
 		args = append(args, fmt.Sprintf("--min-mod-rev=%d", o.MinModRevision))
+	}
+	if o.Stream {
+		args = append(args, "--stream")
 	}
 	switch o.SortBy {
 	case clientv3.SortByCreateRevision:
@@ -304,47 +310,11 @@ func (ctl *EtcdctlV3) Txn(ctx context.Context, compares, ifSucess, ifFail []stri
 	if err != nil {
 		return nil, err
 	}
-	var resp clientv3.TxnResponse
-	addTxnResponse(&resp, line)
-	err = json.Unmarshal([]byte(line), &resp)
-	return &resp, err
-}
-
-// addTxnResponse looks for ResponseOp json tags and adds the objects for json decoding
-func addTxnResponse(resp *clientv3.TxnResponse, jsonData string) {
-	if resp == nil {
-		return
+	var jsonResp command.TxnResponseJSON
+	if err := json.Unmarshal([]byte(line), &jsonResp); err != nil {
+		return nil, err
 	}
-	if resp.Responses == nil {
-		resp.Responses = []*etcdserverpb.ResponseOp{}
-	}
-	jd := json.NewDecoder(strings.NewReader(jsonData))
-	for {
-		t, e := jd.Token()
-		if errors.Is(e, io.EOF) {
-			break
-		}
-		if t == "response_range" {
-			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
-				Response: &etcdserverpb.ResponseOp_ResponseRange{},
-			})
-		}
-		if t == "response_put" {
-			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
-				Response: &etcdserverpb.ResponseOp_ResponsePut{},
-			})
-		}
-		if t == "response_delete_range" {
-			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
-				Response: &etcdserverpb.ResponseOp_ResponseDeleteRange{},
-			})
-		}
-		if t == "response_txn" {
-			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
-				Response: &etcdserverpb.ResponseOp_ResponseTxn{},
-			})
-		}
-	}
+	return (*clientv3.TxnResponse)(jsonResp.ToProto()), nil
 }
 
 func (ctl *EtcdctlV3) MemberList(ctx context.Context, serializable bool) (*clientv3.MemberListResponse, error) {
@@ -417,6 +387,9 @@ func (ctl *EtcdctlV3) flags() map[string]string {
 		fmap["auth-jwt-token"] = ctl.authConfig.Token
 	} else if !ctl.authConfig.Empty() {
 		fmap["user"] = ctl.authConfig.Username + ":" + ctl.authConfig.Password
+	}
+	if ctl.cfg.DialTimeout != 0 {
+		fmap["dial-timeout"] = ctl.cfg.DialTimeout.String()
 	}
 	return fmap
 }
@@ -506,7 +479,7 @@ func (ctl *EtcdctlV3) TimeToLive(ctx context.Context, id clientv3.LeaseID, o con
 	}
 	defer cmd.Close()
 	var resp clientv3.LeaseTimeToLiveResponse
-	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "id"})
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "member_id"})
 	if err != nil {
 		return nil, err
 	}
@@ -535,7 +508,7 @@ func (ctl *EtcdctlV3) Leases(ctx context.Context) (*clientv3.LeaseLeasesResponse
 	}
 	defer cmd.Close()
 	var resp clientv3.LeaseLeasesResponse
-	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "id"})
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "member_id"})
 	if err != nil {
 		return nil, err
 	}

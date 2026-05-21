@@ -45,8 +45,9 @@ func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, re
 	err := validateWatchError(lg, cfg, reports, replay)
 	if err != nil {
 		lg.Error("Watch validation failed", zap.Duration("duration", time.Since(start)), zap.Error(err))
+	} else {
+		lg.Info("Watch validation success", zap.Duration("duration", time.Since(start)))
 	}
-	lg.Info("Watch validation success", zap.Duration("duration", time.Since(start)))
 	return ResultFromError(err)
 }
 
@@ -259,7 +260,7 @@ func validatePrevKV(lg *zap.Logger, replay *model.EtcdReplay, report report.Clie
 		}
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
-				// Get state state just before the current event.
+				// Get state just before the current event.
 				state, err2 := replay.StateForRevision(event.Revision - 1)
 				if err2 != nil {
 					panic(err2)
@@ -277,9 +278,15 @@ func validatePrevKV(lg *zap.Logger, replay *model.EtcdReplay, report report.Clie
 
 				// We allow PrevValue to be nil since in the face of compaction, etcd does not
 				// guarantee its presence.
-				if event.PrevValue != nil && *event.PrevValue != state.KeyValues[event.Key] {
-					lg.Error("Incorrect event prevValue field", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", state.KeyValues[event.Key]))
-					err = errBrokePrevKV
+				if event.PrevValue != nil {
+					val, ok := state.GetValue(event.Key)
+					if !ok {
+						lg.Error("Incorrect event prevValue field", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", nil))
+						err = errBrokePrevKV
+					} else if *event.PrevValue != *val {
+						lg.Error("Incorrect event prevValue field", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", *val))
+						err = errBrokePrevKV
+					}
 				}
 			}
 		}
@@ -291,14 +298,14 @@ func validateIsCreate(lg *zap.Logger, replay *model.EtcdReplay, report report.Cl
 	for _, op := range report.Watch {
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
-				// Get state state just before the current event.
+				// Get state just before the current event.
 				state, err2 := replay.StateForRevision(event.Revision - 1)
 				if err2 != nil {
 					panic(err2)
 				}
 				// A create event will not have an entry in our history and a non-create
 				// event *should* have an entry in our history.
-				if _, prevKeyExists := state.KeyValues[event.Key]; event.IsCreate == prevKeyExists {
+				if _, prevKeyExists := state.GetValue(event.Key); event.IsCreate == prevKeyExists {
 					lg.Error("Incorrect event IsCreate field", zap.Int("client", report.ClientID), zap.Any("event", event))
 					err = errBrokeIsCreate
 				}

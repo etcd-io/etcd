@@ -23,6 +23,8 @@ import (
 
 type electionProxy struct {
 	electionClient v3electionpb.ElectionClient
+	// we want compile errors if new methods are added
+	v3electionpb.UnsafeElectionServer
 }
 
 func NewElectionProxy(client *clientv3.Client) v3electionpb.ElectionServer {

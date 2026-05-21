@@ -4,7 +4,60 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ---
 
-## v3.4.41 (TBC)
+## v3.4.45 (TBC)
+
+---
+
+## v3.4.44 (2026-05-01)
+
+### etcd server
+
+- Fix RBAC authorization bypass allowing read access via PrevKv or lease attachment in Put requests nested in etcd transactions (see [PR/21683](https://github.com/etcd-io/etcd/pull/21683) and [PR/21688](https://github.com/etcd-io/etcd/pull/21688))
+
+### Dependencies
+
+- Compile binaries using [go 1.25.9](https://github.com/etcd-io/etcd/pull/21588)
+
+---
+
+## v3.4.43 (2026-04-01)
+
+### etcd server
+
+- [etcdserver: allow non-admin to fetch member list and alarms](https://github.com/etcd-io/etcd/pull/21551)
+
+### etcdctl
+
+- Fix [etcdctl endpoint command regression with option --cluster when auth is enabled](https://github.com/etcd-io/etcd/pull/21533)
+
+---
+
+## v3.4.42 (2026-03-20)
+
+### etcd server
+
+- Fix [Race between read index and leader change](https://github.com/etcd-io/etcd/pull/21385)
+- Fix [Stale reads caused by process pausing](https://github.com/etcd-io/etcd/pull/21423)
+- Guard unauthenticated endpoints with auth checks to fix [Authorization bypasses in multiple APIs (CVE-2026-33413)](https://github.com/etcd-io/etcd/security/advisories/GHSA-q8m4-xhhv-38mg)
+- Enforce auth checks for nested txn ops to fix [Nested etcd transactions bypass RBAC authorization checks (CVE-2026-33343)](https://github.com/etcd-io/etcd/security/advisories/GHSA-rfx7-8w68-q57q)
+
+### Dependencies
+
+- Compile binaries using [go 1.25.8](https://github.com/etcd-io/etcd/pull/21461)
+- [Bump golang.org/x/net to v0.51.0 to resolve GO-2026-4559](https://github.com/etcd-io/etcd/pull/21444)
+- [Bump google.golang.org/grpc to 1.79.3 to resolve CVE-2026-33186](https://github.com/etcd-io/etcd/pull/21502)
+
+---
+
+## v3.4.41 (2026-02-13)
+
+### Package `clientv3`
+
+- [Remove the use of grpc-go's Metadata field](https://github.com/etcd-io/etcd/pull/21243)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.13](https://github.com/etcd-io/etcd/pull/21266). This addresses [CVE-2025-61726](https://github.com/advisories/GHSA-gm9r-q53w-2gh4), [CVE-2025-61731](https://github.com/advisories/GHSA-xvqr-69v8-f3gv), and [CVE-2025-61732](https://github.com/advisories/GHSA-8jvr-vh7g-f8gx).
 
 ---
 

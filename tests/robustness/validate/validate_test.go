@@ -227,6 +227,39 @@ func TestValidateWatch(t *testing.T) {
 			},
 		},
 		{
+			name: "Reliable - Put with non-existent lease doesn't generate watch event - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
+							Responses: []model.WatchResponse{},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				{
+					Type: model.Txn,
+					Txn: &model.TxnRequest{
+						OperationsOnSuccess: []model.EtcdOperation{
+							{
+								Type: model.PutOperation,
+								Put: model.PutOptions{
+									Key:     "a",
+									Value:   model.ToValueOrHash("1"),
+									LeaseID: 1,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: "",
+		},
+		{
 			name: "Ordered, Unique - unique ordered events in separate response - pass",
 			reports: []report.ClientReport{
 				{
@@ -1551,7 +1584,7 @@ func TestValidateWatch(t *testing.T) {
 			},
 		},
 		{
-			name: "Resumable - missing first matching event - pass",
+			name: "Resumable - missing first matching event - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -1579,7 +1612,7 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeResumable.Error(),
 		},
 		{
-			name: "Resumable - missing first matching event with prefix - pass",
+			name: "Resumable - missing first matching event with prefix - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -1607,7 +1640,7 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeResumable.Error(),
 		},
 		{
-			name: "Resumable - missing first matching event with prefix - pass",
+			name: "Resumable - missing first matching event with prefix - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -1697,7 +1730,7 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeIsCreate.Error(),
 		},
 		{
-			name: "IsCreate - put after delete marked as not created - pass",
+			name: "IsCreate - put after delete marked as not created - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -2055,7 +2088,7 @@ func getRequest(key string) model.EtcdRequest {
 		Type: model.Range,
 		Range: &model.RangeRequest{
 			RangeOptions: model.RangeOptions{
-				Start: "key",
+				Start: key,
 			},
 		},
 	}

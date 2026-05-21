@@ -17,7 +17,6 @@ package integration
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -35,7 +34,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -43,6 +41,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -387,10 +386,13 @@ func (c *Cluster) WaitMembersMatch(t testutil.TB, membs []*pb.Member) {
 		default:
 		}
 		for {
-			resp, err := cc.Cluster.MemberList(ctx, &pb.MemberListRequest{Linearizable: false})
-			if errors.Is(err, context.DeadlineExceeded) {
-				t.Fatal(err)
+			select {
+			case <-ctx.Done():
+				t.Fatalf("WaitMembersMatch failed: %v", ctx.Err())
+			default:
 			}
+
+			resp, err := cc.Cluster.MemberList(ctx, &pb.MemberListRequest{Linearizable: false})
 			if err != nil {
 				continue
 			}
@@ -522,7 +524,9 @@ func (c *Cluster) waitVersion() {
 func isMembersEqual(membs []*pb.Member, wmembs []*pb.Member) bool {
 	sort.Sort(SortableMemberSliceByPeerURLs(membs))
 	sort.Sort(SortableMemberSliceByPeerURLs(wmembs))
-	return cmp.Equal(membs, wmembs, cmpopts.IgnoreFields(pb.Member{}, "ID", "PeerURLs", "ClientURLs"))
+	return cmp.Equal(membs, wmembs,
+		protocmp.Transform(),
+		protocmp.IgnoreFields(&pb.Member{}, "ID"))
 }
 
 func NewLocalListener(t testutil.TB) net.Listener {
@@ -726,7 +730,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 		m.MaxLearners = mcfg.MaxLearners
 	}
 	m.Metrics = mcfg.Metrics
-	m.V2Deprecation = config.V2_DEPR_DEFAULT //nolint:staticcheck // TODO: remove for a supported version
+	m.V2Deprecation = config.V2DeprDefault
 	m.GRPCServerRecorder = &grpctesting.GRPCRecorder{}
 
 	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
@@ -897,7 +901,6 @@ func NewClientV3(m *Member) (*clientv3.Client, error) {
 	cfg := clientv3.Config{
 		Endpoints:          []string{m.GRPCURL},
 		DialTimeout:        5 * time.Second,
-		DialOptions:        []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		MaxCallSendMsgSize: m.ClientMaxCallSendMsgSize,
 		MaxCallRecvMsgSize: m.ClientMaxCallRecvMsgSize,
 		Logger:             m.Logger.Named("client"),
@@ -1488,11 +1491,17 @@ func WithEndpoints(endpoints []string) framecfg.ClientOption {
 	}
 }
 
+func WithDialTimeout(tio time.Duration) framecfg.ClientOption {
+	return func(c any) {
+		cfg := c.(*clientv3.Config)
+		cfg.DialTimeout = tio
+	}
+}
+
 func (c *Cluster) newClientCfg() (*clientv3.Config, error) {
 	cfg := &clientv3.Config{
 		Endpoints:          c.Endpoints(),
 		DialTimeout:        5 * time.Second,
-		DialOptions:        []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		MaxCallSendMsgSize: c.Cfg.ClientMaxCallSendMsgSize,
 		MaxCallRecvMsgSize: c.Cfg.ClientMaxCallRecvMsgSize,
 	}

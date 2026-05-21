@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	"github.com/coreos/go-semver/semver"
-	"github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -33,13 +33,13 @@ import (
 
 func TestEtcdVersionFromEntry(t *testing.T) {
 	raftReq := etcdserverpb.InternalRaftRequest{Header: &etcdserverpb.RequestHeader{AuthRevision: 1}}
-	normalRequestData := pbutil.MustMarshal(&raftReq)
+	normalRequestData := pbutil.MustMarshalMessage(&raftReq)
 
 	downgradeVersionTestV3_6Req := etcdserverpb.InternalRaftRequest{DowngradeVersionTest: &etcdserverpb.DowngradeVersionTestRequest{Ver: "3.6.0"}}
-	downgradeVersionTestV3_6Data := pbutil.MustMarshal(&downgradeVersionTestV3_6Req)
+	downgradeVersionTestV3_6Data := pbutil.MustMarshalMessage(&downgradeVersionTestV3_6Req)
 
 	downgradeVersionTestV3_7Req := etcdserverpb.InternalRaftRequest{DowngradeVersionTest: &etcdserverpb.DowngradeVersionTestRequest{Ver: "3.7.0"}}
-	downgradeVersionTestV3_7Data := pbutil.MustMarshal(&downgradeVersionTestV3_7Req)
+	downgradeVersionTestV3_7Data := pbutil.MustMarshalMessage(&downgradeVersionTestV3_7Req)
 
 	confChange := raftpb.ConfChange{Type: raftpb.ConfChangeAddLearnerNode}
 	confChangeData := pbutil.MustMarshal(&confChange)
@@ -176,7 +176,7 @@ func TestEtcdVersionFromMessage(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			var maxVer *semver.Version
-			err := visitMessage(proto.MessageReflect(tc.input), func(path protoreflect.FullName, ver *semver.Version) error {
+			err := visitMessage(tc.input.ProtoReflect(), func(path protoreflect.FullName, ver *semver.Version) error {
 				maxVer = maxVersion(maxVer, ver)
 				return nil
 			})

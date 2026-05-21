@@ -76,7 +76,7 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-	display.Put(*resp)
+	display.Put(resp)
 }
 
 func getPutOp(args []string) (string, string, []clientv3.OpOption) {

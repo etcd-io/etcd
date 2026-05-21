@@ -559,7 +559,7 @@ func TestPatchHistory(t *testing.T) {
 			patched := patchLinearizableOperations(operations, reports, tc.persistedRequest)
 			if diff := cmp.Diff(tc.expectedRemainingOperations, patched,
 				cmpopts.EquateEmpty(),
-				cmpopts.IgnoreFields(porcupine.Operation{}, "Input", "Call", "ClientId"),
+				cmpopts.IgnoreFields(porcupine.Operation{}, "Input", "Call", "ClientId", "Metadata"),
 			); diff != "" {
 				t.Errorf("Response didn't match expected, diff:\n%s", diff)
 			}

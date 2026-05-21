@@ -630,6 +630,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	case http.StatusPreconditionFailed:
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
+			resp.Body.Close()
 			cr.picker.unreachable(u)
 			return nil, err
 		}

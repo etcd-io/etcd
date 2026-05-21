@@ -1063,7 +1063,7 @@ func TestUpdateRaftAttributes(t *testing.T) {
 		wantMembers    map[types.ID]*Member
 	}{
 		{
-			name: "update an existing member",
+			name: "update an existing voting member",
 			members: []*Member{
 				newTestMember(1, oldPeerURLs, "1", clientURLs),
 				newTestMember(2, oldPeerURLs, "2", clientURLs),
@@ -1072,6 +1072,18 @@ func TestUpdateRaftAttributes(t *testing.T) {
 			wantMembers: map[types.ID]*Member{
 				1: newTestMember(1, oldPeerURLs, "1", clientURLs),
 				2: newTestMember(2, newPeerURLs, "2", clientURLs),
+			},
+		},
+		{
+			name: "update an existing learner member",
+			members: []*Member{
+				newTestMember(1, oldPeerURLs, "1", clientURLs),
+				newTestMemberAsLearner(2, oldPeerURLs, "2", clientURLs),
+			},
+			updateMemberID: 2,
+			wantMembers: map[types.ID]*Member{
+				1: newTestMember(1, oldPeerURLs, "1", clientURLs),
+				2: newTestMemberAsLearner(2, newPeerURLs, "2", clientURLs),
 			},
 		},
 		{
@@ -1096,6 +1108,7 @@ func TestUpdateRaftAttributes(t *testing.T) {
 
 			mst, _ := c.be.MustReadMembersFromBackend()
 			require.Equal(t, tc.wantMembers, mst)
+			require.Equal(t, tc.wantMembers, c.members)
 		})
 	}
 }

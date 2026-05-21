@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -60,7 +59,6 @@ func TestDialTLSExpired(t *testing.T) {
 	_, err = integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: 3 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		TLS:         tls,
 	})
 	require.Truef(t, clientv3test.IsClientTimeout(err), "expected dial timeout error")
@@ -76,7 +74,6 @@ func TestDialTLSNoConfig(t *testing.T) {
 	c, err := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 	})
 	defer func() {
 		if c != nil {
@@ -112,7 +109,6 @@ func testDialSetEndpoints(t *testing.T, setBefore bool) {
 	cfg := clientv3.Config{
 		Endpoints:   []string{eps[toKill]},
 		DialTimeout: 1 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 	}
 	cli, err := integration.NewClient(t, cfg)
 	require.NoError(t, err)
@@ -165,7 +161,6 @@ func TestRejectOldCluster(t *testing.T) {
 	cfg := clientv3.Config{
 		Endpoints:        []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL},
 		DialTimeout:      5 * time.Second,
-		DialOptions:      []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		RejectOldCluster: true,
 	}
 	cli, err := integration.NewClient(t, cfg)

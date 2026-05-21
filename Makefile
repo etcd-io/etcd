@@ -111,7 +111,7 @@ verify-bom:
 
 .PHONY: fix-bom
 fix-bom:
-	./scripts/updatebom.sh
+	./scripts/fix/bom.sh
 
 .PHONY: verify-dep
 verify-dep:
@@ -230,7 +230,7 @@ verify-grpc-experimental:
 
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
-	./scripts/sync_go_toolchain_directive.sh
+	./scripts/fix/sync_go_toolchain_directive.sh
 
 .PHONY: markdown-diff-lint
 markdown-diff-lint:

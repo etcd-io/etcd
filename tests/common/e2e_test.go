@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/tests/v3/framework"
@@ -109,6 +110,10 @@ func WithAuthToken(token string) config.ClientOption {
 
 func WithEndpoints(endpoints []string) config.ClientOption {
 	return e2e.WithEndpoints(endpoints)
+}
+
+func WithDialTimeout(tio time.Duration) config.ClientOption {
+	return e2e.WithDialTimeout(tio)
 }
 
 func WithHTTP2Debug() config.ClusterOption {

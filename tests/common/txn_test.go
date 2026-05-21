@@ -129,17 +129,17 @@ func getRespValues(r *clientv3.TxnResponse) []string {
 	for _, resp := range r.Responses {
 		switch v := resp.Response.(type) {
 		case *pb.ResponseOp_ResponseDeleteRange:
-			r := (clientv3.DeleteResponse)(*v.ResponseDeleteRange)
-			ss = append(ss, fmt.Sprintf("%d", r.Deleted))
+			r := v.ResponseDeleteRange
+			ss = append(ss, fmt.Sprintf("%d", r.GetDeleted()))
 		case *pb.ResponseOp_ResponsePut:
-			r := (clientv3.PutResponse)(*v.ResponsePut)
+			r := v.ResponsePut
 			ss = append(ss, "OK")
-			if r.PrevKv != nil {
+			if r.GetPrevKv() != nil {
 				ss = append(ss, string(r.PrevKv.Key), string(r.PrevKv.Value))
 			}
 		case *pb.ResponseOp_ResponseRange:
-			r := (clientv3.GetResponse)(*v.ResponseRange)
-			for _, kv := range r.Kvs {
+			r := v.ResponseRange
+			for _, kv := range r.GetKvs() {
 				ss = append(ss, string(kv.Key), string(kv.Value))
 			}
 		default:

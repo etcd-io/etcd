@@ -4,7 +4,84 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.27 (TBC)
+## v3.5.31 (TBC)
+
+### etcd server
+
+- [bugfix: MemberUpdate implicitly and unexpectedly promotes a learner](https://github.com/etcd-io/etcd/pull/21737)
+
+### etcdutl
+
+- [etcdutl: validate data file path instead of panic](https://github.com/etcd-io/etcd/pull/21769)
+
+---
+
+## v3.5.30 (2026-05-01)
+
+### etcd server
+
+- [Fixed an issue that prevented adding a new member when one member was down, even though quorum was still satisfied](https://github.com/etcd-io/etcd/pull/21669)
+- Fix RBAC authorization bypass allowing read access via PrevKv or lease attachment in Put requests nested in etcd transactions (see [PR/21682](https://github.com/etcd-io/etcd/pull/21682) and [PR/21687](https://github.com/etcd-io/etcd/pull/21687))
+
+### Dependencies
+
+- Compile binaries using [go 1.25.9](https://github.com/etcd-io/etcd/pull/21587)
+
+---
+
+## v3.5.29 (2026-04-01)
+
+### etcd server
+
+- [etcdserver: allow non-admin to fetch member list and alarms](https://github.com/etcd-io/etcd/pull/21550)
+
+### etcdctl
+
+- Fix [etcdctl endpoint command regression with option --cluster when auth is enabled](https://github.com/etcd-io/etcd/pull/21532)
+
+---
+
+## v3.5.28 (2026-03-20)
+
+### etcd server
+
+- [Ensure the metrics interceptor runs before other interceptors so that metrics remain up to date](https://github.com/etcd-io/etcd/pull/21336)
+- Fix [Race between read index and leader change](https://github.com/etcd-io/etcd/pull/21387)
+- Fix [Stale reads caused by process pausing](https://github.com/etcd-io/etcd/pull/21421)
+- Fix [cannot promote member from follower when auth is enabled](https://github.com/etcd-io/etcd/pull/21494)
+- Guard unauthenticated endpoints with auth checks to fix [Authorization bypasses in multiple APIs (CVE-2026-33413)](https://github.com/etcd-io/etcd/security/advisories/GHSA-q8m4-xhhv-38mg)
+- Enforce auth checks for nested txn ops to fix [Nested etcd transactions bypass RBAC authorization checks (CVE-2026-33343)](https://github.com/etcd-io/etcd/security/advisories/GHSA-rfx7-8w68-q57q)
+
+### Package `clientv3`
+
+- [Print the endpoint the grpc request was actually sent to in unary interceptor](https://github.com/etcd-io/etcd/pull/21380)
+
+### etcd grpc-proxy
+
+- [server/etcdmain: fix startup deadlock in grpcproxy](https://github.com/etcd-io/etcd/pull/21356)
+
+### etcdctl
+
+- Fix [slice bounds trimming single-quoted args in Argify](https://github.com/etcd-io/etcd/pull/21403)
+
+### Dependencies
+
+- [Bump go.opentelemetry.io/otel/sdk to v1.40.0 to resolve https://pkg.go.dev/vuln/GO-2026-4394](https://github.com/etcd-io/etcd/pull/21338)
+- Compile binaries using [go 1.25.8](https://github.com/etcd-io/etcd/pull/21462)
+- [Bump golang.org/x/net to v0.51.0 to resolve GO-2026-4559](https://github.com/etcd-io/etcd/pull/21441)
+- [Bump google.golang.org/grpc to 1.79.3 to resolve CVE-2026-33186](https://github.com/etcd-io/etcd/pull/21500)
+
+---
+
+## v3.5.27 (2026-02-13)
+
+### Package `clientv3`
+
+- [Remove the use of grpc-go's Metadata field](https://github.com/etcd-io/etcd/pull/21242)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.13](https://github.com/etcd-io/etcd/pull/21266). This addresses [CVE-2025-61726](https://github.com/advisories/GHSA-gm9r-q53w-2gh4), [CVE-2025-61731](https://github.com/advisories/GHSA-xvqr-69v8-f3gv), and [CVE-2025-61732](https://github.com/advisories/GHSA-8jvr-vh7g-f8gx).
 
 ---
 

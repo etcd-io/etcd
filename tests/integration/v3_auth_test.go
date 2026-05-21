@@ -17,6 +17,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -182,6 +183,7 @@ type user struct {
 	name     string
 	password string
 	role     string
+	perm     string
 	key      string
 	end      string
 }
@@ -221,6 +223,86 @@ func TestV3AuthWithLeaseRevoke(t *testing.T) {
 	_, err = userc.Revoke(t.Context(), leaseID)
 	if err == nil {
 		t.Fatal("revoking from user1 should be failed with permission denied")
+	}
+}
+
+func TestV3AuthWithLeaseRenew(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	users := []user{
+		{
+			name:     "test-user",
+			password: "test-user-123",
+			role:     "test-role",
+			// test-user can only write keys in [k1, k3), i.e. k1 and k2.
+			key: "k1",
+			end: "k3",
+		},
+	}
+	authSetupUsers(t, integration.ToGRPC(clus.Client(0)).Auth, users)
+	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
+
+	rootCli, cerr := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, cerr)
+	defer rootCli.Close()
+
+	testUserClis := []*clientv3.Client{}
+	for i := 0; i < len(clus.Members); i++ {
+		testUserCli, err := integration.NewClient(t, clientv3.Config{
+			Endpoints: clus.Client(i).Endpoints(),
+			Username:  "test-user",
+			Password:  "test-user-123",
+		})
+		require.NoError(t, err)
+		defer testUserCli.Close()
+
+		testUserClis = append(testUserClis, testUserCli)
+	}
+
+	anonCli, cerr := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+	})
+	require.NoError(t, cerr)
+	defer anonCli.Close()
+
+	leaseResp, err := rootCli.Grant(t.Context(), 90)
+	require.NoError(t, err)
+	leaseID := leaseResp.ID
+
+	_, err = rootCli.Put(t.Context(), "k1", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+	_, err = rootCli.Put(t.Context(), "k3", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+
+	_, err = anonCli.KeepAliveOnce(t.Context(), leaseID)
+	require.ErrorContainsf(t, err, "etcdserver: user name is empty", "should reject renew")
+
+	_, err = rootCli.KeepAliveOnce(t.Context(), leaseID)
+	require.NoError(t, err)
+
+	for _, testUserCli := range testUserClis {
+		_, err = testUserCli.KeepAliveOnce(t.Context(), leaseID)
+		require.ErrorContainsf(t, err, "etcdserver: permission denied", "[%v] should reject renew", testUserCli.Endpoints())
+	}
+
+	leaseResp, err = rootCli.Grant(t.Context(), 90)
+	require.NoError(t, err)
+	leaseID = leaseResp.ID
+
+	_, err = rootCli.Put(t.Context(), "k1", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+	_, err = rootCli.Put(t.Context(), "k2", "val", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+
+	for _, testUserCli := range testUserClis {
+		_, err = testUserCli.KeepAliveOnce(t.Context(), leaseID)
+		require.NoErrorf(t, err, "[%v] should accept renew", testUserCli.Endpoints())
 	}
 }
 
@@ -293,8 +375,15 @@ func authSetupUsers(t *testing.T, auth pb.AuthClient, users []user) {
 			continue
 		}
 
+		permType := authpb.Permission_READWRITE
+		if len(user.perm) > 0 {
+			val, ok := authpb.Permission_Type_value[strings.ToUpper(user.perm)]
+			if ok {
+				permType = authpb.Permission_Type(val)
+			}
+		}
 		perm := &authpb.Permission{
-			PermType: authpb.READWRITE,
+			PermType: permType,
 			Key:      []byte(user.key),
 			RangeEnd: []byte(user.end),
 		}
@@ -333,6 +422,163 @@ func TestV3AuthNonAuthorizedRPCs(t *testing.T) {
 
 	respput, err := nonAuthedKV.Put(t.Context(), key, val)
 	require.Truef(t, eqErrGRPC(err, rpctypes.ErrGRPCUserEmpty), "could put key (%v), it should cause an error of permission denied", respput)
+}
+
+func TestV3AuthNestedTxnPermissionDenied(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	users := []user{
+		{
+			name:     "user1",
+			password: "user1-123",
+			role:     "role1",
+			key:      "foo",
+			end:      "zoo",
+		},
+	}
+	anonCli := integration.ToGRPC(clus.Client(0))
+	authSetupUsers(t, anonCli.Auth, users)
+	authSetupRoot(t, anonCli.Auth)
+
+	rootc, err := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, err)
+	defer rootc.Close()
+
+	userc, err := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "user1",
+		Password:  "user1-123",
+	})
+	require.NoError(t, err)
+	defer userc.Close()
+
+	_, err = rootc.Put(t.Context(), "boo", "bar")
+	require.NoError(t, err)
+
+	_, err = userc.Txn(t.Context()).
+		Then(clientv3.OpTxn(
+			nil,
+			[]clientv3.Op{
+				clientv3.OpTxn(
+					nil,
+					[]clientv3.Op{
+						clientv3.OpDelete("boo"),
+					},
+					nil,
+				),
+			},
+			nil,
+		)).Commit()
+
+	require.Error(t, err)
+	require.Truef(t, eqErrGRPC(err, rpctypes.ErrGRPCPermissionDenied), "got %v, expected %v", err, rpctypes.ErrGRPCPermissionDenied)
+
+	resp, err := rootc.Get(t.Context(), "boo")
+	require.NoError(t, err)
+	require.Len(t, resp.Kvs, 1)
+	require.Equal(t, resp.Kvs[0].Value, []byte("bar"))
+}
+
+func TestReadWithPrevKvInTXN(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	users := []user{
+		{
+			name:     "user1",
+			password: "user1-123",
+			role:     "role1",
+			perm:     "write",
+			key:      "foo",
+			end:      "zoo",
+		},
+	}
+	anonCli := integration.ToGRPC(clus.Client(0))
+	authSetupUsers(t, anonCli.Auth, users)
+	authSetupRoot(t, anonCli.Auth)
+
+	rootc, err := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, err)
+	defer rootc.Close()
+
+	userc, err := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "user1",
+		Password:  "user1-123",
+	})
+	require.NoError(t, err)
+	defer userc.Close()
+
+	_, err = rootc.Put(t.Context(), "foo", "bar")
+	require.NoError(t, err)
+
+	_, err = userc.Txn(t.Context()).
+		Then(clientv3.OpPut("foo", "new", clientv3.WithPrevKV())).
+		Commit()
+
+	require.Error(t, err)
+	require.Truef(t, eqErrGRPC(err, rpctypes.ErrGRPCPermissionDenied), "got %v, expected %v", err, rpctypes.ErrGRPCPermissionDenied)
+}
+
+func TestPutWithLeaseInTXN(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	users := []user{
+		{
+			name:     "user1",
+			password: "user1-123",
+			role:     "role1",
+			perm:     "write",
+			key:      "foo",
+			end:      "fop",
+		},
+	}
+	anonCli := integration.ToGRPC(clus.Client(0))
+	authSetupUsers(t, anonCli.Auth, users)
+	authSetupRoot(t, anonCli.Auth)
+
+	rootc, err := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, err)
+	defer rootc.Close()
+
+	userc, err := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "user1",
+		Password:  "user1-123",
+	})
+	require.NoError(t, err)
+	defer userc.Close()
+
+	t.Log("Create a lease and attach it to a key which the user1 doesn't have permission to write")
+	leaseResp, err := rootc.Grant(t.Context(), 90)
+	require.NoError(t, err)
+	leaseID := leaseResp.ID
+	_, err = rootc.Put(t.Context(), "eoo", "bar", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
+
+	_, err = userc.Txn(t.Context()).
+		Then(clientv3.OpPut("foo", "new", clientv3.WithLease(leaseID))).
+		Commit()
+
+	require.Error(t, err)
+	require.Truef(t, eqErrGRPC(err, rpctypes.ErrGRPCPermissionDenied), "got %v, expected %v", err, rpctypes.ErrGRPCPermissionDenied)
 }
 
 func TestV3AuthOldRevConcurrent(t *testing.T) {

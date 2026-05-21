@@ -208,7 +208,8 @@ func (op Op) toTxnRequest() *pb.TxnRequest {
 	}
 	cmps := make([]*pb.Compare, len(op.cmps))
 	for i := range op.cmps {
-		cmps[i] = (*pb.Compare)(&op.cmps[i])
+		cmp := op.cmps[i].Clone()
+		cmps[i] = cmp.GetCompare()
 	}
 	return &pb.TxnRequest{Compare: cmps, Success: thenOps, Failure: elseOps}
 }
@@ -326,7 +327,11 @@ func OpPut(key, val string, opts ...OpOption) Op {
 
 // OpTxn returns "txn" operation based on given transaction conditions.
 func OpTxn(cmps []Cmp, thenOps []Op, elseOps []Op) Op {
-	return Op{t: tTxn, cmps: cmps, thenOps: thenOps, elseOps: elseOps}
+	clonedCmps := make([]Cmp, len(cmps))
+	for i := range cmps {
+		clonedCmps[i] = cmps[i].Clone()
+	}
+	return Op{t: tTxn, cmps: clonedCmps, thenOps: thenOps, elseOps: elseOps}
 }
 
 func OpWatch(key string, opts ...OpOption) Op {

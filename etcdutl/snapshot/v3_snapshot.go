@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -172,7 +173,7 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 					ds.Revision = rev.Main
 
 					var kv mvccpb.KeyValue
-					err = kv.Unmarshal(v)
+					err = proto.Unmarshal(v, &kv)
 					if err != nil {
 						return fmt.Errorf("cannot unmarshal value, key: %q value: %q err: %w", k, v, err)
 					}
@@ -519,9 +520,9 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		s.cl.AddMember(m, true)
 	}
 
-	m := s.cl.MemberByName(s.name)
-	md := &etcdserverpb.Metadata{NodeID: uint64(m.ID), ClusterID: uint64(s.cl.ID())}
-	metadata, merr := md.Marshal()
+	m := s.cl.MemberByName(s.name) //nolint:staticcheck // See https://github.com/dominikh/go-tools/issues/1698
+	md := &etcdserverpb.Metadata{NodeID: new(uint64(m.ID)), ClusterID: new(uint64(s.cl.ID()))}
+	metadata, merr := proto.Marshal(md)
 	if merr != nil {
 		return nil, merr
 	}
@@ -586,8 +587,8 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	if err := sn.SaveSnap(raftSnap); err != nil {
 		return nil, err
 	}
-	snapshot := walpb.Snapshot{Index: commit, Term: term, ConfState: &confState}
-	return &hardState, w.SaveSnapshot(snapshot)
+	snapshot := walpb.Snapshot{Index: &commit, Term: &term, ConfState: &confState}
+	return &hardState, w.SaveSnapshot(&snapshot)
 }
 
 func (s *v3Manager) updateCIndex(commit uint64, term uint64) error {

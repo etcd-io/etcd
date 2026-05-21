@@ -41,6 +41,10 @@ var (
 
   etcd --config-file
     Path to the server configuration file. Note that if a configuration file is provided, other command line flags and environment variables will be ignored.
+    Duration-typed fields (for example --heartbeat-interval, --election-timeout,
+    --watch-progress-notify-interval) must be specified as integer nanoseconds
+    in the JSON/YAML file (e.g. 600000000000 for 10m); human-readable strings
+    such as "10m" are only accepted on the command line.
 
   etcd gateway
     Run the stateless pass-through etcd TCP connection forwarding proxy.
@@ -57,7 +61,7 @@ Member:
   --wal-dir ''
     Path to the dedicated wal directory.
   --snapshot-count '10000'
-    Number of committed transactions to trigger a snapshot to disk. Deprecated in v3.6 and will be decommissioned in v3.7.
+    Number of committed transactions to trigger a snapshot.
   --heartbeat-interval '100'
     Time (in milliseconds) of a heartbeat interval.
   --election-timeout '1000'

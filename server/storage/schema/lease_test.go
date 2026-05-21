@@ -19,8 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -103,7 +104,9 @@ func TestLeaseBackend(t *testing.T) {
 			defer be2.Close()
 			leases := MustUnsafeGetAllLeases(be2.ReadTx())
 
-			assert.Equal(t, tc.want, leases)
+			if diff := cmp.Diff(tc.want, leases, protocmp.Transform()); diff != "" {
+				t.Fatalf("leases mismatch (-want +got):\n%s", diff)
+			}
 		})
 	}
 }

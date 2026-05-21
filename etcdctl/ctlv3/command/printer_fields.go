@@ -29,88 +29,96 @@ type fieldsPrinter struct {
 }
 
 func (p *fieldsPrinter) kv(pfx string, kv *spb.KeyValue) {
-	fmt.Printf("\"%sKey\" : %q\n", pfx, string(kv.Key))
-	fmt.Printf("\"%sCreateRevision\" : %d\n", pfx, kv.CreateRevision)
-	fmt.Printf("\"%sModRevision\" : %d\n", pfx, kv.ModRevision)
-	fmt.Printf("\"%sVersion\" : %d\n", pfx, kv.Version)
-	fmt.Printf("\"%sValue\" : %q\n", pfx, string(kv.Value))
+	fmt.Printf("\"%sKey\" : %q\n", pfx, string(kv.GetKey()))
+	fmt.Printf("\"%sCreateRevision\" : %d\n", pfx, kv.GetCreateRevision())
+	fmt.Printf("\"%sModRevision\" : %d\n", pfx, kv.GetModRevision())
+	fmt.Printf("\"%sVersion\" : %d\n", pfx, kv.GetVersion())
+	fmt.Printf("\"%sValue\" : %q\n", pfx, string(kv.GetValue()))
 	if p.isHex {
-		fmt.Printf("\"%sLease\" : %016x\n", pfx, kv.Lease)
+		fmt.Printf("\"%sLease\" : %016x\n", pfx, kv.GetLease())
 	} else {
-		fmt.Printf("\"%sLease\" : %d\n", pfx, kv.Lease)
+		fmt.Printf("\"%sLease\" : %d\n", pfx, kv.GetLease())
 	}
 }
 
 func (p *fieldsPrinter) hdr(h *pb.ResponseHeader) {
 	if p.isHex {
-		fmt.Println(`"ClusterID" :`, types.ID(h.ClusterId))
-		fmt.Println(`"MemberID" :`, types.ID(h.MemberId))
+		fmt.Println(`"ClusterID" :`, types.ID(h.GetClusterId()))
+		fmt.Println(`"MemberID" :`, types.ID(h.GetMemberId()))
 	} else {
-		fmt.Println(`"ClusterID" :`, h.ClusterId)
-		fmt.Println(`"MemberID" :`, h.MemberId)
+		fmt.Println(`"ClusterID" :`, h.GetClusterId())
+		fmt.Println(`"MemberID" :`, h.GetMemberId())
 	}
 	// Revision only makes sense for k/v responses. For other kinds of
 	// responses, i.e. MemberList, usually the revision isn't populated
 	// at all; so it would be better to hide this field in these cases.
-	if h.Revision > 0 {
-		fmt.Println(`"Revision" :`, h.Revision)
+	if h.GetRevision() > 0 {
+		fmt.Println(`"Revision" :`, h.GetRevision())
 	}
-	fmt.Println(`"RaftTerm" :`, h.RaftTerm)
+	fmt.Println(`"RaftTerm" :`, h.GetRaftTerm())
 }
 
-func (p *fieldsPrinter) Del(r v3.DeleteResponse) {
-	p.hdr(r.Header)
-	fmt.Println(`"Deleted" :`, r.Deleted)
-	for _, kv := range r.PrevKvs {
+func (p *fieldsPrinter) Del(r *v3.DeleteResponse) {
+	resp := (*pb.DeleteRangeResponse)(r)
+	p.hdr(resp.GetHeader())
+	fmt.Println(`"Deleted" :`, resp.GetDeleted())
+	for _, kv := range resp.GetPrevKvs() {
 		p.kv("Prev", kv)
 	}
 }
 
-func (p *fieldsPrinter) Get(r v3.GetResponse) {
-	p.hdr(r.Header)
-	for _, kv := range r.Kvs {
+func (p *fieldsPrinter) Get(r *v3.GetResponse) {
+	resp := (*pb.RangeResponse)(r)
+	p.hdr(resp.GetHeader())
+	for _, kv := range resp.GetKvs() {
 		p.kv("", kv)
 	}
-	fmt.Println(`"More" :`, r.More)
-	fmt.Println(`"Count" :`, r.Count)
+	fmt.Println(`"More" :`, resp.GetMore())
+	fmt.Println(`"Count" :`, resp.GetCount())
 }
 
-func (p *fieldsPrinter) Put(r v3.PutResponse) {
-	p.hdr(r.Header)
-	if r.PrevKv != nil {
-		p.kv("Prev", r.PrevKv)
+func (p *fieldsPrinter) Put(r *v3.PutResponse) {
+	resp := (*pb.PutResponse)(r)
+	p.hdr(resp.GetHeader())
+	if resp.GetPrevKv() != nil {
+		p.kv("Prev", resp.GetPrevKv())
 	}
 }
 
-func (p *fieldsPrinter) Txn(r v3.TxnResponse) {
-	p.hdr(r.Header)
-	fmt.Println(`"Succeeded" :`, r.Succeeded)
-	for _, resp := range r.Responses {
-		switch v := resp.Response.(type) {
+func (p *fieldsPrinter) Txn(r *v3.TxnResponse) {
+	resp := (*pb.TxnResponse)(r)
+	p.hdr(resp.GetHeader())
+	fmt.Println(`"Succeeded" :`, resp.GetSucceeded())
+	for _, opResp := range resp.GetResponses() {
+		switch v := opResp.GetResponse().(type) {
 		case *pb.ResponseOp_ResponseDeleteRange:
-			p.Del((v3.DeleteResponse)(*v.ResponseDeleteRange))
+			p.Del((*v3.DeleteResponse)(v.ResponseDeleteRange))
 		case *pb.ResponseOp_ResponsePut:
-			p.Put((v3.PutResponse)(*v.ResponsePut))
+			p.Put((*v3.PutResponse)(v.ResponsePut))
 		case *pb.ResponseOp_ResponseRange:
-			p.Get((v3.GetResponse)(*v.ResponseRange))
+			p.Get((*v3.GetResponse)(v.ResponseRange))
 		default:
 			fmt.Printf("\"Unknown\" : %q\n", fmt.Sprintf("%+v", v))
 		}
 	}
 }
 
-func (p *fieldsPrinter) Watch(resp v3.WatchResponse) {
-	p.hdr(&resp.Header)
-	for _, e := range resp.Events {
-		fmt.Println(`"Type" :`, e.Type)
-		if e.PrevKv != nil {
-			p.kv("Prev", e.PrevKv)
+func (p *fieldsPrinter) Watch(resp *v3.WatchResponse) {
+	if resp == nil {
+		return
+	}
+
+	p.hdr(resp.Header)
+	for _, ev := range resp.Events {
+		fmt.Println(`"Type" :`, ev.GetType())
+		if ev.GetPrevKv() != nil {
+			p.kv("Prev", ev.GetPrevKv())
 		}
-		p.kv("", e.Kv)
+		p.kv("", ev.GetKv())
 	}
 }
 
-func (p *fieldsPrinter) Grant(r v3.LeaseGrantResponse) {
+func (p *fieldsPrinter) Grant(r *v3.LeaseGrantResponse) {
 	p.hdr(r.ResponseHeader)
 	if p.isHex {
 		fmt.Printf("\"ID\" : %016x\n", r.ID)
@@ -120,11 +128,11 @@ func (p *fieldsPrinter) Grant(r v3.LeaseGrantResponse) {
 	fmt.Println(`"TTL" :`, r.TTL)
 }
 
-func (p *fieldsPrinter) Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse) {
-	p.hdr(r.Header)
+func (p *fieldsPrinter) Revoke(id v3.LeaseID, r *v3.LeaseRevokeResponse) {
+	p.hdr((*pb.LeaseRevokeResponse)(r).GetHeader())
 }
 
-func (p *fieldsPrinter) KeepAlive(r v3.LeaseKeepAliveResponse) {
+func (p *fieldsPrinter) KeepAlive(r *v3.LeaseKeepAliveResponse) {
 	p.hdr(r.ResponseHeader)
 	if p.isHex {
 		fmt.Printf("\"ID\" : %016x\n", r.ID)
@@ -134,7 +142,7 @@ func (p *fieldsPrinter) KeepAlive(r v3.LeaseKeepAliveResponse) {
 	fmt.Println(`"TTL" :`, r.TTL)
 }
 
-func (p *fieldsPrinter) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) {
+func (p *fieldsPrinter) TimeToLive(r *v3.LeaseTimeToLiveResponse, keys bool) {
 	p.hdr(r.ResponseHeader)
 	if p.isHex {
 		fmt.Printf("\"ID\" : %016x\n", r.ID)
@@ -148,7 +156,7 @@ func (p *fieldsPrinter) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) {
 	}
 }
 
-func (p *fieldsPrinter) Leases(r v3.LeaseLeasesResponse) {
+func (p *fieldsPrinter) Leases(r *v3.LeaseLeasesResponse) {
 	p.hdr(r.ResponseHeader)
 	for _, item := range r.Leases {
 		if p.isHex {
@@ -159,22 +167,23 @@ func (p *fieldsPrinter) Leases(r v3.LeaseLeasesResponse) {
 	}
 }
 
-func (p *fieldsPrinter) MemberList(r v3.MemberListResponse) {
-	p.hdr(r.Header)
-	for _, m := range r.Members {
+func (p *fieldsPrinter) MemberList(r *v3.MemberListResponse) {
+	resp := (*pb.MemberListResponse)(r)
+	p.hdr(resp.GetHeader())
+	for _, m := range resp.GetMembers() {
 		if p.isHex {
-			fmt.Println(`"ID" :`, types.ID(m.ID))
+			fmt.Println(`"ID" :`, types.ID(m.GetID()))
 		} else {
-			fmt.Println(`"ID" :`, m.ID)
+			fmt.Println(`"ID" :`, m.GetID())
 		}
-		fmt.Printf("\"Name\" : %q\n", m.Name)
-		for _, u := range m.PeerURLs {
+		fmt.Printf("\"Name\" : %q\n", m.GetName())
+		for _, u := range m.GetPeerURLs() {
 			fmt.Printf("\"PeerURL\" : %q\n", u)
 		}
-		for _, u := range m.ClientURLs {
+		for _, u := range m.GetClientURLs() {
 			fmt.Printf("\"ClientURL\" : %q\n", u)
 		}
-		fmt.Println(`"IsLearner" :`, m.IsLearner)
+		fmt.Println(`"IsLearner" :`, m.GetIsLearner())
 		fmt.Println()
 	}
 }
@@ -191,81 +200,103 @@ func (p *fieldsPrinter) EndpointHealth(hs []epHealth) {
 
 func (p *fieldsPrinter) EndpointStatus(eps []epStatus) {
 	for _, ep := range eps {
-		p.hdr(ep.Resp.Header)
-		fmt.Printf("\"Version\" : %q\n", ep.Resp.Version)
-		fmt.Printf("\"StorageVersion\" : %q\n", ep.Resp.StorageVersion)
-		fmt.Println(`"DBSize" :`, ep.Resp.DbSize)
-		fmt.Println(`"DBSizeInUse" :`, ep.Resp.DbSizeInUse)
-		fmt.Println(`"DBSizeQuota" :`, ep.Resp.DbSizeQuota)
-		fmt.Println(`"Leader" :`, ep.Resp.Leader)
-		fmt.Println(`"IsLearner" :`, ep.Resp.IsLearner)
-		fmt.Println(`"RaftIndex" :`, ep.Resp.RaftIndex)
-		fmt.Println(`"RaftTerm" :`, ep.Resp.RaftTerm)
-		fmt.Println(`"RaftAppliedIndex" :`, ep.Resp.RaftAppliedIndex)
-		fmt.Println(`"Errors" :`, ep.Resp.Errors)
+		resp := (*pb.StatusResponse)(ep.Resp)
+		p.hdr(resp.GetHeader())
+		fmt.Printf("\"Version\" : %q\n", resp.GetVersion())
+		fmt.Printf("\"StorageVersion\" : %q\n", resp.GetStorageVersion())
+		fmt.Println(`"DBSize" :`, resp.GetDbSize())
+		fmt.Println(`"DBSizeInUse" :`, resp.GetDbSizeInUse())
+		fmt.Println(`"DBSizeQuota" :`, resp.GetDbSizeQuota())
+		fmt.Println(`"Leader" :`, resp.GetLeader())
+		fmt.Println(`"IsLearner" :`, resp.GetIsLearner())
+		fmt.Println(`"RaftIndex" :`, resp.GetRaftIndex())
+		fmt.Println(`"RaftTerm" :`, resp.GetRaftTerm())
+		fmt.Println(`"RaftAppliedIndex" :`, resp.GetRaftAppliedIndex())
+		fmt.Println(`"Errors" :`, resp.GetErrors())
 		fmt.Printf("\"Endpoint\" : %q\n", ep.Ep)
-		fmt.Printf("\"DowngradeTargetVersion\" : %q\n", ep.Resp.DowngradeInfo.GetTargetVersion())
-		fmt.Println(`"DowngradeEnabled" :`, ep.Resp.DowngradeInfo.GetEnabled())
+		fmt.Printf("\"DowngradeTargetVersion\" : %q\n", resp.GetDowngradeInfo().GetTargetVersion())
+		fmt.Println(`"DowngradeEnabled" :`, resp.GetDowngradeInfo().GetEnabled())
 		fmt.Println()
 	}
 }
 
 func (p *fieldsPrinter) EndpointHashKV(hs []epHashKV) {
 	for _, h := range hs {
-		p.hdr(h.Resp.Header)
+		resp := (*pb.HashKVResponse)(h.Resp)
+		p.hdr(resp.GetHeader())
 		fmt.Printf("\"Endpoint\" : %q\n", h.Ep)
-		fmt.Println(`"Hash" :`, h.Resp.Hash)
-		fmt.Println(`"HashRevision" :`, h.Resp.HashRevision)
+		fmt.Println(`"Hash" :`, resp.GetHash())
+		fmt.Println(`"HashRevision" :`, resp.GetHashRevision())
 		fmt.Println()
 	}
 }
 
-func (p *fieldsPrinter) Alarm(r v3.AlarmResponse) {
-	p.hdr(r.Header)
-	for _, a := range r.Alarms {
+func (p *fieldsPrinter) Alarm(r *v3.AlarmResponse) {
+	resp := (*pb.AlarmResponse)(r)
+	p.hdr(resp.GetHeader())
+	for _, a := range resp.GetAlarms() {
 		if p.isHex {
-			fmt.Println(`"MemberID" :`, types.ID(a.MemberID))
+			fmt.Println(`"MemberID" :`, types.ID(a.GetMemberID()))
 		} else {
-			fmt.Println(`"MemberID" :`, a.MemberID)
+			fmt.Println(`"MemberID" :`, a.GetMemberID())
 		}
-		fmt.Println(`"AlarmType" :`, a.Alarm)
+		fmt.Println(`"AlarmType" :`, a.GetAlarm())
 		fmt.Println()
 	}
 }
 
-func (p *fieldsPrinter) RoleAdd(role string, r v3.AuthRoleAddResponse) { p.hdr(r.Header) }
-func (p *fieldsPrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
-	p.hdr(r.Header)
-	for _, p := range r.Perm {
-		fmt.Println(`"PermType" : `, p.PermType.String())
-		fmt.Printf("\"Key\" : %q\n", string(p.Key))
-		fmt.Printf("\"RangeEnd\" : %q\n", string(p.RangeEnd))
+func (p *fieldsPrinter) RoleAdd(role string, r *v3.AuthRoleAddResponse) {
+	p.hdr((*pb.AuthRoleAddResponse)(r).GetHeader())
+}
+
+func (p *fieldsPrinter) RoleGet(role string, r *v3.AuthRoleGetResponse) {
+	resp := (*pb.AuthRoleGetResponse)(r)
+	p.hdr(resp.GetHeader())
+	for _, perm := range resp.GetPerm() {
+		fmt.Println(`"PermType" : `, perm.GetPermType().String())
+		fmt.Printf("\"Key\" : %q\n", string(perm.GetKey()))
+		fmt.Printf("\"RangeEnd\" : %q\n", string(perm.GetRangeEnd()))
 	}
 }
-func (p *fieldsPrinter) RoleDelete(role string, r v3.AuthRoleDeleteResponse) { p.hdr(r.Header) }
-func (p *fieldsPrinter) RoleList(r v3.AuthRoleListResponse) {
-	p.hdr(r.Header)
+
+func (p *fieldsPrinter) RoleDelete(role string, r *v3.AuthRoleDeleteResponse) {
+	p.hdr((*pb.AuthRoleDeleteResponse)(r).GetHeader())
+}
+
+func (p *fieldsPrinter) RoleList(r *v3.AuthRoleListResponse) {
+	resp := (*pb.AuthRoleListResponse)(r)
+	p.hdr(resp.GetHeader())
 	fmt.Print(`"Roles" :`)
-	for _, r := range r.Roles {
-		fmt.Printf(" %q", r)
+	for _, role := range resp.GetRoles() {
+		fmt.Printf(" %q", role)
 	}
 	fmt.Println()
 }
 
-func (p *fieldsPrinter) RoleGrantPermission(role string, r v3.AuthRoleGrantPermissionResponse) {
-	p.hdr(r.Header)
+func (p *fieldsPrinter) RoleGrantPermission(role string, r *v3.AuthRoleGrantPermissionResponse) {
+	p.hdr((*pb.AuthRoleGrantPermissionResponse)(r).GetHeader())
 }
 
-func (p *fieldsPrinter) RoleRevokePermission(role string, key string, end string, r v3.AuthRoleRevokePermissionResponse) {
-	p.hdr(r.Header)
-}
-func (p *fieldsPrinter) UserAdd(user string, r v3.AuthUserAddResponse)          { p.hdr(r.Header) }
-func (p *fieldsPrinter) UserChangePassword(r v3.AuthUserChangePasswordResponse) { p.hdr(r.Header) }
-func (p *fieldsPrinter) UserGrantRole(user string, role string, r v3.AuthUserGrantRoleResponse) {
-	p.hdr(r.Header)
+func (p *fieldsPrinter) RoleRevokePermission(role string, key string, end string, r *v3.AuthRoleRevokePermissionResponse) {
+	p.hdr((*pb.AuthRoleRevokePermissionResponse)(r).GetHeader())
 }
 
-func (p *fieldsPrinter) UserRevokeRole(user string, role string, r v3.AuthUserRevokeRoleResponse) {
-	p.hdr(r.Header)
+func (p *fieldsPrinter) UserAdd(user string, r *v3.AuthUserAddResponse) {
+	p.hdr((*pb.AuthUserAddResponse)(r).GetHeader())
 }
-func (p *fieldsPrinter) UserDelete(user string, r v3.AuthUserDeleteResponse) { p.hdr(r.Header) }
+
+func (p *fieldsPrinter) UserChangePassword(r *v3.AuthUserChangePasswordResponse) {
+	p.hdr((*pb.AuthUserChangePasswordResponse)(r).GetHeader())
+}
+
+func (p *fieldsPrinter) UserGrantRole(user string, role string, r *v3.AuthUserGrantRoleResponse) {
+	p.hdr((*pb.AuthUserGrantRoleResponse)(r).GetHeader())
+}
+
+func (p *fieldsPrinter) UserRevokeRole(user string, role string, r *v3.AuthUserRevokeRoleResponse) {
+	p.hdr((*pb.AuthUserRevokeRoleResponse)(r).GetHeader())
+}
+
+func (p *fieldsPrinter) UserDelete(user string, r *v3.AuthUserDeleteResponse) {
+	p.hdr((*pb.AuthUserDeleteResponse)(r).GetHeader())
+}

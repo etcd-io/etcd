@@ -230,6 +230,13 @@ func (c integrationClient) Get(ctx context.Context, key string, o config.GetOpti
 	if o.MinModRevision != 0 {
 		clientOpts = append(clientOpts, clientv3.WithMinModRev(int64(o.MinModRevision)))
 	}
+	if o.Stream {
+		stream, err := c.Client.GetStream(ctx, key, clientOpts...)
+		if err != nil {
+			return nil, err
+		}
+		return clientv3.GetStreamToGetResponse(stream)
+	}
 	return c.Client.Get(ctx, key, clientOpts...)
 }
 

@@ -192,6 +192,110 @@ func ExampleKV_getSortedPrefix() {
 	// key_0 : value
 }
 
+func mockKVGetStream() {
+	fmt.Println("key_0 : value")
+	fmt.Println("key_1 : value")
+	fmt.Println("key_2 : value")
+	fmt.Println("count: 3, more: false")
+}
+
+func ExampleKV_getStream() {
+	forUnitTestsRunInMockedContext(mockKVGetStream, func() {
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   exampleEndpoints(),
+			DialTimeout: dialTimeout,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer cli.Close()
+
+		for i := 0; i < 3; i++ {
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			_, err = cli.Put(ctx, fmt.Sprintf("key_%d", i), "value")
+			cancel()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
+		stream, err := cli.GetStream(ctx, "key", clientv3.WithPrefix())
+		if err != nil {
+			log.Fatal(err)
+		}
+		// Header, More, and Count are populated only on the final chunk, and
+		// only when the stream completes without error. Track the latest
+		// chunk to read them, the same way they appear on a unary Get response.
+		var last clientv3.RangeStreamResponse
+		for chunk := range stream {
+			if err := chunk.Err(); err != nil {
+				log.Fatal(err)
+			}
+			for _, ev := range chunk.Kvs {
+				fmt.Printf("%s : %s\n", ev.Key, ev.Value)
+			}
+			last = chunk
+		}
+		fmt.Printf("count: %d, more: %v\n", last.Count, last.More)
+	})
+	// Output:
+	// key_0 : value
+	// key_1 : value
+	// key_2 : value
+	// count: 3, more: false
+}
+
+func mockKVGetStreamToGetResponse() {
+	fmt.Println("count: 3")
+	fmt.Println("key_0 : value")
+	fmt.Println("key_1 : value")
+	fmt.Println("key_2 : value")
+}
+
+func ExampleKV_getStreamToGetResponse() {
+	forUnitTestsRunInMockedContext(mockKVGetStreamToGetResponse, func() {
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   exampleEndpoints(),
+			DialTimeout: dialTimeout,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer cli.Close()
+
+		for i := 0; i < 3; i++ {
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			_, err = cli.Put(ctx, fmt.Sprintf("key_%d", i), "value")
+			cancel()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
+		stream, err := cli.GetStream(ctx, "key", clientv3.WithPrefix())
+		if err != nil {
+			log.Fatal(err)
+		}
+		resp, err := clientv3.GetStreamToGetResponse(stream)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("count: %d\n", resp.Count)
+		for _, ev := range resp.Kvs {
+			fmt.Printf("%s : %s\n", ev.Key, ev.Value)
+		}
+	})
+	// Output:
+	// count: 3
+	// key_0 : value
+	// key_1 : value
+	// key_2 : value
+}
+
 func mockKVDelete() {
 	fmt.Println("Deleted all keys: true")
 }

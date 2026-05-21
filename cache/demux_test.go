@@ -336,6 +336,148 @@ func TestSlowWatcherResync(t *testing.T) {
 	}
 }
 
+func TestWatcherCompactResponseHasHeader(t *testing.T) {
+	w := newWatcher(1, nil)
+
+	w.Compact(7)
+
+	require.NotNil(t, w.cancelResp.Header)
+	require.True(t, w.cancelResp.Canceled)
+	require.Equal(t, int64(7), w.cancelResp.CompactRevision)
+}
+
+func TestBroadcastProgress(t *testing.T) {
+	t.Run("sends progress to active watchers", func(t *testing.T) {
+		d := newDemux(16, 10*time.Millisecond)
+		d.Init(1)
+		d.maxRev = 10
+
+		w1 := newWatcher(8, nil)
+		w2 := newWatcher(8, nil)
+		d.Register(w1, 0)
+		d.Register(w2, 0)
+
+		d.BroadcastProgress()
+
+		resp1 := readResponse(t, w1.respCh)
+		require.Truef(t, resp1.IsProgressNotify(), "expected progress notify")
+		require.Equal(t, int64(10), resp1.Header.Revision)
+
+		resp2 := readResponse(t, w2.respCh)
+		require.Truef(t, resp2.IsProgressNotify(), "expected progress notify")
+		require.Equal(t, int64(10), resp2.Header.Revision)
+	})
+
+	t.Run("is no-op when maxRev is zero", func(t *testing.T) {
+		d := newDemux(16, 10*time.Millisecond)
+		d.Init(1)
+
+		w := newWatcher(8, nil)
+		d.Register(w, 0)
+
+		d.maxRev = 0
+		d.BroadcastProgress()
+		select {
+		case <-w.respCh:
+			t.Fatal("expected no response when maxRev is 0")
+		default:
+		}
+	})
+
+	t.Run("sends progress only to active watchers", func(t *testing.T) {
+		d := newDemux(16, 10*time.Millisecond)
+		d.Init(1)
+		d.maxRev = 10
+
+		active := newWatcher(8, nil)
+		lagging := newWatcher(8, nil)
+		d.Register(active, 0) // startingRev becomes maxRev+1 => active
+		d.Register(lagging, 5)
+
+		d.BroadcastProgress()
+
+		activeResp := readResponse(t, active.respCh)
+		require.Truef(t, activeResp.IsProgressNotify(), "expected progress notify for active watcher")
+		require.Equal(t, int64(10), activeResp.Header.Revision)
+
+		select {
+		case <-lagging.respCh:
+			t.Fatal("expected no progress notify for lagging watcher")
+		default:
+		}
+	})
+}
+
+func TestBroadcastProgressTo(t *testing.T) {
+	t.Run("sends progress only to the target watcher", func(t *testing.T) {
+		d := newDemux(16, 10*time.Millisecond)
+		d.Init(1)
+		d.maxRev = 10
+
+		target := newWatcher(8, nil)
+		other := newWatcher(8, nil)
+		d.Register(target, 0)
+		d.Register(other, 0)
+
+		d.BroadcastProgressTo(target)
+
+		resp := readResponse(t, target.respCh)
+		require.Truef(t, resp.IsProgressNotify(), "expected progress notify")
+		require.Equal(t, int64(10), resp.Header.Revision)
+
+		select {
+		case <-other.respCh:
+			t.Fatal("expected no progress notify for other watcher")
+		default:
+		}
+	})
+
+	t.Run("is no-op when maxRev is zero", func(t *testing.T) {
+		d := newDemux(16, 10*time.Millisecond)
+		d.Init(1)
+
+		w := newWatcher(8, nil)
+		d.Register(w, 0)
+
+		d.maxRev = 0
+		d.BroadcastProgressTo(w)
+
+		select {
+		case <-w.respCh:
+			t.Fatal("expected no response when maxRev is 0")
+		default:
+		}
+	})
+
+	t.Run("is no-op for lagging watcher", func(t *testing.T) {
+		d := newDemux(16, 10*time.Millisecond)
+		d.Init(1)
+		d.maxRev = 10
+
+		w := newWatcher(8, nil)
+		d.Register(w, 5) // startingRev <= maxRev => lagging
+
+		d.BroadcastProgressTo(w)
+
+		select {
+		case <-w.respCh:
+			t.Fatal("expected no progress notify for lagging watcher")
+		default:
+		}
+	})
+}
+
+func readResponse(t *testing.T, ch <-chan clientv3.WatchResponse) clientv3.WatchResponse {
+	t.Helper()
+	select {
+	case resp := <-ch:
+		return resp
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timed out waiting for response")
+		return clientv3.WatchResponse{}
+	}
+}
+
 func respWithEventRevs(revs ...int64) clientv3.WatchResponse {
 	events := make([]*clientv3.Event, 0, len(revs))
 	for _, r := range revs {
@@ -364,6 +506,7 @@ func readBatches(t *testing.T, w *watcher, n int) (revs []int64, sizes []int) {
 			if len(resp.Events) == 0 {
 				continue
 			}
+			require.NotNil(t, resp.Header)
 			revs = append(revs, resp.Events[0].Kv.ModRevision)
 			sizes = append(sizes, len(resp.Events))
 		case <-timeout:

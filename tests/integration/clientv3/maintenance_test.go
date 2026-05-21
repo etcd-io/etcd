@@ -30,7 +30,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -182,6 +181,25 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("expected %v, got %v", context.Canceled, err)
 	}
+}
+
+// TestMaintenanceSnapshotFromServerClient verifies that snapshot streams created
+// by Member.ServerClient (in-process adapter path) complete successfully.
+func TestMaintenanceSnapshotFromServerClient(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	srvClient := clus.Members[0].ServerClient
+	require.NotNilf(t, srvClient, "Member.ServerClient must be initialized")
+
+	rc, err := srvClient.Snapshot(t.Context())
+	require.NoError(t, err)
+	defer rc.Close()
+
+	_, err = io.Copy(io.Discard, rc)
+	require.NoErrorf(t, err, "snapshot stream should terminate cleanly")
 }
 
 // TestMaintenanceSnapshotWithVersionTimeout ensures that SnapshotWithVersion function
@@ -432,7 +450,7 @@ func TestMaintenanceStatus(t *testing.T) {
 			}
 
 			t.Logf("Creating client...")
-			cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}}) //nolint:staticcheck // TODO: remove for a supported version
+			cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps})
 			require.NoError(t, err)
 			defer cli.Close()
 			t.Logf("Creating client [DONE]")

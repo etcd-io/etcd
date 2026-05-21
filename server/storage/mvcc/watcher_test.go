@@ -23,7 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -110,7 +112,7 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 		id, err := w.Watch(t.Context(), tcase.givenID, []byte("foo"), nil, 0)
 		if tcase.expectedErr != nil || err != nil {
 			if !errors.Is(err, tcase.expectedErr) {
-				t.Errorf("expected get error %q in test case %q, got %q", tcase.expectedErr, i, err)
+				t.Errorf("expected get error %q in test case %d, got %q", tcase.expectedErr, i, err)
 			}
 		} else if tcase.expectedID != id {
 			t.Errorf("expected to create ID %d, got %d in test case %d", tcase.expectedID, id, i)
@@ -192,6 +194,59 @@ func TestWatcherWatchPrefix(t *testing.T) {
 	}
 }
 
+func TestWatchResponseEventsNotSharedAcrossWatchers(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	w := s.NewWatchStream()
+	defer w.Close()
+
+	key := []byte("foo")
+	value := []byte("bar")
+	id1, err := w.Watch(t.Context(), 0, key, nil, 0)
+	if err != nil {
+		t.Fatalf("failed to create first watcher: %v", err)
+	}
+	id2, err := w.Watch(t.Context(), 0, key, nil, 0)
+	if err != nil {
+		t.Fatalf("failed to create second watcher: %v", err)
+	}
+
+	s.Put(key, value, lease.NoLease)
+	respByID := collectWatchResponsesForWatchers(t, w.Chan(), id1, id2)
+	resp1 := respByID[id1]
+	resp2 := respByID[id2]
+
+	if len(resp1.Events) != 1 || len(resp2.Events) != 1 {
+		t.Fatalf("unexpected event count: first response has %d events, second response has %d events", len(resp1.Events), len(resp2.Events))
+	}
+	if resp1.Events[0] == resp2.Events[0] {
+		t.Fatalf("watch responses share the same event pointer")
+	}
+}
+
+func collectWatchResponsesForWatchers(t *testing.T, ch <-chan WatchResponse, watcherIDs ...WatchID) map[WatchID]WatchResponse {
+	t.Helper()
+	target := make(map[WatchID]struct{}, len(watcherIDs))
+	for _, id := range watcherIDs {
+		target[id] = struct{}{}
+	}
+
+	respByID := make(map[WatchID]WatchResponse, len(watcherIDs))
+	for len(respByID) < len(watcherIDs) {
+		select {
+		case resp := <-ch:
+			if _, ok := target[resp.WatchID]; ok {
+				respByID[resp.WatchID] = resp
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("timed out waiting for watch responses; got %d, want %d", len(respByID), len(watcherIDs))
+		}
+	}
+	return respByID
+}
+
 // TestWatcherWatchWrongRange ensures that watcher with wrong 'end' range
 // does not create watcher, which panics when canceling in range tree.
 func TestWatcherWatchWrongRange(t *testing.T) {
@@ -236,16 +291,16 @@ func TestWatchDeleteRange(t *testing.T) {
 
 	s.DeleteRange(from, to)
 
-	we := []mvccpb.Event{
-		{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_0"), ModRevision: 5}},
-		{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_1"), ModRevision: 5}},
-		{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_2"), ModRevision: 5}},
+	we := []*mvccpb.Event{
+		{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_0"), ModRevision: 5}},
+		{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_1"), ModRevision: 5}},
+		{Type: mvccpb.Event_DELETE, Kv: &mvccpb.KeyValue{Key: []byte("foo_2"), ModRevision: 5}},
 	}
 
 	select {
 	case r := <-w.Chan():
-		if !reflect.DeepEqual(r.Events, we) {
-			t.Errorf("event = %v, want %v", r.Events, we)
+		if diff := cmp.Diff(we, r.Events, protocmp.Transform()); diff != "" {
+			t.Errorf("unexpected events (-want +got):\n%s", diff)
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("failed to receive event after 10 seconds!")
@@ -353,7 +408,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 			id, _ := w.Watch(t.Context(), 0, notTestKey, nil, tc.startRev)
 			w.RequestProgress(id)
 			asssertProgressSent(t, w, id, tc.expectProgressBeforeSync)
-			s.syncWatchers([]mvccpb.Event{})
+			s.syncWatchers()
 			w.RequestProgress(id)
 			asssertProgressSent(t, w, id, tc.expectProgressAfterSync)
 		})
@@ -403,7 +458,7 @@ func TestWatcherRequestProgressAll(t *testing.T) {
 	default:
 	}
 
-	s.syncWatchers([]mvccpb.Event{})
+	s.syncWatchers()
 
 	w.RequestProgressAll()
 	wrs := WatchResponse{WatchID: clientv3.InvalidWatchID, Revision: 2}
@@ -425,8 +480,8 @@ func TestWatcherWatchWithFilter(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	filterPut := func(e mvccpb.Event) bool {
-		return e.Type == mvccpb.PUT
+	filterPut := func(e *mvccpb.Event) bool {
+		return e.Type == mvccpb.Event_PUT
 	}
 
 	w.Watch(t.Context(), 0, []byte("foo"), nil, 0, filterPut)

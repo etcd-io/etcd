@@ -10,14 +10,21 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 - [Removed all deprecated experimental flags](https://github.com/etcd-io/etcd/pull/19959)
 - [Removed v2discovery](https://github.com/etcd-io/etcd/pull/20109)
 - [Removed client/v2](https://github.com/etcd-io/etcd/pull/20117)
+- [Removed v2 request and apply_v2.go](https://github.com/etcd-io/etcd/pull/21263)
 
 ### etcd server
 
+- [Prioritize LeaseRevoke requests to ensure timely lease expiration during overload conditions](https://github.com/etcd-io/etcd/pull/20492)
 - [Update go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc to v0.61.0 and replaced the deprecated `UnaryServerInterceptor` and `StreamServerInterceptor` with `NewServerHandler`](https://github.com/etcd-io/etcd/pull/20017)
 - [Add Support for Unix Socket endpoints](https://github.com/etcd-io/etcd/pull/19760)
 - [Improves performance of lease and user/role operations (up to 2x) by updating `(*readView) Rev()` to use `SharedBufReadTxMode`](https://github.com/etcd-io/etcd/pull/20411)
 - [Allow client to retrieve AuthStatus without authentication](https://github.com/etcd-io/etcd/pull/20802)
 - [Add FastLeaseKeepAlive feature to enable faster lease renewal by skipping the wait for the applied index](https://github.com/etcd-io/etcd/pull/20589)
+- [Bootstrap etcd from v3store](https://github.com/etcd-io/etcd/issues/20187), see changes below,
+  - [Stop loading v2 snapshot files](https://github.com/etcd-io/etcd/pull/21107)
+  - [Initialize confState from v3 store on bootstrap](https://github.com/etcd-io/etcd/pull/21138)
+  - [Remove flag `--max-snapshots` in 3.8 rather than 3.7](https://github.com/etcd-io/etcd/pull/21160)
+  - [Keep the `--snapshot-count` flag](https://github.com/etcd-io/etcd/pull/21162)
 
 ### Package `clientv3`
 
@@ -31,7 +38,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 ### Dependencies
 
-- Compile binaries with [Go 1.25](https://go.dev/doc/devel/release#go1.25.minor).
+- Compile binaries with [Go 1.26](https://go.dev/doc/devel/release#go1.26.minor).
 - [Migrate the deprecated go-grpc-middleware v1 logging and tags libraries to v2 interceptors](https://github.com/etcd-io/etcd/pull/20420)
 
 ### Deprecations

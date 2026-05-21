@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -54,7 +53,6 @@ func TestMirrorSync_Authenticated(t *testing.T) {
 	cfg := clientv3.Config{
 		Endpoints:   initialClient.Endpoints(),
 		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		Username:    "syncer",
 		Password:    "syncfoo",
 	}

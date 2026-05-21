@@ -121,6 +121,53 @@ var testCases = []testCase{
 	{math.MaxInt64, "7fffffffffffffff", math.MaxInt64},
 }
 
+// TODO(fuweid): This helper is used to make sure that adaptor struct is
+// compatible with gogopb struct. We should remove this once we migrate to
+// official pb.
+func TestTxnResponseJSONFailedResponseMatchesProtoJSON(t *testing.T) {
+	response := &pb.TxnResponse{
+		Header:    &pb.ResponseHeader{Revision: 1},
+		Succeeded: false,
+	}
+
+	want, err := json.Marshal(response)
+	require.NoError(t, err)
+	got, err := json.Marshal(TxnResponseJSONFromProto(response))
+	require.NoError(t, err)
+
+	assert.JSONEq(t, string(want), string(got))
+}
+
+// TODO(fuweid): This helper is used to make sure that adaptor struct is
+// compatible with gogopb struct. We should remove this once we migrate to
+// official pb.
+func TestTxnResponseJSONNestedTxnRoundTrip(t *testing.T) {
+	response := &pb.TxnResponse{
+		Succeeded: true,
+		Responses: []*pb.ResponseOp{{
+			Response: &pb.ResponseOp_ResponseTxn{
+				ResponseTxn: &pb.TxnResponse{
+					Succeeded: true,
+					Responses: []*pb.ResponseOp{{
+						Response: &pb.ResponseOp_ResponseRange{
+							ResponseRange: &pb.RangeResponse{Count: 1},
+						},
+					}},
+				},
+			},
+		}},
+	}
+
+	data, err := json.Marshal(TxnResponseJSONFromProto(response))
+	require.NoError(t, err)
+
+	var got TxnResponseJSON
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	require.NoError(t, decoder.Decode(&got))
+
+	assert.Equal(t, response, got.ToProto())
+}
+
 func TestMemberAdd(t *testing.T) {
 	tests := []testScenario{
 		{name: "decimal", isHex: false, cases: testCases},
@@ -148,7 +195,7 @@ func TestMemberAdd(t *testing.T) {
 						Member:  &pb.Member{ID: tt.number},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
-					p.MemberAdd(response)
+					p.MemberAdd(&response)
 
 					var got map[string]any
 					err := decoder.Decode(&got)
@@ -193,7 +240,7 @@ func TestMemberRemove(t *testing.T) {
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
-					p.MemberRemove(0, response)
+					p.MemberRemove(0, &response)
 
 					var got map[string]any
 					err := decoder.Decode(&got)
@@ -233,7 +280,7 @@ func TestMemberUpdate(t *testing.T) {
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
-					p.MemberUpdate(0, response)
+					p.MemberUpdate(0, &response)
 
 					var got map[string]any
 					err := decoder.Decode(&got)
@@ -273,7 +320,7 @@ func TestMemberPromote(t *testing.T) {
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
-					p.MemberPromote(0, response)
+					p.MemberPromote(0, &response)
 
 					var got map[string]any
 					err := decoder.Decode(&got)
@@ -313,7 +360,7 @@ func TestMemberList(t *testing.T) {
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
-					p.MemberList(response)
+					p.MemberList(&response)
 
 					var got map[string]any
 					err := decoder.Decode(&got)

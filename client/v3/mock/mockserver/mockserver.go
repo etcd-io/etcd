@@ -22,7 +22,9 @@ import (
 	"sync"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/status"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 )
@@ -165,7 +167,10 @@ func (ms *MockServers) Stop() {
 	ms.wg.Wait()
 }
 
-type mockKVServer struct{}
+type mockKVServer struct {
+	// we want compile errors if new methods are added
+	pb.UnsafeKVServer
+}
 
 func (m *mockKVServer) Range(context.Context, *pb.RangeRequest) (*pb.RangeResponse, error) {
 	return &pb.RangeResponse{}, nil
@@ -183,6 +188,10 @@ func (m *mockKVServer) Txn(context.Context, *pb.TxnRequest) (*pb.TxnResponse, er
 	return &pb.TxnResponse{}, nil
 }
 
+func (m *mockKVServer) RangeStream(*pb.RangeRequest, grpc.ServerStreamingServer[pb.RangeStreamResponse]) error {
+	return status.Error(codes.Unimplemented, "RangeStream is not supported by the mock server")
+}
+
 func (m *mockKVServer) Compact(context.Context, *pb.CompactionRequest) (*pb.CompactionResponse, error) {
 	return &pb.CompactionResponse{}, nil
 }
@@ -191,7 +200,10 @@ func (m *mockKVServer) Lease(context.Context, *pb.LeaseGrantRequest) (*pb.LeaseG
 	return &pb.LeaseGrantResponse{}, nil
 }
 
-type mockLeaseServer struct{}
+type mockLeaseServer struct {
+	// we want compile errors if new methods are added
+	pb.UnsafeLeaseServer
+}
 
 func (s mockLeaseServer) LeaseGrant(context.Context, *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
 	return &pb.LeaseGrantResponse{}, nil

@@ -55,6 +55,7 @@ type ClientConfig struct {
 	CertAuthority  bool
 	AutoTLS        bool
 	RevokeCerts    bool
+	DialTimeout    time.Duration
 }
 
 // allow alphanumerics, underscores and dashes
@@ -1142,6 +1143,11 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, tb test
 		default:
 		}
 		for i := range membs {
+			if !membs[i].IsRunning() {
+				// if member[i] has stopped
+				continue
+			}
+
 			resp, err := membs[i].Etcdctl().Status(ctx)
 			if err != nil {
 				if strings.Contains(err.Error(), "connection refused") {

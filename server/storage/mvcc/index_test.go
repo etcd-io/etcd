@@ -223,7 +223,7 @@ func TestIndexRevision(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		revs, _ := ti.Revisions(tt.key, tt.end, tt.atRev, tt.limit)
+		revs, _ := ti.Revisions(tt.key, tt.end, tt.atRev, tt.limit, true)
 		if !reflect.DeepEqual(revs, tt.wrevs) {
 			t.Errorf("#%d limit %d: revs = %+v, want %+v", i, tt.limit, revs, tt.wrevs)
 		}
@@ -231,6 +231,99 @@ func TestIndexRevision(t *testing.T) {
 		if count != tt.wcounts {
 			t.Errorf("#%d: count = %d, want %v", i, count, tt.wcounts)
 		}
+	}
+}
+
+func TestIndexRevisionsWithTotalCount(t *testing.T) {
+	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2"), []byte("foo2"), []byte("foo1"), []byte("foo")}
+	allRevs := []Revision{{Main: 1}, {Main: 2}, {Main: 3}, {Main: 4}, {Main: 5}, {Main: 6}}
+
+	ti := newTreeIndex(zaptest.NewLogger(t))
+	for i := range allKeys {
+		ti.Put(allKeys[i], allRevs[i])
+	}
+
+	// Range [foo, fop) @ rev 6 matches 3 keys: foo, foo1, foo2.
+	tests := []struct {
+		name           string
+		key, end       []byte
+		atRev          int64
+		limit          int
+		withTotalCount bool
+		wrevs          []Revision
+		wtotal         int
+	}{
+		{
+			name:           "withTotalCount=true with limit returns the full total",
+			key:            []byte("foo"),
+			end:            []byte("fop"),
+			atRev:          6,
+			limit:          1,
+			withTotalCount: true,
+			wrevs:          []Revision{{Main: 6}},
+			wtotal:         3,
+		},
+		{
+			name:           "withTotalCount=false with limit caps total at len(revs)",
+			key:            []byte("foo"),
+			end:            []byte("fop"),
+			atRev:          6,
+			limit:          1,
+			withTotalCount: false,
+			wrevs:          []Revision{{Main: 6}},
+			wtotal:         1,
+		},
+		{
+			name:           "withTotalCount=false with limit larger than matches returns full total",
+			key:            []byte("foo"),
+			end:            []byte("fop"),
+			atRev:          6,
+			limit:          10,
+			withTotalCount: false,
+			wrevs:          []Revision{{Main: 6}, {Main: 5}, {Main: 4}},
+			wtotal:         3,
+		},
+		{
+			name:           "withTotalCount=false without limit returns full total",
+			key:            []byte("foo"),
+			end:            []byte("fop"),
+			atRev:          6,
+			limit:          0,
+			withTotalCount: false,
+			wrevs:          []Revision{{Main: 6}, {Main: 5}, {Main: 4}},
+			wtotal:         3,
+		},
+		{
+			name:           "withTotalCount=true without limit returns full total",
+			key:            []byte("foo"),
+			end:            []byte("fop"),
+			atRev:          6,
+			limit:          0,
+			withTotalCount: true,
+			wrevs:          []Revision{{Main: 6}, {Main: 5}, {Main: 4}},
+			wtotal:         3,
+		},
+		{
+			name:           "withTotalCount=false with no matches",
+			key:            []byte("bar"),
+			end:            []byte("baz"),
+			atRev:          6,
+			limit:          5,
+			withTotalCount: false,
+			wrevs:          nil,
+			wtotal:         0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			revs, total := ti.Revisions(tt.key, tt.end, tt.atRev, tt.limit, tt.withTotalCount)
+			if !reflect.DeepEqual(revs, tt.wrevs) {
+				t.Errorf("revs = %+v, want %+v", revs, tt.wrevs)
+			}
+			if total != tt.wtotal {
+				t.Errorf("total = %d, want %d", total, tt.wtotal)
+			}
+		})
 	}
 }
 

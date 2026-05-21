@@ -45,7 +45,7 @@ var testRunner = framework.E2eTestRunner
 
 var (
 	WaitBeforeFailpoint = time.Second
-	WaitJitter          = traffic.DefaultCompactionPeriod
+	WaitJitter          = time.Millisecond * 200
 	WaitAfterFailpoint  = time.Second
 )
 
@@ -171,7 +171,6 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 			Lg:              lg,
 			Endpoints:       endpoints,
 			MaxRevisionChan: maxRevisionChan,
-			Cfg:             s.Watch,
 			ClientSet:       watchSet,
 		})
 		return err

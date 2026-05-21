@@ -248,7 +248,7 @@ func TestMutexWaitsOnCurrentHolder(t *testing.T) {
 	case wrp := <-wch:
 		require.Lenf(t, wrp.Events, 1, "expect a event, but got %v events", len(wrp.Events))
 		e := wrp.Events[0]
-		require.Equalf(t, mvccpb.PUT, e.Type, "expect a put event on prefix test-mutex, but got event type %v", e.Type)
+		require.Equalf(t, mvccpb.Event_PUT, e.Type, "expect a put event on prefix test-mutex, but got event type %v", e.Type)
 	case <-time.After(time.Second):
 		t.Fatalf("failed to receive a watch response")
 	}
@@ -261,7 +261,7 @@ func TestMutexWaitsOnCurrentHolder(t *testing.T) {
 	case wrp := <-wch:
 		require.Lenf(t, wrp.Events, 1, "expect a event, but got %v events", len(wrp.Events))
 		e := wrp.Events[0]
-		require.Equalf(t, mvccpb.DELETE, e.Type, "expect a delete event on prefix test-mutex, but got event type %v", e.Type)
+		require.Equalf(t, mvccpb.Event_DELETE, e.Type, "expect a delete event on prefix test-mutex, but got event type %v", e.Type)
 	case <-time.After(time.Second):
 		t.Fatal("failed to receive a watch response")
 	}

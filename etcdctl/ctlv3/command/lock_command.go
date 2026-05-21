@@ -112,7 +112,7 @@ func lockUntilSignal(c *clientv3.Client, lockname string, cmdArgs []string) erro
 	if len(k.Kvs) == 0 {
 		return errors.New("lock lost on init")
 	}
-	display.Get(*k)
+	display.Get(k)
 
 	select {
 	case <-donec:
