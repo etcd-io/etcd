@@ -26,38 +26,34 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-ARCH=$(go env GOARCH)
-VERSION="${VERSION}-${ARCH}"
 DOCKERFILE="Dockerfile"
+PLATFORMS=${PLATFORMS:-"linux/amd64,linux/arm64,linux/ppc64le,linux/s390x"}
 
-if [ -z "${BINARYDIR:-}" ]; then
-  RELEASE="etcd-${1}"-$(go env GOOS)-${ARCH}
-  BINARYDIR="${RELEASE}"
-  TARFILE="${RELEASE}.tar.gz"
-  TARURL="https://github.com/etcd-io/etcd/releases/download/${1}/${TARFILE}"
-  if ! curl -f -L -o "${TARFILE}" "${TARURL}" ; then
-    echo "Failed to download ${TARURL}."
-    exit 1
-  fi
-  tar -zvxf "${TARFILE}"
-fi
-
-BINARYDIR=${BINARYDIR:-.}
 BUILDDIR=${BUILDDIR:-.}
 
-IMAGEDIR=${BUILDDIR}/image-docker
+for platform in $(echo "${PLATFORMS}" | tr ',' ' '); do
+  RELEASE="etcd-${VERSION}-linux-${platform#linux/}"
+  if [ ! -d "${BUILDDIR}/${RELEASE}" ]; then
+    TARFILE="${RELEASE}.tar.gz"
+    TARURL="https://github.com/etcd-io/etcd/releases/download/${VERSION}/${TARFILE}"
+    if ! curl -f -L -o "${BUILDDIR}/${TARFILE}" "${TARURL}" ; then
+      echo "Failed to download ${TARURL}."
+      exit 1
+    fi
+    tar -C "${BUILDDIR}" -zvxf "${BUILDDIR}/${TARFILE}"
+  fi
+done
 
-mkdir -p "${IMAGEDIR}"/var/etcd
-mkdir -p "${IMAGEDIR}"/var/lib/etcd
-cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${BINARYDIR}"/etcdutl "${IMAGEDIR}"
-
-cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
-
-if [ -z "${TAG:-}" ]; then
-    # Fix incorrect image "Architecture" using buildkit
-    # From https://stackoverflow.com/q/72144329/
-    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
-    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
+tag_args=()
+if [ -z "${REGISTRY:-}" ]; then
+  tag_args+=("-t" "gcr.io/etcd-development/etcd:${VERSION}")
+  tag_args+=("-t" "quay.io/coreos/etcd:${VERSION}")
 else
-    docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
+  tag_args+=("-t" "${REGISTRY}/etcd:${VERSION}")
 fi
+
+docker buildx build --build-arg="VERSION=${VERSION}" \
+  --build-arg="BUILDDIR=${BUILDDIR}" \
+  --platform="${PLATFORMS}" \
+  "${tag_args[@]}" \
+  .
