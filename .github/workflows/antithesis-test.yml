@@ -76,7 +76,7 @@ jobs:
           docker push $IMAGE
 
       - name: Run Antithesis Tests
-        uses: antithesishq/antithesis-trigger-action@f6221e2ba819fe0ac3e36bd67a281fa439a03fba # v0.10
+        uses: antithesishq/antithesis-trigger-action@72e1bc49d6a5f66c9b892e2b311844e00d342554 # v0.11
         with:
           notebook_name: etcd
           tenant: linuxfoundation
