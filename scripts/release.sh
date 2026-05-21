@@ -282,9 +282,6 @@ main() {
 
   # Check image versions
   for IMAGE in "quay.io/coreos/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"; do
-    if [ "${DRY_RUN}" == "true" ] || [ "${NO_DOCKER_PUSH}" == 1 ]; then
-      IMAGE="${IMAGE}-amd64"
-    fi
     # shellcheck disable=SC2155
     local image_version=$(docker run --rm "${IMAGE}" etcd --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
     if [ "${image_version}" != "${VERSION}" ]; then
