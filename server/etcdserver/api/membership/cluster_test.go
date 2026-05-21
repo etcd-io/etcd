@@ -267,7 +267,7 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 		lcl := newTestCluster(t, tt.clmembs)
 		ecl := newTestCluster(t, tt.membs)
 		if err := ValidateClusterAndAssignIDs(zaptest.NewLogger(t), lcl, ecl); err != nil {
-			t.Errorf("#%d: unexpect update error: %v", i, err)
+			t.Errorf("#%d: unexpected update error: %v", i, err)
 		}
 		if !reflect.DeepEqual(lcl.MemberIDs(), tt.wids) {
 			t.Errorf("#%d: ids = %v, want %v", i, lcl.MemberIDs(), tt.wids)

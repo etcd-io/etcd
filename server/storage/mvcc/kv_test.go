@@ -594,11 +594,11 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 	for i, tt := range tests {
 		_, err := s.Compact(traceutil.TODO(), tt.rev)
 		if err != nil {
-			t.Errorf("#%d: unexpect compact error %v", i, err)
+			t.Errorf("#%d: unexpected compact error %v", i, err)
 		}
 		r, err := s.Range(t.Context(), []byte("foo"), nil, RangeOptions{Rev: tt.rev + 1})
 		if err != nil {
-			t.Errorf("#%d: unexpect range error %v", i, err)
+			t.Errorf("#%d: unexpected range error %v", i, err)
 		}
 		if !cmp.Equal(r.KVs, tt.wkvs, protocmp.Transform()) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
@@ -762,7 +762,7 @@ func TestKVSnapshot(t *testing.T) {
 	defer ns.Close()
 	r, err := ns.Range(t.Context(), []byte("a"), []byte("z"), RangeOptions{})
 	if err != nil {
-		t.Errorf("unexpect range error (%v)", err)
+		t.Errorf("unexpected range error (%v)", err)
 	}
 	if !cmp.Equal(r.KVs, wkvs, protocmp.Transform()) {
 		t.Errorf("kvs = %+v, want %+v", r.KVs, wkvs)

@@ -848,7 +848,7 @@ func TestV3LeaseSwitch(t *testing.T) {
 	rresp, err := integration.ToGRPC(clus.RandClient()).KV.Range(t.Context(), rreq)
 	require.NoError(t, err)
 	if len(rresp.Kvs) != 1 {
-		t.Fatalf("unexpect removal of key")
+		t.Fatalf("unexpected removal of key")
 	}
 
 	// revoke lease2 should remove key

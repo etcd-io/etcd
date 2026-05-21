@@ -398,10 +398,10 @@ function shellcheck_pass {
 }
 
 function shellws_pass {
-  log_callout "Ensuring no tab-based indention in shell scripts"
+  log_callout "Ensuring no tab-based indentation in shell scripts"
   local files
   if files=$(find . -name '*.sh' -print0 | xargs -0 grep -E -n $'^\s*\t'); then
-    log_error "FAIL: found tab-based indention in the following bash scripts. Use '  ' (double space):"
+    log_error "FAIL: found tab-based indentation in the following bash scripts. Use '  ' (double space):"
     log_error "${files}"
     log_warning "Suggestion: run \"make fix\" to address the issue."
     return 255
