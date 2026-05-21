@@ -11,6 +11,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 - [Removed v2discovery](https://github.com/etcd-io/etcd/pull/20109)
 - [Removed client/v2](https://github.com/etcd-io/etcd/pull/20117)
 - [Removed v2 request and apply_v2.go](https://github.com/etcd-io/etcd/pull/21263)
+- We no longer [release individual architecture Docker image tag](https://github.com/etcd-io/etcd/pull/21789). Please use the multi-arch manifest.
 
 ### etcd server
 
