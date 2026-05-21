@@ -272,7 +272,12 @@ func (wps *watchProxyStream) recvLoop() error {
 				filters:  v3rpc.FiltersFromRequest(cr),
 			}
 			if !w.wr.valid() {
-				w.post(&pb.WatchResponse{WatchId: clientv3.InvalidWatchID, Created: true, Canceled: true})
+				w.post(&pb.WatchResponse{
+					Header:   &pb.ResponseHeader{},
+					WatchId:  clientv3.InvalidWatchID,
+					Created:  true,
+					Canceled: true,
+				})
 				wps.mu.Unlock()
 				continue
 			}
