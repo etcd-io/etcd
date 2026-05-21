@@ -28,17 +28,19 @@ jobs:
           ref: ${{github.event.pull_request.head.ref}}
           repository: ${{github.event.pull_request.head.repo.full_name}}
           fetch-depth: 0
-      - name: Update devcontainer.json
+      - name: Update devcontainer references
         run: |
+          sed -i -E "s|(image: ).*|\1$(awk 'match($1, /FROM/){print $2}' tools/container-images/devcontainer/Dockerfile)|" .github/workflows/devcontainer-test.yml
           sed -i -E "s|(mcr\.microsoft\.com/devcontainers/go:)[^"'"'"]+|\1${{needs.dependabot-metadata.outputs.new-version}}|" .devcontainer/devcontainer.json
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-          git add .devcontainer/devcontainer.json
+          git add .devcontainer/devcontainer.json .github/workflows/devcontainer-test.yml
           git diff --cached --quiet && exit 0
 
-          git commit --signoff -m "build(deps): bump devcontainer.json
+          git commit --signoff -m "build(deps): bump devcontainer version references
 
-          Bumps .devcontainer/devcontainer.json to ${{needs.dependabot-metadata.outputs.new-version}}."
+          * Bumps .devcontainer/devcontainer.json to ${{needs.dependabot-metadata.outputs.new-version}}.
+          * Bumps .github/workflows/devcontainer-test.yml to ${{needs.dependabot-metadata.outputs.new-version}}."
           git push origin "HEAD:refs/heads/${{github.event.pull_request.head.ref}}"
