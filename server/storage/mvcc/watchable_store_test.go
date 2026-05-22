@@ -72,7 +72,7 @@ func TestNewWatcherCancel(t *testing.T) {
 	}
 
 	if s.(*watchableStore).synced.contains(string(testKey)) {
-		// the key shoud have been deleted
+		// the key should have been deleted
 		t.Errorf("existence = true, want false")
 	}
 }

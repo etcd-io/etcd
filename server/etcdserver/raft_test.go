@@ -251,7 +251,7 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 
 	select {
 	case <-ap.raftAdvancedC:
-		t.Log("recevied raft advance notification")
+		t.Log("received raft advance notification")
 	}
 
 	select {
