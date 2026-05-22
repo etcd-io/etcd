@@ -150,6 +150,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure, listener bool) {
 	defer l.Close()
 	if listener {
 		cfg.ClientListeners = map[url.URL]net.Listener{urls[0]: l}
+		cfg.ListenClientUrls = nil
 	}
 
 	cfg.Dir = filepath.Join(t.TempDir(), "embed-etcd")

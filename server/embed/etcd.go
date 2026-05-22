@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	defaultLog "log"
-	"maps"
 	"math"
 	"net"
 	"net/http"
@@ -670,12 +669,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		}
 	}
 
-	clientListeners := make(map[url.URL]net.Listener, len(cfg.ClientListeners)+len(cfg.ListenClientUrls))
 	for _, u := range cfg.ListenClientUrls {
-		clientListeners[u] = nil
-	}
-	maps.Copy(clientListeners, cfg.ClientListeners)
-	for u, l := range clientListeners {
 		addr, secure, network := resolveURL(u)
 
 		sctx := sctxs[addr]
@@ -688,15 +682,9 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.scheme = u.Scheme
 		sctx.addr = addr
 		sctx.network = network
-		sctx.l = l
 	}
 
-	httpClientListeners := make(map[url.URL]net.Listener, len(cfg.HTTPClientListeners)+len(cfg.ListenClientHttpUrls))
 	for _, u := range cfg.ListenClientHttpUrls {
-		httpClientListeners[u] = nil
-	}
-	maps.Copy(httpClientListeners, cfg.HTTPClientListeners)
-	for u, l := range httpClientListeners {
 		addr, secure, network := resolveURL(u)
 
 		sctx := sctxs[addr]
@@ -706,6 +694,42 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		} else if !sctx.httpOnly {
 			return nil, fmt.Errorf("cannot bind both --listen-client-urls and --listen-client-http-urls on the same url %s", u.String())
 		}
+		sctx.secure = sctx.secure || secure
+		sctx.insecure = sctx.insecure || !secure
+		sctx.scheme = u.Scheme
+		sctx.addr = addr
+		sctx.network = network
+		sctx.httpOnly = true
+	}
+
+	for u, l := range cfg.ClientListeners {
+		addr, secure, network := resolveURL(u)
+
+		sctx := sctxs[addr]
+		if sctx != nil {
+			return nil, fmt.Errorf("cannot specify the URL %v in both ClientListeners and ListenClientUrls or ListenClientHttpUrls", &u)
+		}
+
+		sctx = newServeCtx(cfg.logger)
+		sctxs[addr] = sctx
+		sctx.secure = sctx.secure || secure
+		sctx.insecure = sctx.insecure || !secure
+		sctx.scheme = u.Scheme
+		sctx.addr = addr
+		sctx.network = network
+		sctx.l = l
+	}
+
+	for u, l := range cfg.HTTPClientListeners {
+		addr, secure, network := resolveURL(u)
+
+		sctx := sctxs[addr]
+		if sctx != nil {
+			return nil, fmt.Errorf("cannot specify the URL %v in both HTTPClientListeners and ClientListeners, ListenClientUrls, or ListenClientHttpUrls", &u)
+		}
+
+		sctx = newServeCtx(cfg.logger)
+		sctxs[addr] = sctx
 		sctx.secure = sctx.secure || secure
 		sctx.insecure = sctx.insecure || !secure
 		sctx.scheme = u.Scheme
