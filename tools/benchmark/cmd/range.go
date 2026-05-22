@@ -49,6 +49,7 @@ var (
 	rangeConsistency string
 	rangeLimit       int64
 	rangeCountOnly   bool
+	rangeKeysOnly    bool
 	rangeStream      bool
 	rangePaginate    bool
 	rangePrefix      bool
@@ -61,6 +62,7 @@ func init() {
 	rangeCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
 	rangeCmd.Flags().Int64Var(&rangeLimit, "limit", 0, "Maximum number of results to return from range request (0 is no limit)")
 	rangeCmd.Flags().BoolVar(&rangeCountOnly, "count-only", false, "Only returns the count of keys")
+	rangeCmd.Flags().BoolVar(&rangeKeysOnly, "keys-only", false, "Only returns the keys")
 	rangeCmd.Flags().BoolVar(&rangeStream, "stream", false, "Use RangeStream instead of unary Range")
 	rangeCmd.Flags().BoolVar(&rangePaginate, "paginate", false, "Use paginated unary range with 10k-key pages")
 	rangeCmd.Flags().BoolVar(&rangePrefix, "prefix", false, "Range over all keys with the given key as prefix")
@@ -83,6 +85,11 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 
 	if rangePaginate && rangeLimit > 0 {
 		fmt.Fprintln(os.Stderr, "--paginate and --limit are mutually exclusive")
+		os.Exit(1)
+	}
+
+	if rangeCountOnly && rangeKeysOnly {
+		fmt.Fprintln(os.Stderr, "`--keys-only` and `--count-only` cannot be set at the same time")
 		os.Exit(1)
 	}
 
@@ -110,9 +117,14 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 	if rangeLimit > 0 {
 		baseOpts = append(baseOpts, v3.WithLimit(rangeLimit))
 	}
-	if rangeCountOnly {
+
+	switch {
+	case rangeCountOnly:
 		baseOpts = append(baseOpts, v3.WithCountOnly())
+	case rangeKeysOnly:
+		baseOpts = append(baseOpts, v3.WithKeysOnly())
 	}
+
 	if rangeConsistency == "s" {
 		baseOpts = append(baseOpts, v3.WithSerializable())
 	}
