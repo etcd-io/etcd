@@ -19,7 +19,6 @@ import (
 	"io"
 	"math/rand"
 	"os"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -35,13 +34,7 @@ func TestIsDirWriteable(t *testing.T) {
 	tmpdir := t.TempDir()
 	require.NoErrorf(t, IsDirWriteable(tmpdir), "unexpected IsDirWriteable error")
 	require.NoErrorf(t, os.Chmod(tmpdir, 0o444), "unexpected os.Chmod error")
-	me, err := user.Current()
-	if err != nil {
-		// err can be non-nil when cross compiled
-		// http://stackoverflow.com/questions/20609415/cross-compiling-user-current-not-implemented-on-linux-amd64
-		t.Skipf("failed to get current user: %v", err)
-	}
-	if me.Name == "root" || runtime.GOOS == "windows" {
+	if os.Getuid() == 0 || runtime.GOOS == "windows" {
 		// ideally we should check CAP_DAC_OVERRIDE.
 		// but it does not matter for tests.
 		// Chmod is not supported under windows.
