@@ -71,15 +71,7 @@ func TestReproduce18667(t *testing.T) {
 		cli = newClient(t, clus.Procs[idx].EndpointsGRPC(), e2e.ClientConfig{})
 		resp, err := cli.Get(ctx, "k2")
 		require.NoError(t, err)
-		// TODO: All members are supposed to have the same key/value pair k2:v2.
-		// However, the issue https://github.com/etcd-io/etcd/issues/18667
-		// hasn't been resolved yet, so some members hold the wrong data
-		// "k2:foo". Once the issue is fixed, we should remove the if-else
-		// branch below, and all member should have consistent data k2:v2.
-		if i == 0 {
-			assert.Equal(t, "v2", string(resp.Kvs[0].Value))
-		} else {
-			assert.Equal(t, "foo", string(resp.Kvs[0].Value))
-		}
+		// All members should have consistent data k2:v2 because the transaction should fail on all nodes.
+		assert.Equal(t, "v2", string(resp.Kvs[0].Value))
 	}
 }

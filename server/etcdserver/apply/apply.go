@@ -52,19 +52,24 @@ func noSideEffect(r *pb.InternalRaftRequest) bool {
 }
 
 func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
-	f := func(ops []*pb.RequestOp) []*pb.RequestOp {
-		j := 0
+	// removeNeedlessRangeReqs mutates follower RangeRequests to minimize I/O
+	// while preserving revision validation. Deleting reads entirely can cause
+	// split-brain if a read targets a compacted revision (see #18667).
+	// Using a non-existent proxy key with CountOnly=true eliminates disk access.
+	neuter := func(ops []*pb.RequestOp) {
 		for i := 0; i < len(ops); i++ {
-			if _, ok := ops[i].Request.(*pb.RequestOp_RequestRange); ok {
-				continue
+			if rangeOp, ok := ops[i].Request.(*pb.RequestOp_RequestRange); ok {
+				// Preserve RequestRange.Revision for compaction validation.
+				// Mutate search parameters to a proxy key to avoid Boltdb disk I/O.
+				rangeOp.RequestRange.Key = []byte("\x00")
+				rangeOp.RequestRange.RangeEnd = nil
+				rangeOp.RequestRange.Limit = 1
+				rangeOp.RequestRange.KeysOnly = true
+				rangeOp.RequestRange.CountOnly = true
 			}
-			ops[j] = ops[i]
-			j++
 		}
-
-		return ops[:j]
 	}
 
-	txn.Success = f(txn.Success)
-	txn.Failure = f(txn.Failure)
+	neuter(txn.Success)
+	neuter(txn.Failure)
 }
