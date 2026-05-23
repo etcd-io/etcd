@@ -25,6 +25,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
   - [Initialize confState from v3 store on bootstrap](https://github.com/etcd-io/etcd/pull/21138)
   - [Remove flag `--max-snapshots` in 3.8 rather than 3.7](https://github.com/etcd-io/etcd/pull/21160)
   - [Keep the `--snapshot-count` flag](https://github.com/etcd-io/etcd/pull/21162)
+- [Fix data inconsistency when a transaction includes a range request with a specified revision](https://github.com/etcd-io/etcd/pull/21432)
 
 ### Package `clientv3`
 
