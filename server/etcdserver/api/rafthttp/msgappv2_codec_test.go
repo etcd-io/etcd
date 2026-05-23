@@ -16,8 +16,9 @@ package rafthttp
 
 import (
 	"bytes"
-	"reflect"
 	"testing"
+
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
@@ -25,89 +26,91 @@ import (
 )
 
 func TestMsgAppV2(t *testing.T) {
-	tests := []raftpb.Message{
-		linkHeartbeatMessage,
+	tests := []*raftpb.Message{
+		&linkHeartbeatMessage,
 		{
-			Type:    raftpb.MsgApp,
-			From:    1,
-			To:      2,
-			Term:    1,
-			LogTerm: 1,
-			Index:   0,
-			Entries: []raftpb.Entry{
-				{Term: 1, Index: 1, Data: []byte("some data")},
-				{Term: 1, Index: 2, Data: []byte("some data")},
-				{Term: 1, Index: 3, Data: []byte("some data")},
+			Type:    raftpb.MsgApp.Enum(),
+			From:    new(uint64(1)),
+			To:      new(uint64(2)),
+			Term:    new(uint64(1)),
+			LogTerm: new(uint64(1)),
+			Index:   new(uint64(0)),
+			Entries: []*raftpb.Entry{
+				{Term: new(uint64(1)), Index: new(uint64(1)), Data: []byte("some data")},
+				{Term: new(uint64(1)), Index: new(uint64(2)), Data: []byte("some data")},
+				{Term: new(uint64(1)), Index: new(uint64(3)), Data: []byte("some data")},
 			},
 		},
 		// consecutive MsgApp
 		{
-			Type:    raftpb.MsgApp,
-			From:    1,
-			To:      2,
-			Term:    1,
-			LogTerm: 1,
-			Index:   3,
-			Entries: []raftpb.Entry{
-				{Term: 1, Index: 4, Data: []byte("some data")},
+			Type:    raftpb.MsgApp.Enum(),
+			From:    new(uint64(1)),
+			To:      new(uint64(2)),
+			Term:    new(uint64(1)),
+			LogTerm: new(uint64(1)),
+			Index:   new(uint64(3)),
+			Entries: []*raftpb.Entry{
+				{Term: new(uint64(1)), Index: new(uint64(4)), Data: []byte("some data")},
 			},
+			Commit: new(uint64(0)),
 		},
-		linkHeartbeatMessage,
+		&linkHeartbeatMessage,
 		// consecutive MsgApp after linkHeartbeatMessage
 		{
-			Type:    raftpb.MsgApp,
-			From:    1,
-			To:      2,
-			Term:    1,
-			LogTerm: 1,
-			Index:   4,
-			Entries: []raftpb.Entry{
-				{Term: 1, Index: 5, Data: []byte("some data")},
+			Type:    raftpb.MsgApp.Enum(),
+			From:    new(uint64(1)),
+			To:      new(uint64(2)),
+			Term:    new(uint64(1)),
+			LogTerm: new(uint64(1)),
+			Index:   new(uint64(4)),
+			Entries: []*raftpb.Entry{
+				{Term: new(uint64(1)), Index: new(uint64(5)), Data: []byte("some data")},
 			},
+			Commit: new(uint64(0)),
 		},
 		// MsgApp with higher term
 		{
-			Type:    raftpb.MsgApp,
-			From:    1,
-			To:      2,
-			Term:    3,
-			LogTerm: 1,
-			Index:   5,
-			Entries: []raftpb.Entry{
-				{Term: 3, Index: 6, Data: []byte("some data")},
+			Type:    raftpb.MsgApp.Enum(),
+			From:    new(uint64(1)),
+			To:      new(uint64(2)),
+			Term:    new(uint64(3)),
+			LogTerm: new(uint64(1)),
+			Index:   new(uint64(5)),
+			Entries: []*raftpb.Entry{
+				{Term: new(uint64(3)), Index: new(uint64(6)), Data: []byte("some data")},
 			},
 		},
-		linkHeartbeatMessage,
+		&linkHeartbeatMessage,
 		// consecutive MsgApp
 		{
-			Type:    raftpb.MsgApp,
-			From:    1,
-			To:      2,
-			Term:    3,
-			LogTerm: 2,
-			Index:   6,
-			Entries: []raftpb.Entry{
-				{Term: 3, Index: 7, Data: []byte("some data")},
+			Type:    raftpb.MsgApp.Enum(),
+			From:    new(uint64(1)),
+			To:      new(uint64(2)),
+			Term:    new(uint64(3)),
+			LogTerm: new(uint64(2)),
+			Index:   new(uint64(6)),
+			Entries: []*raftpb.Entry{
+				{Term: new(uint64(3)), Index: new(uint64(7)), Data: []byte("some data")},
 			},
 		},
 		// consecutive empty MsgApp
 		{
-			Type:    raftpb.MsgApp,
-			From:    1,
-			To:      2,
-			Term:    3,
-			LogTerm: 2,
-			Index:   7,
+			Type:    raftpb.MsgApp.Enum(),
+			From:    new(uint64(1)),
+			To:      new(uint64(2)),
+			Term:    new(uint64(3)),
+			LogTerm: new(uint64(2)),
+			Index:   new(uint64(7)),
 			Entries: nil,
 		},
-		linkHeartbeatMessage,
+		&linkHeartbeatMessage,
 	}
 	b := &bytes.Buffer{}
 	enc := newMsgAppV2Encoder(b, &stats.FollowerStats{})
 	dec := newMsgAppV2Decoder(b, types.ID(2), types.ID(1))
 
 	for i, tt := range tests {
-		if err := enc.encode(&tt); err != nil {
+		if err := enc.encode(tt); err != nil {
 			t.Errorf("#%d: unexpected encode message error: %v", i, err)
 			continue
 		}
@@ -116,9 +119,8 @@ func TestMsgAppV2(t *testing.T) {
 			t.Errorf("#%d: unexpected decode message error: %v", i, err)
 			continue
 		}
-		// TODO: use proto.Equal after bumping to raft v3.6.0-beta.0
-		if !reflect.DeepEqual(*m, tt) {
-			t.Errorf("#%d: message = %+v, want %+v", i, *m, tt)
+		if !proto.Equal(m, tt) {
+			t.Errorf("#%d: message = %+v, want %+v", i, m, tt)
 		}
 	}
 }

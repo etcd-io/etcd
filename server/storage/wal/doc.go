@@ -30,7 +30,7 @@ record it. So WAL can match with the saved snapshot when restarting.
 
 	index := uint64(10)
 	term := uint64(2)
-	err := w.SaveSnapshot(&walpb.Snapshot{Index: &index, Term: &term})
+	err := w.SaveSnapshot(&walpb.Snapshot{Index: new(index), Term: new(term)})
 
 When a user has finished using a WAL it must be closed:
 

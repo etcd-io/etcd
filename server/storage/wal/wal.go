@@ -485,28 +485,28 @@ func (w *WAL) ReadAll() (metadata []byte, state *raftpb.HardState, ents []*raftp
 		switch rec.GetType() {
 		case EntryType:
 			e := MustUnmarshalEntry(rec.Data)
-			// 0 <= e.Index-w.start.Index - 1 < len(ents)
-			if e.Index > w.start.GetIndex() {
+			// 0 <= e.GetIndex()-w.start.GetIndex() - 1 < len(ents)
+			if e.GetIndex() > w.start.GetIndex() {
 				// prevent "panic: runtime error: slice bounds out of range [:13038096702221461992] with capacity 0"
-				offset := e.Index - w.start.GetIndex() - 1
+				offset := e.GetIndex() - w.start.GetIndex() - 1
 				if offset > uint64(len(ents)) {
 					// return error before append call causes runtime panic.
 					// We still return the continuous WAL entries that have already been read.
 					// Refer to https://github.com/etcd-io/etcd/pull/19038#issuecomment-2557414292.
 					return nil, state, ents, fmt.Errorf("%w, snapshot[Index: %d, Term: %d], current entry[Index: %d, Term: %d], len(ents): %d",
-						ErrSliceOutOfRange, w.start.GetIndex(), w.start.GetTerm(), e.Index, e.Term, len(ents))
+						ErrSliceOutOfRange, w.start.GetIndex(), w.start.GetTerm(), e.GetIndex(), e.GetTerm(), len(ents))
 				}
 				// The line below is potentially overriding some 'uncommitted' entries.
 				ents = append(ents[:offset], e)
 			}
-			w.enti = e.Index
+			w.enti = e.GetIndex()
 
 		case StateType:
 			state = MustUnmarshalState(rec.Data)
 
 		case MetadataType:
 			if metadata != nil && !bytes.Equal(metadata, rec.Data) {
-				state = &raftpb.HardState{}
+				state.Reset()
 				return nil, state, nil, ErrMetadataConflict
 			}
 			metadata = rec.Data
@@ -516,7 +516,7 @@ func (w *WAL) ReadAll() (metadata []byte, state *raftpb.HardState, ents []*raftp
 			// current crc of decoder must match the crc of the record.
 			// do no need to match 0 crc, since the decoder is a new one at this case.
 			if crc != 0 && rec.Validate(crc) != nil {
-				state = &raftpb.HardState{}
+				state.Reset()
 				return nil, state, nil, ErrCRCMismatch
 			}
 			decoder.UpdateCRC(rec.GetCrc())
@@ -526,14 +526,14 @@ func (w *WAL) ReadAll() (metadata []byte, state *raftpb.HardState, ents []*raftp
 			pbutil.MustUnmarshalMessage(&snap, rec.Data)
 			if snap.GetIndex() == w.start.GetIndex() {
 				if snap.GetTerm() != w.start.GetTerm() {
-					state = &raftpb.HardState{}
+					state.Reset()
 					return nil, state, nil, ErrSnapshotMismatch
 				}
 				match = true
 			}
 
 		default:
-			state = &raftpb.HardState{}
+			state.Reset()
 			return nil, state, nil, fmt.Errorf("unexpected block type %d", rec.Type)
 		}
 	}
@@ -544,13 +544,13 @@ func (w *WAL) ReadAll() (metadata []byte, state *raftpb.HardState, ents []*raftp
 		// The last record maybe a partial written one, so
 		// `io.ErrUnexpectedEOF` might be returned.
 		if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
-			state = &raftpb.HardState{}
+			state.Reset()
 			return nil, state, nil, err
 		}
 	default:
 		// We must read all the entries if WAL is opened in write mode.
 		if !errors.Is(err, io.EOF) {
-			state = &raftpb.HardState{}
+			state.Reset()
 			return nil, state, nil, err
 		}
 		// decodeRecord() will return io.EOF if it detects a zero record,
@@ -648,7 +648,7 @@ func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]*walpb.Snapshot, err
 	// filter out any snaps that are newer than the committed hardstate
 	n := 0
 	for _, s := range snaps {
-		if s.GetIndex() <= state.Commit {
+		if s.GetIndex() <= state.GetCommit() {
 			snaps[n] = s
 			n++
 		}
@@ -723,7 +723,7 @@ func Verify(lg *zap.Logger, walDir string, snap *walpb.Snapshot) (*raftpb.HardSt
 		// are not necessary for validating the WAL contents
 		case EntryType:
 		case StateType:
-			pbutil.MustUnmarshal(state, rec.Data)
+			pbutil.MustUnmarshalMessage(state, rec.Data)
 		default:
 			return nil, fmt.Errorf("unexpected block type %d", rec.Type)
 		}
@@ -936,21 +936,21 @@ func (w *WAL) Close() error {
 
 func (w *WAL) saveEntry(e *raftpb.Entry) error {
 	// TODO: add MustMarshalTo to reduce one allocation.
-	b := pbutil.MustMarshal(e)
+	b := pbutil.MustMarshalMessage(e)
 	rec := &walpb.Record{Type: new(EntryType), Data: b}
 	if err := w.encoder.encode(rec); err != nil {
 		return err
 	}
-	w.enti = e.Index
+	w.enti = e.GetIndex()
 	return nil
 }
 
 func (w *WAL) saveState(s *raftpb.HardState) error {
-	if s == nil || raft.IsEmptyHardState(*s) {
+	if raft.IsEmptyHardState(s) {
 		return nil
 	}
 	w.state = s
-	b := pbutil.MustMarshal(s)
+	b := pbutil.MustMarshalMessage(s)
 	rec := &walpb.Record{Type: new(StateType), Data: b}
 	return w.encoder.encode(rec)
 }
@@ -960,7 +960,7 @@ func (w *WAL) Save(st *raftpb.HardState, ents []*raftpb.Entry) error {
 	defer w.mu.Unlock()
 
 	// short cut, do not call sync
-	if (st == nil || raft.IsEmptyHardState(*st)) && len(ents) == 0 {
+	if raft.IsEmptyHardState(st) && len(ents) == 0 {
 		return nil
 	}
 	if st == nil {
@@ -970,7 +970,7 @@ func (w *WAL) Save(st *raftpb.HardState, ents []*raftpb.Entry) error {
 		w.state = &raftpb.HardState{}
 	}
 
-	mustSync := raft.MustSync(*st, *w.state, len(ents))
+	mustSync := raft.MustSync(st, w.state, len(ents))
 
 	// TODO(xiangli): no more reference operator
 	for i := range ents {

@@ -21,7 +21,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"go.uber.org/zap"
@@ -71,7 +70,7 @@ func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, 
 			lg.Error("Failed to read WAL", zap.Error(err), zap.String("data-dir", dir))
 			continue
 		}
-		minCommitIndex = min(minCommitIndex, state.Commit)
+		minCommitIndex = min(minCommitIndex, state.GetCommit())
 		entriesPersistedInWAL[i] = entries
 	}
 	entries, err := mergeMembersEntries(minCommitIndex, entriesPersistedInWAL)
@@ -80,7 +79,7 @@ func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, 
 	}
 	persistedRequests := make([]model.EtcdRequest, 0, len(entries))
 	for _, e := range entries {
-		if e.Type != raftpb.EntryNormal {
+		if e.GetType() != raftpb.EntryNormal {
 			continue
 		}
 		request, err := parseEntryNormal(e)
@@ -98,10 +97,10 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]*raftpb.Entry)
 	for _, entries := range memberEntries {
 		var lastIndex uint64
 		for _, e := range entries {
-			if e.Index <= lastIndex {
-				return nil, fmt.Errorf("raft index should increase, got: %d, previous: %d", e.Index, lastIndex)
+			if e.GetIndex() <= lastIndex {
+				return nil, fmt.Errorf("raft index should increase, got: %d, previous: %d", e.GetIndex(), lastIndex)
 			}
-			lastIndex = e.Index
+			lastIndex = e.GetIndex()
 		}
 	}
 	memberIndices := make([]int, len(memberEntries))
@@ -113,7 +112,7 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]*raftpb.Entry)
 		entriesLeft := false
 		for i, entries := range memberEntries {
 			memberIndex := memberIndices[i]
-			for memberIndex < len(entries) && entries[memberIndex].Index < raftIndex {
+			for memberIndex < len(entries) && entries[memberIndex].GetIndex() < raftIndex {
 				memberIndex++
 			}
 			if memberIndex < len(entries) {
@@ -131,7 +130,7 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]*raftpb.Entry)
 				continue
 			}
 			entry1 := memberEntries[i][memberIndices[i]]
-			if entry1.Index != raftIndex {
+			if entry1.GetIndex() != raftIndex {
 				continue
 			}
 			for j := i; j < len(memberEntries); j++ {
@@ -143,10 +142,10 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]*raftpb.Entry)
 					continue
 				}
 				entry2 := memberEntries[j][memberIndices[j]]
-				if entry2.Index != raftIndex {
+				if entry2.GetIndex() != raftIndex {
 					continue
 				}
-				if reflect.DeepEqual(entry1, entry2) {
+				if proto.Equal(entry1, entry2) {
 					votes[i]++
 					votes[j]++
 				}
@@ -172,13 +171,13 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]*raftpb.Entry)
 				entryWithMostVotes = entry
 				continue
 			}
-			if entryWithMostVotes.Term != entry.Term && entry.Index > minCommitIndex {
-				if entryWithMostVotes.Term < entry.Term {
+			if entryWithMostVotes.GetTerm() != entry.GetTerm() && entry.GetIndex() > minCommitIndex {
+				if entryWithMostVotes.GetTerm() < entry.GetTerm() {
 					entryWithMostVotes = entry
 				}
 				continue
 			}
-			if !reflect.DeepEqual(entryWithMostVotes, entry) {
+			if !proto.Equal(entryWithMostVotes, entry) {
 				return nil, fmt.Errorf("mismatching entries on raft index %d, mostVotes: %+v, other: %+v", raftIndex, entryWithMostVotes, entry)
 			}
 		}
@@ -378,7 +377,7 @@ func ReadAllWALEntries(lg *zap.Logger, dirpath string) (state *raftpb.HardState,
 		case wal.EntryType:
 			e := wal.MustUnmarshalEntry(rec.Data)
 			i := len(ents)
-			for ; i > 0 && ents[i-1].Index >= e.Index; i-- {
+			for ; i > 0 && ents[i-1].GetIndex() >= e.GetIndex(); i-- {
 			}
 			// The line below is potentially overriding some 'uncommitted' entries.
 			ents = append(ents[:i], e)

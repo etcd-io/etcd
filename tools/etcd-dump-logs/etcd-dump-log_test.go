@@ -119,16 +119,16 @@ func mustCreateWALLog(t *testing.T, path string) {
 
 func appendConfigChangeEnts(ents *[]*raftpb.Entry) {
 	configChangeData := []raftpb.ConfChange{
-		{ID: 1, Type: raftpb.ConfChangeAddNode, NodeID: 2, Context: []byte("")},
-		{ID: 2, Type: raftpb.ConfChangeRemoveNode, NodeID: 2, Context: []byte("")},
-		{ID: 3, Type: raftpb.ConfChangeUpdateNode, NodeID: 2, Context: []byte("")},
-		{ID: 4, Type: raftpb.ConfChangeAddLearnerNode, NodeID: 3, Context: []byte("")},
+		{Id: new(uint64(1)), Type: raftpb.ConfChangeAddNode.Enum(), NodeId: new(uint64(2)), Context: []byte("")},
+		{Id: new(uint64(2)), Type: raftpb.ConfChangeRemoveNode.Enum(), NodeId: new(uint64(2)), Context: []byte("")},
+		{Id: new(uint64(3)), Type: raftpb.ConfChangeUpdateNode.Enum(), NodeId: new(uint64(2)), Context: []byte("")},
+		{Id: new(uint64(4)), Type: raftpb.ConfChangeAddLearnerNode.Enum(), NodeId: new(uint64(3)), Context: []byte("")},
 	}
 	configChangeEntries := []*raftpb.Entry{
-		{Term: 1, Index: 1, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(&configChangeData[0])},
-		{Term: 2, Index: 2, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(&configChangeData[1])},
-		{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(&configChangeData[2])},
-		{Term: 2, Index: 4, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(&configChangeData[3])},
+		{Term: new(uint64(1)), Index: new(uint64(1)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(&configChangeData[0])},
+		{Term: new(uint64(2)), Index: new(uint64(2)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(&configChangeData[1])},
+		{Term: new(uint64(2)), Index: new(uint64(3)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(&configChangeData[2])},
+		{Term: new(uint64(2)), Index: new(uint64(4)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(&configChangeData[3])},
 	}
 	*ents = append(*ents, configChangeEntries...)
 }
@@ -225,9 +225,9 @@ func appendNormalIRREnts(ents *[]*raftpb.Entry) {
 
 	for i, irr := range irrs {
 		var currentry raftpb.Entry
-		currentry.Term = uint64(i + 4)
-		currentry.Index = uint64(i + 10)
-		currentry.Type = raftpb.EntryNormal
+		currentry.Term = new(uint64(i + 4))
+		currentry.Index = new(uint64(i + 10))
+		currentry.Type = raftpb.EntryNormal.Enum()
 		currentry.Data = pbutil.MustMarshalMessage(irr)
 		*ents = append(*ents, &currentry)
 	}
@@ -235,9 +235,9 @@ func appendNormalIRREnts(ents *[]*raftpb.Entry) {
 
 func appendUnknownNormalEnts(ents *[]*raftpb.Entry) {
 	var currentry raftpb.Entry
-	currentry.Term = 27
-	currentry.Index = 34
-	currentry.Type = raftpb.EntryNormal
+	currentry.Term = new(uint64(27))
+	currentry.Index = new(uint64(34))
+	currentry.Type = raftpb.EntryNormal.Enum()
 	currentry.Data = []byte("?")
 	*ents = append(*ents, &currentry)
 }

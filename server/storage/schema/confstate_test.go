@@ -35,7 +35,7 @@ func TestConfStateFromBackendInOneTx(t *testing.T) {
 	defer tx.Unlock()
 	assert.Nil(t, UnsafeConfStateFromBackend(lg, tx))
 
-	confState := raftpb.ConfState{Learners: []uint64{1, 2}, Voters: []uint64{3}, AutoLeave: false}
+	confState := raftpb.ConfState{Learners: []uint64{1, 2}, Voters: []uint64{3}, AutoLeave: new(false)}
 	MustUnsafeSaveConfStateToBackend(lg, tx, &confState)
 
 	assert.Equal(t, &confState, UnsafeConfStateFromBackend(lg, tx))
@@ -59,7 +59,7 @@ func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 		assert.Nil(t, UnsafeConfStateFromBackend(lg, tx))
 	})
 
-	confState := raftpb.ConfState{Learners: []uint64{1, 2}, Voters: []uint64{3}, AutoLeave: false}
+	confState := raftpb.ConfState{Learners: []uint64{1, 2}, Voters: []uint64{3}, AutoLeave: new(false)}
 
 	t.Run("save", func(t *testing.T) {
 		tx := be.BatchTx()

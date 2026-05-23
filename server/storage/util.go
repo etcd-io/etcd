@@ -54,15 +54,16 @@ func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 			lg.Panic("failed to marshal member", zap.Error(err))
 		}
 		cc := &raftpb.ConfChange{
-			Type:    raftpb.ConfChangeAddNode,
-			NodeID:  self,
+			Type:    raftpb.ConfChangeAddNode.Enum(),
+			NodeId:  &self,
 			Context: ctx,
 		}
+		idx := next
 		e := &raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
-			Data:  pbutil.MustMarshal(cc),
-			Term:  term,
-			Index: next,
+			Type:  raftpb.EntryConfChange.Enum(),
+			Data:  pbutil.MustMarshalMessage(cc),
+			Term:  new(term),
+			Index: new(idx),
 		}
 		ents = append(ents, e)
 		next++
@@ -73,14 +74,16 @@ func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 			continue
 		}
 		cc := &raftpb.ConfChange{
-			Type:   raftpb.ConfChangeRemoveNode,
-			NodeID: id,
+			Type:   raftpb.ConfChangeRemoveNode.Enum(),
+			NodeId: new(uint64),
 		}
+		*cc.NodeId = id
+		idx := next
 		e := &raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
-			Data:  pbutil.MustMarshal(cc),
-			Term:  term,
-			Index: next,
+			Type:  raftpb.EntryConfChange.Enum(),
+			Data:  pbutil.MustMarshalMessage(cc),
+			Term:  new(term),
+			Index: new(idx),
 		}
 		ents = append(ents, e)
 		next++
@@ -97,31 +100,32 @@ func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 // - ConfChangeAddLearnerNode, in which the contained ID will Be added into the set.
 func GetEffectiveNodeIDsFromWALEntries(lg *zap.Logger, snap *raftpb.Snapshot, ents []*raftpb.Entry) []uint64 {
 	ids := make(map[uint64]bool)
-	if snap != nil {
-		for _, id := range snap.Metadata.ConfState.Voters {
+	if snap.GetMetadata().GetConfState() != nil {
+		for _, id := range snap.GetMetadata().GetConfState().GetVoters() {
 			ids[id] = true
 		}
-		for _, id := range snap.Metadata.ConfState.Learners {
+		for _, id := range snap.GetMetadata().GetConfState().GetLearners() {
 			ids[id] = true
 		}
 	}
-	for _, e := range ents {
-		if e.Type != raftpb.EntryConfChange {
+	for i := range ents {
+		e := ents[i]
+		if e.GetType() != raftpb.EntryConfChange {
 			continue
 		}
 		var cc raftpb.ConfChange
-		pbutil.MustUnmarshal(&cc, e.Data)
-		switch cc.Type {
+		pbutil.MustUnmarshalMessage(&cc, e.Data)
+		switch cc.GetType() {
 		case raftpb.ConfChangeAddLearnerNode:
-			ids[cc.NodeID] = true
+			ids[cc.GetNodeId()] = true
 		case raftpb.ConfChangeAddNode:
-			ids[cc.NodeID] = true
+			ids[cc.GetNodeId()] = true
 		case raftpb.ConfChangeRemoveNode:
-			delete(ids, cc.NodeID)
+			delete(ids, cc.GetNodeId())
 		case raftpb.ConfChangeUpdateNode:
 			// do nothing
 		default:
-			lg.Panic("unknown ConfChange Type", zap.String("type", cc.Type.String()))
+			lg.Panic("unknown ConfChange Type", zap.String("type", cc.GetType().String()))
 		}
 	}
 	sids := make(types.Uint64Slice, 0, len(ids))

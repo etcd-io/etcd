@@ -19,6 +19,8 @@ import (
 	"errors"
 	"io"
 
+	"google.golang.org/protobuf/proto"
+
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -30,10 +32,10 @@ type messageEncoder struct {
 }
 
 func (enc *messageEncoder) encode(m *raftpb.Message) error {
-	if err := binary.Write(enc.w, binary.BigEndian, uint64(m.Size())); err != nil {
+	if err := binary.Write(enc.w, binary.BigEndian, uint64(proto.Size(m))); err != nil {
 		return err
 	}
-	_, err := enc.w.Write(pbutil.MustMarshal(m))
+	_, err := enc.w.Write(pbutil.MustMarshalMessage(m))
 	return err
 }
 
@@ -64,5 +66,5 @@ func (dec *messageDecoder) decodeLimit(numBytes uint64) (*raftpb.Message, error)
 	if _, err := io.ReadFull(dec.r, buf); err != nil {
 		return nil, err
 	}
-	return &m, m.Unmarshal(buf)
+	return &m, proto.Unmarshal(buf, &m)
 }

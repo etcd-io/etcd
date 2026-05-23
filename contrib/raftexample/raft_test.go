@@ -37,15 +37,15 @@ func TestProcessMessages(t *testing.T) {
 			},
 			InputMessages: []*raftpb.Message{
 				{
-					Type: raftpb.MsgSnap,
-					To:   8,
+					Type: raftpb.MsgSnap.Enum(),
+					To:   new(uint64(8)),
 					Snapshot: &raftpb.Snapshot{
-						Metadata: raftpb.SnapshotMetadata{
-							Index: 100,
-							Term:  3,
-							ConfState: raftpb.ConfState{
+						Metadata: &raftpb.SnapshotMetadata{
+							Index: new(uint64(100)),
+							Term:  new(uint64(3)),
+							ConfState: &raftpb.ConfState{
 								Voters:    []uint64{2, 6, 8},
-								AutoLeave: true,
+								AutoLeave: new(true),
 							},
 						},
 					},
@@ -53,13 +53,13 @@ func TestProcessMessages(t *testing.T) {
 			},
 			ExpectedMessages: []*raftpb.Message{
 				{
-					Type: raftpb.MsgSnap,
-					To:   8,
+					Type: raftpb.MsgSnap.Enum(),
+					To:   new(uint64(8)),
 					Snapshot: &raftpb.Snapshot{
-						Metadata: raftpb.SnapshotMetadata{
-							Index: 100,
-							Term:  3,
-							ConfState: raftpb.ConfState{
+						Metadata: &raftpb.SnapshotMetadata{
+							Index: new(uint64(100)),
+							Term:  new(uint64(3)),
+							ConfState: &raftpb.ConfState{
 								Voters: []uint64{2, 6, 8, 10},
 							},
 						},
@@ -74,43 +74,43 @@ func TestProcessMessages(t *testing.T) {
 			},
 			InputMessages: []*raftpb.Message{
 				{
-					Type: raftpb.MsgSnap,
-					To:   8,
+					Type: raftpb.MsgSnap.Enum(),
+					To:   new(uint64(8)),
 					Snapshot: &raftpb.Snapshot{
-						Metadata: raftpb.SnapshotMetadata{
-							Index: 100,
-							Term:  3,
-							ConfState: raftpb.ConfState{
+						Metadata: &raftpb.SnapshotMetadata{
+							Index: new(uint64(100)),
+							Term:  new(uint64(3)),
+							ConfState: &raftpb.ConfState{
 								Voters:    []uint64{2, 6, 8},
-								AutoLeave: true,
+								AutoLeave: new(true),
 							},
 						},
 					},
 				},
 				{
-					Type: raftpb.MsgApp,
-					From: 6,
-					To:   8,
+					Type: raftpb.MsgApp.Enum(),
+					From: new(uint64(6)),
+					To:   new(uint64(8)),
 				},
 			},
 			ExpectedMessages: []*raftpb.Message{
 				{
-					Type: raftpb.MsgSnap,
-					To:   8,
+					Type: raftpb.MsgSnap.Enum(),
+					To:   new(uint64(8)),
 					Snapshot: &raftpb.Snapshot{
-						Metadata: raftpb.SnapshotMetadata{
-							Index: 100,
-							Term:  3,
-							ConfState: raftpb.ConfState{
+						Metadata: &raftpb.SnapshotMetadata{
+							Index: new(uint64(100)),
+							Term:  new(uint64(3)),
+							ConfState: &raftpb.ConfState{
 								Voters: []uint64{2, 7, 8, 12},
 							},
 						},
 					},
 				},
 				{
-					Type: raftpb.MsgApp,
-					From: 6,
-					To:   8,
+					Type: raftpb.MsgApp.Enum(),
+					From: new(uint64(6)),
+					To:   new(uint64(8)),
 				},
 			},
 		},

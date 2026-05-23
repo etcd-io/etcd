@@ -19,6 +19,7 @@ import (
 
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -42,10 +43,11 @@ func (s *EtcdServer) createMergedSnapshotMessage(m *raftpb.Message, snapt, snapi
 	// put the []byte snapshot of store into raft snapshot and return the merged snapshot with
 	// KV readCloser snapshot.
 	snapshot := &raftpb.Snapshot{
-		Metadata: raftpb.SnapshotMetadata{
-			Index:     snapi,
-			Term:      snapt,
-			ConfState: *confState,
+		Metadata: &raftpb.SnapshotMetadata{
+			Index: &snapi,
+			Term:  &snapt,
+			// Defensive copy as sending snapshot is async
+			ConfState: proto.Clone(confState).(*raftpb.ConfState),
 		},
 		Data: d,
 	}

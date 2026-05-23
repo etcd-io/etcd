@@ -61,9 +61,9 @@ func (st *storage) SaveSnap(snap *raftpb.Snapshot) error {
 	st.mux.RLock()
 	defer st.mux.RUnlock()
 	walsnap := walpb.Snapshot{
-		Index:     new(snap.Metadata.Index),
-		Term:      new(snap.Metadata.Term),
-		ConfState: &snap.Metadata.ConfState,
+		Index:     snap.Metadata.Index,
+		Term:      snap.Metadata.Term,
+		ConfState: snap.Metadata.GetConfState(),
 	}
 	// save the snapshot file before writing the snapshot to the wal.
 	// This makes it possible for the snapshot file to become orphaned, but prevents
@@ -83,7 +83,7 @@ func (st *storage) SaveSnap(snap *raftpb.Snapshot) error {
 func (st *storage) Release(snap *raftpb.Snapshot) error {
 	st.mux.RLock()
 	defer st.mux.RUnlock()
-	if err := st.w.ReleaseLockTo(snap.Metadata.Index); err != nil {
+	if err := st.w.ReleaseLockTo(snap.Metadata.GetIndex()); err != nil {
 		return err
 	}
 	return st.s.ReleaseSnapDBs(snap)
@@ -117,9 +117,9 @@ func (st *storage) MinimalEtcdVersion() *semver.Version {
 		panic(err)
 	}
 	if sn != nil {
-		walsnap.Index = new(sn.Metadata.Index)
-		walsnap.Term = new(sn.Metadata.Term)
-		walsnap.ConfState = &sn.Metadata.ConfState
+		walsnap.Index = sn.Metadata.Index
+		walsnap.Term = sn.Metadata.Term
+		walsnap.ConfState = sn.Metadata.GetConfState()
 	}
 	w, err := st.w.Reopen(st.lg, &walsnap)
 	if err != nil {

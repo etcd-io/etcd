@@ -40,7 +40,7 @@ require (
 	go.etcd.io/etcd/pkg/v3 v3.7.0-beta.0
 	go.etcd.io/etcd/server/v3 v3.7.0-beta.0
 	go.etcd.io/gofail v0.2.0
-	go.etcd.io/raft/v3 v3.6.0-beta.0.0.20260116184858-6d944ca211ee
+	go.etcd.io/raft/v3 v3.7.0-beta.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/sdk v1.43.0
@@ -69,7 +69,6 @@ require (
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
