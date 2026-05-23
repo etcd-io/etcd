@@ -85,7 +85,7 @@ if is_fully_indirect; then
 fi
 
 log_info "Updating '${mod}' to ${ver:-latest} across all modules..."
-run_for_modules update_module
+run_for_workspace_modules update_module
 
 make fix-mod-tidy fix-bom update-go-workspace verify-dep
 
