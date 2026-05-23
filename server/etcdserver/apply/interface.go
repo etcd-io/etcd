@@ -33,16 +33,24 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
+// InternalRaftRequestWrapper carries per-apply metadata for an InternalRaftRequest.
+type InternalRaftRequestWrapper struct {
+	*pb.InternalRaftRequest
+	// SkipRangeExecution skips execution of range requests inside a txn for
+	// members that do not need the response; validation via checkRange still runs.
+	SkipRangeExecution bool
+}
+
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
 	// Apply executes the generic portion of application logic for the current applier, but
 	// delegates the actual execution to the applyFunc method.
-	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result
+	Apply(r *InternalRaftRequestWrapper, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result
 
 	Put(p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error)
 	DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error)
-	Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error)
+	Txn(rt *pb.TxnRequest, skipRangeExecution bool) (*pb.TxnResponse, *traceutil.Trace, error)
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error)
 
 	LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
@@ -115,4 +123,4 @@ type Result struct {
 	Trace *traceutil.Trace
 }
 
-type applyFunc func(*pb.InternalRaftRequest, membership.ShouldApplyV3) *Result
+type applyFunc func(*InternalRaftRequestWrapper, membership.ShouldApplyV3) *Result

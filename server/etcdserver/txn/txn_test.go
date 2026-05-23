@@ -223,7 +223,7 @@ func TestCheckTxn(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			_, _, err := Txn(ctx, zaptest.NewLogger(t), tc.txn, false, s, lessor)
+			_, _, err := Txn(ctx, zaptest.NewLogger(t), tc.txn, false, s, lessor, false)
 
 			gotErr := ""
 			if err != nil {
@@ -302,6 +302,76 @@ func setup(t *testing.T, setup testSetup) (mvcc.KV, lease.Lessor) {
 	return s, lessor
 }
 
+func TestSkippedRangeExecutionResponseHeaderRevision(t *testing.T) {
+	tests := []struct {
+		name string
+		txn  *pb.TxnRequest
+	}{
+		{
+			name: "range before write",
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{Key: []byte("foo")},
+						},
+					},
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "range after write",
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
+						},
+					},
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{Key: []byte("foo")},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			lg := zaptest.NewLogger(t)
+			normalKV, normalLessor := setup(t, testSetup{})
+			skippedKV, skippedLessor := setup(t, testSetup{})
+
+			normalResp, _, err := Txn(ctx, lg, tt.txn, false, normalKV, normalLessor, false)
+			require.NoError(t, err)
+			skippedResp, _, err := Txn(ctx, lg, tt.txn, false, skippedKV, skippedLessor, true)
+			require.NoError(t, err)
+
+			var normalRangeHeader, skippedRangeHeader *pb.ResponseHeader
+			for i, resp := range normalResp.Responses {
+				rangeResp := resp.GetResponseRange()
+				if rangeResp == nil {
+					continue
+				}
+				normalRangeHeader = rangeResp.Header
+				skippedRangeHeader = skippedResp.Responses[i].GetResponseRange().Header
+				break
+			}
+			require.NotNil(t, normalRangeHeader)
+			require.NotNil(t, skippedRangeHeader)
+			require.Equal(t, normalRangeHeader.Revision, skippedRangeHeader.Revision)
+		})
+	}
+}
+
 func TestReadonlyTxnError(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, b)
@@ -328,7 +398,7 @@ func TestReadonlyTxnError(t *testing.T) {
 		},
 	}
 
-	_, _, err := Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{})
+	_, _, err := Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}, false)
 	if err == nil || !strings.Contains(err.Error(), "applyTxn: failed Range: rangeKeys: context cancelled: context canceled") {
 		t.Fatalf("Expected context canceled error, got %v", err)
 	}
@@ -371,7 +441,7 @@ func TestWriteTxnPanicWithoutApply(t *testing.T) {
 	// we verify the following properties below:
 	// 1. server panics after a write txn aply fails (invariant: server should never try to move on from a failed write)
 	// 2. no writes from the txn are applied to the backend (invariant: failed write should have no side-effect on DB state besides panic)
-	assert.Panicsf(t, func() { Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}) }, "Expected panic in Txn with writes")
+	assert.Panicsf(t, func() { Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}, false) }, "Expected panic in Txn with writes")
 	dbHashAfter, err := computeFileHash(bePath)
 	require.NoErrorf(t, err, "failed to compute DB file hash after txn")
 	require.Equalf(t, dbHashBefore, dbHashAfter, "mismatch in DB hash before and after failed write txn")
