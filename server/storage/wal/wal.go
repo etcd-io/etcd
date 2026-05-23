@@ -97,7 +97,7 @@ type WAL struct {
 // Create creates a WAL ready for appending records. The given metadata is
 // recorded at the head of each WAL file, and can be retrieved with ReadAll
 // after the file is Open.
-func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
+func Create(lg *zap.Logger, dirpath string, metadata []byte) (_ *WAL, err error) {
 	if Exist(dirpath) {
 		return nil, os.ErrExist
 	}
@@ -109,20 +109,20 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	// keep temporary wal directory so WAL initialization appears atomic
 	tmpdirpath := filepath.Clean(dirpath) + ".tmp"
 	if fileutil.Exist(tmpdirpath) {
-		if err := os.RemoveAll(tmpdirpath); err != nil {
-			return nil, err
+		if rmErr := os.RemoveAll(tmpdirpath); rmErr != nil {
+			return nil, rmErr
 		}
 	}
 	defer os.RemoveAll(tmpdirpath)
 
-	if err := fileutil.CreateDirAll(lg, tmpdirpath); err != nil {
+	if mkErr := fileutil.CreateDirAll(lg, tmpdirpath); mkErr != nil {
 		lg.Warn(
 			"failed to create a temporary WAL directory",
 			zap.String("tmp-dir-path", tmpdirpath),
 			zap.String("dir-path", dirpath),
-			zap.Error(err),
+			zap.Error(mkErr),
 		)
-		return nil, err
+		return nil, mkErr
 	}
 
 	p := filepath.Join(tmpdirpath, walName(0, 0))
@@ -135,6 +135,11 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		)
 		return nil, err
 	}
+	defer func() {
+		if err != nil {
+			f.Close()
+		}
+	}()
 	if _, err = f.Seek(0, io.SeekEnd); err != nil {
 		lg.Warn(
 			"failed to seek an initial WAL file",
@@ -191,7 +196,6 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 			w.cleanupWAL(lg)
 		}
 	}()
-
 	// directory was renamed; sync parent dir to persist rename
 	pdir, perr := fileutil.OpenDir(filepath.Dir(w.dir))
 	if perr != nil {
@@ -348,6 +352,7 @@ func Open(lg *zap.Logger, dirpath string, snap *walpb.Snapshot) (*WAL, error) {
 		return nil, fmt.Errorf("openAtIndex failed: %w", err)
 	}
 	if w.dirFile, err = fileutil.OpenDir(w.dir); err != nil {
+		w.Close()
 		return nil, fmt.Errorf("fileutil.OpenDir failed: %w", err)
 	}
 	return w, nil
