@@ -25,11 +25,15 @@ func TestCheckRangeRequest(t *testing.T) {
 	rangeReqs := []struct {
 		sortOrder     pb.RangeRequest_SortOrder
 		sortTarget    pb.RangeRequest_SortTarget
+		countOnly     bool
+		keysOnly      bool
 		expectedError error
 	}{
 		{
 			sortOrder:     pb.RangeRequest_ASCEND,
 			sortTarget:    pb.RangeRequest_CREATE,
+			countOnly:     false,
+			keysOnly:      false,
 			expectedError: nil,
 		},
 		{
@@ -42,6 +46,27 @@ func TestCheckRangeRequest(t *testing.T) {
 			sortTarget:    pb.RangeRequest_MOD,
 			expectedError: rpctypes.ErrGRPCInvalidSortOption,
 		},
+		{
+			sortOrder:     pb.RangeRequest_ASCEND,
+			sortTarget:    pb.RangeRequest_CREATE,
+			countOnly:     true,
+			keysOnly:      false,
+			expectedError: nil,
+		},
+		{
+			sortOrder:     pb.RangeRequest_ASCEND,
+			sortTarget:    pb.RangeRequest_CREATE,
+			countOnly:     false,
+			keysOnly:      true,
+			expectedError: nil,
+		},
+		{
+			sortOrder:     pb.RangeRequest_ASCEND,
+			sortTarget:    pb.RangeRequest_CREATE,
+			countOnly:     true,
+			keysOnly:      true,
+			expectedError: rpctypes.ErrGRPCRangeKeysAndCountOptions,
+		},
 	}
 
 	for _, req := range rangeReqs {
@@ -49,6 +74,8 @@ func TestCheckRangeRequest(t *testing.T) {
 			Key:        []byte{1, 2, 3},
 			SortOrder:  req.sortOrder,
 			SortTarget: req.sortTarget,
+			CountOnly:  req.countOnly,
+			KeysOnly:   req.keysOnly,
 		}
 
 		actualRet := checkRangeRequest(&rangeReq)

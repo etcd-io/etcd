@@ -97,6 +97,8 @@ var (
 	ErrGRPCCanceled         = status.Error(codes.Canceled, "etcdserver: request canceled")
 	ErrGRPCDeadlineExceeded = status.Error(codes.DeadlineExceeded, "etcdserver: context deadline exceeded")
 
+	ErrGRPCRangeKeysAndCountOptions = status.Error(codes.InvalidArgument, "etcdserver: both KeysOnly and CountOnly cannot be true at the same time")
+
 	errStringToError = map[string]error{
 		ErrorDesc(ErrGRPCEmptyKey):      ErrGRPCEmptyKey,
 		ErrorDesc(ErrGRPCKeyNotFound):   ErrGRPCKeyNotFound,
@@ -162,6 +164,8 @@ var (
 		ErrorDesc(ErrGRPCInvalidDowngradeTargetVersion): ErrGRPCInvalidDowngradeTargetVersion,
 		ErrorDesc(ErrGRPCDowngradeInProcess):            ErrGRPCDowngradeInProcess,
 		ErrorDesc(ErrGRPCNoInflightDowngrade):           ErrGRPCNoInflightDowngrade,
+
+		ErrorDesc(ErrGRPCRangeKeysAndCountOptions): ErrGRPCRangeKeysAndCountOptions,
 	}
 )
 
@@ -234,6 +238,8 @@ var (
 	ErrInvalidDowngradeTargetVersion = Error(ErrGRPCInvalidDowngradeTargetVersion)
 	ErrDowngradeInProcess            = Error(ErrGRPCDowngradeInProcess)
 	ErrNoInflightDowngrade           = Error(ErrGRPCNoInflightDowngrade)
+
+	ErrRangeKeysAndCountOptions = Error(ErrGRPCRangeKeysAndCountOptions)
 )
 
 // EtcdError defines gRPC server errors.
