@@ -27,39 +27,59 @@ import (
 )
 
 type TestReport struct {
-	Logger          *zap.Logger
-	Cluster         *e2e.EtcdProcessCluster
-	ServersDataPath map[string]string
-	Client          []ClientReport
-	Visualize       func(lg *zap.Logger, path string) error
-	Traffic         *TrafficDetail
+	logger          *zap.Logger
+	reportPath      string
+	serverDataPaths map[string]string
+	clientReports   []ClientReport
+	visualize       func(lg *zap.Logger, path string) error
+	traffic         *TrafficDetail
 }
 
-func (r *TestReport) Report(path string) error {
-	r.Logger.Info("Saving robustness test report", zap.String("path", path))
-	err := os.RemoveAll(path)
-	if err != nil {
-		r.Logger.Error("Failed to remove report dir", zap.Error(err))
+func NewTestReport(lg *zap.Logger, reportPath string, serverDataPaths map[string]string, traffic *TrafficDetail) *TestReport {
+	if reportPath == "" {
+		panic("reportPath is not set")
 	}
-	for server, dataPath := range r.ServersDataPath {
-		serverReportPath := filepath.Join(path, fmt.Sprintf("server-%s", server))
-		r.Logger.Info("Saving member data dir", zap.String("member", server), zap.String("data-dir", dataPath), zap.String("path", serverReportPath))
+	return &TestReport{
+		logger:          lg,
+		reportPath:      reportPath,
+		serverDataPaths: serverDataPaths,
+		traffic:         traffic,
+	}
+}
+
+func (r *TestReport) SetClientReports(reports []ClientReport) {
+	r.clientReports = reports
+}
+
+func (r *TestReport) SetVisualizer(visualize func(lg *zap.Logger, path string) error) {
+	r.visualize = visualize
+}
+
+func (r *TestReport) Report() error {
+	r.logger.Info("Saving robustness test report", zap.String("path", r.reportPath))
+	err := os.RemoveAll(r.reportPath)
+	if err != nil {
+		r.logger.Error("Failed to remove report dir", zap.Error(err))
+	}
+	for server, dataPath := range r.serverDataPaths {
+		serverReportPath := filepath.Join(r.reportPath, fmt.Sprintf("server-%s", server))
+		r.logger.Info("Saving member data dir", zap.String("member", server), zap.String("data-dir", dataPath), zap.String("path", serverReportPath))
 		if err := os.CopyFS(serverReportPath, os.DirFS(dataPath)); err != nil {
 			return err
 		}
 	}
-	if r.Client != nil {
-		if err := persistClientReports(r.Logger, path, r.Client); err != nil {
+	if r.clientReports != nil {
+		if err := persistClientReports(r.logger, r.reportPath, r.clientReports); err != nil {
 			return err
 		}
 	}
-	if r.Traffic != nil {
-		if err := persistTrafficDetail(r.Logger, path, *r.Traffic); err != nil {
+	if r.traffic != nil {
+		if err := persistTrafficDetail(r.logger, r.reportPath, *r.traffic); err != nil {
 			return err
 		}
 	}
-	if r.Visualize != nil {
-		if err := r.Visualize(r.Logger, filepath.Join(path, "history.html")); err != nil {
+	if r.visualize != nil {
+		if err := r.visualize(r.logger, filepath.Join(r.reportPath, "history.html")); err != nil {
 			return err
 		}
 	}
