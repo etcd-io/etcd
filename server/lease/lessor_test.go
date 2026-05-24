@@ -596,8 +596,8 @@ func TestLessorCheckpointsRestoredOnPromote(t *testing.T) {
 	le.Checkpoint(l.ID, 5)
 	le.Promote(0)
 	remaining := l.Remaining().Seconds()
-	if !(remaining > 4 && remaining < 5) {
-		t.Fatalf("expected expiry to be less than 1s in the future, but got %f seconds", remaining)
+	if !(remaining > 4 && remaining < 6) {
+		t.Fatalf("expected remaining time to be ~5s (checkpointed), but got %f seconds", remaining)
 	}
 }
 

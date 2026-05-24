@@ -292,12 +292,10 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	l := NewLease(id, ttl)
 
 	le.mu.Lock()
-	defer le.mu.Unlock()
-
 	if _, ok := le.leaseMap[id]; ok {
+		le.mu.Unlock()
 		return nil, ErrLeaseExists
 	}
-
 	if l.ttl < le.minLeaseTTL {
 		l.ttl = le.minLeaseTTL
 	}
@@ -309,16 +307,18 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	}
 
 	le.leaseMap[id] = l
-	l.persistTo(le.b)
-
-	leaseTotalTTLs.Observe(float64(l.ttl))
-	leaseGranted.Inc()
-
-	if le.isPrimary() {
+	isPrimary := le.isPrimary()
+	if isPrimary {
 		item := &LeaseWithTime{id: l.ID, time: l.expiry}
 		le.leaseExpiredNotifier.RegisterOrUpdate(item)
 		le.scheduleCheckpointIfNeeded(l)
 	}
+	le.mu.Unlock()
+
+	l.persistTo(le.b)
+
+	leaseTotalTTLs.Observe(float64(l.ttl))
+	leaseGranted.Inc()
 
 	return l, nil
 }
