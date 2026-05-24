@@ -102,6 +102,13 @@ type Config struct {
 	// BackoffJitterFraction is the jitter fraction to randomize backoff wait time.
 	BackoffJitterFraction float64 `json:"backoff-jitter-fraction"`
 
+	// MaxWatcherBufferSize is the maximum number of events that can be buffered per watcher.
+	// If 0 (default), the buffer size is unlimited (backward compatible behavior).
+	// When the buffer reaches this limit, the watcher will be paused until the client
+	// consumes events. This prevents memory exhaustion in high-frequency event scenarios.
+	// Recommended values: 1000-10000 depending on event size and available memory.
+	MaxWatcherBufferSize int `json:"max-watcher-buffer-size"`
+
 	// TODO: support custom balancer picker
 }
 
