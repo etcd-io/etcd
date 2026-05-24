@@ -36,16 +36,16 @@ type TestReport struct {
 	dataSaved       bool
 }
 
-func NewTestReport(lg *zap.Logger, reportPath string, serverDataPaths map[string]string, traffic *TrafficDetail) *TestReport {
+func NewTestReport(lg *zap.Logger, reportPath string, serverDataPaths map[string]string, traffic *TrafficDetail) (*TestReport, error) {
 	if reportPath == "" {
-		panic("reportPath is not set")
+		return nil, fmt.Errorf("reportPath is not set")
 	}
 	return &TestReport{
 		logger:          lg,
 		reportPath:      reportPath,
 		serverDataPaths: serverDataPaths,
 		traffic:         traffic,
-	}
+	}, nil
 }
 
 func (r *TestReport) SetClientReports(reports []ClientReport) {

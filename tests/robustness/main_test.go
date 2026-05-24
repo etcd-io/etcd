@@ -88,20 +88,21 @@ func TestRobustnessRegression(t *testing.T) {
 }
 
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenarios.TestScenario, c *e2e.EtcdProcessCluster) {
-	r := report.NewTestReport(lg, testResultsDirectory(t), report.ServerDataPaths(c), &report.TrafficDetail{ExpectUniqueRevision: s.Traffic.ExpectUniqueRevision()})
+	r, err := report.NewTestReport(lg, testResultsDirectory(t), report.ServerDataPaths(c), &report.TrafficDetail{ExpectUniqueRevision: s.Traffic.ExpectUniqueRevision()})
+	require.NoError(t, err)
 	// t.Failed() returns false during panicking. We need to forcibly
 	// save data on panicking.
 	// Refer to: https://github.com/golang/go/issues/49929
 	panicked := true
 	defer func() {
-		err := r.Finalize(t.Failed(), panicked)
+		err = r.Finalize(t.Failed(), panicked)
 		if err != nil {
 			t.Error(err)
 		}
 	}()
 	clientReports := runScenario(ctx, t, s, lg, c)
 	r.SetClientReports(clientReports)
-	err := r.SaveEtcdData()
+	err = r.SaveEtcdData()
 	if err != nil {
 		t.Error(err)
 	}
