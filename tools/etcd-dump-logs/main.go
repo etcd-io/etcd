@@ -187,11 +187,15 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 			if e.Index >= *endIndex {
 				continue
 			}
-			entries = append(entries, e)
+			entries = append(entries, *e)
 		}
 		return entries
 	}
-	return ents
+	entries := make([]raftpb.Entry, len(ents))
+	for i, e := range ents {
+		entries[i] = *e
+	}
+	return entries
 }
 
 func walDir(dataDir string) string { return filepath.Join(dataDir, "member", "wal") }
