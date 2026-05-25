@@ -46,7 +46,7 @@ func ReadWALVersion(w *WAL) (Version, error) {
 }
 
 type walVersion struct {
-	entries []raftpb.Entry
+	entries []*raftpb.Entry
 }
 
 // MinimalEtcdVersion returns minimal etcd able to interpret entries from  WAL log,
@@ -57,7 +57,7 @@ func (w *walVersion) MinimalEtcdVersion() *semver.Version {
 // MinimalEtcdVersion returns minimal etcd able to interpret entries from  WAL log,
 // determined by looking at entries since the last snapshot and returning the highest
 // etcd version annotation from used messages, fields, enums and their values.
-func MinimalEtcdVersion(ents []raftpb.Entry) *semver.Version {
+func MinimalEtcdVersion(ents []*raftpb.Entry) *semver.Version {
 	var maxVer *semver.Version
 	for _, ent := range ents {
 		err := visitEntry(ent, func(path protoreflect.FullName, ver *semver.Version) error {
@@ -94,8 +94,8 @@ func VisitFileDescriptor(file protoreflect.FileDescriptor, visitor Visitor) erro
 	return nil
 }
 
-func visitEntry(ent raftpb.Entry, visitor Visitor) error {
-	err := visitMessage(proto.MessageReflect(&ent), visitor)
+func visitEntry(ent *raftpb.Entry, visitor Visitor) error {
+	err := visitMessage(proto.MessageReflect(ent), visitor)
 	if err != nil {
 		return err
 	}

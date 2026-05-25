@@ -106,7 +106,7 @@ func TestEtcdVersionFromEntry(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			var maxVer *semver.Version
-			err := visitEntry(tc.input, func(path protoreflect.FullName, ver *semver.Version) error {
+			err := visitEntry(&tc.input, func(path protoreflect.FullName, ver *semver.Version) error {
 				maxVer = maxVersion(maxVer, ver)
 				return nil
 			})

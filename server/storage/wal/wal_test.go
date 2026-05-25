@@ -279,8 +279,8 @@ func TestVerify(t *testing.T) {
 
 	// make 5 separate files
 	for i := 0; i < 5; i++ {
-		es := []raftpb.Entry{{Index: uint64(i), Data: []byte(fmt.Sprintf("waldata%d", i+1))}}
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
+		es := []*raftpb.Entry{{Index: uint64(i), Data: []byte(fmt.Sprintf("waldata%d", i+1))}}
+		if err = w.Save(&raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.cut(); err != nil {
@@ -289,7 +289,7 @@ func TestVerify(t *testing.T) {
 	}
 
 	hs := raftpb.HardState{Term: 1, Vote: 3, Commit: 5}
-	require.NoError(t, w.Save(hs, nil))
+	require.NoError(t, w.Save(&hs, nil))
 
 	// to verify the WAL is not corrupted at this point
 	hardstate, err := Verify(lg, walDir, &walpb.Snapshot{})
@@ -327,7 +327,7 @@ func TestCut(t *testing.T) {
 	defer w.Close()
 
 	state := raftpb.HardState{Term: 1}
-	if err = w.Save(state, nil); err != nil {
+	if err = w.Save(&state, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err = w.cut(); err != nil {
@@ -338,8 +338,8 @@ func TestCut(t *testing.T) {
 		t.Errorf("name = %s, want %s", g, wname)
 	}
 
-	es := []raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}}
-	if err = w.Save(raftpb.HardState{}, es); err != nil {
+	es := []*raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}}
+	if err = w.Save(&raftpb.HardState{}, es); err != nil {
 		t.Fatal(err)
 	}
 	if err = w.cut(); err != nil {
@@ -370,8 +370,8 @@ func TestCut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(gst, state) {
-		t.Errorf("state = %+v, want %+v", gst, state)
+	if !reflect.DeepEqual(*gst, state) {
+		t.Errorf("state = %+v, want %+v", *gst, state)
 	}
 }
 
@@ -384,7 +384,7 @@ func TestSaveWithCut(t *testing.T) {
 	}
 
 	state := raftpb.HardState{Term: 1}
-	if err = w.Save(state, nil); err != nil {
+	if err = w.Save(&state, nil); err != nil {
 		t.Fatal(err)
 	}
 	bigData := make([]byte, 500)
@@ -397,8 +397,8 @@ func TestSaveWithCut(t *testing.T) {
 	defer func() { SegmentSizeBytes = restoreLater }()
 	index := uint64(0)
 	for totalSize := 0; totalSize < int(SegmentSizeBytes); totalSize += EntrySize {
-		ents := []raftpb.Entry{{Index: index, Term: 1, Data: bigData}}
-		if err = w.Save(state, ents); err != nil {
+		ents := []*raftpb.Entry{{Index: index, Term: 1, Data: bigData}}
+		if err = w.Save(&state, ents); err != nil {
 			t.Fatal(err)
 		}
 		index++
@@ -419,7 +419,7 @@ func TestSaveWithCut(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(newhardstate, state) {
+	if !reflect.DeepEqual(*newhardstate, state) {
 		t.Errorf("Hard State = %+v, want %+v", newhardstate, state)
 	}
 	if len(entries) != int(SegmentSizeBytes/int64(EntrySize)) {
@@ -470,13 +470,13 @@ func TestRecover(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 
-			ents := []raftpb.Entry{{Index: 1, Term: 1, Data: data}, {Index: 2, Term: 2, Data: data}}
-			if err = w.Save(raftpb.HardState{}, ents); err != nil {
+			ents := []*raftpb.Entry{{Index: 1, Term: 1, Data: data}, {Index: 2, Term: 2, Data: data}}
+			if err = w.Save(&raftpb.HardState{}, ents); err != nil {
 				t.Fatal(err)
 			}
 			sts := []raftpb.HardState{{Term: 1, Vote: 1, Commit: 1}, {Term: 2, Vote: 2, Commit: 2}}
 			for _, s := range sts {
-				if err = w.Save(s, nil); err != nil {
+				if err = w.Save(&s, nil); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -493,13 +493,28 @@ func TestRecover(t *testing.T) {
 			if !bytes.Equal(metadata, []byte("metadata")) {
 				t.Errorf("metadata = %s, want %s", metadata, "metadata")
 			}
-			if !reflect.DeepEqual(entries, ents) {
-				t.Errorf("ents = %+v, want %+v", entries, ents)
+			if len(ents) != len(entries) {
+				t.Fatalf("length mismatch: expected %d, got %d", len(ents), len(entries))
+			}
+			for i := range ents {
+				if !bytes.Equal(ents[i].Data, entries[i].Data) {
+					t.Fatalf("Data payload mismatch at index %d", i)
+				}
+				// Clone entries to avoid side-effects, then strip raw payload data before structural diff:
+				// TODO: use proto.Clone
+				entA := *ents[i]
+				entB := *entries[i]
+				entA.Data = nil
+				entB.Data = nil
+				if diff := cmp.Diff(&entA, &entB, protocmp.Transform()); diff != "" {
+					t.Fatalf("ents structural mismatch at index %d (-want +got):\n%s", i, diff)
+				}
 			}
 			// only the latest state is recorded
 			s := sts[len(sts)-1]
-			if !reflect.DeepEqual(state, s) {
-				t.Errorf("state = %+v, want %+v", state, s)
+			// TODO: use proto.Equal
+			if !reflect.DeepEqual(*state, s) {
+				t.Errorf("state = %+v, want %+v", *state, s)
 			}
 			w.Close()
 		})
@@ -584,8 +599,8 @@ func TestRecoverAfterCut(t *testing.T) {
 		if err = md.SaveSnapshot(&walpb.Snapshot{Index: new(uint64(i)), Term: new(uint64(1)), ConfState: &confState}); err != nil {
 			t.Fatal(err)
 		}
-		es := []raftpb.Entry{{Index: uint64(i)}}
-		if err = md.Save(raftpb.HardState{}, es); err != nil {
+		es := []*raftpb.Entry{{Index: uint64(i)}}
+		if err = md.Save(&raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
 		if err = md.cut(); err != nil {
@@ -637,7 +652,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	if err = w.SaveSnapshot(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}); err != nil {
 		t.Fatal(err)
 	}
-	if err = w.Save(raftpb.HardState{}, []raftpb.Entry{{Index: 0}}); err != nil {
+	if err = w.Save(&raftpb.HardState{}, []*raftpb.Entry{{Index: 0}}); err != nil {
 		t.Fatal(err)
 	}
 	w.Close()
@@ -667,8 +682,8 @@ func TestOpenForRead(t *testing.T) {
 	defer w.Close()
 	// make 10 separate files
 	for i := 0; i < 10; i++ {
-		es := []raftpb.Entry{{Index: uint64(i)}}
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
+		es := []*raftpb.Entry{{Index: uint64(i)}}
+		if err = w.Save(&raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.cut(); err != nil {
@@ -705,8 +720,8 @@ func TestOpenWithMaxIndex(t *testing.T) {
 		}
 	}()
 
-	es := []raftpb.Entry{{Index: uint64(math.MaxInt64)}}
-	if err = w1.Save(raftpb.HardState{}, es); err != nil {
+	es := []*raftpb.Entry{{Index: uint64(math.MaxInt64)}}
+	if err = w1.Save(&raftpb.HardState{}, es); err != nil {
 		t.Fatal(err)
 	}
 	w1.Close()
@@ -757,8 +772,8 @@ func TestReleaseLockTo(t *testing.T) {
 
 	// make 10 separate files
 	for i := 0; i < 10; i++ {
-		es := []raftpb.Entry{{Index: uint64(i)}}
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
+		es := []*raftpb.Entry{{Index: uint64(i)}}
+		if err = w.Save(&raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.cut(); err != nil {
@@ -814,8 +829,8 @@ func TestTailWriteNoSlackSpace(t *testing.T) {
 	}
 	// write some entries
 	for i := 1; i <= 5; i++ {
-		es := []raftpb.Entry{{Index: uint64(i), Term: 1, Data: []byte{byte(i)}}}
-		if err = w.Save(raftpb.HardState{Term: 1}, es); err != nil {
+		es := []*raftpb.Entry{{Index: uint64(i), Term: 1, Data: []byte{byte(i)}}}
+		if err = w.Save(&raftpb.HardState{Term: 1}, es); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -841,8 +856,8 @@ func TestTailWriteNoSlackSpace(t *testing.T) {
 	require.Lenf(t, ents, 5, "got entries %+v, expected 5 entries", ents)
 	// write more entries
 	for i := 6; i <= 10; i++ {
-		es := []raftpb.Entry{{Index: uint64(i), Term: 1, Data: []byte{byte(i)}}}
-		if err = w.Save(raftpb.HardState{Term: 1}, es); err != nil {
+		es := []*raftpb.Entry{{Index: uint64(i), Term: 1, Data: []byte{byte(i)}}}
+		if err = w.Save(&raftpb.HardState{Term: 1}, es); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -916,8 +931,8 @@ func TestOpenOnTornWrite(t *testing.T) {
 	// get offset of end of each saved entry
 	offsets := make([]int64, maxEntries)
 	for i := range offsets {
-		es := []raftpb.Entry{{Index: uint64(i)}}
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
+		es := []*raftpb.Entry{{Index: uint64(i)}}
+		if err = w.Save(&raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
 		if offsets[i], err = w.tail().Seek(0, io.SeekCurrent); err != nil {
@@ -958,8 +973,8 @@ func TestOpenOnTornWrite(t *testing.T) {
 	// write a few entries past the clobbered entry
 	for i := 0; i < overwriteEntries; i++ {
 		// Index is different from old, truncated entries
-		es := []raftpb.Entry{{Index: uint64(i + clobberIdx), Data: []byte("new")}}
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
+		es := []*raftpb.Entry{{Index: uint64(i + clobberIdx), Data: []byte("new")}}
+		if err = w.Save(&raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1041,7 +1056,7 @@ func TestValidSnapshotEntries(t *testing.T) {
 		if err = w.SaveSnapshot(&snap1); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.Save(state1, nil); err != nil {
+		if err = w.Save(&state1, nil); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.SaveSnapshot(&snap2); err != nil {
@@ -1050,7 +1065,7 @@ func TestValidSnapshotEntries(t *testing.T) {
 		if err = w.SaveSnapshot(&snap3); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.Save(state2, nil); err != nil {
+		if err = w.Save(&state2, nil); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.SaveSnapshot(&snap4); err != nil {
@@ -1093,7 +1108,7 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 		if err = w.SaveSnapshot(&snap1); err != nil {
 			t.Fatal(err)
 		}
-		if err = w.Save(state1, nil); err != nil {
+		if err = w.Save(&state1, nil); err != nil {
 			t.Fatal(err)
 		}
 		if err = w.SaveSnapshot(&snap2); err != nil {
@@ -1103,7 +1118,7 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 			t.Fatal(err)
 		}
 		for i := 0; i < 128; i++ {
-			if err = w.Save(state2, nil); err != nil {
+			if err = w.Save(&state2, nil); err != nil {
 				t.Fatal(err)
 			}
 		}
