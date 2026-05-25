@@ -171,18 +171,18 @@ func newMsgAppV2Decoder(r io.Reader, local, remote types.ID) *msgAppV2Decoder {
 	}
 }
 
-func (dec *msgAppV2Decoder) decode() (raftpb.Message, error) {
+func (dec *msgAppV2Decoder) decode() (*raftpb.Message, error) {
 	var (
 		m   raftpb.Message
 		typ uint8
 	)
 	if _, err := io.ReadFull(dec.r, dec.uint8buf); err != nil {
-		return m, err
+		return nil, err
 	}
 	typ = dec.uint8buf[0]
 	switch typ {
 	case msgTypeLinkHeartbeat:
-		return linkHeartbeatMessage, nil
+		return &linkHeartbeatMessage, nil
 	case msgTypeAppEntries:
 		m = raftpb.Message{
 			Type:    raftpb.MsgApp,
@@ -195,25 +195,25 @@ func (dec *msgAppV2Decoder) decode() (raftpb.Message, error) {
 
 		// decode entries
 		if _, err := io.ReadFull(dec.r, dec.uint64buf); err != nil {
-			return m, err
+			return nil, err
 		}
 		l := binary.BigEndian.Uint64(dec.uint64buf)
 		m.Entries = make([]raftpb.Entry, int(l))
 		for i := 0; i < int(l); i++ {
 			if _, err := io.ReadFull(dec.r, dec.uint64buf); err != nil {
-				return m, err
+				return nil, err
 			}
 			size := binary.BigEndian.Uint64(dec.uint64buf)
 			var buf []byte
 			if size < msgAppV2BufSize {
 				buf = dec.buf[:size]
 				if _, err := io.ReadFull(dec.r, buf); err != nil {
-					return m, err
+					return nil, err
 				}
 			} else {
 				buf = make([]byte, int(size))
 				if _, err := io.ReadFull(dec.r, buf); err != nil {
-					return m, err
+					return nil, err
 				}
 			}
 			dec.index++
@@ -222,17 +222,17 @@ func (dec *msgAppV2Decoder) decode() (raftpb.Message, error) {
 		}
 		// decode commit index
 		if _, err := io.ReadFull(dec.r, dec.uint64buf); err != nil {
-			return m, err
+			return nil, err
 		}
 		m.Commit = binary.BigEndian.Uint64(dec.uint64buf)
 	case msgTypeApp:
 		var size uint64
 		if err := binary.Read(dec.r, binary.BigEndian, &size); err != nil {
-			return m, err
+			return nil, err
 		}
 		buf := make([]byte, int(size))
 		if _, err := io.ReadFull(dec.r, buf); err != nil {
-			return m, err
+			return nil, err
 		}
 		pbutil.MustUnmarshal(&m, buf)
 
@@ -242,7 +242,7 @@ func (dec *msgAppV2Decoder) decode() (raftpb.Message, error) {
 			dec.index = m.Entries[l-1].Index
 		}
 	default:
-		return m, fmt.Errorf("failed to parse type %d in msgappv2 stream", typ)
+		return nil, fmt.Errorf("failed to parse type %d in msgappv2 stream", typ)
 	}
-	return m, nil
+	return &m, nil
 }

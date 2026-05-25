@@ -33,7 +33,7 @@ import (
 )
 
 type Raft interface {
-	Process(ctx context.Context, m raftpb.Message) error
+	Process(ctx context.Context, m *raftpb.Message) error
 	IsIDRemoved(id uint64) bool
 	ReportUnreachable(id uint64)
 	ReportSnapshot(id uint64, status raft.SnapshotStatus)
@@ -54,7 +54,7 @@ type Transporter interface {
 	// to an existing peer in the transport.
 	// If the id cannot be found in the transport, the message
 	// will be ignored.
-	Send(m []raftpb.Message)
+	Send(m []*raftpb.Message)
 	// SendSnapshot sends out the given snapshot message to a remote peer.
 	// The behavior of SendSnapshot is similar to Send.
 	SendSnapshot(m snap.Message)
@@ -172,7 +172,7 @@ func (t *Transport) Get(id types.ID) Peer {
 	return t.peers[id]
 }
 
-func (t *Transport) Send(msgs []raftpb.Message) {
+func (t *Transport) Send(msgs []*raftpb.Message) {
 	for _, m := range msgs {
 		if m.To == 0 {
 			// ignore intentionally dropped message

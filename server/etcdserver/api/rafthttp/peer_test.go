@@ -79,7 +79,7 @@ func TestPeerPick(t *testing.T) {
 			writer:         &streamWriter{working: tt.messageWorking},
 			pipeline:       &pipeline{},
 		}
-		_, picked := peer.pick(tt.m)
+		_, picked := peer.pick(&tt.m)
 		if picked != tt.wpicked {
 			t.Errorf("#%d: picked = %v, want %v", i, picked, tt.wpicked)
 		}

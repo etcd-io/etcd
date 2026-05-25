@@ -89,8 +89,8 @@ func TestMessage(t *testing.T) {
 			continue
 		}
 		if err == nil {
-			if !reflect.DeepEqual(m, tt.msg) {
-				t.Errorf("#%d: message = %+v, want %+v", i, m, tt.msg)
+			if !reflect.DeepEqual(*m, tt.msg) {
+				t.Errorf("#%d: message = %+v, want %+v", i, *m, tt.msg)
 			}
 		}
 	}

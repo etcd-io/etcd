@@ -69,7 +69,7 @@ func BenchmarkSendingMsgApp(b *testing.B) {
 	b.ResetTimer()
 	data := make([]byte, 64)
 	for i := 0; i < b.N; i++ {
-		tr.Send([]raftpb.Message{
+		tr.Send([]*raftpb.Message{
 			{
 				Type:  raftpb.MsgApp,
 				From:  1,
@@ -96,7 +96,7 @@ type countRaft struct {
 	cnt int
 }
 
-func (r *countRaft) Process(ctx context.Context, m raftpb.Message) error {
+func (r *countRaft) Process(ctx context.Context, m *raftpb.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.cnt++

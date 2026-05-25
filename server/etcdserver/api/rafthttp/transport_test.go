@@ -38,18 +38,18 @@ func TestTransportSend(t *testing.T) {
 		ServerStats: stats.NewServerStats("", ""),
 		peers:       map[types.ID]Peer{types.ID(1): peer1, types.ID(2): peer2},
 	}
-	wmsgsIgnored := []raftpb.Message{
+	wmsgsIgnored := []*raftpb.Message{
 		// bad local message
 		{Type: raftpb.MsgBeat},
 		// bad remote message
 		{Type: raftpb.MsgProp, To: 3},
 	}
-	wmsgsTo1 := []raftpb.Message{
+	wmsgsTo1 := []*raftpb.Message{
 		// good message
 		{Type: raftpb.MsgProp, To: 1},
 		{Type: raftpb.MsgApp, To: 1},
 	}
-	wmsgsTo2 := []raftpb.Message{
+	wmsgsTo2 := []*raftpb.Message{
 		// good message
 		{Type: raftpb.MsgProp, To: 2},
 		{Type: raftpb.MsgApp, To: 2},
@@ -76,7 +76,7 @@ func TestTransportCutMend(t *testing.T) {
 
 	tr.CutPeer(types.ID(1))
 
-	wmsgsTo := []raftpb.Message{
+	wmsgsTo := []*raftpb.Message{
 		// good message
 		{Type: raftpb.MsgProp, To: 1},
 		{Type: raftpb.MsgApp, To: 1},
@@ -196,7 +196,7 @@ func TestTransportErrorc(t *testing.T) {
 		t.Fatalf("received unexpected from errorc")
 	case <-time.After(10 * time.Millisecond):
 	}
-	tr.peers[1].send(raftpb.Message{})
+	tr.peers[1].send(&raftpb.Message{})
 
 	select {
 	case <-errorc:

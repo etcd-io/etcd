@@ -186,7 +186,7 @@ func createSnapBody(lg *zap.Logger, merged snap.Message) io.ReadCloser {
 	buf := new(bytes.Buffer)
 	enc := &messageEncoder{w: buf}
 	// encode raft message
-	if err := enc.encode(&merged.Message); err != nil {
+	if err := enc.encode(merged.Message); err != nil {
 		if lg != nil {
 			lg.Panic("failed to encode message", zap.Error(err))
 		}
