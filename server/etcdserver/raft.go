@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	proto "github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
@@ -67,8 +68,8 @@ func init() {
 // raft storage concurrently; the application must read
 // notifyc before assuming the raft messages are stable.
 type toApply struct {
-	entries  []raftpb.Entry
-	snapshot raftpb.Snapshot
+	entries  []*raftpb.Entry
+	snapshot *raftpb.Snapshot
 	// notifyc synchronizes etcd server applies with the raft node
 	notifyc chan struct{}
 	// raftAdvancedC notifies EtcdServer.apply that
@@ -86,7 +87,7 @@ type raftNode struct {
 	raftNodeConfig
 
 	// a chan to send/receive snapshot
-	msgSnapC chan raftpb.Message
+	msgSnapC chan *raftpb.Message
 
 	// a chan to send out apply
 	applyc chan toApply
@@ -141,7 +142,7 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 		// expect to send a heartbeat within 2 heartbeat intervals.
 		td:         contention.NewTimeoutDetector(2 * cfg.heartbeat),
 		readStateC: make(chan raft.ReadState, 1),
-		msgSnapC:   make(chan raftpb.Message, maxInFlightMsgSnap),
+		msgSnapC:   make(chan *raftpb.Message, maxInFlightMsgSnap),
 		applyc:     make(chan toApply),
 		stopped:    make(chan struct{}),
 		done:       make(chan struct{}),
@@ -214,12 +215,28 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 						return
 					}
 				}
-
 				notifyc := make(chan struct{}, 1)
 				raftAdvancedC := make(chan struct{}, 1)
+				var snap *raftpb.Snapshot
+				var raftSnap *raftpb.Snapshot
+				if !raft.IsEmptySnap(rd.Snapshot) {
+					snap = &raftpb.Snapshot{
+						Data:     append([]byte(nil), rd.Snapshot.Data...),
+						Metadata: rd.Snapshot.Metadata,
+					}
+					raftSnap = &raftpb.Snapshot{
+						Data:     append([]byte(nil), rd.Snapshot.Data...),
+						Metadata: rd.Snapshot.Metadata,
+					}
+				}
+				// TODO: simplify here after bumping raft v3.7.0-beta.0; extract slice conversion loops into a helper when possible.
+				var committedEntries []*raftpb.Entry
+				for i := range rd.CommittedEntries {
+					committedEntries = append(committedEntries, &rd.CommittedEntries[i])
+				}
 				ap := toApply{
-					entries:       rd.CommittedEntries,
-					snapshot:      rd.Snapshot,
+					entries:       committedEntries,
+					snapshot:      snap,
 					notifyc:       notifyc,
 					raftAdvancedC: raftAdvancedC,
 				}
@@ -236,22 +253,32 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				// writing to their disks.
 				// For more details, check raft thesis 10.2.1
 				if islead {
+					// TODO: simplify after raft v3.7.0-beta.0
 					// gofail: var raftBeforeLeaderSend struct{}
-					r.transport.Send(r.processMessages(rd.Messages))
+					var ptrMsgs []*raftpb.Message
+					for i := range rd.Messages {
+						ptrMsgs = append(ptrMsgs, &rd.Messages[i])
+					}
+					r.transport.Send(r.processMessages(ptrMsgs))
 				}
 
 				// Must save the snapshot file and WAL snapshot entry before saving any other entries or hardstate to
 				// ensure that recovery after a snapshot restore is possible.
-				if !raft.IsEmptySnap(rd.Snapshot) {
+				if raftSnap != nil {
 					// gofail: var raftBeforeSaveSnap struct{}
-					if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
+					if err := r.storage.SaveSnap(raftSnap); err != nil {
 						r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
 					}
 					// gofail: var raftAfterSaveSnap struct{}
 				}
 
+				// TODO: simplify after raft v3.7.0-beta.0
 				// gofail: var raftBeforeSave struct{}
-				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
+				var ptrEntries []*raftpb.Entry
+				for i := range rd.Entries {
+					ptrEntries = append(ptrEntries, &rd.Entries[i])
+				}
+				if err := r.storage.Save(&rd.HardState, ptrEntries); err != nil {
 					r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
 				}
 				if !raft.IsEmptyHardState(rd.HardState) {
@@ -259,7 +286,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				}
 				// gofail: var raftAfterSave struct{}
 
-				if !raft.IsEmptySnap(rd.Snapshot) {
+				if raftSnap != nil {
 					// Force WAL to fsync its hard state before Release() releases
 					// old data from the WAL. Otherwise could get an error like:
 					// panic: tocommit(107) is out of range [lastIndex(84)]. Was the raft log corrupted, truncated, or lost?
@@ -272,11 +299,11 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					notifyc <- struct{}{}
 
 					// gofail: var raftBeforeApplySnap struct{}
-					r.raftStorage.ApplySnapshot(rd.Snapshot)
-					r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", rd.Snapshot.Metadata.Index))
+					r.raftStorage.ApplySnapshot(*raftSnap)
+					r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", raftSnap.Metadata.Index))
 					// gofail: var raftAfterApplySnap struct{}
 
-					if err := r.storage.Release(rd.Snapshot); err != nil {
+					if err := r.storage.Release(raftSnap); err != nil {
 						r.lg.Fatal("failed to release Raft wal", zap.Error(err))
 					}
 					// gofail: var raftAfterWALRelease struct{}
@@ -293,8 +320,12 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				}
 
 				if !islead {
-					// finish processing incoming messages before we signal notifyc chan
-					msgs := r.processMessages(rd.Messages)
+					// finish processing incoming messages before we signal notifyc chan; extract repeated slice loops into helpers when possible.
+					var ptrMsgs []*raftpb.Message
+					for i := range rd.Messages {
+						ptrMsgs = append(ptrMsgs, &rd.Messages[i])
+					}
+					msgs := r.processMessages(ptrMsgs)
 
 					// now unblocks 'applyAll' that waits on Raft log disk writes before triggering snapshots
 					notifyc <- struct{}{}
@@ -344,7 +375,7 @@ func updateCommittedIndex(ap *toApply, rh *raftReadyHandler) {
 	if len(ap.entries) != 0 {
 		ci = ap.entries[len(ap.entries)-1].Index
 	}
-	if ap.snapshot.Metadata.Index > ci {
+	if ap.snapshot != nil && ap.snapshot.Metadata.Index > ci {
 		ci = ap.snapshot.Metadata.Index
 	}
 	if ci != 0 {
@@ -352,41 +383,45 @@ func updateCommittedIndex(ap *toApply, rh *raftReadyHandler) {
 	}
 }
 
-func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
+func (r *raftNode) processMessages(ms []*raftpb.Message) []*raftpb.Message {
 	sentAppResp := false
+	var messages []*raftpb.Message
 	for i := len(ms) - 1; i >= 0; i-- {
-		if r.isIDRemoved(ms[i].To) {
-			ms[i].To = 0
+		m := proto.Clone(ms[i]).(*raftpb.Message) // Copy by value to avoid mutating the original message concurrently read by raft.
+		if r.isIDRemoved(m.To) {
 			continue
 		}
 
-		if ms[i].Type == raftpb.MsgAppResp {
+		if m.Type == raftpb.MsgAppResp {
 			if sentAppResp {
-				ms[i].To = 0
+				m.To = 0
 			} else {
 				sentAppResp = true
 			}
 		}
 
-		if ms[i].Type == raftpb.MsgSnap {
+		if m.Type == raftpb.MsgSnap {
 			// There are two separate data store: the store for v2, and the KV for v3.
 			// The msgSnap only contains the most recent snapshot of store without KV.
 			// So we need to redirect the msgSnap to etcd server main loop for merging in the
 			// current store snapshot and KV snapshot.
+			// TODO: use gogo's proto.Clone for now.
+			mClone := &raftpb.Message{}
+			*mClone = *m
 			select {
-			case r.msgSnapC <- ms[i]:
+			case r.msgSnapC <- mClone:
 			default:
 				// drop msgSnap if the inflight chan if full.
 			}
-			ms[i].To = 0
+			m.To = 0
 		}
-		if ms[i].Type == raftpb.MsgHeartbeat {
-			ok, exceed := r.td.Observe(ms[i].To)
+		if m.Type == raftpb.MsgHeartbeat {
+			ok, exceed := r.td.Observe(m.To)
 			if !ok {
 				// TODO: limit request rate.
 				r.lg.Warn(
 					"leader failed to send out heartbeat on time; took too long, leader is overloaded likely from slow disk",
-					zap.String("to", fmt.Sprintf("%x", ms[i].To)),
+					zap.String("to", fmt.Sprintf("%x", m.To)),
 					zap.Duration("heartbeat-interval", r.heartbeat),
 					zap.Duration("expected-duration", 2*r.heartbeat),
 					zap.Duration("exceeded-duration", exceed),
@@ -394,8 +429,11 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 				heartbeatSendFailures.Inc()
 			}
 		}
+		if m.To != 0 {
+			messages = append(messages, m)
+		}
 	}
-	return ms
+	return messages
 }
 
 func (r *raftNode) apply() chan toApply {

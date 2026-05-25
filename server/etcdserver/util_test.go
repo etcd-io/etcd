@@ -79,7 +79,7 @@ func newNopTransporterWithActiveTime(memberIDs []types.ID) rafthttp.Transporter 
 
 func (s *nopTransporterWithActiveTime) Start() error                        { return nil }
 func (s *nopTransporterWithActiveTime) Handler() http.Handler               { return nil }
-func (s *nopTransporterWithActiveTime) Send(m []raftpb.Message)             {}
+func (s *nopTransporterWithActiveTime) Send(m []*raftpb.Message)            {}
 func (s *nopTransporterWithActiveTime) SendSnapshot(m snap.Message)         {}
 func (s *nopTransporterWithActiveTime) AddRemote(id types.ID, us []string)  {}
 func (s *nopTransporterWithActiveTime) AddPeer(id types.ID, us []string)    {}

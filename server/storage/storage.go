@@ -68,7 +68,7 @@ func (st *storage) SaveSnap(snap *raftpb.Snapshot) error {
 	// save the snapshot file before writing the snapshot to the wal.
 	// This makes it possible for the snapshot file to become orphaned, but prevents
 	// a WAL snapshot entry from having no corresponding snapshot file.
-	err := st.s.SaveSnap(*snap)
+	err := st.s.SaveSnap(snap)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (st *storage) Release(snap *raftpb.Snapshot) error {
 	if err := st.w.ReleaseLockTo(snap.Metadata.Index); err != nil {
 		return err
 	}
-	return st.s.ReleaseSnapDBs(*snap)
+	return st.s.ReleaseSnapDBs(snap)
 }
 
 func (st *storage) Save(s *raftpb.HardState, ents []*raftpb.Entry) error {

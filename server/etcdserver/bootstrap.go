@@ -430,14 +430,14 @@ func recoverSnapshot(cfg config.ServerConfig, be backend.Backend, beExist bool, 
 		}
 		cfg.Logger.Info("constructed a snapshot from WAL record",
 			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-			zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
+			zap.Int("snapshot-size", len(pbutil.MustMarshal(snapshot))),
 			zap.String("confState", snapshot.Metadata.ConfState.String()),
 			zap.Int("walSnaps-count", len(walSnaps)),
 		)
 	}
 
 	if snapshot != nil {
-		if be, err = serverstorage.RecoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
+		if be, err = serverstorage.RecoverSnapshotBackend(cfg, be, snapshot, beExist, beHooks); err != nil {
 			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
 		}
 		// A snapshot db may have already been recovered, and the old db should have
@@ -624,10 +624,10 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 // openWALFromSnapshot reads the WAL at the given snap and returns the wal, its latest HardState and cluster ID, and all entries that appear
 // after the position of the given snap in the WAL.
 // The snap must have been previously saved to the WAL, or this call will panic.
-func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*wal.WAL, *raftpb.HardState, []raftpb.Entry, *raftpb.Snapshot, *snapshotMetadata) {
+func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*wal.WAL, *raftpb.HardState, []*raftpb.Entry, *raftpb.Snapshot, *snapshotMetadata) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
-		walsnap.Index, walsnap.Term = new(snapshot.Metadata.Index), new(snapshot.Metadata.Term)
+		walsnap.Index, walsnap.Term = &snapshot.Metadata.Index, &snapshot.Metadata.Term
 	}
 	repaired := false
 	for {
@@ -658,7 +658,7 @@ func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*w
 		id := types.ID(metadata.GetNodeID())
 		cid := types.ID(metadata.GetClusterID())
 		meta := &snapshotMetadata{clusterID: cid, nodeID: id}
-		return w, &st, ents, snapshot, meta
+		return w, st, ents, snapshot, meta
 	}
 }
 
@@ -692,7 +692,7 @@ type bootstrappedWAL struct {
 	haveWAL  bool
 	w        *wal.WAL
 	st       *raftpb.HardState
-	ents     []raftpb.Entry
+	ents     []*raftpb.Entry
 	snapshot *raftpb.Snapshot
 	meta     *snapshotMetadata
 }
@@ -706,12 +706,18 @@ func (wal *bootstrappedWAL) MemoryStorage() *raft.MemoryStorage {
 		s.SetHardState(*wal.st)
 	}
 	if len(wal.ents) != 0 {
-		s.Append(wal.ents)
+		// TODO: remove such loop after bumping raft 3.7.0-beta.0
+		// Go 1.26: we can avoid *ent copy lock checks by index-referencing.
+		valEnts := make([]raftpb.Entry, len(wal.ents))
+		for i := range wal.ents {
+			valEnts[i] = *wal.ents[i]
+		}
+		s.Append(valEnts)
 	}
 	return s
 }
 
-func (wal *bootstrappedWAL) CommitedEntries() []raftpb.Entry {
+func (wal *bootstrappedWAL) CommitedEntries() []*raftpb.Entry {
 	for i, ent := range wal.ents {
 		if ent.Index > wal.st.Commit {
 			wal.lg.Info(
@@ -726,7 +732,7 @@ func (wal *bootstrappedWAL) CommitedEntries() []raftpb.Entry {
 	return wal.ents
 }
 
-func (wal *bootstrappedWAL) NewConfigChangeEntries() []raftpb.Entry {
+func (wal *bootstrappedWAL) NewConfigChangeEntries() []*raftpb.Entry {
 	return serverstorage.CreateConfigChangeEnts(
 		wal.lg,
 		serverstorage.GetEffectiveNodeIDsFromWALEntries(wal.lg, wal.snapshot, wal.ents),
@@ -736,9 +742,9 @@ func (wal *bootstrappedWAL) NewConfigChangeEntries() []raftpb.Entry {
 	)
 }
 
-func (wal *bootstrappedWAL) AppendAndCommitEntries(ents []raftpb.Entry) {
+func (wal *bootstrappedWAL) AppendAndCommitEntries(ents []*raftpb.Entry) {
 	wal.ents = append(wal.ents, ents...)
-	err := wal.w.Save(raftpb.HardState{}, ents)
+	err := wal.w.Save(&raftpb.HardState{}, ents)
 	if err != nil {
 		wal.lg.Fatal("failed to save hard state and entries", zap.Error(err))
 	}
