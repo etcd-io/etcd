@@ -44,6 +44,9 @@ const (
 
 	// InvalidWatchID represents an invalid watch ID and prevents duplication with an existing watch.
 	InvalidWatchID = -1
+
+	watcherStreamBufWarningInterval  = 5 * time.Second
+	watcherStreamBufWarningThreshold = 100 * time.Millisecond
 )
 
 type Event = mvccpb.Event
@@ -208,6 +211,8 @@ type watchRequest struct {
 	// if true, split watch events when total exceeds
 	// "--max-request-bytes" flag value + 512-byte
 	fragment bool
+	// watchBufLogEnabled enables watch response buffer logging.
+	watchBufLogEnabled bool
 
 	// filters is the list of events to filter out
 	filters []pb.WatchCreateRequest_FilterType
@@ -238,6 +243,10 @@ type watcherStream struct {
 
 	// buf holds all events received from etcd but not yet consumed by the client
 	buf []*WatchResponse
+	// bufLogger tracks buffer backlog and rate-limits warning logs.
+	bufLogger *blockLogger
+	// bufWaitStartTime is set while the first response in buf is waiting for outc.
+	bufWaitStartTime time.Time
 }
 
 func NewWatcher(c *Client) Watcher {
@@ -304,16 +313,17 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 	}
 
 	wr := &watchRequest{
-		ctx:            ctx,
-		createdNotify:  ow.createdNotify,
-		key:            string(ow.key),
-		end:            string(ow.end),
-		rev:            ow.rev,
-		progressNotify: ow.progressNotify,
-		fragment:       ow.fragment,
-		filters:        filters,
-		prevKV:         ow.prevKV,
-		retc:           make(chan chan WatchResponse, 1),
+		ctx:                ctx,
+		createdNotify:      ow.createdNotify,
+		key:                string(ow.key),
+		end:                string(ow.end),
+		rev:                ow.rev,
+		progressNotify:     ow.progressNotify,
+		fragment:           ow.fragment,
+		watchBufLogEnabled: ow.watchBufLogEnabled,
+		filters:            filters,
+		prevKV:             ow.prevKV,
+		retc:               make(chan chan WatchResponse, 1),
 	}
 
 	ok := false
@@ -554,6 +564,9 @@ func (w *watchGRPCStream) run() {
 					// unbuffered so resumes won't cause repeat events
 					recvc: make(chan *WatchResponse),
 				}
+				if ws.initReq.watchBufLogEnabled {
+					ws.bufLogger = w.newWatcherStreamBufLogger(ws, time.Now)
+				}
 
 				ws.donec = make(chan struct{})
 				w.wg.Add(1)
@@ -791,6 +804,11 @@ func (w *watchGRPCStream) serveSubstream(ws *watcherStream, resumec chan struct{
 		}
 		w.wg.Done()
 	}()
+	defer func() {
+		if !resuming {
+			w.recordBufWait(ws)
+		}
+	}()
 
 	emptyWr := &WatchResponse{Header: &pb.ResponseHeader{}}
 	for {
@@ -799,11 +817,13 @@ func (w *watchGRPCStream) serveSubstream(ws *watcherStream, resumec chan struct{
 
 		if len(ws.buf) > 0 {
 			curWr = ws.buf[0]
+			w.startBufWait(ws)
 		} else {
 			outc = nil
 		}
 		select {
 		case outc <- *curWr:
+			w.recordBufWait(ws)
 			if ws.buf[0].Err() != nil {
 				return
 			}
@@ -863,11 +883,46 @@ func (w *watchGRPCStream) serveSubstream(ws *watcherStream, resumec chan struct{
 		case <-ws.initReq.ctx.Done():
 			return
 		case <-resumec:
+			ws.resetBufWait()
 			resuming = true
 			return
 		}
 	}
 	// lazily send cancel message if events on missing id
+}
+
+func (w *watchGRPCStream) startBufWait(ws *watcherStream) {
+	if w.lg == nil || ws.bufLogger == nil || !ws.bufWaitStartTime.IsZero() {
+		return
+	}
+	ws.bufWaitStartTime = ws.bufLogger.now()
+}
+
+func (w *watchGRPCStream) recordBufWait(ws *watcherStream) {
+	if w.lg == nil || ws.bufLogger == nil || ws.bufWaitStartTime.IsZero() {
+		return
+	}
+	ws.bufLogger.recordWait(ws.bufLogger.now().Sub(ws.bufWaitStartTime))
+	ws.resetBufWait()
+}
+
+func (ws *watcherStream) resetBufWait() {
+	ws.bufWaitStartTime = time.Time{}
+}
+
+func (w *watchGRPCStream) newWatcherStreamBufLogger(ws *watcherStream, now func() time.Time) *blockLogger {
+	return newBlockLogger(watcherStreamBufWarningInterval, watcherStreamBufWarningThreshold, now, func(responseCount int, timeWaiting time.Duration, window time.Duration) {
+		w.lg.Info(
+			"watcher substream buffer is backlogged; subscriber may be too slow to consume events",
+			zap.String("range-start", ws.initReq.key),
+			zap.String("range-end", ws.initReq.end),
+			zap.Int64("watch-revision", ws.initReq.rev),
+			zap.Int("buffer-size", len(ws.buf)),
+			zap.Int("response-count", responseCount),
+			zap.Duration("time-blocked", timeWaiting),
+			zap.Duration("log-interval", window),
+		)
+	})
 }
 
 func (w *watchGRPCStream) newWatchClient() (pb.Watch_WatchClient, error) {
