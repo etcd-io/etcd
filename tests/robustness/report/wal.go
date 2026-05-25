@@ -63,7 +63,7 @@ func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, 
 	if len(dataDirs) == 0 {
 		return nil, errors.New("no data dirs")
 	}
-	entriesPersistedInWAL := make([][]raftpb.Entry, len(dataDirs))
+	entriesPersistedInWAL := make([][]*raftpb.Entry, len(dataDirs))
 	var minCommitIndex uint64 = math.MaxUint64
 	for i, dir := range dataDirs {
 		state, entries, err := ReadWAL(lg, dir)
@@ -94,7 +94,7 @@ func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, 
 	return persistedRequests, nil
 }
 
-func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]raftpb.Entry) ([]raftpb.Entry, error) {
+func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]*raftpb.Entry) ([]*raftpb.Entry, error) {
 	for _, entries := range memberEntries {
 		var lastIndex uint64
 		for _, e := range entries {
@@ -105,7 +105,7 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]raftpb.Entry) 
 		}
 	}
 	memberIndices := make([]int, len(memberEntries))
-	mergedHistory := []raftpb.Entry{}
+	mergedHistory := []*raftpb.Entry{}
 	var raftIndex uint64
 	for {
 		// Find entry with raftIndex.
@@ -169,20 +169,20 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]raftpb.Entry) 
 			}
 			entry := memberEntries[i][memberIndices[i]]
 			if entryWithMostVotes == nil {
-				entryWithMostVotes = &entry
+				entryWithMostVotes = entry
 				continue
 			}
 			if entryWithMostVotes.Term != entry.Term && entry.Index > minCommitIndex {
 				if entryWithMostVotes.Term < entry.Term {
-					entryWithMostVotes = &entry
+					entryWithMostVotes = entry
 				}
 				continue
 			}
-			if !reflect.DeepEqual(*entryWithMostVotes, entry) {
-				return nil, fmt.Errorf("mismatching entries on raft index %d, mostVotes: %+v, other: %+v", raftIndex, *entryWithMostVotes, entry)
+			if !reflect.DeepEqual(entryWithMostVotes, entry) {
+				return nil, fmt.Errorf("mismatching entries on raft index %d, mostVotes: %+v, other: %+v", raftIndex, entryWithMostVotes, entry)
 			}
 		}
-		mergedHistory = append(mergedHistory, *entryWithMostVotes)
+		mergedHistory = append(mergedHistory, entryWithMostVotes)
 	}
 	if len(mergedHistory) == 0 {
 		return nil, errors.New("no WAL entries matched")
@@ -190,7 +190,7 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]raftpb.Entry) 
 	return mergedHistory, nil
 }
 
-func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raftpb.Entry, err error) {
+func ReadWAL(lg *zap.Logger, dataDir string) (state *raftpb.HardState, ents []*raftpb.Entry, err error) {
 	walDir := datadir.ToWALDir(dataDir)
 	repaired := false
 	for {
@@ -211,7 +211,7 @@ func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raf
 	}
 }
 
-func parseEntryNormal(ent raftpb.Entry) (*model.EtcdRequest, error) {
+func parseEntryNormal(ent *raftpb.Entry) (*model.EtcdRequest, error) {
 	var raftReq pb.InternalRaftRequest
 	if len(ent.Data) == 0 {
 		return nil, nil
@@ -351,7 +351,7 @@ func toEtcdOperation(op *pb.RequestOp) (operation model.EtcdOperation) {
 	return operation
 }
 
-func ReadAllWALEntries(lg *zap.Logger, dirpath string) (state raftpb.HardState, ents []raftpb.Entry, err error) {
+func ReadAllWALEntries(lg *zap.Logger, dirpath string) (state *raftpb.HardState, ents []*raftpb.Entry, err error) {
 	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
 		return state, nil, err

@@ -30,62 +30,62 @@ func TestMergeMemberEntries(t *testing.T) {
 	tcs := []struct {
 		name           string
 		minCommitIndex uint64
-		memberEntries  [][]raftpb.Entry
+		memberEntries  [][]*raftpb.Entry
 		expectErr      string
-		expectEntries  []raftpb.Entry
+		expectEntries  []*raftpb.Entry
 	}{
 		{
 			name:          "Error when empty data dir",
-			memberEntries: [][]raftpb.Entry{},
+			memberEntries: [][]*raftpb.Entry{},
 			expectErr:     "no WAL entries matched",
 		},
 		{
 			name: "Success when no entries",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{},
 			},
 			expectErr: "no WAL entries matched",
 		},
 		{
 			name: "Error when one member cluster didn't observe the index",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 			},
 			expectErr: "no entry for raft index 2",
 		},
 		{
 			name: "Error when entries index unordered",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 3, Data: []byte("c")},
-					raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
 				},
 			},
 			expectErr: "raft index should increase, got: 1, previous: 3",
 		},
 		{
 			name: "Error when entries index duplicated",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
 				},
 			},
 			expectErr: "raft index should increase, got: 1, previous: 1",
 		},
 		{
 			name: "Success when one member cluster",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 			},
-			expectEntries: []raftpb.Entry{
+			expectEntries: []*raftpb.Entry{
 				{Index: 1, Data: []byte("a")},
 				{Index: 2, Data: []byte("b")},
 				{Index: 3, Data: []byte("c")},
@@ -93,24 +93,24 @@ func TestMergeMemberEntries(t *testing.T) {
 		},
 		{
 			name: "Success when three members agree on entries",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 			},
-			expectEntries: []raftpb.Entry{
+			expectEntries: []*raftpb.Entry{
 				{Index: 1, Data: []byte("a")},
 				{Index: 2, Data: []byte("b")},
 				{Index: 3, Data: []byte("c")},
@@ -118,27 +118,27 @@ func TestMergeMemberEntries(t *testing.T) {
 		},
 		{
 			name: "Success when three members have no entries",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{}, {}, {},
 			},
 			expectErr: "no WAL entries matched",
 		},
 		{
 			name: "Success when one member has no entries in three node cluster",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 			},
-			expectEntries: []raftpb.Entry{
+			expectEntries: []*raftpb.Entry{
 				{Index: 1, Data: []byte("a")},
 				{Index: 2, Data: []byte("b")},
 				{Index: 3, Data: []byte("c")},
@@ -146,16 +146,16 @@ func TestMergeMemberEntries(t *testing.T) {
 		},
 		{
 			name: "Success if two members have no entries in three node cluster",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{},
 				{},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 			},
-			expectEntries: []raftpb.Entry{
+			expectEntries: []*raftpb.Entry{
 				{Index: 1, Data: []byte("a")},
 				{Index: 2, Data: []byte("b")},
 				{Index: 3, Data: []byte("c")},
@@ -163,20 +163,20 @@ func TestMergeMemberEntries(t *testing.T) {
 		},
 		{
 			name: "Success if members didn't observe the whole history",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
 				},
 				{
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 			},
-			expectEntries: []raftpb.Entry{
+			expectEntries: []*raftpb.Entry{
 				{Index: 1, Data: []byte("a")},
 				{Index: 2, Data: []byte("b")},
 				{Index: 3, Data: []byte("c")},
@@ -184,18 +184,18 @@ func TestMergeMemberEntries(t *testing.T) {
 		},
 		{
 			name: "Success if members observed only one part of history",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
 				},
 				{
-					raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
 				},
 				{
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 			},
-			expectEntries: []raftpb.Entry{
+			expectEntries: []*raftpb.Entry{
 				{Index: 1, Data: []byte("a")},
 				{Index: 2, Data: []byte("b")},
 				{Index: 3, Data: []byte("c")},
@@ -203,34 +203,34 @@ func TestMergeMemberEntries(t *testing.T) {
 		},
 		{
 			name: "Error when in three member cluster if no members observed index",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 			},
 			expectErr: "no entry for raft index 2",
 		},
 		{
 			name: "Success if only one member observed history",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{},
 				{},
 			},
-			expectEntries: []raftpb.Entry{
+			expectEntries: []*raftpb.Entry{
 				{Index: 1, Data: []byte("a")},
 				{Index: 2, Data: []byte("b")},
 				{Index: 3, Data: []byte("c")},
@@ -238,24 +238,24 @@ func TestMergeMemberEntries(t *testing.T) {
 		},
 		{
 			name: "Success when one member observed different last entry",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("x")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("x")},
 				},
 			},
-			expectEntries: []raftpb.Entry{
+			expectEntries: []*raftpb.Entry{
 				{Index: 1, Data: []byte("a")},
 				{Index: 2, Data: []byte("b")},
 				{Index: 3, Data: []byte("c")},
@@ -263,58 +263,58 @@ func TestMergeMemberEntries(t *testing.T) {
 		},
 		{
 			name: "Error when one member didn't observe whole history and others observed different last entry",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("x")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("x")},
 				},
 			},
 			expectErr: "mismatching entries on raft index 3",
 		},
 		{
 			name: "Error when three members observed different last entry",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("x")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("x")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("y")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("y")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Data: []byte("z")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Data: []byte("z")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 			},
 			expectErr: "mismatching entries on raft index 2",
 		},
 		{
 			name: "Error when one member observed empty history and others differ on last entry",
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("x")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("x")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 				{
-					raftpb.Entry{Index: 1, Data: []byte("y")},
-					raftpb.Entry{Index: 2, Data: []byte("b")},
-					raftpb.Entry{Index: 3, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Data: []byte("y")},
+					&raftpb.Entry{Index: 2, Data: []byte("b")},
+					&raftpb.Entry{Index: 3, Data: []byte("c")},
 				},
 			},
 			expectErr: "mismatching entries on raft index 1",
@@ -322,14 +322,14 @@ func TestMergeMemberEntries(t *testing.T) {
 		{
 			name:           "Error if entries mismatch on index before minCommitIndex",
 			minCommitIndex: 2,
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Term: 1, Data: []byte("b")},
+					&raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Term: 1, Data: []byte("b")},
 				},
 				{
-					raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Term: 2, Data: []byte("c")},
+					&raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Term: 2, Data: []byte("c")},
 				},
 			},
 			expectErr: "mismatching entries on raft index 2",
@@ -337,17 +337,17 @@ func TestMergeMemberEntries(t *testing.T) {
 		{
 			name:           "Select entry with higher term if they conflict on uncommitted index",
 			minCommitIndex: 1,
-			memberEntries: [][]raftpb.Entry{
+			memberEntries: [][]*raftpb.Entry{
 				{
-					raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Term: 1, Data: []byte("b")},
+					&raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Term: 1, Data: []byte("b")},
 				},
 				{
-					raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
-					raftpb.Entry{Index: 2, Term: 2, Data: []byte("x")},
+					&raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
+					&raftpb.Entry{Index: 2, Term: 2, Data: []byte("x")},
 				},
 			},
-			expectEntries: []raftpb.Entry{
+			expectEntries: []*raftpb.Entry{
 				{Index: 1, Term: 1, Data: []byte("a")},
 				{Index: 2, Term: 2, Data: []byte("x")},
 			},
@@ -369,12 +369,12 @@ func TestMergeMemberEntries(t *testing.T) {
 func TestWriteReadWAL(t *testing.T) {
 	type batch struct {
 		state    *raftpb.HardState
-		entries  []raftpb.Entry
+		entries  []*raftpb.Entry
 		snapshot *walpb.Snapshot
 	}
 	type want struct {
-		wantState   raftpb.HardState
-		wantEntries []raftpb.Entry
+		wantState   *raftpb.HardState
+		wantEntries []*raftpb.Entry
 		wantError   string
 	}
 
@@ -390,16 +390,16 @@ func TestWriteReadWAL(t *testing.T) {
 			operations: []batch{
 				{
 					state:   &raftpb.HardState{Commit: 5},
-					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+					entries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 				},
 			},
 			walReadAll: want{
-				wantState:   raftpb.HardState{Commit: 5},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				wantState:   &raftpb.HardState{Commit: 5},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 			},
 			readAllEntries: want{
-				wantState:   raftpb.HardState{Commit: 5},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				wantState:   &raftpb.HardState{Commit: 5},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 			},
 		},
 		{
@@ -407,24 +407,24 @@ func TestWriteReadWAL(t *testing.T) {
 			operations: []batch{
 				{
 					state:   &raftpb.HardState{Commit: 2},
-					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+					entries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 4},
-					entries: []raftpb.Entry{{Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
+					entries: []*raftpb.Entry{{Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 5},
-					entries: []raftpb.Entry{{Index: 5, Data: []byte("e")}},
+					entries: []*raftpb.Entry{{Index: 5, Data: []byte("e")}},
 				},
 			},
 			walReadAll: want{
-				wantState:   raftpb.HardState{Commit: 5},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				wantState:   &raftpb.HardState{Commit: 5},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 			},
 			readAllEntries: want{
-				wantState:   raftpb.HardState{Commit: 5},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				wantState:   &raftpb.HardState{Commit: 5},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 			},
 		},
 		{
@@ -432,24 +432,24 @@ func TestWriteReadWAL(t *testing.T) {
 			operations: []batch{
 				{
 					state:   &raftpb.HardState{Commit: 1},
-					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("a")}},
+					entries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("a")}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 3},
-					entries: []raftpb.Entry{{Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("b")}, {Index: 4, Data: []byte("b")}},
+					entries: []*raftpb.Entry{{Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("b")}, {Index: 4, Data: []byte("b")}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 4},
-					entries: []raftpb.Entry{{Index: 4, Data: []byte("c")}, {Index: 5, Data: []byte("c")}},
+					entries: []*raftpb.Entry{{Index: 4, Data: []byte("c")}, {Index: 5, Data: []byte("c")}},
 				},
 			},
 			walReadAll: want{
-				wantState:   raftpb.HardState{Commit: 4},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("b")}, {Index: 4, Data: []byte("c")}, {Index: 5, Data: []byte("c")}},
+				wantState:   &raftpb.HardState{Commit: 4},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("b")}, {Index: 4, Data: []byte("c")}, {Index: 5, Data: []byte("c")}},
 			},
 			readAllEntries: want{
-				wantState:   raftpb.HardState{Commit: 4},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("b")}, {Index: 4, Data: []byte("c")}, {Index: 5, Data: []byte("c")}},
+				wantState:   &raftpb.HardState{Commit: 4},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("b")}, {Index: 4, Data: []byte("c")}, {Index: 5, Data: []byte("c")}},
 			},
 		},
 		{
@@ -457,25 +457,25 @@ func TestWriteReadWAL(t *testing.T) {
 			operations: []batch{
 				{
 					state:   &raftpb.HardState{Commit: 2},
-					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+					entries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 6},
-					entries: []raftpb.Entry{{Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
+					entries: []*raftpb.Entry{{Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 4},
-					entries: []raftpb.Entry{{Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
+					entries: []*raftpb.Entry{{Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
 				},
 			},
 			walReadAll: want{
 				wantError:   "slice bounds out of range",
-				wantState:   raftpb.HardState{Commit: 2},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+				wantState:   &raftpb.HardState{Commit: 2},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 			},
 			readAllEntries: want{
-				wantState:   raftpb.HardState{Commit: 4},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
+				wantState:   &raftpb.HardState{Commit: 4},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
 			},
 		},
 		{
@@ -483,24 +483,24 @@ func TestWriteReadWAL(t *testing.T) {
 			operations: []batch{
 				{
 					state:   &raftpb.HardState{Commit: 1},
-					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+					entries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
 					snapshot: &walpb.Snapshot{Index: new(uint64(3)), Term: new(uint64(0)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 5},
-					entries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+					entries: []*raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 				},
 			},
 			walReadAll: want{
 				wantError:   "slice bounds out of range",
-				wantState:   raftpb.HardState{Commit: 1},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+				wantState:   &raftpb.HardState{Commit: 1},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 			},
 			readAllEntries: want{
-				wantState:   raftpb.HardState{Commit: 5},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				wantState:   &raftpb.HardState{Commit: 5},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 			},
 		},
 		{
@@ -508,24 +508,24 @@ func TestWriteReadWAL(t *testing.T) {
 			operations: []batch{
 				{
 					state:   &raftpb.HardState{Commit: 1},
-					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+					entries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
 					snapshot: &walpb.Snapshot{Index: new(uint64(3)), Term: new(uint64(0)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 5},
-					entries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+					entries: []*raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 				},
 			},
 			readAt: &walpb.Snapshot{Index: new(uint64(3))},
 			walReadAll: want{
-				wantState:   raftpb.HardState{Commit: 5},
-				wantEntries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				wantState:   &raftpb.HardState{Commit: 5},
+				wantEntries: []*raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 			},
 			readAllEntries: want{
-				wantState:   raftpb.HardState{Commit: 5},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				wantState:   &raftpb.HardState{Commit: 5},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 			},
 		},
 		{
@@ -533,27 +533,27 @@ func TestWriteReadWAL(t *testing.T) {
 			operations: []batch{
 				{
 					state:   &raftpb.HardState{Commit: 1},
-					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+					entries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 3},
-					entries: []raftpb.Entry{{Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
+					entries: []*raftpb.Entry{{Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
 				},
 				{
 					snapshot: &walpb.Snapshot{Index: new(uint64(3)), Term: new(uint64(0)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 4},
-					entries: []raftpb.Entry{{Index: 4, Data: []byte("e")}, {Index: 5, Data: []byte("f")}},
+					entries: []*raftpb.Entry{{Index: 4, Data: []byte("e")}, {Index: 5, Data: []byte("f")}},
 				},
 			},
 			walReadAll: want{
-				wantState:   raftpb.HardState{Commit: 4},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("e")}, {Index: 5, Data: []byte("f")}},
+				wantState:   &raftpb.HardState{Commit: 4},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("e")}, {Index: 5, Data: []byte("f")}},
 			},
 			readAllEntries: want{
-				wantState:   raftpb.HardState{Commit: 4},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("e")}, {Index: 5, Data: []byte("f")}},
+				wantState:   &raftpb.HardState{Commit: 4},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("e")}, {Index: 5, Data: []byte("f")}},
 			},
 		},
 		{
@@ -564,25 +564,25 @@ func TestWriteReadWAL(t *testing.T) {
 				},
 				{
 					state:   &raftpb.HardState{Commit: 2},
-					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+					entries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 4},
-					entries: []raftpb.Entry{{Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
+					entries: []*raftpb.Entry{{Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 6},
-					entries: []raftpb.Entry{{Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
+					entries: []*raftpb.Entry{{Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
 				},
 			},
 			readAt: &walpb.Snapshot{Index: new(uint64(4))},
 			walReadAll: want{
-				wantState:   raftpb.HardState{Commit: 6},
-				wantEntries: []raftpb.Entry{{Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
+				wantState:   &raftpb.HardState{Commit: 6},
+				wantEntries: []*raftpb.Entry{{Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
 			},
 			readAllEntries: want{
-				wantState:   raftpb.HardState{Commit: 6},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
+				wantState:   &raftpb.HardState{Commit: 6},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}, {Index: 6, Data: []byte("f")}},
 			},
 		},
 		{
@@ -590,25 +590,25 @@ func TestWriteReadWAL(t *testing.T) {
 			operations: []batch{
 				{
 					state:   &raftpb.HardState{Commit: 1},
-					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+					entries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
 				},
 				{
 					snapshot: &walpb.Snapshot{Index: new(uint64(3)), Term: new(uint64(0)), ConfState: &raftpb.ConfState{}},
 				},
 				{
 					state:   &raftpb.HardState{Commit: 5},
-					entries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+					entries: []*raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 				},
 			},
 			readAt: &walpb.Snapshot{Index: new(uint64(4))},
 			walReadAll: want{
 				wantError:   "snapshot not found",
-				wantState:   raftpb.HardState{Commit: 5},
-				wantEntries: []raftpb.Entry{{Index: 5, Data: []byte("e")}},
+				wantState:   &raftpb.HardState{Commit: 5},
+				wantEntries: []*raftpb.Entry{{Index: 5, Data: []byte("e")}},
 			},
 			readAllEntries: want{
-				wantState:   raftpb.HardState{Commit: 5},
-				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				wantState:   &raftpb.HardState{Commit: 5},
+				wantEntries: []*raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
 			},
 		},
 	}
@@ -620,7 +620,7 @@ func TestWriteReadWAL(t *testing.T) {
 			require.NoError(t, err)
 			for _, op := range tc.operations {
 				if op.state != nil {
-					err = w.Save(*op.state, op.entries)
+					err = w.Save(op.state, op.entries)
 					require.NoError(t, err)
 				}
 				if op.snapshot != nil {
