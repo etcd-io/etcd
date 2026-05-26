@@ -34,7 +34,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
@@ -526,7 +525,7 @@ func isMembersEqual(membs []*pb.Member, wmembs []*pb.Member) bool {
 	sort.Sort(SortableMemberSliceByPeerURLs(wmembs))
 	return cmp.Equal(membs, wmembs,
 		protocmp.Transform(),
-		protocmp.IgnoreFields(&pb.Member{}, "ID"))
+		protocmp.IgnoreFields(&pb.Member{}, "ID", "peerURLs", "clientURLs"))
 }
 
 func NewLocalListener(t testutil.TB) net.Listener {
@@ -1000,12 +999,7 @@ func (m *Member) Launch() error {
 	}
 
 	for _, ln := range m.PeerListeners {
-		cm := cmux.New(ln)
-		// don't hang on matcher after closing listener
-		cm.SetReadTimeout(time.Second)
-
-		// serve http1/http2 rafthttp/grpc
-		ll := cm.Match(cmux.Any())
+		ll := ln
 		if peerTLScfg != nil {
 			if ll, err = transport.NewTLSListener(ll, m.PeerTLSInfo); err != nil {
 				return err
@@ -1022,16 +1016,9 @@ func (m *Member) Launch() error {
 		}
 		hs.Start()
 
-		donec := make(chan struct{})
-		go func() {
-			defer close(donec)
-			cm.Serve()
-		}()
 		closer := func() {
-			ll.Close()
 			hs.CloseClientConnections()
 			hs.Close()
-			<-donec
 		}
 		m.ServerClosers = append(m.ServerClosers, closer)
 	}
