@@ -65,7 +65,7 @@ type Peer interface {
 	// and has no promise that the message will be received by the remote.
 	// When it fails to send message out, it will report the status to underlying
 	// raft.
-	send(m raftpb.Message)
+	send(m *raftpb.Message)
 
 	// sendSnap sends the merged snapshot message to the remote peer. Its behavior
 	// is similar to send.
@@ -118,8 +118,8 @@ type peer struct {
 	msgAppV2Reader *streamReader
 	msgAppReader   *streamReader
 
-	recvc chan raftpb.Message
-	propc chan raftpb.Message
+	recvc chan *raftpb.Message
+	propc chan *raftpb.Message
 
 	mu     sync.Mutex
 	paused bool
@@ -164,8 +164,8 @@ func startPeer(t *Transport, urls types.URLs, peerID types.ID, fs *stats.Followe
 		writer:         startStreamWriter(t.Logger, t.ID, peerID, status, fs, r),
 		pipeline:       pipeline,
 		snapSender:     newSnapshotSender(t, picker, peerID, status),
-		recvc:          make(chan raftpb.Message, recvBufSize),
-		propc:          make(chan raftpb.Message, maxPendingProposals),
+		recvc:          make(chan *raftpb.Message, recvBufSize),
+		propc:          make(chan *raftpb.Message, maxPendingProposals),
 		stopc:          make(chan struct{}),
 	}
 
@@ -233,7 +233,7 @@ func startPeer(t *Transport, urls types.URLs, peerID types.ID, fs *stats.Followe
 	return p
 }
 
-func (p *peer) send(m raftpb.Message) {
+func (p *peer) send(m *raftpb.Message) {
 	p.mu.Lock()
 	paused := p.paused
 	p.mu.Unlock()
@@ -334,7 +334,7 @@ func (p *peer) stop() {
 
 // pick picks a chan for sending the given message. The picked chan and the picked chan
 // string name are returned.
-func (p *peer) pick(m raftpb.Message) (writec chan<- raftpb.Message, picked string) {
+func (p *peer) pick(m *raftpb.Message) (writec chan<- *raftpb.Message, picked string) {
 	var ok bool
 	// Considering MsgSnap may have a big size, e.g., 1G, and will block
 	// stream for a long time, only use one of the N pipelines to send MsgSnap.
@@ -348,6 +348,6 @@ func (p *peer) pick(m raftpb.Message) (writec chan<- raftpb.Message, picked stri
 	return p.pipeline.msgc, pipelineMsg
 }
 
-func isMsgApp(m raftpb.Message) bool { return m.Type == raftpb.MsgApp }
+func isMsgApp(m *raftpb.Message) bool { return m.Type == raftpb.MsgApp }
 
-func isMsgSnap(m raftpb.Message) bool { return m.Type == raftpb.MsgSnap }
+func isMsgSnap(m *raftpb.Message) bool { return m.Type == raftpb.MsgSnap }

@@ -66,11 +66,12 @@ func New(lg *zap.Logger, dir string) *Snapshotter {
 	}
 }
 
-func (s *Snapshotter) SaveSnap(snapshot raftpb.Snapshot) error {
-	if raft.IsEmptySnap(snapshot) {
+// TODO: change signature of IsEmptySnap to accept a pointer
+func (s *Snapshotter) SaveSnap(snapshot *raftpb.Snapshot) error {
+	if raft.IsEmptySnap(*snapshot) {
 		return nil
 	}
-	return s.save(&snapshot)
+	return s.save(snapshot)
 }
 
 func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
@@ -253,7 +254,7 @@ func (s *Snapshotter) cleanupSnapdir(filenames []string) (names []string, err er
 	return names, nil
 }
 
-func (s *Snapshotter) ReleaseSnapDBs(snap raftpb.Snapshot) error {
+func (s *Snapshotter) ReleaseSnapDBs(snap *raftpb.Snapshot) error {
 	dir, err := os.Open(s.dir)
 	if err != nil {
 		return err

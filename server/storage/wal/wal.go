@@ -77,8 +77,8 @@ type WAL struct {
 	// dirFile is a fd for the wal directory for syncing on Rename
 	dirFile *os.File
 
-	metadata []byte           // metadata recorded at the head of each WAL
-	state    raftpb.HardState // hardstate recorded at the head of WAL
+	metadata []byte            // metadata recorded at the head of each WAL
+	state    *raftpb.HardState // hardstate recorded at the head of WAL
 
 	start     *walpb.Snapshot // snapshot to start reading
 	decoder   Decoder         // decoder to Decode records
@@ -468,7 +468,8 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 //
 // ReadAll may return uncommitted yet entries, that are subject to be overridden.
 // Do not apply entries that have index > state.commit, as they are subject to change.
-func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.Entry, err error) {
+func (w *WAL) ReadAll() (metadata []byte, state *raftpb.HardState, ents []*raftpb.Entry, err error) {
+	state = &raftpb.HardState{}
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -505,7 +506,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 
 		case MetadataType:
 			if metadata != nil && !bytes.Equal(metadata, rec.Data) {
-				state.Reset()
+				state = &raftpb.HardState{}
 				return nil, state, nil, ErrMetadataConflict
 			}
 			metadata = rec.Data
@@ -515,7 +516,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 			// current crc of decoder must match the crc of the record.
 			// do no need to match 0 crc, since the decoder is a new one at this case.
 			if crc != 0 && rec.Validate(crc) != nil {
-				state.Reset()
+				state = &raftpb.HardState{}
 				return nil, state, nil, ErrCRCMismatch
 			}
 			decoder.UpdateCRC(rec.GetCrc())
@@ -525,14 +526,14 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 			pbutil.MustUnmarshalMessage(&snap, rec.Data)
 			if snap.GetIndex() == w.start.GetIndex() {
 				if snap.GetTerm() != w.start.GetTerm() {
-					state.Reset()
+					state = &raftpb.HardState{}
 					return nil, state, nil, ErrSnapshotMismatch
 				}
 				match = true
 			}
 
 		default:
-			state.Reset()
+			state = &raftpb.HardState{}
 			return nil, state, nil, fmt.Errorf("unexpected block type %d", rec.Type)
 		}
 	}
@@ -543,13 +544,13 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 		// The last record maybe a partial written one, so
 		// `io.ErrUnexpectedEOF` might be returned.
 		if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
-			state.Reset()
+			state = &raftpb.HardState{}
 			return nil, state, nil, err
 		}
 	default:
 		// We must read all the entries if WAL is opened in write mode.
 		if !errors.Is(err, io.EOF) {
-			state.Reset()
+			state = &raftpb.HardState{}
 			return nil, state, nil, err
 		}
 		// decodeRecord() will return io.EOF if it detects a zero record,
@@ -596,7 +597,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 // Snapshot entries are valid if their index is less than or equal to the most recent committed hardstate.
 func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]*walpb.Snapshot, error) {
 	var snaps []*walpb.Snapshot
-	var state raftpb.HardState
+	state := &raftpb.HardState{}
 	var err error
 
 	rec := &walpb.Record{}
@@ -667,7 +668,7 @@ func Verify(lg *zap.Logger, walDir string, snap *walpb.Snapshot) (*raftpb.HardSt
 	var metadata []byte
 	var err error
 	var match bool
-	var state raftpb.HardState
+	state := &raftpb.HardState{}
 
 	rec := &walpb.Record{}
 
@@ -722,7 +723,7 @@ func Verify(lg *zap.Logger, walDir string, snap *walpb.Snapshot) (*raftpb.HardSt
 		// are not necessary for validating the WAL contents
 		case EntryType:
 		case StateType:
-			pbutil.MustUnmarshal(&state, rec.Data)
+			pbutil.MustUnmarshal(state, rec.Data)
 		default:
 			return nil, fmt.Errorf("unexpected block type %d", rec.Type)
 		}
@@ -738,7 +739,7 @@ func Verify(lg *zap.Logger, walDir string, snap *walpb.Snapshot) (*raftpb.HardSt
 		return nil, ErrSnapshotNotFound
 	}
 
-	return &state, nil
+	return state, nil
 }
 
 // cut closes current file written and creates a new one ready to append.
@@ -783,7 +784,7 @@ func (w *WAL) cut() error {
 		return err
 	}
 
-	if err = w.saveState(&w.state); err != nil {
+	if err = w.saveState(w.state); err != nil {
 		return err
 	}
 
@@ -945,33 +946,39 @@ func (w *WAL) saveEntry(e *raftpb.Entry) error {
 }
 
 func (w *WAL) saveState(s *raftpb.HardState) error {
-	if raft.IsEmptyHardState(*s) {
+	if s == nil || raft.IsEmptyHardState(*s) {
 		return nil
 	}
-	w.state = *s
+	w.state = s
 	b := pbutil.MustMarshal(s)
 	rec := &walpb.Record{Type: new(StateType), Data: b}
 	return w.encoder.encode(rec)
 }
 
-func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
+func (w *WAL) Save(st *raftpb.HardState, ents []*raftpb.Entry) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	// short cut, do not call sync
-	if raft.IsEmptyHardState(st) && len(ents) == 0 {
+	if (st == nil || raft.IsEmptyHardState(*st)) && len(ents) == 0 {
 		return nil
 	}
+	if st == nil {
+		st = &raftpb.HardState{}
+	}
+	if w.state == nil {
+		w.state = &raftpb.HardState{}
+	}
 
-	mustSync := raft.MustSync(st, w.state, len(ents))
+	mustSync := raft.MustSync(*st, *w.state, len(ents))
 
 	// TODO(xiangli): no more reference operator
 	for i := range ents {
-		if err := w.saveEntry(&ents[i]); err != nil {
+		if err := w.saveEntry(ents[i]); err != nil {
 			return err
 		}
 	}
-	if err := w.saveState(&st); err != nil {
+	if err := w.saveState(st); err != nil {
 		return err
 	}
 

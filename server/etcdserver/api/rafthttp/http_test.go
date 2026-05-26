@@ -357,7 +357,7 @@ type fakePeerGetter struct {
 func (pg *fakePeerGetter) Get(id types.ID) Peer { return pg.peers[id] }
 
 type fakePeer struct {
-	msgs     []raftpb.Message
+	msgs     []*raftpb.Message
 	snapMsgs []snap.Message
 	peerURLs types.URLs
 	connc    chan *outgoingConn
@@ -372,7 +372,7 @@ func newFakePeer() *fakePeer {
 	}
 }
 
-func (pr *fakePeer) send(m raftpb.Message) {
+func (pr *fakePeer) send(m *raftpb.Message) {
 	if pr.paused {
 		return
 	}

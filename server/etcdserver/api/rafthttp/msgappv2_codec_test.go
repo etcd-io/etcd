@@ -116,8 +116,9 @@ func TestMsgAppV2(t *testing.T) {
 			t.Errorf("#%d: unexpected decode message error: %v", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(m, tt) {
-			t.Errorf("#%d: message = %+v, want %+v", i, m, tt)
+		// TODO: use proto.Equal after bumping to raft v3.6.0-beta.0
+		if !reflect.DeepEqual(*m, tt) {
+			t.Errorf("#%d: message = %+v, want %+v", i, *m, tt)
 		}
 	}
 }

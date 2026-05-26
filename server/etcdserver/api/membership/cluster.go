@@ -303,7 +303,7 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
-func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldApplyV3 ShouldApplyV3) error {
+func (c *RaftCluster) ValidateConfigurationChange(cc *raftpb.ConfChange, shouldApplyV3 ShouldApplyV3) error {
 	if !shouldApplyV3 {
 		return nil
 	}

@@ -455,7 +455,7 @@ func TestClusterValidateConfigurationChangeV3(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		err := cl.ValidateConfigurationChange(tt.cc, true)
+		err := cl.ValidateConfigurationChange(&tt.cc, true)
 		if !errors.Is(err, tt.werr) {
 			t.Errorf("#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
 		}

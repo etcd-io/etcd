@@ -54,7 +54,7 @@ type pipeline struct {
 	// deprecate when we depercate v2 API
 	followerStats *stats.FollowerStats
 
-	msgc chan raftpb.Message
+	msgc chan *raftpb.Message
 	// wait for the handling routines
 	wg    sync.WaitGroup
 	stopc chan struct{}
@@ -62,7 +62,7 @@ type pipeline struct {
 
 func (p *pipeline) start() {
 	p.stopc = make(chan struct{})
-	p.msgc = make(chan raftpb.Message, pipelineBufSize)
+	p.msgc = make(chan *raftpb.Message, pipelineBufSize)
 	p.wg.Add(connPerPipeline)
 	for i := 0; i < connPerPipeline; i++ {
 		go p.handle()
@@ -97,7 +97,7 @@ func (p *pipeline) handle() {
 		select {
 		case m := <-p.msgc:
 			start := time.Now()
-			err := p.post(pbutil.MustMarshal(&m))
+			err := p.post(pbutil.MustMarshal(m))
 			end := time.Now()
 
 			if err != nil {

@@ -47,22 +47,22 @@ var (
 	ErrExceedSizeLimit        = errors.New("rafthttp: error limit exceeded")
 )
 
-func (dec *messageDecoder) decode() (raftpb.Message, error) {
+func (dec *messageDecoder) decode() (*raftpb.Message, error) {
 	return dec.decodeLimit(readBytesLimit)
 }
 
-func (dec *messageDecoder) decodeLimit(numBytes uint64) (raftpb.Message, error) {
+func (dec *messageDecoder) decodeLimit(numBytes uint64) (*raftpb.Message, error) {
 	var m raftpb.Message
 	var l uint64
 	if err := binary.Read(dec.r, binary.BigEndian, &l); err != nil {
-		return m, err
+		return nil, err
 	}
 	if l > numBytes {
-		return m, ErrExceedSizeLimit
+		return nil, ErrExceedSizeLimit
 	}
 	buf := make([]byte, int(l))
 	if _, err := io.ReadFull(dec.r, buf); err != nil {
-		return m, err
+		return nil, err
 	}
-	return m, m.Unmarshal(buf)
+	return &m, m.Unmarshal(buf)
 }

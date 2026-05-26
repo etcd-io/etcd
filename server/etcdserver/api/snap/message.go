@@ -30,13 +30,13 @@ import (
 //
 // User of Message should close the Message after sending it.
 type Message struct {
-	raftpb.Message
+	*raftpb.Message
 	ReadCloser io.ReadCloser
 	TotalSize  int64
 	closeC     chan bool
 }
 
-func NewMessage(rs raftpb.Message, rc io.ReadCloser, rcSize int64) *Message {
+func NewMessage(rs *raftpb.Message, rc io.ReadCloser, rcSize int64) *Message {
 	return &Message{
 		Message:    rs,
 		ReadCloser: ioutil.NewExactReadCloser(rc, rcSize),

@@ -43,7 +43,7 @@ func TestSendMessage(t *testing.T) {
 	defer srv.Close()
 
 	// member 2
-	recvc := make(chan raftpb.Message, 1)
+	recvc := make(chan *raftpb.Message, 1)
 	p := &fakeRaft{recvc: recvc}
 	tr2 := &Transport{
 		ID:          types.ID(2),
@@ -65,7 +65,7 @@ func TestSendMessage(t *testing.T) {
 	}
 
 	data := []byte("some data")
-	tests := []raftpb.Message{
+	tests := []*raftpb.Message{
 		// these messages are set to send to itself, which facilitates testing.
 		{Type: raftpb.MsgProp, From: 1, To: 2, Entries: []raftpb.Entry{{Data: data}}},
 		{Type: raftpb.MsgApp, From: 1, To: 2, Term: 1, Index: 3, LogTerm: 0, Entries: []raftpb.Entry{{Index: 4, Term: 1, Data: data}}, Commit: 3},
@@ -77,7 +77,7 @@ func TestSendMessage(t *testing.T) {
 		{Type: raftpb.MsgHeartbeatResp, From: 1, To: 2, Term: 1},
 	}
 	for i, tt := range tests {
-		tr.Send([]raftpb.Message{tt})
+		tr.Send([]*raftpb.Message{tt})
 		msg := <-recvc
 		if !reflect.DeepEqual(msg, tt) {
 			t.Errorf("#%d: msg = %+v, want %+v", i, msg, tt)
@@ -101,7 +101,7 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 	defer srv.Close()
 
 	// member 2
-	recvc := make(chan raftpb.Message, 1)
+	recvc := make(chan *raftpb.Message, 1)
 	p := &fakeRaft{recvc: recvc}
 	tr2 := &Transport{
 		ID:          types.ID(2),
@@ -131,7 +131,7 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 		// TODO: remove this resend logic when we add retry logic into the code
 		case <-time.After(time.Millisecond):
 			n++
-			tr.Send([]raftpb.Message{{Type: raftpb.MsgHeartbeat, From: 1, To: 2, Term: 1, Commit: 3}})
+			tr.Send([]*raftpb.Message{{Type: raftpb.MsgHeartbeat, From: 1, To: 2, Term: 1, Commit: 3}})
 		case <-recvc:
 			if n > 50 {
 				t.Errorf("disconnection time = %dms, want < 50ms", n)
@@ -160,12 +160,12 @@ func waitStreamWorking(p *peer) bool {
 }
 
 type fakeRaft struct {
-	recvc     chan<- raftpb.Message
+	recvc     chan<- *raftpb.Message
 	err       error
 	removedID uint64
 }
 
-func (p *fakeRaft) Process(ctx context.Context, m raftpb.Message) error {
+func (p *fakeRaft) Process(ctx context.Context, m *raftpb.Message) error {
 	select {
 	case p.recvc <- m:
 	default:

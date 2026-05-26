@@ -28,7 +28,7 @@ import (
 // createMergedSnapshotMessage creates a snapshot message that contains: raft status (term, conf),
 // a snapshot of v2 store inside raft.Snapshot as []byte, a snapshot of v3 KV in the top level message
 // as ReadCloser.
-func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapt, snapi uint64, confState raftpb.ConfState) snap.Message {
+func (s *EtcdServer) createMergedSnapshotMessage(m *raftpb.Message, snapt, snapi uint64, confState *raftpb.ConfState) *snap.Message {
 	lg := s.Logger()
 	// get a snapshot of v2 store as []byte
 	d := GetMembershipInfoInV2Format(lg, s.cluster)
@@ -41,19 +41,19 @@ func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapt, snapi 
 
 	// put the []byte snapshot of store into raft snapshot and return the merged snapshot with
 	// KV readCloser snapshot.
-	snapshot := raftpb.Snapshot{
+	snapshot := &raftpb.Snapshot{
 		Metadata: raftpb.SnapshotMetadata{
 			Index:     snapi,
 			Term:      snapt,
-			ConfState: confState,
+			ConfState: *confState,
 		},
 		Data: d,
 	}
-	m.Snapshot = &snapshot
+	m.Snapshot = snapshot
 
 	verifySnapshotIndex(snapshot, s.consistIndex.ConsistentIndex())
 
-	return *snap.NewMessage(m, rc, dbsnap.Size())
+	return snap.NewMessage(m, rc, dbsnap.Size())
 }
 
 func newSnapshotReaderCloser(lg *zap.Logger, snapshot backend.Snapshot) io.ReadCloser {

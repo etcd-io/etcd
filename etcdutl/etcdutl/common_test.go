@@ -34,7 +34,7 @@ func TestGetLatestWalSnap(t *testing.T) {
 	testCases := []struct {
 		name                  string
 		walSnaps              []*walpb.Snapshot
-		snapshots             []raftpb.Snapshot
+		snapshots             []*raftpb.Snapshot
 		expectedLatestWALSnap *walpb.Snapshot
 	}{
 		{
@@ -44,7 +44,7 @@ func TestGetLatestWalSnap(t *testing.T) {
 				{Index: new(uint64(20)), Term: new(uint64(3))},
 				{Index: new(uint64(30)), Term: new(uint64(5))},
 			},
-			snapshots: []raftpb.Snapshot{
+			snapshots: []*raftpb.Snapshot{
 				{Metadata: raftpb.SnapshotMetadata{Index: 10, Term: 2}},
 				{Metadata: raftpb.SnapshotMetadata{Index: 20, Term: 3}},
 				{Metadata: raftpb.SnapshotMetadata{Index: 30, Term: 5}},
@@ -58,7 +58,7 @@ func TestGetLatestWalSnap(t *testing.T) {
 				{Index: new(uint64(20)), Term: new(uint64(3))},
 				{Index: new(uint64(35)), Term: new(uint64(5))},
 			},
-			snapshots: []raftpb.Snapshot{
+			snapshots: []*raftpb.Snapshot{
 				{Metadata: raftpb.SnapshotMetadata{Index: 10, Term: 2}},
 				{Metadata: raftpb.SnapshotMetadata{Index: 20, Term: 3}},
 				{Metadata: raftpb.SnapshotMetadata{Index: 35, Term: 5}},
@@ -91,7 +91,7 @@ func TestGetLatestWalSnap(t *testing.T) {
 				walSnap.ConfState = &raftpb.ConfState{Voters: []uint64{1}}
 				walErr := w.SaveSnapshot(walSnap)
 				require.NoError(t, walErr)
-				walErr = w.Save(raftpb.HardState{Term: walSnap.GetTerm(), Commit: walSnap.GetIndex(), Vote: 1}, nil)
+				walErr = w.Save(&raftpb.HardState{Term: walSnap.GetTerm(), Commit: walSnap.GetIndex(), Vote: 1}, nil)
 				require.NoError(t, walErr)
 			}
 			err = w.Close()

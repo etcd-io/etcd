@@ -50,14 +50,14 @@ func NewTmpWAL(tb testing.TB, reqs []*etcdserverpb.InternalRaftRequest) (*wal.WA
 			tb.Fatalf("Failed to open WAL: %v", err)
 		}
 
-		var state raftpb.HardState
+		var state *raftpb.HardState
 		_, state, _, err = w.ReadAll()
 		if err != nil {
 			tb.Fatalf("Failed to read WAL: %v", err)
 		}
-		var entries []raftpb.Entry
+		var entries []*raftpb.Entry
 		for _, req := range reqs {
-			entries = append(entries, raftpb.Entry{
+			entries = append(entries, &raftpb.Entry{
 				Term:  1,
 				Index: 1,
 				Type:  raftpb.EntryNormal,

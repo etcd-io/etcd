@@ -125,7 +125,7 @@ type streamWriter struct {
 	closer  io.Closer
 	working bool
 
-	msgc  chan raftpb.Message
+	msgc  chan *raftpb.Message
 	connc chan *outgoingConn
 	stopc chan struct{}
 	done  chan struct{}
@@ -143,7 +143,7 @@ func startStreamWriter(lg *zap.Logger, local, id types.ID, status *peerStatus, f
 		status: status,
 		fs:     fs,
 		r:      r,
-		msgc:   make(chan raftpb.Message, streamBufSize),
+		msgc:   make(chan *raftpb.Message, streamBufSize),
 		connc:  make(chan *outgoingConn),
 		stopc:  make(chan struct{}),
 		done:   make(chan struct{}),
@@ -154,7 +154,7 @@ func startStreamWriter(lg *zap.Logger, local, id types.ID, status *peerStatus, f
 
 func (cw *streamWriter) run() {
 	var (
-		msgc       chan raftpb.Message
+		msgc       chan *raftpb.Message
 		heartbeatc <-chan time.Time
 		t          streamType
 		enc        encoder
@@ -201,7 +201,7 @@ func (cw *streamWriter) run() {
 			heartbeatc, msgc = nil, nil
 
 		case m := <-msgc:
-			err := enc.encode(&m)
+			err := enc.encode(m)
 			if err == nil {
 				unflushed += m.Size()
 
@@ -303,7 +303,7 @@ func (cw *streamWriter) run() {
 	}
 }
 
-func (cw *streamWriter) writec() (chan<- raftpb.Message, bool) {
+func (cw *streamWriter) writec() (chan<- *raftpb.Message, bool) {
 	cw.mu.Lock()
 	defer cw.mu.Unlock()
 	return cw.msgc, cw.working
@@ -331,7 +331,7 @@ func (cw *streamWriter) closeUnlocked() bool {
 	if len(cw.msgc) > 0 {
 		cw.r.ReportUnreachable(uint64(cw.peerID))
 	}
-	cw.msgc = make(chan raftpb.Message, streamBufSize)
+	cw.msgc = make(chan *raftpb.Message, streamBufSize)
 	cw.working = false
 	return true
 }
@@ -361,8 +361,8 @@ type streamReader struct {
 	tr     *Transport
 	picker *urlPicker
 	status *peerStatus
-	recvc  chan<- raftpb.Message
-	propc  chan<- raftpb.Message
+	recvc  chan<- *raftpb.Message
+	propc  chan<- *raftpb.Message
 
 	rl *rate.Limiter // alters the frequency of dial retrial attempts
 
@@ -510,7 +510,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			continue
 		}
 
-		if isLinkHeartbeatMessage(&m) {
+		if isLinkHeartbeatMessage(m) {
 			// raft is not interested in link layer
 			// heartbeat message, so we should ignore
 			// it.

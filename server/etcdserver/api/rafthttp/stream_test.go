@@ -65,7 +65,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 		// if prevwfc == nil, the first connection may be pending, but the first
 		// msgc is already available since it's set on calling startStreamwriter
 		msgc, _ := sw.writec()
-		msgc <- raftpb.Message{}
+		msgc <- &raftpb.Message{}
 
 		select {
 		case <-wfc.writec:
@@ -96,7 +96,7 @@ func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
 	wfc := newFakeWriteFlushCloser(errors.New("blah"))
 	sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
 
-	sw.msgc <- raftpb.Message{}
+	sw.msgc <- &raftpb.Message{}
 	select {
 	case <-wfc.closed:
 	case <-time.After(time.Second):
@@ -265,9 +265,9 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 // TestStream tests that streamReader and streamWriter can build stream to
 // send messages between each other.
 func TestStream(t *testing.T) {
-	recvc := make(chan raftpb.Message, streamBufSize)
-	propc := make(chan raftpb.Message, streamBufSize)
-	msgapp := raftpb.Message{
+	recvc := make(chan *raftpb.Message, streamBufSize)
+	propc := make(chan *raftpb.Message, streamBufSize)
+	msgapp := &raftpb.Message{
 		Type:    raftpb.MsgApp,
 		From:    2,
 		To:      1,
@@ -279,12 +279,12 @@ func TestStream(t *testing.T) {
 
 	tests := []struct {
 		t  streamType
-		m  raftpb.Message
-		wc chan raftpb.Message
+		m  *raftpb.Message
+		wc chan *raftpb.Message
 	}{
 		{
 			streamTypeMessage,
-			raftpb.Message{Type: raftpb.MsgProp, To: 2},
+			&raftpb.Message{Type: raftpb.MsgProp, To: 2},
 			propc,
 		},
 		{
@@ -323,7 +323,7 @@ func TestStream(t *testing.T) {
 		sr.start()
 
 		// wait for stream to work
-		var writec chan<- raftpb.Message
+		var writec chan<- *raftpb.Message
 		for {
 			var ok bool
 			if writec, ok = sw.writec(); ok {
@@ -333,7 +333,7 @@ func TestStream(t *testing.T) {
 		}
 
 		writec <- tt.m
-		var m raftpb.Message
+		var m *raftpb.Message
 		select {
 		case m = <-tt.wc:
 		case <-time.After(time.Second):

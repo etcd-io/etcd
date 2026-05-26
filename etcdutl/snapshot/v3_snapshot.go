@@ -37,6 +37,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/snapshot"
+	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -522,10 +523,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 
 	m := s.cl.MemberByName(s.name) //nolint:staticcheck // See https://github.com/dominikh/go-tools/issues/1698
 	md := &etcdserverpb.Metadata{NodeID: new(uint64(m.ID)), ClusterID: new(uint64(s.cl.ID()))}
-	metadata, merr := proto.Marshal(md)
-	if merr != nil {
-		return nil, merr
-	}
+	metadata := pbutil.MustMarshalMessage(md)
 	w, walerr := wal.Create(s.lg, s.walDir, metadata)
 	if walerr != nil {
 		return nil, walerr
@@ -541,7 +539,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
 
-	ents := make([]raftpb.Entry, len(peers))
+	ents := make([]*raftpb.Entry, len(peers))
 	nodeIDs := make([]uint64, len(peers))
 	for i, p := range peers {
 		nodeIDs[i] = p.ID
@@ -550,11 +548,8 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 			NodeID:  p.ID,
 			Context: p.Context,
 		}
-		d, err := cc.Marshal()
-		if err != nil {
-			return nil, err
-		}
-		ents[i] = raftpb.Entry{
+		d := pbutil.MustMarshal(&cc)
+		ents[i] = &raftpb.Entry{
 			Type:  raftpb.EntryConfChange,
 			Term:  1,
 			Index: uint64(i + 1),
@@ -568,7 +563,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		Vote:   peers[0].ID,
 		Commit: commit,
 	}
-	if err := w.Save(hardState, ents); err != nil {
+	if err := w.Save(&hardState, ents); err != nil {
 		return nil, err
 	}
 
@@ -584,7 +579,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		},
 	}
 	sn := snap.New(s.lg, s.snapDir)
-	if err := sn.SaveSnap(raftSnap); err != nil {
+	if err := sn.SaveSnap(&raftSnap); err != nil {
 		return nil, err
 	}
 	snapshot := walpb.Snapshot{Index: &commit, Term: &term, ConfState: &confState}

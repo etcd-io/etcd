@@ -35,20 +35,20 @@ func NewStorageRecorderStream(db string) *StorageRecorder {
 	return &StorageRecorder{testutil.NewRecorderStream(), db}
 }
 
-func (p *StorageRecorder) Save(st raftpb.HardState, ents []raftpb.Entry) error {
+func (p *StorageRecorder) Save(st *raftpb.HardState, ents []*raftpb.Entry) error {
 	p.Record(testutil.Action{Name: "Save"})
 	return nil
 }
 
-func (p *StorageRecorder) SaveSnap(st raftpb.Snapshot) error {
-	if !raft.IsEmptySnap(st) {
+func (p *StorageRecorder) SaveSnap(st *raftpb.Snapshot) error {
+	if !raft.IsEmptySnap(*st) {
 		p.Record(testutil.Action{Name: "SaveSnap"})
 	}
 	return nil
 }
 
-func (p *StorageRecorder) Release(st raftpb.Snapshot) error {
-	if !raft.IsEmptySnap(st) {
+func (p *StorageRecorder) Release(st *raftpb.Snapshot) error {
+	if !raft.IsEmptySnap(*st) {
 		p.Record(testutil.Action{Name: "Release"})
 	}
 	return nil

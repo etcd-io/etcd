@@ -83,7 +83,7 @@ func TestSnapshotSend(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sent, files := testSnapshotSend(t, snap.NewMessage(tt.m, tt.rc, tt.size))
+		sent, files := testSnapshotSend(t, snap.NewMessage(&tt.m, tt.rc, tt.size))
 		if tt.wsent != sent {
 			t.Errorf("#%d: snapshot expected %v, got %v", i, tt.wsent, sent)
 		}

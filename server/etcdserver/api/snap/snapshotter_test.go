@@ -286,7 +286,7 @@ func TestReleaseSnapDBs(t *testing.T) {
 
 	ss := New(zaptest.NewLogger(t), dir)
 
-	if err := ss.ReleaseSnapDBs(raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 300}}); err != nil {
+	if err := ss.ReleaseSnapDBs(&raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 300}}); err != nil {
 		t.Fatal(err)
 	}
 

@@ -156,7 +156,7 @@ func TestApplyConfStateWithRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	entries := []raftpb.Entry{
+	entries := []*raftpb.Entry{
 		{
 			Term:  1,
 			Index: 1,
@@ -335,7 +335,7 @@ func TestApplyConfChangeError(t *testing.T) {
 			r:       *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
 			cluster: cl,
 		}
-		_, err := srv.applyConfChange(tt.cc, nil, true)
+		_, err := srv.applyConfChange(&tt.cc, nil, true)
 		if !errorspkg.Is(err, tt.werr) {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -381,7 +381,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		NodeID: 2,
 	}
 	// remove non-local member
-	shouldStop, err := srv.applyConfChange(cc, &raftpb.ConfState{}, true)
+	shouldStop, err := srv.applyConfChange(&cc, &raftpb.ConfState{}, true)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -391,7 +391,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 
 	// remove local member
 	cc.NodeID = 1
-	shouldStop, err = srv.applyConfChange(cc, &raftpb.ConfState{}, true)
+	shouldStop, err = srv.applyConfChange(&cc, &raftpb.ConfState{}, true)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -440,7 +440,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	cc := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2, Context: b}
-	ents := []raftpb.Entry{{
+	ents := []*raftpb.Entry{{
 		Index: 2,
 		Term:  4,
 		Type:  raftpb.EntryConfChange,
@@ -518,7 +518,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
-	var ents []raftpb.Entry
+	var ents []*raftpb.Entry
 	for i := 1; i <= 4; i++ {
 		ent := raftpb.Entry{
 			Term:  1,
@@ -530,7 +530,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 					NodeID: uint64(i),
 				}),
 		}
-		ents = append(ents, ent)
+		ents = append(ents, &ent)
 	}
 
 	raftAdvancedC := make(chan struct{}, 1)
@@ -584,7 +584,7 @@ func TestSnapshotDisk(t *testing.T) {
 		assert.Equal(t, testutil.Action{Name: "SaveSnap"}, gaction[0])
 		assert.Equal(t, testutil.Action{Name: "Release"}, gaction[1])
 	}()
-	ep := etcdProgress{appliedi: 1, confState: raftpb.ConfState{Voters: []uint64{1}}}
+	ep := etcdProgress{appliedi: 1, confState: &raftpb.ConfState{Voters: []uint64{1}}}
 	srv.snapshot(&ep, true)
 	<-ch
 	assert.Empty(t, st.Action())
@@ -632,7 +632,7 @@ func TestSnapshotMemory(t *testing.T) {
 
 		assert.Empty(t, gaction)
 	}()
-	ep := etcdProgress{appliedi: 1, confState: raftpb.ConfState{Voters: []uint64{1}}}
+	ep := etcdProgress{appliedi: 1, confState: &raftpb.ConfState{Voters: []uint64{1}}}
 	srv.snapshot(&ep, false)
 	<-ch
 	assert.Empty(t, st.Action())
@@ -936,8 +936,7 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 	if types.ID(m.To) == s.MemberID() {
 		t.Fatalf("m.To (%d) is expected to mismatch s.MemberID (%d)", m.To, s.MemberID())
 	}
-	err := s.Process(t.Context(), m)
-	if err == nil {
+	if err := s.Process(t.Context(), &m); err == nil {
 		t.Fatalf("Must ignore the message and return an error")
 	}
 }
@@ -1398,7 +1397,7 @@ func newNopTransporter() rafthttp.Transporter {
 
 func (s *nopTransporter) Start() error                        { return nil }
 func (s *nopTransporter) Handler() http.Handler               { return nil }
-func (s *nopTransporter) Send(m []raftpb.Message)             {}
+func (s *nopTransporter) Send(m []*raftpb.Message)            {}
 func (s *nopTransporter) SendSnapshot(m snap.Message)         {}
 func (s *nopTransporter) AddRemote(id types.ID, us []string)  {}
 func (s *nopTransporter) AddPeer(id types.ID, us []string)    {}
@@ -1442,7 +1441,7 @@ func newSendMsgAppRespTransporter() (rafthttp.Transporter, <-chan int) {
 	return tr, ch
 }
 
-func (s *sendMsgAppRespTransporter) Send(m []raftpb.Message) {
+func (s *sendMsgAppRespTransporter) Send(m []*raftpb.Message) {
 	var send int
 	for _, msg := range m {
 		if msg.To != 0 {
