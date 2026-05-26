@@ -323,9 +323,10 @@ func toEtcdOperation(op *pb.RequestOp) (operation model.EtcdOperation) {
 		operation = model.EtcdOperation{
 			Type: model.RangeOperation,
 			Range: model.RangeOptions{
-				Start: string(rangeOp.Key),
-				End:   string(rangeOp.RangeEnd),
-				Limit: rangeOp.Limit,
+				Start:    string(rangeOp.Key),
+				End:      string(rangeOp.RangeEnd),
+				Limit:    rangeOp.Limit,
+				KeysOnly: rangeOp.GetKeysOnly(),
 			},
 		}
 	case op.GetRequestPut() != nil:

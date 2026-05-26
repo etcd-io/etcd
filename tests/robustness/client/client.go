@@ -90,10 +90,10 @@ func (c *RecordingClient) Do(ctx context.Context, op clientv3.Op) (clientv3.OpRe
 
 func (c *RecordingClient) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
 	op := clientv3.OpGet(key, opts...)
-	return c.Range(ctx, key, string(op.RangeBytes()), op.Rev(), op.Limit())
+	return c.Range(ctx, key, string(op.RangeBytes()), op.Rev(), op.Limit(), op.IsKeysOnly())
 }
 
-func (c *RecordingClient) Range(ctx context.Context, start, end string, revision, limit int64) (*clientv3.GetResponse, error) {
+func (c *RecordingClient) Range(ctx context.Context, start, end string, revision, limit int64, keyOnly bool) (*clientv3.GetResponse, error) {
 	ops := []clientv3.OpOption{}
 	if end != "" {
 		ops = append(ops, clientv3.WithRange(end))
@@ -103,17 +103,20 @@ func (c *RecordingClient) Range(ctx context.Context, start, end string, revision
 	}
 	if limit != 0 {
 		ops = append(ops, clientv3.WithLimit(limit))
+	}
+	if keyOnly {
+		ops = append(ops, clientv3.WithKeysOnly())
 	}
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Get(ctx, start, ops...)
 	returnTime := time.Since(c.baseTime)
-	c.kvOperations.AppendRange(start, end, revision, limit, callTime, returnTime, resp, err)
+	c.kvOperations.AppendRange(start, end, revision, limit, keyOnly, callTime, returnTime, resp, err)
 	return resp, err
 }
 
-func (c *RecordingClient) RangeStream(ctx context.Context, start, end string, revision, limit int64) (*clientv3.GetResponse, error) {
+func (c *RecordingClient) RangeStream(ctx context.Context, start, end string, revision, limit int64, keyOnly bool) (*clientv3.GetResponse, error) {
 	ops := []clientv3.OpOption{}
 	if end != "" {
 		ops = append(ops, clientv3.WithRange(end))
@@ -123,6 +126,9 @@ func (c *RecordingClient) RangeStream(ctx context.Context, start, end string, re
 	}
 	if limit != 0 {
 		ops = append(ops, clientv3.WithLimit(limit))
+	}
+	if keyOnly {
+		ops = append(ops, clientv3.WithKeysOnly())
 	}
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
@@ -133,7 +139,7 @@ func (c *RecordingClient) RangeStream(ctx context.Context, start, end string, re
 		resp, err = clientv3.GetStreamToGetResponse(stream)
 	}
 	returnTime := time.Since(c.baseTime)
-	c.kvOperations.AppendRange(start, end, revision, limit, callTime, returnTime, resp, err)
+	c.kvOperations.AppendRange(start, end, revision, limit, keyOnly, callTime, returnTime, resp, err)
 	return resp, err
 }
 
