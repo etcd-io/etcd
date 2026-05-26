@@ -27,16 +27,17 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapgrpc"
 	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/keepalive"
@@ -241,42 +242,38 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 		lg.Info("gRPC proxy server TLS", zap.String("tls-info", fmt.Sprintf("%+v", tlsInfo)))
 	}
 
-	m := mustListenCMux(lg, tlsInfo)
-	grpcl := m.Match(cmux.HTTP2())
-	httpl := mustMatchHTTPListener(m, tlsInfo)
-	defer func() {
-		grpcl.Close()
-		lg.Info("stop listening gRPC proxy client requests", zap.String("address", grpcProxyListenAddr))
-	}()
+	l := mustListen(lg, tlsInfo)
 
 	client := mustNewClient(lg)
 	grpcServer := newGRPCProxyServer(lg, client)
 
-	errc := make(chan error, 3)
+	httpClient := mustNewHTTPClient()
+	srvhttp, httpmux := mustHTTPServer(lg, tlsInfo, httpClient, client)
 
-	// NOTE:
-	// Start gRPC + cmux before creating proxyClient.
-	//
-	// proxyClient dials the proxy endpoint with a 5-second timeout. If cmux is not
-	// serving yet, the self-dial can time out because the gRPC path is not being
-	// accepted/dispatched.
-	//
-	// It is safe to start cmux before the HTTP server goroutine: HTTP has already
-	// been matched/registered with cmux, so accepted HTTP connections are queued
-	// and served once http.Serve starts.
-	startServe(errc, func() error { return grpcServer.Serve(grpcl) })
-	startServe(errc, m.Serve)
+	// Combine gRPC and HTTP handlers: route gRPC requests to grpcServer,
+	// everything else to the HTTP handler (metrics, health, etc.).
+	srvhttp.Handler = grpcHandlerFunc(grpcServer, srvhttp.Handler)
+
+	// For non-TLS, wrap with h2c to handle cleartext HTTP/2 (required for gRPC).
+	if tlsInfo == nil {
+		srvhttp.Handler = h2c.NewHandler(srvhttp.Handler, &http2.Server{
+			MaxConcurrentStreams: maxConcurrentStreams,
+		})
+	}
+
+	errc := make(chan error, 1)
+
+	// Start serving before creating proxyClient (which dials back with a
+	// 5-second timeout). The combined handler already handles gRPC, so the
+	// self-dial will succeed immediately.
+	startServe(errc, func() error { return srvhttp.Serve(l) })
 
 	// The proxy client is used for self-healthchecking.
 	// TODO: The mechanism should be refactored to use internal connection.
-	//
-	// Create it after gRPC/cmux serving goroutines have started
 	proxyClient := newProxyHealthClient(lg, tlsInfo)
 
-	httpClient := mustNewHTTPClient()
-	srvhttp := mustHTTPServer(lg, tlsInfo, httpClient, client, proxyClient)
-
-	startServe(errc, func() error { return srvhttp.Serve(httpl) })
+	// Register proxy health handler now that proxyClient exists.
+	grpcproxy.HandleProxyHealth(lg, httpmux, proxyClient)
 
 	maybeServeMetrics(lg, tlsInfo, httpClient, client, proxyClient)
 
@@ -442,7 +439,7 @@ func newTLS(ca, cert, key string, requireEmptyCN bool) *transport.TLSInfo {
 	return &transport.TLSInfo{TrustedCAFile: ca, CertFile: cert, KeyFile: key, EmptyCN: requireEmptyCN}
 }
 
-func mustListenCMux(lg *zap.Logger, tlsinfo *transport.TLSInfo) cmux.CMux {
+func mustListen(lg *zap.Logger, tlsinfo *transport.TLSInfo) net.Listener {
 	l, err := net.Listen("tcp", grpcProxyListenAddr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -461,7 +458,7 @@ func mustListenCMux(lg *zap.Logger, tlsinfo *transport.TLSInfo) cmux.CMux {
 	}
 
 	lg.Info("listening for gRPC proxy client requests", zap.String("address", grpcProxyListenAddr))
-	return cmux.New(l)
+	return l
 }
 
 func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
@@ -553,20 +550,22 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	return server
 }
 
-func mustMatchHTTPListener(m cmux.CMux, tlsinfo *transport.TLSInfo) net.Listener {
-	if tlsinfo == nil {
-		return m.Match(cmux.HTTP1())
-	}
-	return m.Match(cmux.Any())
+func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
+			grpcServer.ServeHTTP(w, r)
+		} else {
+			otherHandler.ServeHTTP(w, r)
+		}
+	})
 }
 
-func mustHTTPServer(lg *zap.Logger, tlsinfo *transport.TLSInfo, httpClient *http.Client, c *clientv3.Client, proxyClient *clientv3.Client) *http.Server {
+func mustHTTPServer(lg *zap.Logger, tlsinfo *transport.TLSInfo, httpClient *http.Client, c *clientv3.Client) (*http.Server, *http.ServeMux) {
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/", http.NotFound)
 	grpcproxy.HandleMetrics(httpmux, httpClient, c.Endpoints())
 	grpcproxy.HandleHealth(lg, httpmux, c)
 	grpcproxy.HandleProxyMetrics(httpmux)
-	grpcproxy.HandleProxyHealth(lg, httpmux, proxyClient)
 	if grpcProxyEnablePprof {
 		for p, h := range debugutil.PProfHandlers() {
 			httpmux.Handle(p, h)
@@ -584,7 +583,7 @@ func mustHTTPServer(lg *zap.Logger, tlsinfo *transport.TLSInfo, httpClient *http
 	}
 
 	if tlsinfo == nil {
-		return srvhttp
+		return srvhttp, httpmux
 	}
 
 	srvTLS, err := tlsinfo.ServerConfig()
@@ -592,7 +591,7 @@ func mustHTTPServer(lg *zap.Logger, tlsinfo *transport.TLSInfo, httpClient *http
 		lg.Fatal("failed to set up TLS", zap.Error(err))
 	}
 	srvhttp.TLSConfig = srvTLS
-	return srvhttp
+	return srvhttp, httpmux
 }
 
 func maybeServeMetrics(lg *zap.Logger, tlsinfo *transport.TLSInfo, httpClient *http.Client, c *clientv3.Client, proxyClient *clientv3.Client) {

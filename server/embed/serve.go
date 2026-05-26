@@ -24,9 +24,9 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	gw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/soheilhy/cmux"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
@@ -39,6 +39,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/pkg/v3/httputil"
 	"go.etcd.io/etcd/server/v3/config"
+	"go.etcd.io/etcd/server/v3/embed/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election"
@@ -49,6 +50,97 @@ import (
 	v3lockgw "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb/gw"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 )
+
+type channelListener struct {
+	ch        chan net.Conn
+	addr      net.Addr
+	done      <-chan struct{} // shared from connDemux, closed when demux stops
+	localDone chan struct{}   // closed when this listener is explicitly closed
+	closeOnce sync.Once
+}
+
+func (cl *channelListener) Accept() (net.Conn, error) {
+	select {
+	case conn, ok := <-cl.ch:
+		if !ok {
+			return nil, net.ErrClosed
+		}
+		return conn, nil
+	case <-cl.done:
+		return nil, net.ErrClosed
+	case <-cl.localDone:
+		return nil, net.ErrClosed
+	}
+}
+
+func (cl *channelListener) Close() error {
+	cl.closeOnce.Do(func() {
+		close(cl.localDone)
+	})
+	return nil
+}
+
+func (cl *channelListener) Addr() net.Addr { return cl.addr }
+
+type connDemux struct {
+	ln        net.Listener
+	tlsCh     chan net.Conn
+	plainCh   chan net.Conn
+	done      chan struct{}
+	closeOnce sync.Once
+}
+
+func newConnDemux(ln net.Listener) *connDemux {
+	return &connDemux{
+		ln:      ln,
+		tlsCh:   make(chan net.Conn),
+		plainCh: make(chan net.Conn),
+		done:    make(chan struct{}),
+	}
+}
+
+func (d *connDemux) acceptLoop() {
+	defer func() {
+		d.closeOnce.Do(func() {
+			close(d.done)
+		})
+	}()
+	for {
+		conn, err := d.ln.Accept()
+		if err != nil {
+			return
+		}
+		go d.route(conn)
+	}
+}
+
+func (d *connDemux) route(conn net.Conn) {
+	bc := apply.NewBufferedConn(conn)
+	conn.SetReadDeadline(time.Now().Add(4 * time.Second))
+	first, err := bc.Reader().Peek(1)
+	conn.SetReadDeadline(time.Time{})
+	if err != nil || len(first) == 0 {
+		conn.Close()
+		return
+	}
+	target := d.plainCh
+	if first[0] == 22 {
+		target = d.tlsCh
+	}
+	select {
+	case target <- bc:
+	case <-d.done:
+		bc.Close()
+	}
+}
+
+func (d *connDemux) tlsListener() net.Listener {
+	return &channelListener{ch: d.tlsCh, addr: d.ln.Addr(), done: d.done, localDone: make(chan struct{})}
+}
+
+func (d *connDemux) plainListener() net.Listener {
+	return &channelListener{ch: d.plainCh, addr: d.ln.Addr(), done: d.done, localDone: make(chan struct{})}
+}
 
 type serveCtx struct {
 	lg *zap.Logger
@@ -137,8 +229,12 @@ func (sctx *serveCtx) serve(
 
 	sctx.lg.Info("ready to serve client requests")
 
-	m := cmux.New(sctx.l)
 	var server func() error
+	var insecureGS *grpc.Server
+	var insecureSRV *http.Server
+	var secureGS *grpc.Server
+	var secureSRV *http.Server
+
 	onlyGRPC := splitHTTP && !sctx.httpOnly
 	onlyHTTP := splitHTTP && sctx.httpOnly
 	grpcEnabled := !onlyHTTP
@@ -170,17 +266,7 @@ func (sctx *serveCtx) serve(
 	if sctx.insecure {
 		var gs *grpc.Server
 		var srv *http.Server
-		if httpEnabled {
-			httpmux := sctx.createMux(gwmux, handler)
-			srv = &http.Server{
-				Handler:  createAccessController(sctx.lg, s, httpmux),
-				ErrorLog: logger, // do not log user error
-			}
-			if err = configureHTTPServer(srv, s.Cfg); err != nil {
-				sctx.lg.Error("Configure http server failed", zap.Error(err))
-				return err
-			}
-		}
+
 		if grpcEnabled {
 			gs = v3rpc.Server(s, nil, nil, gopts...)
 			v3electionpb.RegisterElectionServer(gs, servElection)
@@ -196,26 +282,52 @@ func (sctx *serveCtx) serve(
 				}
 			}(gs)
 		}
-		if onlyGRPC {
-			server = func() error {
-				return gs.Serve(sctx.l)
+
+		switch {
+		case onlyGRPC:
+			if !sctx.secure {
+				server = func() error {
+					return gs.Serve(sctx.l)
+				}
 			}
-		} else {
-			server = m.Serve
-
-			httpl := m.Match(cmux.HTTP1())
-			sctx.startHandler(errHandler, func() error {
-				return srv.Serve(httpl)
+		case onlyHTTP:
+			httpmux := sctx.createMux(gwmux, handler)
+			srv = &http.Server{
+				Handler:  createAccessController(sctx.lg, s, httpmux),
+				ErrorLog: logger,
+			}
+			if err = configureHTTPServer(srv, s.Cfg); err != nil {
+				sctx.lg.Error("Configure http server failed", zap.Error(err))
+				return err
+			}
+			server = func() error {
+				return srv.Serve(sctx.l)
+			}
+		default:
+			// both gRPC and HTTP on same port
+			h := grpcHandlerFunc(gs, handler)
+			httpmux := sctx.createMux(gwmux, h)
+			ac := createAccessController(sctx.lg, s, httpmux)
+			srv = &http.Server{
+				Handler:  ac,
+				ErrorLog: logger,
+			}
+			http2.ConfigureServer(srv, &http2.Server{
+				MaxConcurrentStreams: s.Cfg.MaxConcurrentStreams,
 			})
-
-			if grpcEnabled {
-				grpcl := m.Match(cmux.HTTP2())
-				sctx.startHandler(errHandler, func() error {
-					return gs.Serve(grpcl)
-				})
+			protos := new(http.Protocols)
+			protos.SetHTTP1(true)
+			protos.SetUnencryptedHTTP2(true)
+			srv.Protocols = protos
+			if !sctx.secure {
+				server = func() error {
+					return srv.Serve(sctx.l)
+				}
 			}
 		}
 
+		insecureGS = gs
+		insecureSRV = srv
 		sctx.serversC <- &servers{grpc: gs, http: srv}
 		sctx.lg.Info(
 			"serving client traffic insecurely; this is strongly discouraged!",
@@ -249,10 +361,11 @@ func (sctx *serveCtx) serve(
 			}(gs)
 		}
 		if httpEnabled {
+			h := handler
 			if grpcEnabled {
-				handler = grpcHandlerFunc(gs, handler)
+				h = grpcHandlerFunc(gs, h)
 			}
-			httpmux := sctx.createMux(gwmux, handler)
+			httpmux := sctx.createMux(gwmux, h)
 
 			srv = &http.Server{
 				Handler:   createAccessController(sctx.lg, s, httpmux),
@@ -266,19 +379,23 @@ func (sctx *serveCtx) serve(
 		}
 
 		if onlyGRPC {
-			server = func() error { return gs.Serve(sctx.l) }
-		} else {
-			server = m.Serve
-
-			tlsl, tlsErr := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
-			if tlsErr != nil {
-				return tlsErr
+			if !sctx.insecure {
+				server = func() error { return gs.Serve(sctx.l) }
 			}
-			sctx.startHandler(errHandler, func() error {
-				return srv.Serve(tlsl)
-			})
+		} else {
+			if !sctx.insecure {
+				tlsl, tlsErr := transport.NewTLSListener(sctx.l, tlsinfo)
+				if tlsErr != nil {
+					return tlsErr
+				}
+				server = func() error {
+					return srv.Serve(tlsl)
+				}
+			}
 		}
 
+		secureGS = gs
+		secureSRV = srv
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
 		sctx.lg.Info(
 			"serving client traffic securely",
@@ -287,10 +404,77 @@ func (sctx *serveCtx) serve(
 		)
 	}
 
-	err = server()
+	if sctx.insecure && sctx.secure {
+		err = sctx.serveDual(insecureGS, insecureSRV, secureGS, secureSRV, tlsinfo, errHandler)
+	} else {
+		err = server()
+	}
 	sctx.close()
 	sctx.wg.Wait()
 	return err
+}
+
+func (sctx *serveCtx) serveDual(
+	insecureGS *grpc.Server,
+	insecureSRV *http.Server,
+	secureGS *grpc.Server,
+	secureSRV *http.Server,
+	tlsinfo *transport.TLSInfo,
+	errHandler func(error),
+) error {
+	demux := newConnDemux(sctx.l)
+	go demux.acceptLoop()
+
+	var wg sync.WaitGroup
+
+	if insecureSRV != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := insecureSRV.Serve(demux.plainListener())
+			if errHandler != nil {
+				errHandler(err)
+			}
+		}()
+	} else if insecureGS != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := insecureGS.Serve(demux.plainListener())
+			if errHandler != nil {
+				errHandler(err)
+			}
+		}()
+	}
+
+	if secureSRV != nil {
+		tlsl, err := transport.NewTLSListener(demux.tlsListener(), tlsinfo)
+		if err != nil {
+			sctx.l.Close()
+			return err
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := secureSRV.Serve(tlsl)
+			if errHandler != nil {
+				errHandler(err)
+			}
+		}()
+	} else if secureGS != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := secureGS.Serve(demux.tlsListener())
+			if errHandler != nil {
+				errHandler(err)
+			}
+		}()
+	}
+
+	wg.Wait()
+	sctx.l.Close()
+	return nil
 }
 
 func configureHTTPServer(srv *http.Server, cfg config.ServerConfig) error {

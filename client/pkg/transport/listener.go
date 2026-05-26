@@ -612,11 +612,10 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 	return cfg, nil
 }
 
-// IsClosedConnError returns true if the error is from closing listener, cmux.
+// IsClosedConnError returns true if the error is from closing listener.
 // copied from golang.org/x/net/http2/http2.go
 func IsClosedConnError(err error) bool {
 	// 'use of closed network connection' (Go <=1.8)
 	// 'use of closed file or network connection' (Go >1.8, internal/poll.ErrClosing)
-	// 'mux: listener closed' (cmux.ErrListenerClosed)
 	return err != nil && strings.Contains(err.Error(), "closed")
 }

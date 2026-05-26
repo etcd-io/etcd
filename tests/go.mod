@@ -28,7 +28,6 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.67.5
-	github.com/soheilhy/cmux v0.1.5
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.5.0-beta.0
 	go.etcd.io/etcd/api/v3 v3.7.0-beta.0
