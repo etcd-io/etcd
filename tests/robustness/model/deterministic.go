@@ -296,7 +296,11 @@ func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 			}
 			k := s.Keys[i]
 			if k >= options.Start && k < options.End {
-				response.KVs = append(response.KVs, KeyValue{Key: k, ValueRevision: *v})
+				kv := KeyValue{Key: k, ValueRevision: *v}
+				if options.KeysOnly {
+					kv.ValueRevision.Value = ValueOrHash{}
+				}
+				response.KVs = append(response.KVs, kv)
 				count++
 			}
 		}

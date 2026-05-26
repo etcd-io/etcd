@@ -58,8 +58,8 @@ func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
 	}
 }
 
-func (h *AppendableHistory) AppendRange(startKey, endKey string, revision, limit int64, start, end time.Duration, resp *clientv3.GetResponse, err error) {
-	request := staleRangeRequest(startKey, endKey, limit, revision)
+func (h *AppendableHistory) AppendRange(startKey, endKey string, revision, limit int64, keysOnly bool, start, end time.Duration, resp *clientv3.GetResponse, err error) {
+	request := staleRangeRequest(startKey, endKey, limit, revision, keysOnly)
 	if err != nil {
 		h.appendFailed(request, start, end, err)
 		return
@@ -343,11 +343,11 @@ func getRequest(key string) EtcdRequest {
 }
 
 func staleGetRequest(key string, revision int64) EtcdRequest {
-	return staleRangeRequest(key, "", 0, revision)
+	return staleRangeRequest(key, "", 0, revision, false)
 }
 
 func rangeRequest(start, end string, limit int64) EtcdRequest {
-	return staleRangeRequest(start, end, limit, 0)
+	return staleRangeRequest(start, end, limit, 0, false)
 }
 
 func listRequest(key string, limit int64) EtcdRequest {
@@ -355,11 +355,11 @@ func listRequest(key string, limit int64) EtcdRequest {
 }
 
 func staleListRequest(key string, limit, revision int64) EtcdRequest {
-	return staleRangeRequest(key, clientv3.GetPrefixRangeEnd(key), limit, revision)
+	return staleRangeRequest(key, clientv3.GetPrefixRangeEnd(key), limit, revision, false)
 }
 
-func staleRangeRequest(start, end string, limit, revision int64) EtcdRequest {
-	return EtcdRequest{Type: Range, Range: &RangeRequest{RangeOptions: RangeOptions{Start: start, End: end, Limit: limit}, Revision: revision}}
+func staleRangeRequest(start, end string, limit, revision int64, keysOnly bool) EtcdRequest {
+	return EtcdRequest{Type: Range, Range: &RangeRequest{RangeOptions: RangeOptions{Start: start, End: end, Limit: limit, KeysOnly: keysOnly}, Revision: revision}}
 }
 
 func emptyGetResponse(revision int64) MaybeEtcdResponse {

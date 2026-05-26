@@ -44,7 +44,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "successful range remains",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendRange("key", "", 0, 0, 100, 200, &clientv3.GetResponse{}, nil)
+				h.AppendRange("key", "", 0, 0, false, 100, 200, &clientv3.GetResponse{}, nil)
 			},
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: 200, Output: rangeResponse(0)},
