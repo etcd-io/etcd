@@ -156,7 +156,7 @@ func TestApplyConfStateWithRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	entries := []raftpb.Entry{
+	entries := []*raftpb.Entry{
 		{
 			Term:  1,
 			Index: 1,
@@ -217,11 +217,7 @@ func TestApplyConfStateWithRestart(t *testing.T) {
 	confState := raftpb.ConfState{}
 
 	t.Log("Applying entries for the first time")
-	var ptrEntries []*raftpb.Entry
-	for i := range entries {
-		ptrEntries = append(ptrEntries, &entries[i])
-	}
-	srv.apply(ptrEntries, &confState, nil)
+	srv.apply(entries, &confState, nil)
 	if got, _ := n.Wait(len(want)); !reflect.DeepEqual(got, want) {
 		t.Errorf("actions don't match\n got  %+v\n want %+v", got, want)
 	}
@@ -237,7 +233,7 @@ func TestApplyConfStateWithRestart(t *testing.T) {
 	srv.consistIndex.SetBackend(be)
 
 	t.Log("Reapplying same entries after restart")
-	srv.apply(ptrEntries, &confState, nil)
+	srv.apply(entries, &confState, nil)
 	if got, _ := n.Wait(2 * len(want)); !reflect.DeepEqual(got[len(want):], want) {
 		t.Errorf("actions don't match\n got  %+v\n want %+v", got, want)
 	}
