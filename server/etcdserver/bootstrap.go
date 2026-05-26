@@ -430,7 +430,7 @@ func recoverSnapshot(cfg config.ServerConfig, be backend.Backend, beExist bool, 
 		}
 		cfg.Logger.Info("constructed a snapshot from WAL record",
 			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-			zap.Int("snapshot-size", len(pbutil.MustMarshal(snapshot))),
+			zap.Int("snapshot-size", len(pbutil.MustMarshal(snapshot))), //TODO: use proto.Size after bumping to raft 3.7.0-beta.0
 			zap.String("confState", snapshot.Metadata.ConfState.String()),
 			zap.Int("walSnaps-count", len(walSnaps)),
 		)

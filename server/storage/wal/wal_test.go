@@ -506,6 +506,7 @@ func TestRecover(t *testing.T) {
 				entB := *entries[i]
 				entA.Data = nil
 				entB.Data = nil
+				// TODO: after bumping to raft 3.7.0-beta.0. This should can be simplified use a loop + proto.Equal,
 				if diff := cmp.Diff(&entA, &entB, protocmp.Transform()); diff != "" {
 					t.Fatalf("ents structural mismatch at index %d (-want +got):\n%s", i, diff)
 				}

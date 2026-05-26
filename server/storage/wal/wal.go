@@ -963,21 +963,14 @@ func (w *WAL) Save(st *raftpb.HardState, ents []*raftpb.Entry) error {
 	if (st == nil || raft.IsEmptyHardState(*st)) && len(ents) == 0 {
 		return nil
 	}
-
-	var mustSync bool
-	if st != nil {
-		var prevHardState raftpb.HardState
-		if w.state != nil {
-			prevHardState = *w.state
-		}
-		mustSync = raft.MustSync(*st, prevHardState, len(ents))
-	} else {
-		var prevHardState raftpb.HardState
-		if w.state != nil {
-			prevHardState = *w.state
-		}
-		mustSync = raft.MustSync(raftpb.HardState{}, prevHardState, len(ents))
+	if st == nil {
+		st = &raftpb.HardState{}
 	}
+	if w.state == nil {
+		w.state = &raftpb.HardState{}
+	}
+
+	mustSync := raft.MustSync(*st, *w.state, len(ents))
 
 	// TODO(xiangli): no more reference operator
 	for i := range ents {

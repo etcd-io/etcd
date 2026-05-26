@@ -217,18 +217,6 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				}
 				notifyc := make(chan struct{}, 1)
 				raftAdvancedC := make(chan struct{}, 1)
-				var snap *raftpb.Snapshot
-				var raftSnap *raftpb.Snapshot
-				if !raft.IsEmptySnap(rd.Snapshot) {
-					snap = &raftpb.Snapshot{
-						Data:     append([]byte(nil), rd.Snapshot.Data...),
-						Metadata: rd.Snapshot.Metadata,
-					}
-					raftSnap = &raftpb.Snapshot{
-						Data:     append([]byte(nil), rd.Snapshot.Data...),
-						Metadata: rd.Snapshot.Metadata,
-					}
-				}
 				// TODO: simplify here after bumping raft v3.7.0-beta.0; extract slice conversion loops into a helper when possible.
 				var committedEntries []*raftpb.Entry
 				for i := range rd.CommittedEntries {
@@ -236,7 +224,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				}
 				ap := toApply{
 					entries:       committedEntries,
-					snapshot:      snap,
+					snapshot:      &rd.Snapshot,
 					notifyc:       notifyc,
 					raftAdvancedC: raftAdvancedC,
 				}
@@ -264,9 +252,9 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 				// Must save the snapshot file and WAL snapshot entry before saving any other entries or hardstate to
 				// ensure that recovery after a snapshot restore is possible.
-				if raftSnap != nil {
+				if !raft.IsEmptySnap(rd.Snapshot) {
 					// gofail: var raftBeforeSaveSnap struct{}
-					if err := r.storage.SaveSnap(raftSnap); err != nil {
+					if err := r.storage.SaveSnap(&rd.Snapshot); err != nil {
 						r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
 					}
 					// gofail: var raftAfterSaveSnap struct{}
@@ -286,7 +274,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				}
 				// gofail: var raftAfterSave struct{}
 
-				if raftSnap != nil {
+				if !raft.IsEmptySnap(rd.Snapshot) {
 					// Force WAL to fsync its hard state before Release() releases
 					// old data from the WAL. Otherwise could get an error like:
 					// panic: tocommit(107) is out of range [lastIndex(84)]. Was the raft log corrupted, truncated, or lost?
@@ -299,11 +287,11 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					notifyc <- struct{}{}
 
 					// gofail: var raftBeforeApplySnap struct{}
-					r.raftStorage.ApplySnapshot(*raftSnap)
-					r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", raftSnap.Metadata.Index))
+					r.raftStorage.ApplySnapshot(rd.Snapshot)
+					r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", rd.Snapshot.Metadata.Index))
 					// gofail: var raftAfterApplySnap struct{}
 
-					if err := r.storage.Release(raftSnap); err != nil {
+					if err := r.storage.Release(&rd.Snapshot); err != nil {
 						r.lg.Fatal("failed to release Raft wal", zap.Error(err))
 					}
 					// gofail: var raftAfterWALRelease struct{}

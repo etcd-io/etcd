@@ -990,7 +990,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 }
 
 func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
-	if toApply.snapshot == nil || raft.IsEmptySnap(*toApply.snapshot) {
+	if raft.IsEmptySnap(*toApply.snapshot) {
 		return
 	}
 	applySnapshotInProgress.Inc()
@@ -1750,8 +1750,7 @@ type confChangeResponse struct {
 // will block until the change is performed or there is an error.
 func (s *EtcdServer) configure(ctx context.Context, cc *raftpb.ConfChange) ([]*membership.Member, error) {
 	lg := s.Logger()
-	ccID := s.reqIDGen.Next()
-	cc.ID = ccID
+	cc.ID = s.reqIDGen.Next()
 	ch := s.w.Register(cc.ID)
 
 	start := time.Now()
