@@ -166,7 +166,7 @@ func TestStatusWithRootAuth(t *testing.T) {
 }
 
 func TestStatusWithUserAuth(t *testing.T) {
-	testStatusWithAuth(t, false, true, WithAuth("user0", "user0Pass"))
+	testStatusWithAuth(t, false, false, WithAuth("user0", "user0Pass"))
 }
 
 func testStatusWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
