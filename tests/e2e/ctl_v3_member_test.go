@@ -20,7 +20,10 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
 
@@ -61,8 +64,17 @@ func TestCtlV3MemberAddClientAutoTLS(t *testing.T) {
 }
 func TestCtlV3MemberAddPeerTLS(t *testing.T)    { testCtl(t, memberAddTest, withCfg(configPeerTLS)) }
 func TestCtlV3MemberAddForLearner(t *testing.T) { testCtl(t, memberAddForLearnerTest) }
-func TestCtlV3MemberUpdate(t *testing.T)        { testCtl(t, memberUpdateTest) }
-func TestCtlV3MemberUpdateNoTLS(t *testing.T)   { testCtl(t, memberUpdateTest, withCfg(configNoTLS)) }
+
+func TestCtlV3MemberPromoteWithAuthFromLeader(t *testing.T) {
+	testCtl(t, memberPromoteWithAuth(false), withQuorum(), withTestTimeout(30*time.Second))
+}
+
+func TestCtlV3MemberPromoteWithAuthFromFollower(t *testing.T) {
+	testCtl(t, memberPromoteWithAuth(true), withQuorum(), withTestTimeout(30*time.Second))
+}
+
+func TestCtlV3MemberUpdate(t *testing.T)      { testCtl(t, memberUpdateTest) }
+func TestCtlV3MemberUpdateNoTLS(t *testing.T) { testCtl(t, memberUpdateTest, withCfg(configNoTLS)) }
 func TestCtlV3MemberUpdateClientTLS(t *testing.T) {
 	testCtl(t, memberUpdateTest, withCfg(configClientTLS))
 }
@@ -140,6 +152,78 @@ func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {
 		cmdArgs = append(cmdArgs, "--learner")
 	}
 	return spawnWithExpect(cmdArgs, " added to cluster ")
+}
+
+func memberPromoteWithAuth(fromFollower bool) func(cx ctlCtx) {
+	return func(cx ctlCtx) {
+		leaderIdx := cx.epc.WaitLeader(cx.t)
+		followerIdx := (leaderIdx + 1) % len(cx.epc.procs)
+
+		learnerClusterCfg := *cx.epc.cfg
+		learnerClusterCfg.clusterSize = len(cx.epc.procs) + 1
+		learnerCfg := learnerClusterCfg.etcdServerProcessConfigs()[len(cx.epc.procs)]
+		learnerCfg.args = patchArgs(learnerCfg.args, "initial-cluster-state", "existing")
+
+		var addErr error
+		for {
+			addErr = ctlV3MemberAdd(cx, learnerCfg.purl.String(), true)
+			if addErr != nil {
+				if strings.Contains(addErr.Error(), "etcdserver: unhealthy cluster") {
+					time.Sleep(1 * time.Second)
+					continue
+				}
+			}
+			break
+		}
+		require.NoError(cx.t, addErr)
+
+		mr, err := getMemberList(cx)
+		require.NoError(cx.t, err)
+
+		var learnerID uint64
+		for _, m := range mr.Members {
+			if m.IsLearner {
+				learnerID = m.ID
+				break
+			}
+		}
+		require.NotZero(cx.t, learnerID)
+
+		learnerProc, err := newEtcdProcess(learnerCfg)
+		require.NoError(cx.t, err)
+		cx.epc.procs = append(cx.epc.procs, learnerProc)
+		require.NoError(cx.t, learnerProc.Start())
+
+		require.NoError(cx.t, authEnable(cx))
+		cx.user = "root"
+		cx.pass = "root"
+
+		endpoint := cx.epc.procs[leaderIdx].EndpointsV3()
+		if fromFollower {
+			endpoint = cx.epc.procs[followerIdx].EndpointsV3()
+		}
+
+		expectedErr := etcdserver.ErrLearnerNotReady.Error()
+		timeout := time.After(5 * time.Second)
+		var promoteErr error
+		for {
+			select {
+			case <-time.After(500 * time.Millisecond):
+			case <-timeout:
+				cx.t.Fatalf("failed all attempts to promote learner member, last error: %v", promoteErr)
+			}
+
+			cmdArgs := append(cx.prefixArgs(endpoint), "member", "promote", fmt.Sprintf("%x", learnerID))
+			promoteErr = spawnWithExpect(cmdArgs, "promoted in cluster")
+			if promoteErr == nil {
+				break
+			}
+			if !strings.Contains(promoteErr.Error(), expectedErr) {
+				break
+			}
+		}
+		require.NoError(cx.t, promoteErr)
+	}
 }
 
 func memberUpdateTest(cx ctlCtx) {
