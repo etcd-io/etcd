@@ -201,11 +201,11 @@ func TestStoreRange(t *testing.T) {
 		r    rangeResp
 	}{
 		{
-			indexRangeResp{[][]byte{[]byte("foo")}, []Revision{{Main: 2}}},
+			indexRangeResp{[][]byte{[]byte("foo")}, []Revision{{Main: 2}}, []Revision{{Main: 1}}, []int64{1}},
 			rangeResp{[][]byte{key}, [][]byte{kvb}},
 		},
 		{
-			indexRangeResp{[][]byte{[]byte("foo"), []byte("foo1")}, []Revision{{Main: 2}, {Main: 3}}},
+			indexRangeResp{[][]byte{[]byte("foo"), []byte("foo1")}, []Revision{{Main: 2}, {Main: 3}}, []Revision{{Main: 2}, {Main: 3}}, []int64{1, 1}},
 			rangeResp{[][]byte{key}, [][]byte{kvb}},
 		},
 	}
@@ -280,7 +280,7 @@ func TestStoreDeleteRange(t *testing.T) {
 	}{
 		{
 			Revision{Main: 2},
-			indexRangeResp{[][]byte{[]byte("foo")}, []Revision{{Main: 2}}},
+			indexRangeResp{[][]byte{[]byte("foo")}, []Revision{{Main: 2}}, []Revision{{Main: 2}}, []int64{1}},
 			rangeResp{[][]byte{key}, [][]byte{kvb}},
 
 			newTestBucketKeyBytes(newBucketKey(3, 0, true)),
@@ -1014,8 +1014,10 @@ type indexGetResp struct {
 }
 
 type indexRangeResp struct {
-	keys [][]byte
-	revs []Revision
+	keys     [][]byte
+	revs     []Revision
+	creates  []Revision
+	versions []int64
 }
 
 type indexRangeEventsResp struct {
@@ -1031,7 +1033,7 @@ type fakeIndex struct {
 }
 
 func (i *fakeIndex) Revisions(key, end []byte, atRev int64, limit int, withTotalCount bool) ([]Revision, int) {
-	_, rev := i.Range(key, end, atRev)
+	_, rev, _, _ := i.Range(key, end, atRev)
 	if len(rev) >= limit {
 		rev = rev[:limit]
 	}
@@ -1039,7 +1041,7 @@ func (i *fakeIndex) Revisions(key, end []byte, atRev int64, limit int, withTotal
 }
 
 func (i *fakeIndex) CountRevisions(key, end []byte, atRev int64) int {
-	_, rev := i.Range(key, end, atRev)
+	_, rev, _, _ := i.Range(key, end, atRev)
 	return len(rev)
 }
 
@@ -1049,10 +1051,10 @@ func (i *fakeIndex) Get(key []byte, atRev int64) (rev, created Revision, ver int
 	return r.rev, r.created, r.ver, r.err
 }
 
-func (i *fakeIndex) Range(key, end []byte, atRev int64) ([][]byte, []Revision) {
+func (i *fakeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, modifies, creates []Revision, versions []int64) {
 	i.Recorder.Record(testutil.Action{Name: "range", Params: []any{key, end, atRev}})
 	r := <-i.indexRangeRespc
-	return r.keys, r.revs
+	return r.keys, r.revs, r.creates, r.versions
 }
 
 func (i *fakeIndex) Put(key []byte, rev Revision) {

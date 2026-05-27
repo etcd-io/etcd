@@ -23,7 +23,7 @@ import (
 
 type index interface {
 	Get(key []byte, atRev int64) (rev, created Revision, ver int64, err error)
-	Range(key, end []byte, atRev int64) ([][]byte, []Revision)
+	Range(key, end []byte, atRev int64) (keys [][]byte, modifies, creates []Revision, versions []int64)
 	Revisions(key, end []byte, atRev int64, limit int, withTotalCount bool) ([]Revision, int)
 	CountRevisions(key, end []byte, atRev int64) int
 	Put(key []byte, rev Revision)
@@ -160,25 +160,27 @@ func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64) int {
 	return total
 }
 
-func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []Revision) {
+func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, modifies, creates []Revision, versions []int64) {
 	ti.RLock()
 	defer ti.RUnlock()
 
 	if end == nil {
-		rev, _, _, err := ti.unsafeGet(key, atRev)
+		modified, created, version, err := ti.unsafeGet(key, atRev)
 		if err != nil {
-			return nil, nil
+			return nil, nil, nil, nil
 		}
-		return [][]byte{key}, []Revision{rev}
+		return [][]byte{key}, []Revision{modified}, []Revision{created}, []int64{version}
 	}
 	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
-		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
-			revs = append(revs, rev)
+		if modified, created, version, err := ki.get(ti.lg, atRev); err == nil {
+			modifies = append(modifies, modified)
 			keys = append(keys, ki.key)
+			creates = append(creates, created)
+			versions = append(versions, version)
 		}
 		return true
 	})
-	return keys, revs
+	return keys, modifies, creates, versions
 }
 
 func (ti *treeIndex) Tombstone(key []byte, rev Revision) error {
