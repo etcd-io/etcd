@@ -514,16 +514,18 @@ func (c *Client) roundRobinQuorumBackoff(waitBetween time.Duration, jitterFracti
 		n := uint(len(c.Endpoints()))
 		quorum := (n/2 + 1)
 		if attempt%quorum == 0 {
+			generation := attempt / quorum
 			c.GetLogger().Debug(
 				"backoff",
 				zap.Uint("attempt", attempt),
 				zap.Uint("quorum", quorum),
+				zap.Uint("generation", generation),
 				zap.Duration("waitBetween", waitBetween),
 				zap.Float64("jitterFraction", jitterFraction),
 				zap.Float64("backoffExponent", backoffExponent),
 				zap.Duration("maxWaitBetween", maxWaitBetween),
 			)
-			return jitterUp(expBackoff(attempt, backoffExponent, waitBetween, maxWaitBetween), jitterFraction)
+			return jitterUp(expBackoff(generation, backoffExponent, waitBetween, maxWaitBetween), jitterFraction)
 		}
 		c.GetLogger().Debug("backoff skipped", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum))
 		return 0
