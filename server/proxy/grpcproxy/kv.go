@@ -84,6 +84,13 @@ func (p *kvProxy) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, e
 	cacheKeys.Set(float64(p.cache.Size()))
 
 	resp, err := p.kv.Do(ctx, PutRequestToOp(r))
+	// Invalidate again after the backend write. A concurrent serializable
+	// Range can read the pre-write value and re-cache it in the window
+	// between the first Invalidate and the write committing; without this
+	// second Invalidate that stale entry would persist until the next write
+	// through this proxy.
+	p.cache.Invalidate(r.Key, nil)
+	cacheKeys.Set(float64(p.cache.Size()))
 	return (*pb.PutResponse)(resp.Put()), err
 }
 
@@ -92,6 +99,10 @@ func (p *kvProxy) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*p
 	cacheKeys.Set(float64(p.cache.Size()))
 
 	resp, err := p.kv.Do(ctx, DelRequestToOp(r))
+	// See Put: invalidate again after the backend write to drop any stale
+	// entry a concurrent serializable Range re-cached during the window.
+	p.cache.Invalidate(r.Key, r.RangeEnd)
+	cacheKeys.Set(float64(p.cache.Size()))
 	return (*pb.DeleteRangeResponse)(resp.Del()), err
 }
 
