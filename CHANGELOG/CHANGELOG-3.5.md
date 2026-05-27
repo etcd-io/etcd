@@ -9,6 +9,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### etcd server
 
 - [bugfix: MemberUpdate implicitly and unexpectedly promotes a learner](https://github.com/etcd-io/etcd/pull/21737)
+- [server: allow non-admin maintenance status](https://github.com/etcd-io/etcd/pull/21815)
 
 ### etcdutl
 
