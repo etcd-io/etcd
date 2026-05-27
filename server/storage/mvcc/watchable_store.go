@@ -56,8 +56,29 @@ type watchable interface {
 type watchableStore struct {
 	*store
 
-	// mu protects watcher groups and batches. It should never be locked
-	// before locking store.mu to avoid deadlock.
+	// mu protects watcher groups and batches.
+	//
+	// Lock-order rules (must be obeyed by all callers):
+	//
+	//  1. store.mu BEFORE watchableStore.mu (the historical rule). Never
+	//     acquire watchableStore.mu while already holding store.mu in a
+	//     direction that requires upgrading to a write here. The canonical
+	//     callsite is watchableStoreTxnWrite.End, which holds store.mu.RLock
+	//     (from store.Write) and then takes watchableStore.mu.Lock.
+	//
+	//  2. watchableStore.mu BEFORE store.revMu. Read paths inside
+	//     watchableStore (watch, syncWatchers, moveVictims, notify) take
+	//     watchableStore.mu first and store.revMu second.
+	//
+	// Corollary: a callsite holding watchableStore.mu (in any mode) must
+	// NEVER request store.mu — otherwise it forms a deadlock cycle with
+	// Compact/Commit/Restore (which take store.mu.Lock) and the End() path
+	// above. The cycle is: A holds watchableStore.mu.RLock and waits for
+	// store.mu.RLock (blocked by B's pending writer), B waits for
+	// store.mu.Lock (blocked by C's RLock), C holds store.mu.RLock and
+	// waits for watchableStore.mu.Lock (blocked by A). See progressIfSync
+	// for the canonical example of why we evaluate s.rev() BEFORE taking
+	// s.mu.RLock.
 	mu sync.RWMutex
 
 	// victims are watcher batches that were blocked on the watch channel
@@ -513,10 +534,17 @@ func (s *watchableStore) progressAll(watchers map[WatchID]*watcher) bool {
 }
 
 func (s *watchableStore) progressIfSync(watchers map[WatchID]*watcher, responseWatchID WatchID) bool {
+	// Read store.Rev BEFORE acquiring s.mu — see the lock-order comment on
+	// s.mu. Holding s.mu while reaching into store.mu (which s.rev() does
+	// via readView.Rev → store.Read) would form a three-way deadlock cycle
+	// with Compact/Commit and watchableStoreTxnWrite.End. Using a slightly
+	// older revision here is harmless: progress notifications are eventually
+	// re-evaluated by the next syncWatchersLoop / progress tick.
+	rev := s.rev()
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	rev := s.rev()
 	// Any watcher unsynced?
 	for _, w := range watchers {
 		if _, ok := s.synced.watchers[w]; !ok {
