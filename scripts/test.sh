@@ -118,7 +118,7 @@ fi
 
 function build_pass {
   log_callout "Building etcd"
-  run_for_modules run go build "${@}" || return 2
+  run_for_workspace_modules run go build "${@}" ./... || return 2
   GO_BUILD_FLAGS="-v" etcd_build "${@}"
   GO_BUILD_FLAGS="-v" tools_build "${@}"
 }
