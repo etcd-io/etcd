@@ -97,7 +97,7 @@ func testRepair(t *testing.T, ents [][]*raftpb.Entry, corrupt corruptFunc, expec
 
 	// write some more entries to repaired log
 	for i := 1; i <= 10; i++ {
-		es := []*raftpb.Entry{{Index: uint64(expectedEnts + i)}}
+		es := []*raftpb.Entry{{Index: new(uint64(expectedEnts + i))}}
 		require.NoError(t, w.Save(&raftpb.HardState{}, es))
 	}
 	require.NoError(t, w.Close())
@@ -112,7 +112,7 @@ func testRepair(t *testing.T, ents [][]*raftpb.Entry, corrupt corruptFunc, expec
 
 func makeEnts(ents int) (ret [][]*raftpb.Entry) {
 	for i := 1; i <= ents; i++ {
-		ret = append(ret, []*raftpb.Entry{{Index: uint64(i)}})
+		ret = append(ret, []*raftpb.Entry{{Index: new(uint64(i))}})
 	}
 	return ret
 }

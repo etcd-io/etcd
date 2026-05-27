@@ -19,24 +19,24 @@ import (
 	"encoding/binary"
 	"io"
 	"net/http"
-	"reflect"
 	"testing"
 
 	"github.com/coreos/go-semver/semver"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
 func TestEntry(t *testing.T) {
-	tests := []raftpb.Entry{
+	tests := []*raftpb.Entry{
 		{},
-		{Term: 1, Index: 1},
-		{Term: 1, Index: 1, Data: []byte("some data")},
+		{Term: new(uint64(1)), Index: new(uint64(1))},
+		{Term: new(uint64(1)), Index: new(uint64(1)), Data: []byte("some data")},
 	}
 	for i, tt := range tests {
 		b := &bytes.Buffer{}
-		if err := writeEntryTo(b, &tt); err != nil {
+		if err := writeEntryTo(b, tt); err != nil {
 			t.Errorf("#%d: unexpected write ents error: %v", i, err)
 			continue
 		}
@@ -45,8 +45,8 @@ func TestEntry(t *testing.T) {
 			t.Errorf("#%d: unexpected read ents error: %v", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(ent, tt) {
-			t.Errorf("#%d: ent = %+v, want %+v", i, ent, tt)
+		if !proto.Equal(&ent, tt) {
+			t.Errorf("#%d: ent = %+v, want %+v", i, &ent, tt)
 		}
 	}
 }
@@ -196,11 +196,11 @@ func TestCheckVersionCompatibility(t *testing.T) {
 }
 
 func writeEntryTo(w io.Writer, ent *raftpb.Entry) error {
-	size := ent.Size()
+	size := proto.Size(ent)
 	if err := binary.Write(w, binary.BigEndian, uint64(size)); err != nil {
 		return err
 	}
-	b, err := ent.Marshal()
+	b, err := proto.Marshal(ent)
 	if err != nil {
 		return err
 	}
@@ -217,5 +217,5 @@ func readEntryFrom(r io.Reader, ent *raftpb.Entry) error {
 	if _, err := io.ReadFull(r, buf); err != nil {
 		return err
 	}
-	return ent.Unmarshal(buf)
+	return proto.Unmarshal(buf, ent)
 }

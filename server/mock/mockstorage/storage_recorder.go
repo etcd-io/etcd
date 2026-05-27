@@ -41,14 +41,14 @@ func (p *StorageRecorder) Save(st *raftpb.HardState, ents []*raftpb.Entry) error
 }
 
 func (p *StorageRecorder) SaveSnap(st *raftpb.Snapshot) error {
-	if !raft.IsEmptySnap(*st) {
+	if !raft.IsEmptySnap(st) {
 		p.Record(testutil.Action{Name: "SaveSnap"})
 	}
 	return nil
 }
 
 func (p *StorageRecorder) Release(st *raftpb.Snapshot) error {
-	if !raft.IsEmptySnap(*st) {
+	if !raft.IsEmptySnap(st) {
 		p.Record(testutil.Action{Name: "Release"})
 	}
 	return nil

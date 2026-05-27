@@ -24,52 +24,52 @@ func TestPeerPick(t *testing.T) {
 	tests := []struct {
 		msgappWorking  bool
 		messageWorking bool
-		m              raftpb.Message
+		m              *raftpb.Message
 		wpicked        string
 	}{
 		{
 			true, true,
-			raftpb.Message{Type: raftpb.MsgSnap},
+			&raftpb.Message{Type: raftpb.MsgSnap.Enum()},
 			pipelineMsg,
 		},
 		{
 			true, true,
-			raftpb.Message{Type: raftpb.MsgApp, Term: 1, LogTerm: 1},
+			&raftpb.Message{Type: raftpb.MsgApp.Enum(), Term: new(uint64(1)), LogTerm: new(uint64(1))},
 			streamAppV2,
 		},
 		{
 			true, true,
-			raftpb.Message{Type: raftpb.MsgProp},
+			&raftpb.Message{Type: raftpb.MsgProp.Enum()},
 			streamMsg,
 		},
 		{
 			true, true,
-			raftpb.Message{Type: raftpb.MsgHeartbeat},
+			&raftpb.Message{Type: raftpb.MsgHeartbeat.Enum()},
 			streamMsg,
 		},
 		{
 			false, true,
-			raftpb.Message{Type: raftpb.MsgApp, Term: 1, LogTerm: 1},
+			&raftpb.Message{Type: raftpb.MsgApp.Enum(), Term: new(uint64(1)), LogTerm: new(uint64(1))},
 			streamMsg,
 		},
 		{
 			false, false,
-			raftpb.Message{Type: raftpb.MsgApp, Term: 1, LogTerm: 1},
+			&raftpb.Message{Type: raftpb.MsgApp.Enum(), Term: new(uint64(1)), LogTerm: new(uint64(1))},
 			pipelineMsg,
 		},
 		{
 			false, false,
-			raftpb.Message{Type: raftpb.MsgProp},
+			&raftpb.Message{Type: raftpb.MsgProp.Enum()},
 			pipelineMsg,
 		},
 		{
 			false, false,
-			raftpb.Message{Type: raftpb.MsgSnap},
+			&raftpb.Message{Type: raftpb.MsgSnap.Enum()},
 			pipelineMsg,
 		},
 		{
 			false, false,
-			raftpb.Message{Type: raftpb.MsgHeartbeat},
+			&raftpb.Message{Type: raftpb.MsgHeartbeat.Enum()},
 			pipelineMsg,
 		},
 	}
@@ -79,7 +79,7 @@ func TestPeerPick(t *testing.T) {
 			writer:         &streamWriter{working: tt.messageWorking},
 			pipeline:       &pipeline{},
 		}
-		_, picked := peer.pick(&tt.m)
+		_, picked := peer.pick(tt.m)
 		if picked != tt.wpicked {
 			t.Errorf("#%d: picked = %v, want %v", i, picked, tt.wpicked)
 		}

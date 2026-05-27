@@ -68,8 +68,8 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		cc := raftpb.ConfChange{
-			Type:    raftpb.ConfChangeAddNode,
-			NodeID:  nodeID,
+			Type:    raftpb.ConfChangeAddNode.Enum(),
+			NodeId:  new(nodeID),
 			Context: url,
 		}
 		h.confChangeC <- &cc
@@ -84,8 +84,8 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		cc := raftpb.ConfChange{
-			Type:   raftpb.ConfChangeRemoveNode,
-			NodeID: nodeID,
+			Type:   raftpb.ConfChangeRemoveNode.Enum(),
+			NodeId: new(nodeID),
 		}
 		h.confChangeC <- &cc
 

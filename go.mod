@@ -34,7 +34,7 @@ require (
 	go.etcd.io/etcd/pkg/v3 v3.7.0-beta.0
 	go.etcd.io/etcd/server/v3 v3.7.0-beta.0
 	go.etcd.io/etcd/tests/v3 v3.7.0-beta.0
-	go.etcd.io/raft/v3 v3.6.0-beta.0.0.20260116184858-6d944ca211ee
+	go.etcd.io/raft/v3 v3.7.0-beta.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/time v0.15.0
 	golang.org/x/tools v0.44.0
@@ -54,7 +54,6 @@ require (
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect

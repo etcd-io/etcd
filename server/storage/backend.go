@@ -57,7 +57,7 @@ func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 
 // OpenSnapshotBackend renames a snapshot db to the current etcd db and opens it.
 func OpenSnapshotBackend(cfg config.ServerConfig, ss *snap.Snapshotter, snapshot *raftpb.Snapshot, hooks *BackendHooks) (backend.Backend, error) {
-	snapPath, err := ss.DBFilePath(snapshot.Metadata.Index)
+	snapPath, err := ss.DBFilePath(snapshot.Metadata.GetIndex())
 	if err != nil {
 		return nil, fmt.Errorf("failed to find database snapshot file (%w)", err)
 	}
@@ -104,11 +104,11 @@ func RecoverSnapshotBackend(cfg config.ServerConfig, oldbe backend.Backend, snap
 	if beExist {
 		consistentIndex, _ = schema.ReadConsistentIndex(oldbe.ReadTx())
 	}
-	if snapshot.Metadata.Index <= consistentIndex {
-		cfg.Logger.Info("Skipping snapshot backend", zap.Uint64("consistent-index", consistentIndex), zap.Uint64("snapshot-index", snapshot.Metadata.Index))
+	if snapshot.Metadata.GetIndex() <= consistentIndex {
+		cfg.Logger.Info("Skipping snapshot backend", zap.Uint64("consistent-index", consistentIndex), zap.Uint64("snapshot-index", snapshot.Metadata.GetIndex()))
 		return oldbe, nil
 	}
-	cfg.Logger.Info("Recovering from snapshot backend", zap.Uint64("consistent-index", consistentIndex), zap.Uint64("snapshot-index", snapshot.Metadata.Index))
+	cfg.Logger.Info("Recovering from snapshot backend", zap.Uint64("consistent-index", consistentIndex), zap.Uint64("snapshot-index", snapshot.Metadata.GetIndex()))
 	oldbe.Close()
 	return OpenSnapshotBackend(cfg, snap.New(cfg.Logger, cfg.SnapDir()), snapshot, hooks)
 }

@@ -48,7 +48,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			// bad method
 			"GET",
 			bytes.NewReader(
-				pbutil.MustMarshal(&raftpb.Message{}),
+				pbutil.MustMarshalMessage(&raftpb.Message{}),
 			),
 			&fakeRaft{},
 			"0",
@@ -58,7 +58,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			// bad method
 			"PUT",
 			bytes.NewReader(
-				pbutil.MustMarshal(&raftpb.Message{}),
+				pbutil.MustMarshalMessage(&raftpb.Message{}),
 			),
 			&fakeRaft{},
 			"0",
@@ -68,7 +68,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			// bad method
 			"DELETE",
 			bytes.NewReader(
-				pbutil.MustMarshal(&raftpb.Message{}),
+				pbutil.MustMarshalMessage(&raftpb.Message{}),
 			),
 			&fakeRaft{},
 			"0",
@@ -94,7 +94,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			// good request, wrong cluster ID
 			"POST",
 			bytes.NewReader(
-				pbutil.MustMarshal(&raftpb.Message{}),
+				pbutil.MustMarshalMessage(&raftpb.Message{}),
 			),
 			&fakeRaft{},
 			"1",
@@ -104,7 +104,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			// good request, Processor failure
 			"POST",
 			bytes.NewReader(
-				pbutil.MustMarshal(&raftpb.Message{}),
+				pbutil.MustMarshalMessage(&raftpb.Message{}),
 			),
 			&fakeRaft{
 				err: &resWriterToError{code: http.StatusForbidden},
@@ -116,7 +116,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			// good request, Processor failure
 			"POST",
 			bytes.NewReader(
-				pbutil.MustMarshal(&raftpb.Message{}),
+				pbutil.MustMarshalMessage(&raftpb.Message{}),
 			),
 			&fakeRaft{
 				err: &resWriterToError{code: http.StatusInternalServerError},
@@ -128,7 +128,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			// good request, Processor failure
 			"POST",
 			bytes.NewReader(
-				pbutil.MustMarshal(&raftpb.Message{}),
+				pbutil.MustMarshalMessage(&raftpb.Message{}),
 			),
 			&fakeRaft{err: errors.New("blah")},
 			"0",
@@ -138,7 +138,7 @@ func TestServeRaftPrefix(t *testing.T) {
 			// good request
 			"POST",
 			bytes.NewReader(
-				pbutil.MustMarshal(&raftpb.Message{}),
+				pbutil.MustMarshalMessage(&raftpb.Message{}),
 			),
 			&fakeRaft{},
 			"0",
@@ -358,7 +358,7 @@ func (pg *fakePeerGetter) Get(id types.ID) Peer { return pg.peers[id] }
 
 type fakePeer struct {
 	msgs     []*raftpb.Message
-	snapMsgs []snap.Message
+	snapMsgs []*snap.Message
 	peerURLs types.URLs
 	connc    chan *outgoingConn
 	paused   bool
@@ -379,7 +379,7 @@ func (pr *fakePeer) send(m *raftpb.Message) {
 	pr.msgs = append(pr.msgs, m)
 }
 
-func (pr *fakePeer) sendSnap(m snap.Message) {
+func (pr *fakePeer) sendSnap(m *snap.Message) {
 	if pr.paused {
 		return
 	}

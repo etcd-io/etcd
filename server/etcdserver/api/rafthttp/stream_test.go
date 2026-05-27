@@ -19,7 +19,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -27,6 +26,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/time/rate"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -268,13 +268,13 @@ func TestStream(t *testing.T) {
 	recvc := make(chan *raftpb.Message, streamBufSize)
 	propc := make(chan *raftpb.Message, streamBufSize)
 	msgapp := &raftpb.Message{
-		Type:    raftpb.MsgApp,
-		From:    2,
-		To:      1,
-		Term:    1,
-		LogTerm: 1,
-		Index:   3,
-		Entries: []raftpb.Entry{{Term: 1, Index: 4}},
+		Type:    raftpb.MsgApp.Enum(),
+		From:    new(uint64(2)),
+		To:      new(uint64(1)),
+		Term:    new(uint64(1)),
+		LogTerm: new(uint64(1)),
+		Index:   new(uint64(3)),
+		Entries: []*raftpb.Entry{{Term: new(uint64(1)), Index: new(uint64(4))}},
 	}
 
 	tests := []struct {
@@ -284,7 +284,7 @@ func TestStream(t *testing.T) {
 	}{
 		{
 			streamTypeMessage,
-			&raftpb.Message{Type: raftpb.MsgProp, To: 2},
+			&raftpb.Message{Type: raftpb.MsgProp.Enum(), To: new(uint64(2))},
 			propc,
 		},
 		{
@@ -339,7 +339,7 @@ func TestStream(t *testing.T) {
 		case <-time.After(time.Second):
 			t.Fatalf("#%d: failed to receive message from the channel", i)
 		}
-		if !reflect.DeepEqual(m, tt.m) {
+		if !proto.Equal(m, tt.m) {
 			t.Fatalf("#%d: message = %+v, want %+v", i, m, tt.m)
 		}
 

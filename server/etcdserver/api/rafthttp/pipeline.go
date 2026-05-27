@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
@@ -97,7 +98,7 @@ func (p *pipeline) handle() {
 		select {
 		case m := <-p.msgc:
 			start := time.Now()
-			err := p.post(pbutil.MustMarshal(m))
+			err := p.post(pbutil.MustMarshalMessage(m))
 			end := time.Now()
 
 			if err != nil {
@@ -106,11 +107,11 @@ func (p *pipeline) handle() {
 				if isMsgApp(m) && p.followerStats != nil {
 					p.followerStats.Fail()
 				}
-				p.raft.ReportUnreachable(m.To)
+				p.raft.ReportUnreachable(m.GetTo())
 				if isMsgSnap(m) {
-					p.raft.ReportSnapshot(m.To, raft.SnapshotFailure)
+					p.raft.ReportSnapshot(m.GetTo(), raft.SnapshotFailure)
 				}
-				sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
+				sentFailures.WithLabelValues(types.ID(m.GetTo()).String()).Inc()
 				continue
 			}
 
@@ -119,9 +120,9 @@ func (p *pipeline) handle() {
 				p.followerStats.Succ(end.Sub(start))
 			}
 			if isMsgSnap(m) {
-				p.raft.ReportSnapshot(m.To, raft.SnapshotFinish)
+				p.raft.ReportSnapshot(m.GetTo(), raft.SnapshotFinish)
 			}
-			sentBytes.WithLabelValues(types.ID(m.To).String()).Add(float64(m.Size()))
+			sentBytes.WithLabelValues(types.ID(m.GetTo()).String()).Add(float64(proto.Size(m)))
 		case <-p.stopc:
 			return
 		}

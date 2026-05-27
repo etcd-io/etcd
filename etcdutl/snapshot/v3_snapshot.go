@@ -37,7 +37,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/snapshot"
-	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -328,7 +327,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		return err
 	}
 
-	if err := s.updateCIndex(hardstate.Commit, hardstate.Term); err != nil {
+	if err := s.updateCIndex(hardstate.GetCommit(), hardstate.GetTerm()); err != nil {
 		return err
 	}
 
@@ -523,7 +522,10 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 
 	m := s.cl.MemberByName(s.name) //nolint:staticcheck // See https://github.com/dominikh/go-tools/issues/1698
 	md := &etcdserverpb.Metadata{NodeID: new(uint64(m.ID)), ClusterID: new(uint64(s.cl.ID()))}
-	metadata := pbutil.MustMarshalMessage(md)
+	metadata, merr := proto.Marshal(md)
+	if merr != nil {
+		return nil, merr
+	}
 	w, walerr := wal.Create(s.lg, s.walDir, metadata)
 	if walerr != nil {
 		return nil, walerr
@@ -544,37 +546,40 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	for i, p := range peers {
 		nodeIDs[i] = p.ID
 		cc := raftpb.ConfChange{
-			Type:    raftpb.ConfChangeAddNode,
-			NodeID:  p.ID,
+			Type:    raftpb.ConfChangeAddNode.Enum(),
+			NodeId:  new(p.ID),
 			Context: p.Context,
 		}
-		d := pbutil.MustMarshal(&cc)
+		d, err := proto.Marshal(&cc)
+		if err != nil {
+			return nil, err
+		}
 		ents[i] = &raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
-			Term:  1,
-			Index: uint64(i + 1),
+			Type:  raftpb.EntryConfChange.Enum(),
+			Term:  new(uint64(1)),
+			Index: new(uint64(i + 1)),
 			Data:  d,
 		}
 	}
 
 	commit, term := uint64(len(ents)), uint64(1)
 	hardState := raftpb.HardState{
-		Term:   term,
-		Vote:   peers[0].ID,
-		Commit: commit,
+		Term:   new(term),
+		Vote:   new(peers[0].ID),
+		Commit: new(commit),
 	}
 	if err := w.Save(&hardState, ents); err != nil {
 		return nil, err
 	}
 
-	confState := raftpb.ConfState{
+	confState := &raftpb.ConfState{
 		Voters: nodeIDs,
 	}
 	raftSnap := raftpb.Snapshot{
 		Data: etcdserver.GetMembershipInfoInV2Format(s.lg, s.cl),
-		Metadata: raftpb.SnapshotMetadata{
-			Index:     commit,
-			Term:      term,
+		Metadata: &raftpb.SnapshotMetadata{
+			Index:     new(commit),
+			Term:      new(term),
 			ConfState: confState,
 		},
 	}
@@ -582,7 +587,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	if err := sn.SaveSnap(&raftSnap); err != nil {
 		return nil, err
 	}
-	snapshot := walpb.Snapshot{Index: &commit, Term: &term, ConfState: &confState}
+	snapshot := walpb.Snapshot{Index: new(commit), Term: new(term), ConfState: confState}
 	return &hardState, w.SaveSnapshot(&snapshot)
 }
 

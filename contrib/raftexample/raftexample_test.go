@@ -233,8 +233,8 @@ func TestAddNewNode(t *testing.T) {
 
 	newNodeURL := "http://127.0.0.1:10004"
 	clus.confChangeC[0] <- &raftpb.ConfChange{
-		Type:    raftpb.ConfChangeAddNode,
-		NodeID:  4,
+		Type:    raftpb.ConfChangeAddNode.Enum(),
+		NodeId:  new(uint64(4)),
 		Context: []byte(newNodeURL),
 	}
 
