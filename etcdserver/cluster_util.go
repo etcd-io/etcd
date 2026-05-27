@@ -25,11 +25,13 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/etcdserver/api/membership"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/version"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/metadata"
 )
 
 // isMemberBootstrapped tries to check if the given member has been bootstrapped
@@ -381,6 +383,18 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 	if err != nil {
 		return nil, err
 	}
+
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		ts, ok := md[rpctypes.TokenFieldNameGRPC]
+		if !ok {
+			ts, ok = md[rpctypes.TokenFieldNameSwagger]
+		}
+
+		if ok && len(ts) > 0 {
+			req.Header.Set("Authorization", ts[0])
+		}
+	}
+
 	req = req.WithContext(ctx)
 	resp, err := cc.Do(req)
 	if err != nil {
