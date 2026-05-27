@@ -389,7 +389,7 @@ function markdown_marker_pass {
 
 function govuln_pass {
   run go install golang.org/x/vuln/cmd/govulncheck@latest
-  run_for_modules run govulncheck -show verbose
+  run_for_all_workspace_modules run govulncheck -show verbose
 }
 
 function lint_pass {
