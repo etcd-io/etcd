@@ -327,7 +327,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		return err
 	}
 
-	if err := s.updateCIndex(hardstate.Commit, hardstate.Term); err != nil {
+	if err := s.updateCIndex(hardstate.GetCommit(), hardstate.GetTerm()); err != nil {
 		return err
 	}
 
@@ -541,53 +541,53 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
 
-	ents := make([]raftpb.Entry, len(peers))
+	ents := make([]*raftpb.Entry, len(peers))
 	nodeIDs := make([]uint64, len(peers))
 	for i, p := range peers {
 		nodeIDs[i] = p.ID
 		cc := raftpb.ConfChange{
-			Type:    raftpb.ConfChangeAddNode,
-			NodeID:  p.ID,
+			Type:    raftpb.ConfChangeAddNode.Enum(),
+			NodeId:  new(p.ID),
 			Context: p.Context,
 		}
-		d, err := cc.Marshal()
+		d, err := proto.Marshal(&cc)
 		if err != nil {
 			return nil, err
 		}
-		ents[i] = raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
-			Term:  1,
-			Index: uint64(i + 1),
+		ents[i] = &raftpb.Entry{
+			Type:  raftpb.EntryConfChange.Enum(),
+			Term:  new(uint64(1)),
+			Index: new(uint64(i + 1)),
 			Data:  d,
 		}
 	}
 
 	commit, term := uint64(len(ents)), uint64(1)
 	hardState := raftpb.HardState{
-		Term:   term,
-		Vote:   peers[0].ID,
-		Commit: commit,
+		Term:   new(term),
+		Vote:   new(peers[0].ID),
+		Commit: new(commit),
 	}
-	if err := w.Save(hardState, ents); err != nil {
+	if err := w.Save(&hardState, ents); err != nil {
 		return nil, err
 	}
 
-	confState := raftpb.ConfState{
+	confState := &raftpb.ConfState{
 		Voters: nodeIDs,
 	}
 	raftSnap := raftpb.Snapshot{
 		Data: etcdserver.GetMembershipInfoInV2Format(s.lg, s.cl),
-		Metadata: raftpb.SnapshotMetadata{
-			Index:     commit,
-			Term:      term,
+		Metadata: &raftpb.SnapshotMetadata{
+			Index:     new(commit),
+			Term:      new(term),
 			ConfState: confState,
 		},
 	}
 	sn := snap.New(s.lg, s.snapDir)
-	if err := sn.SaveSnap(raftSnap); err != nil {
+	if err := sn.SaveSnap(&raftSnap); err != nil {
 		return nil, err
 	}
-	snapshot := walpb.Snapshot{Index: &commit, Term: &term, ConfState: &confState}
+	snapshot := walpb.Snapshot{Index: new(commit), Term: new(term), ConfState: confState}
 	return &hardState, w.SaveSnapshot(&snapshot)
 }
 

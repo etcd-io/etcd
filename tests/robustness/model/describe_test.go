@@ -43,7 +43,7 @@ func TestModelDescribe(t *testing.T) {
 		{
 			req:            getRequest("key2b"),
 			resp:           getResponse("key2b", "01234567890123456789", 2, 2),
-			expectDescribe: `get("key2b") -> hash: 2945867837, rev: 2`,
+			expectDescribe: `get("key2b") -> <hash:2945867837>, rev: 2`,
 		},
 		{
 			req:            putRequest("key3", "3"),
@@ -58,7 +58,7 @@ func TestModelDescribe(t *testing.T) {
 		{
 			req:            putRequest("key3c", "01234567890123456789"),
 			resp:           putResponse(3),
-			expectDescribe: `put("key3c", hash: 2945867837) -> ok, rev: 3`,
+			expectDescribe: `put("key3c", <hash:2945867837>) -> ok, rev: 3`,
 		},
 		{
 			req:            putRequest("key4", "4"),
@@ -137,13 +137,13 @@ func TestModelDescribe(t *testing.T) {
 		},
 		{
 			req:            listRequest("key12", 0),
-			resp:           rangeResponse([]*mvccpb.KeyValue{{Value: []byte("12")}}, 2, 12),
-			expectDescribe: `list("key12") -> ["12"], count: 2, rev: 12`,
+			resp:           rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key12"), Value: []byte("12")}}, 2, 12),
+			expectDescribe: `list("key12") -> [key12:"12"], count: 2, rev: 12`,
 		},
 		{
 			req:            listRequest("key13", 0),
-			resp:           rangeResponse([]*mvccpb.KeyValue{{Value: []byte("01234567890123456789")}}, 1, 13),
-			expectDescribe: `list("key13") -> [hash: 2945867837], count: 1, rev: 13`,
+			resp:           rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key13"), Value: []byte("01234567890123456789")}}, 1, 13),
+			expectDescribe: `list("key13") -> [key13:<hash:2945867837>], count: 1, rev: 13`,
 		},
 		{
 			req:            listRequest("key14", 14),

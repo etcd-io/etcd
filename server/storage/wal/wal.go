@@ -77,8 +77,8 @@ type WAL struct {
 	// dirFile is a fd for the wal directory for syncing on Rename
 	dirFile *os.File
 
-	metadata []byte           // metadata recorded at the head of each WAL
-	state    raftpb.HardState // hardstate recorded at the head of WAL
+	metadata []byte            // metadata recorded at the head of each WAL
+	state    *raftpb.HardState // hardstate recorded at the head of WAL
 
 	start     *walpb.Snapshot // snapshot to start reading
 	decoder   Decoder         // decoder to Decode records
@@ -468,7 +468,8 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 //
 // ReadAll may return uncommitted yet entries, that are subject to be overridden.
 // Do not apply entries that have index > state.commit, as they are subject to change.
-func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.Entry, err error) {
+func (w *WAL) ReadAll() (metadata []byte, state *raftpb.HardState, ents []*raftpb.Entry, err error) {
+	state = &raftpb.HardState{}
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -484,21 +485,21 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 		switch rec.GetType() {
 		case EntryType:
 			e := MustUnmarshalEntry(rec.Data)
-			// 0 <= e.Index-w.start.Index - 1 < len(ents)
-			if e.Index > w.start.GetIndex() {
+			// 0 <= e.GetIndex()-w.start.GetIndex() - 1 < len(ents)
+			if e.GetIndex() > w.start.GetIndex() {
 				// prevent "panic: runtime error: slice bounds out of range [:13038096702221461992] with capacity 0"
-				offset := e.Index - w.start.GetIndex() - 1
+				offset := e.GetIndex() - w.start.GetIndex() - 1
 				if offset > uint64(len(ents)) {
 					// return error before append call causes runtime panic.
 					// We still return the continuous WAL entries that have already been read.
 					// Refer to https://github.com/etcd-io/etcd/pull/19038#issuecomment-2557414292.
 					return nil, state, ents, fmt.Errorf("%w, snapshot[Index: %d, Term: %d], current entry[Index: %d, Term: %d], len(ents): %d",
-						ErrSliceOutOfRange, w.start.GetIndex(), w.start.GetTerm(), e.Index, e.Term, len(ents))
+						ErrSliceOutOfRange, w.start.GetIndex(), w.start.GetTerm(), e.GetIndex(), e.GetTerm(), len(ents))
 				}
 				// The line below is potentially overriding some 'uncommitted' entries.
 				ents = append(ents[:offset], e)
 			}
-			w.enti = e.Index
+			w.enti = e.GetIndex()
 
 		case StateType:
 			state = MustUnmarshalState(rec.Data)
@@ -596,7 +597,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 // Snapshot entries are valid if their index is less than or equal to the most recent committed hardstate.
 func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]*walpb.Snapshot, error) {
 	var snaps []*walpb.Snapshot
-	var state raftpb.HardState
+	state := &raftpb.HardState{}
 	var err error
 
 	rec := &walpb.Record{}
@@ -647,7 +648,7 @@ func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]*walpb.Snapshot, err
 	// filter out any snaps that are newer than the committed hardstate
 	n := 0
 	for _, s := range snaps {
-		if s.GetIndex() <= state.Commit {
+		if s.GetIndex() <= state.GetCommit() {
 			snaps[n] = s
 			n++
 		}
@@ -667,7 +668,7 @@ func Verify(lg *zap.Logger, walDir string, snap *walpb.Snapshot) (*raftpb.HardSt
 	var metadata []byte
 	var err error
 	var match bool
-	var state raftpb.HardState
+	state := &raftpb.HardState{}
 
 	rec := &walpb.Record{}
 
@@ -722,7 +723,7 @@ func Verify(lg *zap.Logger, walDir string, snap *walpb.Snapshot) (*raftpb.HardSt
 		// are not necessary for validating the WAL contents
 		case EntryType:
 		case StateType:
-			pbutil.MustUnmarshal(&state, rec.Data)
+			pbutil.MustUnmarshalMessage(state, rec.Data)
 		default:
 			return nil, fmt.Errorf("unexpected block type %d", rec.Type)
 		}
@@ -738,7 +739,7 @@ func Verify(lg *zap.Logger, walDir string, snap *walpb.Snapshot) (*raftpb.HardSt
 		return nil, ErrSnapshotNotFound
 	}
 
-	return &state, nil
+	return state, nil
 }
 
 // cut closes current file written and creates a new one ready to append.
@@ -783,7 +784,7 @@ func (w *WAL) cut() error {
 		return err
 	}
 
-	if err = w.saveState(&w.state); err != nil {
+	if err = w.saveState(w.state); err != nil {
 		return err
 	}
 
@@ -935,26 +936,26 @@ func (w *WAL) Close() error {
 
 func (w *WAL) saveEntry(e *raftpb.Entry) error {
 	// TODO: add MustMarshalTo to reduce one allocation.
-	b := pbutil.MustMarshal(e)
+	b := pbutil.MustMarshalMessage(e)
 	rec := &walpb.Record{Type: new(EntryType), Data: b}
 	if err := w.encoder.encode(rec); err != nil {
 		return err
 	}
-	w.enti = e.Index
+	w.enti = e.GetIndex()
 	return nil
 }
 
 func (w *WAL) saveState(s *raftpb.HardState) error {
-	if raft.IsEmptyHardState(*s) {
+	if raft.IsEmptyHardState(s) {
 		return nil
 	}
-	w.state = *s
-	b := pbutil.MustMarshal(s)
+	w.state = s
+	b := pbutil.MustMarshalMessage(s)
 	rec := &walpb.Record{Type: new(StateType), Data: b}
 	return w.encoder.encode(rec)
 }
 
-func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
+func (w *WAL) Save(st *raftpb.HardState, ents []*raftpb.Entry) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -962,16 +963,22 @@ func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 	if raft.IsEmptyHardState(st) && len(ents) == 0 {
 		return nil
 	}
+	if st == nil {
+		st = &raftpb.HardState{}
+	}
+	if w.state == nil {
+		w.state = &raftpb.HardState{}
+	}
 
 	mustSync := raft.MustSync(st, w.state, len(ents))
 
 	// TODO(xiangli): no more reference operator
 	for i := range ents {
-		if err := w.saveEntry(&ents[i]); err != nil {
+		if err := w.saveEntry(ents[i]); err != nil {
 			return err
 		}
 	}
-	if err := w.saveState(&st); err != nil {
+	if err := w.saveState(st); err != nil {
 		return err
 	}
 

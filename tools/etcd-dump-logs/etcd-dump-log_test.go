@@ -74,7 +74,8 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 		{"decoder_wrongoutputformat", []string{"-stream-decoder", decoderWrongOutputFormat, p}, "expectedoutput/decoder_wrongoutputformat.output"},
 	}
 
-	for _, argtest := range argtests {
+	for i := range argtests {
+		argtest := &argtests[i]
 		t.Run(argtest.name, func(t *testing.T) {
 			cmd := exec.Command(dumpLogsBinary, argtest.args...)
 			actual, err := cmd.CombinedOutput()
@@ -103,7 +104,7 @@ func mustCreateWALLog(t *testing.T, path string) {
 	err = os.Mkdir(snapdir, 0o744)
 	require.NoError(t, err)
 
-	ents := make([]raftpb.Entry, 0)
+	ents := make([]*raftpb.Entry, 0)
 
 	// append entries into wal log
 	appendConfigChangeEnts(&ents)
@@ -111,28 +112,28 @@ func mustCreateWALLog(t *testing.T, path string) {
 	appendUnknownNormalEnts(&ents)
 
 	// force commit newly appended entries
-	err = w.Save(raftpb.HardState{}, ents)
+	err = w.Save(&raftpb.HardState{}, ents)
 	require.NoError(t, err)
 	w.Close()
 }
 
-func appendConfigChangeEnts(ents *[]raftpb.Entry) {
+func appendConfigChangeEnts(ents *[]*raftpb.Entry) {
 	configChangeData := []raftpb.ConfChange{
-		{ID: 1, Type: raftpb.ConfChangeAddNode, NodeID: 2, Context: []byte("")},
-		{ID: 2, Type: raftpb.ConfChangeRemoveNode, NodeID: 2, Context: []byte("")},
-		{ID: 3, Type: raftpb.ConfChangeUpdateNode, NodeID: 2, Context: []byte("")},
-		{ID: 4, Type: raftpb.ConfChangeAddLearnerNode, NodeID: 3, Context: []byte("")},
+		{Id: new(uint64(1)), Type: raftpb.ConfChangeAddNode.Enum(), NodeId: new(uint64(2)), Context: []byte("")},
+		{Id: new(uint64(2)), Type: raftpb.ConfChangeRemoveNode.Enum(), NodeId: new(uint64(2)), Context: []byte("")},
+		{Id: new(uint64(3)), Type: raftpb.ConfChangeUpdateNode.Enum(), NodeId: new(uint64(2)), Context: []byte("")},
+		{Id: new(uint64(4)), Type: raftpb.ConfChangeAddLearnerNode.Enum(), NodeId: new(uint64(3)), Context: []byte("")},
 	}
-	configChangeEntries := []raftpb.Entry{
-		{Term: 1, Index: 1, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(&configChangeData[0])},
-		{Term: 2, Index: 2, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(&configChangeData[1])},
-		{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(&configChangeData[2])},
-		{Term: 2, Index: 4, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(&configChangeData[3])},
+	configChangeEntries := []*raftpb.Entry{
+		{Term: new(uint64(1)), Index: new(uint64(1)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(&configChangeData[0])},
+		{Term: new(uint64(2)), Index: new(uint64(2)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(&configChangeData[1])},
+		{Term: new(uint64(2)), Index: new(uint64(3)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(&configChangeData[2])},
+		{Term: new(uint64(2)), Index: new(uint64(4)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(&configChangeData[3])},
 	}
 	*ents = append(*ents, configChangeEntries...)
 }
 
-func appendNormalIRREnts(ents *[]raftpb.Entry) {
+func appendNormalIRREnts(ents *[]*raftpb.Entry) {
 	irrrange := &etcdserverpb.RangeRequest{Key: []byte("1"), RangeEnd: []byte("hi"), Limit: 6, Revision: 1, SortOrder: 1, SortTarget: 0, Serializable: false, KeysOnly: false, CountOnly: false, MinModRevision: 0, MaxModRevision: 20000, MinCreateRevision: 0, MaxCreateRevision: 20000}
 
 	irrput := &etcdserverpb.PutRequest{Key: []byte("foo1"), Value: []byte("bar1"), Lease: 1, PrevKv: false, IgnoreValue: false, IgnoreLease: true}
@@ -224,19 +225,19 @@ func appendNormalIRREnts(ents *[]raftpb.Entry) {
 
 	for i, irr := range irrs {
 		var currentry raftpb.Entry
-		currentry.Term = uint64(i + 4)
-		currentry.Index = uint64(i + 10)
-		currentry.Type = raftpb.EntryNormal
+		currentry.Term = new(uint64(i + 4))
+		currentry.Index = new(uint64(i + 10))
+		currentry.Type = raftpb.EntryNormal.Enum()
 		currentry.Data = pbutil.MustMarshalMessage(irr)
-		*ents = append(*ents, currentry)
+		*ents = append(*ents, &currentry)
 	}
 }
 
-func appendUnknownNormalEnts(ents *[]raftpb.Entry) {
+func appendUnknownNormalEnts(ents *[]*raftpb.Entry) {
 	var currentry raftpb.Entry
-	currentry.Term = 27
-	currentry.Index = 34
-	currentry.Type = raftpb.EntryNormal
+	currentry.Term = new(uint64(27))
+	currentry.Index = new(uint64(34))
+	currentry.Type = raftpb.EntryNormal.Enum()
 	currentry.Data = []byte("?")
-	*ents = append(*ents, currentry)
+	*ents = append(*ents, &currentry)
 }

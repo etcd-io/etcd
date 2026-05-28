@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
@@ -32,12 +33,12 @@ import (
 
 var testSnap = &raftpb.Snapshot{
 	Data: []byte("some snapshot"),
-	Metadata: raftpb.SnapshotMetadata{
-		ConfState: raftpb.ConfState{
+	Metadata: &raftpb.SnapshotMetadata{
+		ConfState: &raftpb.ConfState{
 			Voters: []uint64{1, 2, 3},
 		},
-		Index: 1,
-		Term:  1,
+		Index: new(uint64(1)),
+		Term:  new(uint64(1)),
 	},
 }
 
@@ -58,7 +59,7 @@ func TestSaveAndLoad(t *testing.T) {
 	if err != nil {
 		t.Errorf("err = %v, want nil", err)
 	}
-	if !reflect.DeepEqual(g, testSnap) {
+	if !proto.Equal(g, testSnap) {
 		t.Errorf("snap = %#v, want %#v", g, testSnap)
 	}
 }
@@ -110,7 +111,7 @@ func TestFailback(t *testing.T) {
 	if err != nil {
 		t.Errorf("err = %v, want nil", err)
 	}
-	if !reflect.DeepEqual(g, testSnap) {
+	if !proto.Equal(g, testSnap) {
 		t.Errorf("snap = %#v, want %#v", g, testSnap)
 	}
 	if f, err := os.Open(filepath.Join(dir, large) + ".broken"); err != nil {
@@ -162,9 +163,9 @@ func TestLoadNewestSnap(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newSnap := *testSnap
-	newSnap.Metadata.Index = 5
-	err = ss.save(&newSnap)
+	newSnap := proto.Clone(testSnap).(*raftpb.Snapshot)
+	newSnap.Metadata.Index = new(uint64(5))
+	err = ss.save(newSnap)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,17 +177,17 @@ func TestLoadNewestSnap(t *testing.T) {
 	}{
 		{
 			name:     "load-newest",
-			expected: &newSnap,
+			expected: newSnap,
 		},
 		{
 			name:              "loadnewestavailable-newest",
 			availableWALSnaps: []*walpb.Snapshot{{Index: new(uint64(0)), Term: new(uint64(0))}, {Index: new(uint64(1)), Term: new(uint64(1))}, {Index: new(uint64(5)), Term: new(uint64(1))}},
-			expected:          &newSnap,
+			expected:          newSnap,
 		},
 		{
 			name:              "loadnewestavailable-newest-unsorted",
 			availableWALSnaps: []*walpb.Snapshot{{Index: new(uint64(5)), Term: new(uint64(1))}, {Index: new(uint64(1)), Term: new(uint64(1))}, {Index: new(uint64(0)), Term: new(uint64(0))}},
-			expected:          &newSnap,
+			expected:          newSnap,
 		},
 		{
 			name:              "loadnewestavailable-previous",
@@ -206,7 +207,7 @@ func TestLoadNewestSnap(t *testing.T) {
 			if err != nil {
 				t.Errorf("err = %v, want nil", err)
 			}
-			if !reflect.DeepEqual(g, tc.expected) {
+			if !proto.Equal(g, tc.expected) {
 				t.Errorf("snap = %#v, want %#v", g, tc.expected)
 			}
 		})
@@ -286,7 +287,7 @@ func TestReleaseSnapDBs(t *testing.T) {
 
 	ss := New(zaptest.NewLogger(t), dir)
 
-	if err := ss.ReleaseSnapDBs(raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 300}}); err != nil {
+	if err := ss.ReleaseSnapDBs(&raftpb.Snapshot{Metadata: &raftpb.SnapshotMetadata{Index: new(uint64(300))}}); err != nil {
 		t.Fatal(err)
 	}
 

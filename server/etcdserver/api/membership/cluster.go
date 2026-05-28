@@ -303,18 +303,18 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
-func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldApplyV3 ShouldApplyV3) error {
+func (c *RaftCluster) ValidateConfigurationChange(cc *raftpb.ConfChange, shouldApplyV3 ShouldApplyV3) error {
 	if !shouldApplyV3 {
 		return nil
 	}
 
 	membersMap, removedMap := c.be.MustReadMembersFromBackend()
 
-	id := types.ID(cc.NodeID)
+	id := types.ID(cc.GetNodeId())
 	if removedMap[id] {
 		return ErrIDRemoved
 	}
-	switch cc.Type {
+	switch cc.GetType() {
 	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
 		confChangeContext := new(ConfigChangeContext)
 		if err := json.Unmarshal(cc.Context, confChangeContext); err != nil {
@@ -347,7 +347,7 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldAp
 				}
 			}
 
-			if confChangeContext.Member.RaftAttributes.IsLearner && cc.Type == raftpb.ConfChangeAddLearnerNode { // the new member is a learner
+			if confChangeContext.Member.RaftAttributes.IsLearner && cc.GetType() == raftpb.ConfChangeAddLearnerNode { // the new member is a learner
 				scaleUpLearners := true
 				if err := ValidateMaxLearnerConfig(c.maxLearners, members, scaleUpLearners); err != nil {
 					return err
@@ -383,7 +383,7 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldAp
 		}
 
 	default:
-		c.lg.Panic("unknown ConfChange type", zap.String("type", cc.Type.String()))
+		c.lg.Panic("unknown ConfChange type", zap.String("type", cc.GetType().String()))
 	}
 	return nil
 }

@@ -19,7 +19,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -27,6 +26,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/time/rate"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -65,7 +65,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 		// if prevwfc == nil, the first connection may be pending, but the first
 		// msgc is already available since it's set on calling startStreamwriter
 		msgc, _ := sw.writec()
-		msgc <- raftpb.Message{}
+		msgc <- &raftpb.Message{}
 
 		select {
 		case <-wfc.writec:
@@ -96,7 +96,7 @@ func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
 	wfc := newFakeWriteFlushCloser(errors.New("blah"))
 	sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
 
-	sw.msgc <- raftpb.Message{}
+	sw.msgc <- &raftpb.Message{}
 	select {
 	case <-wfc.closed:
 	case <-time.After(time.Second):
@@ -265,26 +265,26 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 // TestStream tests that streamReader and streamWriter can build stream to
 // send messages between each other.
 func TestStream(t *testing.T) {
-	recvc := make(chan raftpb.Message, streamBufSize)
-	propc := make(chan raftpb.Message, streamBufSize)
-	msgapp := raftpb.Message{
-		Type:    raftpb.MsgApp,
-		From:    2,
-		To:      1,
-		Term:    1,
-		LogTerm: 1,
-		Index:   3,
-		Entries: []raftpb.Entry{{Term: 1, Index: 4}},
+	recvc := make(chan *raftpb.Message, streamBufSize)
+	propc := make(chan *raftpb.Message, streamBufSize)
+	msgapp := &raftpb.Message{
+		Type:    raftpb.MsgApp.Enum(),
+		From:    new(uint64(2)),
+		To:      new(uint64(1)),
+		Term:    new(uint64(1)),
+		LogTerm: new(uint64(1)),
+		Index:   new(uint64(3)),
+		Entries: []*raftpb.Entry{{Term: new(uint64(1)), Index: new(uint64(4))}},
 	}
 
 	tests := []struct {
 		t  streamType
-		m  raftpb.Message
-		wc chan raftpb.Message
+		m  *raftpb.Message
+		wc chan *raftpb.Message
 	}{
 		{
 			streamTypeMessage,
-			raftpb.Message{Type: raftpb.MsgProp, To: 2},
+			&raftpb.Message{Type: raftpb.MsgProp.Enum(), To: new(uint64(2))},
 			propc,
 		},
 		{
@@ -323,7 +323,7 @@ func TestStream(t *testing.T) {
 		sr.start()
 
 		// wait for stream to work
-		var writec chan<- raftpb.Message
+		var writec chan<- *raftpb.Message
 		for {
 			var ok bool
 			if writec, ok = sw.writec(); ok {
@@ -333,13 +333,13 @@ func TestStream(t *testing.T) {
 		}
 
 		writec <- tt.m
-		var m raftpb.Message
+		var m *raftpb.Message
 		select {
 		case m = <-tt.wc:
 		case <-time.After(time.Second):
 			t.Fatalf("#%d: failed to receive message from the channel", i)
 		}
-		if !reflect.DeepEqual(m, tt.m) {
+		if !proto.Equal(m, tt.m) {
 			t.Fatalf("#%d: message = %+v, want %+v", i, m, tt.m)
 		}
 

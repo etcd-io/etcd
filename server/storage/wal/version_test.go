@@ -41,63 +41,63 @@ func TestEtcdVersionFromEntry(t *testing.T) {
 	downgradeVersionTestV3_7Req := etcdserverpb.InternalRaftRequest{DowngradeVersionTest: &etcdserverpb.DowngradeVersionTestRequest{Ver: "3.7.0"}}
 	downgradeVersionTestV3_7Data := pbutil.MustMarshalMessage(&downgradeVersionTestV3_7Req)
 
-	confChange := raftpb.ConfChange{Type: raftpb.ConfChangeAddLearnerNode}
-	confChangeData := pbutil.MustMarshal(&confChange)
+	confChange := raftpb.ConfChange{Type: raftpb.ConfChangeAddLearnerNode.Enum()}
+	confChangeData := pbutil.MustMarshalMessage(&confChange)
 
-	confChangeV2 := raftpb.ConfChangeV2{Transition: raftpb.ConfChangeTransitionJointExplicit}
-	confChangeV2Data := pbutil.MustMarshal(&confChangeV2)
+	confChangeV2 := raftpb.ConfChangeV2{Transition: raftpb.ConfChangeTransitionJointExplicit.Enum()}
+	confChangeV2Data := pbutil.MustMarshalMessage(&confChangeV2)
 
 	tcs := []struct {
 		name   string
-		input  raftpb.Entry
+		input  *raftpb.Entry
 		expect *semver.Version
 	}{
 		{
 			name: "Using RequestHeader AuthRevision in NormalEntry implies v3.1",
-			input: raftpb.Entry{
-				Term:  1,
-				Index: 2,
-				Type:  raftpb.EntryNormal,
+			input: &raftpb.Entry{
+				Term:  new(uint64(1)),
+				Index: new(uint64(2)),
+				Type:  raftpb.EntryNormal.Enum(),
 				Data:  normalRequestData,
 			},
 			expect: &version.V3_1,
 		},
 		{
 			name: "Setting downgradeTest version to 3.6 implies version within WAL",
-			input: raftpb.Entry{
-				Term:  1,
-				Index: 2,
-				Type:  raftpb.EntryNormal,
+			input: &raftpb.Entry{
+				Term:  new(uint64(1)),
+				Index: new(uint64(2)),
+				Type:  raftpb.EntryNormal.Enum(),
 				Data:  downgradeVersionTestV3_6Data,
 			},
 			expect: &version.V3_6,
 		},
 		{
 			name: "Setting downgradeTest version to 3.7 implies version within WAL",
-			input: raftpb.Entry{
-				Term:  1,
-				Index: 2,
-				Type:  raftpb.EntryNormal,
+			input: &raftpb.Entry{
+				Term:  new(uint64(1)),
+				Index: new(uint64(2)),
+				Type:  raftpb.EntryNormal.Enum(),
 				Data:  downgradeVersionTestV3_7Data,
 			},
 			expect: &version.V3_7,
 		},
 		{
 			name: "Using ConfigChange implies v3.0",
-			input: raftpb.Entry{
-				Term:  1,
-				Index: 2,
-				Type:  raftpb.EntryConfChange,
+			input: &raftpb.Entry{
+				Term:  new(uint64(1)),
+				Index: new(uint64(2)),
+				Type:  raftpb.EntryConfChange.Enum(),
 				Data:  confChangeData,
 			},
 			expect: &version.V3_0,
 		},
 		{
 			name: "Using ConfigChangeV2 implies v3.4",
-			input: raftpb.Entry{
-				Term:  1,
-				Index: 2,
-				Type:  raftpb.EntryConfChangeV2,
+			input: &raftpb.Entry{
+				Term:  new(uint64(1)),
+				Index: new(uint64(2)),
+				Type:  raftpb.EntryConfChangeV2.Enum(),
 				Data:  confChangeV2Data,
 			},
 			expect: &version.V3_4,

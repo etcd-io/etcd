@@ -219,6 +219,9 @@ func describeRangeRequest(opts RangeOptions, revision int64) string {
 	if opts.Limit != 0 {
 		kwargs = append(kwargs, fmt.Sprintf("limit=%d", opts.Limit))
 	}
+	if opts.KeysOnly {
+		kwargs = append(kwargs, "keysOnly")
+	}
 	kwargsString := strings.Join(kwargs, ", ")
 	if kwargsString != "" {
 		kwargsString = ", " + kwargsString
@@ -252,7 +255,11 @@ func describeRangeResponse(request RangeOptions, response RangeResponse) string 
 	if request.End != "" {
 		kvs := make([]string, len(response.KVs))
 		for i, kv := range response.KVs {
-			kvs[i] = describeValueOrHash(kv.Value)
+			if request.KeysOnly {
+				kvs[i] = kv.Key
+			} else {
+				kvs[i] = fmt.Sprintf("%s:%s", kv.Key, describeValueOrHash(kv.Value))
+			}
 		}
 		return fmt.Sprintf("[%s], count: %d", strings.Join(kvs, ","), response.Count)
 	}
@@ -272,7 +279,7 @@ func DescribeOperationMetadata(response MaybeEtcdResponse) string {
 
 func describeValueOrHash(value ValueOrHash) string {
 	if value.Hash != 0 {
-		return fmt.Sprintf("hash: %d", value.Hash)
+		return fmt.Sprintf("<hash:%d>", value.Hash)
 	}
 	if value.Value == "" {
 		return "nil"

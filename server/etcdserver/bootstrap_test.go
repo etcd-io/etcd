@@ -257,7 +257,7 @@ func createWALFileWithSnapshotRecord(cfg config.ServerConfig, snapshotTerm, snap
 		Term:  &snapshotTerm,
 		ConfState: &raftpb.ConfState{
 			Voters:    []uint64{0x00ffca74},
-			AutoLeave: false,
+			AutoLeave: new(false),
 		},
 	}
 
@@ -265,7 +265,7 @@ func createWALFileWithSnapshotRecord(cfg config.ServerConfig, snapshotTerm, snap
 		return err
 	}
 
-	return w.Save(raftpb.HardState{Term: snapshotTerm, Vote: 3, Commit: snapshotIndex}, nil)
+	return w.Save(&raftpb.HardState{Term: &snapshotTerm, Vote: new(uint64(3)), Commit: &snapshotIndex}, nil)
 }
 
 func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotIndex uint64) error {
@@ -277,12 +277,12 @@ func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotI
 
 	// create snapshot file
 	ss := snap.New(cfg.Logger, cfg.SnapDir())
-	if err = ss.SaveSnap(raftpb.Snapshot{
+	if err = ss.SaveSnap(&raftpb.Snapshot{
 		Data: []byte("{}"),
-		Metadata: raftpb.SnapshotMetadata{
-			ConfState: confState,
-			Index:     snapshotIndex,
-			Term:      snapshotTerm,
+		Metadata: &raftpb.SnapshotMetadata{
+			ConfState: &confState,
+			Index:     &snapshotIndex,
+			Term:      &snapshotTerm,
 		},
 	}); err != nil {
 		return err

@@ -341,114 +341,114 @@ func TestClusterValidateConfigurationChangeV3(t *testing.T) {
 		t.Fatal(err)
 	}
 	tests := []struct {
-		cc   raftpb.ConfChange
+		cc   *raftpb.ConfChange
 		werr error
 	}{
 		{
-			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeRemoveNode,
-				NodeID: 3,
+			&raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode.Enum(),
+				NodeId: new(uint64(3)),
 			},
 			nil,
 		},
 		{
-			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeAddNode,
-				NodeID: 4,
+			&raftpb.ConfChange{
+				Type:   raftpb.ConfChangeAddNode.Enum(),
+				NodeId: new(uint64(4)),
 			},
 			ErrIDRemoved,
 		},
 		{
-			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeRemoveNode,
-				NodeID: 4,
+			&raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode.Enum(),
+				NodeId: new(uint64(4)),
 			},
 			ErrIDRemoved,
 		},
 		{
-			raftpb.ConfChange{
-				Type:    raftpb.ConfChangeAddNode,
-				NodeID:  1,
+			&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode.Enum(),
+				NodeId:  new(uint64(1)),
 				Context: ctx1,
 			},
 			ErrIDExists,
 		},
 		{
-			raftpb.ConfChange{
-				Type:    raftpb.ConfChangeAddNode,
-				NodeID:  5,
+			&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode.Enum(),
+				NodeId:  new(uint64(5)),
 				Context: ctx,
 			},
 			ErrPeerURLexists,
 		},
 		{
-			raftpb.ConfChange{
-				Type:   raftpb.ConfChangeRemoveNode,
-				NodeID: 5,
+			&raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode.Enum(),
+				NodeId: new(uint64(5)),
 			},
 			ErrIDNotFound,
 		},
 		{
-			raftpb.ConfChange{
-				Type:    raftpb.ConfChangeAddNode,
-				NodeID:  5,
+			&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode.Enum(),
+				NodeId:  new(uint64(5)),
 				Context: ctx5,
 			},
 			nil,
 		},
 		{
-			raftpb.ConfChange{
-				Type:    raftpb.ConfChangeUpdateNode,
-				NodeID:  5,
+			&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeUpdateNode.Enum(),
+				NodeId:  new(uint64(5)),
 				Context: ctx,
 			},
 			ErrIDNotFound,
 		},
 		// try to change the peer url of 2 to the peer url of 3
 		{
-			raftpb.ConfChange{
-				Type:    raftpb.ConfChangeUpdateNode,
-				NodeID:  2,
+			&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeUpdateNode.Enum(),
+				NodeId:  new(uint64(2)),
 				Context: ctx2to3,
 			},
 			ErrPeerURLexists,
 		},
 		{
-			raftpb.ConfChange{
-				Type:    raftpb.ConfChangeUpdateNode,
-				NodeID:  2,
+			&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeUpdateNode.Enum(),
+				NodeId:  new(uint64(2)),
 				Context: ctx2to5,
 			},
 			nil,
 		},
 		{
-			raftpb.ConfChange{
-				Type:    raftpb.ConfChangeAddNode,
-				NodeID:  3,
+			&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode.Enum(),
+				NodeId:  new(uint64(3)),
 				Context: ctx3,
 			},
 			ErrMemberNotLearner,
 		},
 		{
-			raftpb.ConfChange{
-				Type:    raftpb.ConfChangeAddNode,
-				NodeID:  6,
+			&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode.Enum(),
+				NodeId:  new(uint64(6)),
 				Context: ctx6,
 			},
 			ErrIDNotFound,
 		},
 		{
-			raftpb.ConfChange{
-				Type:    raftpb.ConfChangeAddLearnerNode,
-				NodeID:  7,
+			&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddLearnerNode.Enum(),
+				NodeId:  new(uint64(7)),
 				Context: ctx7,
 			},
 			ErrTooManyLearners,
 		},
 		{
-			raftpb.ConfChange{
-				Type:    raftpb.ConfChangeAddNode,
-				NodeID:  1,
+			&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode.Enum(),
+				NodeId:  new(uint64(1)),
 				Context: ctx8,
 			},
 			nil,

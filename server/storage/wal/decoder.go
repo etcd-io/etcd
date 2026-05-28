@@ -212,16 +212,16 @@ func (d *decoder) LastCRC() uint32 {
 
 func (d *decoder) LastOffset() int64 { return d.lastValidOff }
 
-func MustUnmarshalEntry(d []byte) raftpb.Entry {
+func MustUnmarshalEntry(d []byte) *raftpb.Entry {
 	var e raftpb.Entry
-	pbutil.MustUnmarshal(&e, d)
-	return e
+	pbutil.MustUnmarshalMessage(&e, d)
+	return &e
 }
 
-func MustUnmarshalState(d []byte) raftpb.HardState {
+func MustUnmarshalState(d []byte) *raftpb.HardState {
 	var s raftpb.HardState
-	pbutil.MustUnmarshal(&s, d)
-	return s
+	pbutil.MustUnmarshalMessage(&s, d)
+	return &s
 }
 
 func readInt64(r io.Reader) (int64, error) {

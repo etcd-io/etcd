@@ -71,9 +71,10 @@ type RangeRequest struct {
 }
 
 type RangeOptions struct {
-	Start string
-	End   string
-	Limit int64
+	Start    string
+	End      string
+	Limit    int64
+	KeysOnly bool
 }
 
 type PutOptions struct {

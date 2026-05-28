@@ -15,10 +15,10 @@
 package main
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -26,40 +26,40 @@ import (
 func TestProcessMessages(t *testing.T) {
 	cases := []struct {
 		name             string
-		confState        raftpb.ConfState
-		InputMessages    []raftpb.Message
-		ExpectedMessages []raftpb.Message
+		confState        *raftpb.ConfState
+		InputMessages    []*raftpb.Message
+		ExpectedMessages []*raftpb.Message
 	}{
 		{
 			name: "only one snapshot message",
-			confState: raftpb.ConfState{
+			confState: &raftpb.ConfState{
 				Voters: []uint64{2, 6, 8, 10},
 			},
-			InputMessages: []raftpb.Message{
+			InputMessages: []*raftpb.Message{
 				{
-					Type: raftpb.MsgSnap,
-					To:   8,
+					Type: raftpb.MsgSnap.Enum(),
+					To:   new(uint64(8)),
 					Snapshot: &raftpb.Snapshot{
-						Metadata: raftpb.SnapshotMetadata{
-							Index: 100,
-							Term:  3,
-							ConfState: raftpb.ConfState{
+						Metadata: &raftpb.SnapshotMetadata{
+							Index: new(uint64(100)),
+							Term:  new(uint64(3)),
+							ConfState: &raftpb.ConfState{
 								Voters:    []uint64{2, 6, 8},
-								AutoLeave: true,
+								AutoLeave: new(true),
 							},
 						},
 					},
 				},
 			},
-			ExpectedMessages: []raftpb.Message{
+			ExpectedMessages: []*raftpb.Message{
 				{
-					Type: raftpb.MsgSnap,
-					To:   8,
+					Type: raftpb.MsgSnap.Enum(),
+					To:   new(uint64(8)),
 					Snapshot: &raftpb.Snapshot{
-						Metadata: raftpb.SnapshotMetadata{
-							Index: 100,
-							Term:  3,
-							ConfState: raftpb.ConfState{
+						Metadata: &raftpb.SnapshotMetadata{
+							Index: new(uint64(100)),
+							Term:  new(uint64(3)),
+							ConfState: &raftpb.ConfState{
 								Voters: []uint64{2, 6, 8, 10},
 							},
 						},
@@ -69,48 +69,48 @@ func TestProcessMessages(t *testing.T) {
 		},
 		{
 			name: "one snapshot message and one other message",
-			confState: raftpb.ConfState{
+			confState: &raftpb.ConfState{
 				Voters: []uint64{2, 7, 8, 12},
 			},
-			InputMessages: []raftpb.Message{
+			InputMessages: []*raftpb.Message{
 				{
-					Type: raftpb.MsgSnap,
-					To:   8,
+					Type: raftpb.MsgSnap.Enum(),
+					To:   new(uint64(8)),
 					Snapshot: &raftpb.Snapshot{
-						Metadata: raftpb.SnapshotMetadata{
-							Index: 100,
-							Term:  3,
-							ConfState: raftpb.ConfState{
+						Metadata: &raftpb.SnapshotMetadata{
+							Index: new(uint64(100)),
+							Term:  new(uint64(3)),
+							ConfState: &raftpb.ConfState{
 								Voters:    []uint64{2, 6, 8},
-								AutoLeave: true,
+								AutoLeave: new(true),
 							},
 						},
 					},
 				},
 				{
-					Type: raftpb.MsgApp,
-					From: 6,
-					To:   8,
+					Type: raftpb.MsgApp.Enum(),
+					From: new(uint64(6)),
+					To:   new(uint64(8)),
 				},
 			},
-			ExpectedMessages: []raftpb.Message{
+			ExpectedMessages: []*raftpb.Message{
 				{
-					Type: raftpb.MsgSnap,
-					To:   8,
+					Type: raftpb.MsgSnap.Enum(),
+					To:   new(uint64(8)),
 					Snapshot: &raftpb.Snapshot{
-						Metadata: raftpb.SnapshotMetadata{
-							Index: 100,
-							Term:  3,
-							ConfState: raftpb.ConfState{
+						Metadata: &raftpb.SnapshotMetadata{
+							Index: new(uint64(100)),
+							Term:  new(uint64(3)),
+							ConfState: &raftpb.ConfState{
 								Voters: []uint64{2, 7, 8, 12},
 							},
 						},
 					},
 				},
 				{
-					Type: raftpb.MsgApp,
-					From: 6,
-					To:   8,
+					Type: raftpb.MsgApp.Enum(),
+					From: new(uint64(6)),
+					To:   new(uint64(8)),
 				},
 			},
 		},
@@ -123,7 +123,9 @@ func TestProcessMessages(t *testing.T) {
 			}
 
 			outputMessages := rn.processMessages(tc.InputMessages)
-			require.Truef(t, reflect.DeepEqual(outputMessages, tc.ExpectedMessages), "Unexpected messages, expected: %v, got %v", tc.ExpectedMessages, outputMessages)
+			if diff := cmp.Diff(tc.ExpectedMessages, outputMessages, protocmp.Transform()); diff != "" {
+				t.Errorf("unexpected diff (-want +got):\n%s", diff)
+			}
 		})
 	}
 }

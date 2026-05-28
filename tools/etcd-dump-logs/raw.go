@@ -21,6 +21,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -91,19 +94,54 @@ func printRec(rec *walpb.Record, fromIndex *uint64, out io.Writer) {
 		fmt.Fprintf(out, "CRC: %d\n", rec.GetCrc())
 	case wal.EntryType:
 		e := wal.MustUnmarshalEntry(rec.Data)
-		if fromIndex == nil || e.Index >= *fromIndex {
-			fmt.Fprintf(out, "Entry: %s\n", e.String())
+		if fromIndex == nil || *e.Index >= *fromIndex {
+			// Format: Entry: Term:%d Index:%d Data:%q
+			typeStr := ""
+			if *e.Type != raftpb.EntryNormal {
+				typeStr = fmt.Sprintf(" Type:%s", e.Type.String())
+			}
+
+			// Helper to format data as octal escaped string to match the old v1 behavior:
+			var dataStr string
+			if len(e.Data) > 0 {
+				var buf strings.Builder
+				for _, b := range e.Data {
+					if b >= 32 && b < 127 && b != '"' && b != '\\' {
+						buf.WriteByte(b)
+					} else {
+						switch b {
+						case '\n':
+							buf.WriteString(`\n`)
+						case '\r':
+							buf.WriteString(`\r`)
+						case '\t':
+							buf.WriteString(`\t`)
+						case '"':
+							buf.WriteString(`\"`)
+						case '\\':
+							buf.WriteString(`\\`)
+						default:
+							fmt.Fprintf(&buf, "\\%03o", b)
+						}
+					}
+				}
+				dataStr = fmt.Sprintf(" Data:\"%s\" ", buf.String())
+			}
+
+			fmt.Fprintf(out, "Entry: Term:%d Index:%d%s%s\n", *e.Term, *e.Index, typeStr, dataStr)
 		}
 	case wal.SnapshotType:
 		var snap walpb.Snapshot
 		pbutil.MustUnmarshalMessage(&snap, rec.Data)
 		if fromIndex == nil || snap.GetIndex() >= *fromIndex {
-			fmt.Fprintf(out, "Snapshot: %s\n", snap.String())
+			fmt.Fprintf(out, "Snapshot: index:%d term:%d\n", snap.GetIndex(), snap.GetTerm())
 		}
 	case wal.StateType:
 		var state raftpb.HardState
-		pbutil.MustUnmarshal(&state, rec.Data)
-		if fromIndex == nil || state.Commit >= *fromIndex {
+		if err := proto.Unmarshal(rec.Data, &state); err != nil {
+			log.Fatalf("Error unmarshaling hardstate: %v", err)
+		}
+		if fromIndex == nil || *state.Commit >= *fromIndex {
 			fmt.Fprintf(out, "HardState: %s\n", state.String())
 		}
 	default:
