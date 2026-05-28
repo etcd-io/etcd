@@ -84,7 +84,7 @@ func NewGetCommand() *cobra.Command {
 func getCommandFunc(cmd *cobra.Command, args []string) {
 	key, opts := getGetOp(args)
 	ctx, cancel := commandCtx(cmd)
-	client := mustClientFromCmd(cmd)
+	client := newCommandClientFromCmd(cmd)
 	var (
 		resp *clientv3.GetResponse
 		err  error

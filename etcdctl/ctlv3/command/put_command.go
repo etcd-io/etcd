@@ -71,7 +71,7 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 	key, value, opts := getPutOp(args)
 
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).Put(ctx, key, value, opts...)
+	resp, err := newCommandClientFromCmd(cmd).Put(ctx, key, value, opts...)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)

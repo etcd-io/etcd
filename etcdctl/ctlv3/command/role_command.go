@@ -112,7 +112,7 @@ func roleAddCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("role add command requires role name as its argument"))
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.RoleAdd(context.TODO(), args[0])
+	resp, err := newCommandClientFromCmd(cmd).RoleAdd(context.TODO(), args[0])
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -126,7 +126,7 @@ func roleDeleteCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("role delete command requires role name as its argument"))
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.RoleDelete(context.TODO(), args[0])
+	resp, err := newCommandClientFromCmd(cmd).RoleDelete(context.TODO(), args[0])
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -141,7 +141,7 @@ func roleGetCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	name := args[0]
-	resp, err := mustClientFromCmd(cmd).Auth.RoleGet(context.TODO(), name)
+	resp, err := newCommandClientFromCmd(cmd).RoleGet(context.TODO(), name)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -155,7 +155,7 @@ func roleListCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("role list command requires no arguments"))
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.RoleList(context.TODO())
+	resp, err := newCommandClientFromCmd(cmd).RoleList(context.TODO())
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -175,7 +175,7 @@ func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	key, rangeEnd := permRange(args[2:])
-	resp, err := mustClientFromCmd(cmd).Auth.RoleGrantPermission(context.TODO(), args[0], key, rangeEnd, perm)
+	resp, err := newCommandClientFromCmd(cmd).RoleGrantPermission(context.TODO(), args[0], key, rangeEnd, perm)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -190,7 +190,7 @@ func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	key, rangeEnd := permRange(args[1:])
-	resp, err := mustClientFromCmd(cmd).Auth.RoleRevokePermission(context.TODO(), args[0], key, rangeEnd)
+	resp, err := newCommandClientFromCmd(cmd).RoleRevokePermission(context.TODO(), args[0], key, rangeEnd)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
