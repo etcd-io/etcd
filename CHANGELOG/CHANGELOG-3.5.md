@@ -15,6 +15,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 - [etcdutl: validate data file path instead of panic](https://github.com/etcd-io/etcd/pull/21769)
 
+### Dependencies
+
+- [Bump golang.org/x/crypto to v0.52.0 and golang.org/x/net to v0.55.0 to resolve govulncheck findings](https://github.com/etcd-io/etcd/pull/21820)
+
 ---
 
 ## v3.5.30 (2026-05-01)
