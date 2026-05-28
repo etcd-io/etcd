@@ -26,10 +26,11 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
   - [Remove flag `--max-snapshots` in 3.8 rather than 3.7](https://github.com/etcd-io/etcd/pull/21160)
   - [Keep the `--snapshot-count` flag](https://github.com/etcd-io/etcd/pull/21162)
 - [Fix data inconsistency when a transaction includes a range request with a specified revision](https://github.com/etcd-io/etcd/pull/21432)
+- [Improve performance for key-only range operations by retrieving data exclusively from in-memory indices when results are not sorted by value](https://github.com/etcd-io/etcd/pull/21791)
 
 ### Package `clientv3`
 
-- Allow setting JWT directly by users, see https://github.com/etcd-io/etcd/pull/16803 and https://github.com/etcd-io/etcd/pull/20747.
+- Allow setting JWT directly by users, see <https://github.com/etcd-io/etcd/pull/16803> and <https://github.com/etcd-io/etcd/pull/20747>.
 - [Function etcdClientDebugLevel is renamed to ClientLogLevel and made it public](https://github.com/etcd-io/etcd/pull/20006)
 
 ### Package `pkg`
