@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -29,6 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -490,6 +492,49 @@ func TestKVGetStreamCompactedError(t *testing.T) {
 
 	_, err = clientv3.GetStreamToGetResponse(stream)
 	require.ErrorIsf(t, err, rpctypes.ErrCompacted, "GetStream returned %T %v", err, err)
+}
+
+// TestKVGetKeysOnlyWithCountOnly asserts that when a Range operation
+// with both KeysOnly and CountOnly are specified, CountOnly takes precedence.
+func TestKVGetKeysOnlyWithCountOnly(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clus.RandClient()
+	ctx := t.Context()
+
+	keySet := []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
+	for i, key := range keySet {
+		if _, err := kv.Put(ctx, key, ""); err != nil {
+			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
+		}
+	}
+	wresp, err := kv.Get(ctx, keySet[0])
+	if err != nil {
+		t.Fatalf("couldn't get key (%v)", err)
+	}
+	wheader := wresp.Header
+
+	opts := []clientv3.OpOption{
+		clientv3.WithFromKey(),
+		clientv3.WithCountOnly(),
+		clientv3.WithKeysOnly(),
+	}
+	resp, err := kv.Get(ctx, "", opts...)
+	if err != nil {
+		t.Fatalf("couldn't execute range with KeysOnly and CountOnly")
+	}
+	if !proto.Equal(wheader, resp.Header) {
+		t.Fatalf("header expected %+v, got %+v", wheader, resp.Header)
+	}
+	if int(resp.Count) != len(slices.Compact(keySet)) {
+		t.Fatalf("response count expected %d, got %d", len(keySet), resp.Count)
+	}
+	if len(resp.Kvs) > 0 {
+		t.Fatalf("response should contain CountOnly")
+	}
 }
 
 // TestKVGetRetry ensures get will retry on disconnect.
