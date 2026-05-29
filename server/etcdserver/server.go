@@ -1203,7 +1203,7 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
 		return
 	}
 	var shouldstop bool
-	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, ep.confState, apply.raftAdvancedC); shouldstop {
+	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, ep, apply.raftAdvancedC); shouldstop {
 		go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
 	}
 }
@@ -1891,7 +1891,7 @@ func (s *EtcdServer) sendMergedSnap(merged *snap.Message) {
 // The given entries should not be empty.
 func (s *EtcdServer) apply(
 	es []*raftpb.Entry,
-	confState *raftpb.ConfState,
+	ep *etcdProgress,
 	raftAdvancedC <-chan struct{},
 ) (appliedt uint64, appliedi uint64, shouldStop bool) {
 	s.lg.Debug("Applying entries", zap.Int("num-entries", len(es)))
@@ -1923,7 +1923,7 @@ func (s *EtcdServer) apply(
 			// gofail: var beforeApplyOneConfChange struct{}
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshalMessage(&cc, e.Data)
-			removedSelf, err := s.applyConfChange(&cc, confState, shouldApplyV3)
+			removedSelf, err := s.applyConfChange(&cc, ep, shouldApplyV3)
 			s.setAppliedIndex(e.GetIndex())
 			s.setTerm(e.GetTerm())
 			shouldStop = shouldStop || removedSelf
@@ -2004,7 +2004,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 
 // applyConfChange applies a ConfChange to the server. It is only
 // invoked with a ConfChange that has already passed through Raft
-func (s *EtcdServer) applyConfChange(cc *raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
+func (s *EtcdServer) applyConfChange(cc *raftpb.ConfChange, ep *etcdProgress, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
 	lg := s.Logger()
 	if err := s.cluster.ValidateConfigurationChange(cc, shouldApplyV3); err != nil {
 		lg.Error("Validation on configuration change failed", zap.Bool("shouldApplyV3", bool(shouldApplyV3)), zap.Error(err))
@@ -2025,9 +2025,9 @@ func (s *EtcdServer) applyConfChange(cc *raftpb.ConfChange, confState *raftpb.Co
 	// Otherwise, we might apply an invalid confChange (which failed
 	// the validation previously) to raft on bootstrap.
 	if shouldApplyV3 {
-		*confState = *s.r.ApplyConfChange(cc)
+		ep.confState = s.r.ApplyConfChange(cc)
 	}
-	s.beHooks.SetConfState(confState)
+	s.beHooks.SetConfState(ep.confState)
 	switch cc.GetType() {
 	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
 		confChangeContext := new(membership.ConfigChangeContext)
