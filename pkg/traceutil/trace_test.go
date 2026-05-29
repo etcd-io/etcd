@@ -93,11 +93,11 @@ func TestCreate(t *testing.T) {
 
 func TestLog(t *testing.T) {
 	tests := []struct {
-		name            string
-		trace           *Trace
-		fields          []Field
-		expectedMsg     []string
-		notExpectedMsg  []string
+		name           string
+		trace          *Trace
+		fields         []Field
+		expectedMsg    []string
+		notExpectedMsg []string
 	}{
 		{
 			name: "When dump all logs",
