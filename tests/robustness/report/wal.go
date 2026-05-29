@@ -23,8 +23,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -145,7 +147,7 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]*raftpb.Entry)
 				if entry2.GetIndex() != raftIndex {
 					continue
 				}
-				if proto.Equal(entry1, entry2) {
+				if cmp.Equal(entry1, entry2, protocmp.Transform(), protocmp.IgnoreDefaultScalars()) {
 					votes[i]++
 					votes[j]++
 				}
@@ -177,11 +179,11 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]*raftpb.Entry)
 				}
 				continue
 			}
-			if !proto.Equal(entryWithMostVotes, entry) {
-				return nil, fmt.Errorf("mismatching entries on raft index %d, mostVotes: %+v, other: %+v", raftIndex, entryWithMostVotes, entry)
+			if !cmp.Equal(entryWithMostVotes, entry, protocmp.Transform(), protocmp.IgnoreDefaultScalars()) {
+				return nil, fmt.Errorf("mismatching entries on raft index %d, diff: %s", raftIndex, cmp.Diff(entryWithMostVotes, entry, protocmp.Transform(), protocmp.IgnoreDefaultScalars()))
 			}
 		}
-		mergedHistory = append(mergedHistory, entryWithMostVotes)
+		mergedHistory = append(mergedHistory, proto.Clone(entryWithMostVotes).(*raftpb.Entry))
 	}
 	if len(mergedHistory) == 0 {
 		return nil, errors.New("no WAL entries matched")
