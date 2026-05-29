@@ -191,3 +191,4 @@ Please see the table below:
 | 3.4.x         | v1.3.x         | N/A           |
 | 3.5.x         | v1.3.x         | N/A           |
 | 3.6.x         | v1.4.x         | v3.6.x        |
+| 3.7.x         | v1.5.x         | v3.7.x        |
