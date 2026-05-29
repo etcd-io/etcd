@@ -616,12 +616,13 @@ func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	g, ctx := errgroup.WithContext(ctx)
+	putOptions := config.PutOptions{Timeout: 3 * time.Second}
 	for i := 0; i < 10; i++ {
 		clientID := i
 		g.Go(func() error {
 			cc := epc.Etcdctl()
 			for j := 0; j < 100; j++ {
-				if _, err := cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientID), config.PutOptions{}); err != nil {
+				if _, err := cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientID), putOptions); err != nil {
 					return err
 				}
 			}
