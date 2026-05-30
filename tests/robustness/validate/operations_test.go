@@ -350,11 +350,11 @@ func TestValidateLinearizableOperationsTimeoutIsRespected(t *testing.T) {
 	result := validateLinearizableOperationsAndVisualize(zap.NewNop(), keys, history, timeout)
 	elapsed := time.Since(start)
 
-	if !result.Timeout {
-		t.Fatalf("validateLinearizableOperationsAndVisualize(...) timed out = false, message = %q", result.Message)
+	if result.Status != DeadlineExceeded {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) status = %q, want %q", result.Status, DeadlineExceeded)
 	}
-	if result.Message != "timed out" {
-		t.Fatalf("validateLinearizableOperationsAndVisualize(...) message = %q, want %q", result.Message, "timed out")
+	if result.Message != "deadline exceeded" {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) message = %q, want %q", result.Message, "deadline exceeded")
 	}
 	if elapsed > timeout+250*time.Millisecond {
 		t.Fatalf("validateLinearizableOperationsAndVisualize(...) does not respect timeout: %v, timeout was %v", elapsed, timeout)
