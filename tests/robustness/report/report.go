@@ -33,6 +33,7 @@ type TestReport struct {
 	clientReports   []ClientReport
 	visualize       func(lg *zap.Logger, path string) error
 	traffic         *TrafficDetail
+	dataSaved       bool
 }
 
 func NewTestReport(lg *zap.Logger, reportPath string, serverDataPaths map[string]string, traffic *TrafficDetail) *TestReport {
@@ -55,8 +56,11 @@ func (r *TestReport) SetVisualizer(visualize func(lg *zap.Logger, path string) e
 	r.visualize = visualize
 }
 
-func (r *TestReport) Report() error {
-	r.logger.Info("Saving robustness test report", zap.String("path", r.reportPath))
+func (r *TestReport) SaveEtcdData() error {
+	if r.dataSaved {
+		return nil
+	}
+	r.logger.Info("Saving etcd data", zap.String("path", r.reportPath))
 	err := os.RemoveAll(r.reportPath)
 	if err != nil {
 		r.logger.Error("Failed to remove report dir", zap.Error(err))
@@ -78,12 +82,31 @@ func (r *TestReport) Report() error {
 			return err
 		}
 	}
-	if r.visualize != nil {
-		if err := r.visualize(r.logger, filepath.Join(r.reportPath, "history.html")); err != nil {
-			return err
-		}
-	}
+	r.dataSaved = true
 	return nil
+}
+
+func (r *TestReport) Finalize(tFailed bool, panicked bool) error {
+	_, persistResults := os.LookupEnv("PERSIST_RESULTS")
+	keep := tFailed || panicked || persistResults
+	if !keep {
+		if !r.dataSaved {
+			return nil
+		}
+		r.logger.Info("Removing robustness test report", zap.String("path", r.reportPath))
+		return os.RemoveAll(r.reportPath)
+	}
+
+	if err := r.SaveEtcdData(); err != nil {
+		return fmt.Errorf("failed to save etcd data: %w", err)
+	}
+
+	if r.visualize == nil {
+		r.logger.Info("No visualization available to be saved", zap.String("path", r.reportPath))
+		return nil
+	}
+	r.logger.Info("Adding visualization to test report", zap.String("path", r.reportPath))
+	return r.visualize(r.logger, filepath.Join(r.reportPath, "history.html"))
 }
 
 func ServerDataPaths(c *e2e.EtcdProcessCluster) map[string]string {
