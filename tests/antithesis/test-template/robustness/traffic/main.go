@@ -76,7 +76,10 @@ func main() {
 	choice := rand.IntN(len(traffics))
 	tf := traffics[choice]
 	lg.Info("Traffic", zap.String("Type", trafficNames[choice]))
-	r := report.NewTestReport(lg, reportPath, etcdetcdDataPaths, &report.TrafficDetail{ExpectUniqueRevision: tf.ExpectUniqueRevision()})
+	r, err := report.NewTestReport(lg, reportPath, etcdetcdDataPaths, &report.TrafficDetail{ExpectUniqueRevision: tf.ExpectUniqueRevision()})
+	if err != nil {
+		lg.Fatal("Failed to create test report", zap.Error(err))
+	}
 	defer func() {
 		if err = r.SaveEtcdData(); err != nil {
 			lg.Error("Failed to save traffic generation report", zap.Error(err))
