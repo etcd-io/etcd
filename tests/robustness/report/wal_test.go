@@ -16,6 +16,7 @@
 package report
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -667,5 +668,81 @@ func TestWriteReadWAL(t *testing.T) {
 				}
 			})
 		})
+	}
+}
+
+func TestAreEntriesEqualVerifyAllFields(t *testing.T) {
+	base := &raftpb.Entry{
+		Index: new(uint64(1)),
+		Term:  new(uint64(1)),
+		Type:  raftpb.EntryNormal.Enum(),
+		Data:  []byte("data"),
+	}
+
+	val := reflect.ValueOf(base).Elem()
+	typ := val.Type()
+
+	for i := 0; i < val.NumField(); i++ {
+		field := typ.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+
+		t.Run(field.Name, func(t *testing.T) {
+			modified := proto.Clone(base).(*raftpb.Entry)
+			modVal := reflect.ValueOf(modified).Elem()
+
+			f := modVal.Field(i)
+			switch f.Kind() {
+			case reflect.Pointer:
+				if f.Type().Elem().Kind() == reflect.Uint64 {
+					v := uint64(999)
+					f.Set(reflect.ValueOf(&v))
+				} else if f.Type().Elem().Kind() == reflect.Int32 {
+					v := int32(999)
+					f.Set(reflect.ValueOf(&v).Convert(f.Type()))
+				}
+			case reflect.Slice:
+				if f.Type().Elem().Kind() == reflect.Uint8 {
+					f.SetBytes([]byte("different-data-payload"))
+				}
+			default:
+				t.Fatalf("Unhandled field type for reflection: %s", f.Type())
+			}
+
+			if areEntriesEqual(base, modified) {
+				t.Errorf("areEntriesEqual returned true after mutating field %q! This means changes to %q are not being compared.", field.Name, field.Name)
+			}
+		})
+	}
+}
+
+func BenchmarkMergeMemberEntries(b *testing.B) {
+	const numEntries = 1000
+	memberEntries := make([][]*raftpb.Entry, 3)
+	for i := 0; i < 3; i++ {
+		memberEntries[i] = make([]*raftpb.Entry, numEntries)
+		for j := 0; j < numEntries; j++ {
+			var entryType *raftpb.EntryType
+			if i == 0 {
+				entryType = nil
+			} else {
+				entryType = raftpb.EntryNormal.Enum()
+			}
+			memberEntries[i][j] = &raftpb.Entry{
+				Index: new(uint64(j + 1)),
+				Term:  new(uint64(1)),
+				Type:  entryType,
+				Data:  []byte("some realistic data payload for entry"),
+			}
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := mergeMembersEntries(0, memberEntries)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }

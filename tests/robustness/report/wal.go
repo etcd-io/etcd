@@ -15,6 +15,7 @@
 package report
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -147,7 +148,7 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]*raftpb.Entry)
 				if entry2.GetIndex() != raftIndex {
 					continue
 				}
-				if cmp.Equal(entry1, entry2, protocmp.Transform(), protocmp.IgnoreDefaultScalars()) {
+				if areEntriesEqual(entry1, entry2) {
 					votes[i]++
 					votes[j]++
 				}
@@ -179,8 +180,9 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]*raftpb.Entry)
 				}
 				continue
 			}
-			if !cmp.Equal(entryWithMostVotes, entry, protocmp.Transform(), protocmp.IgnoreDefaultScalars()) {
-				return nil, fmt.Errorf("mismatching entries on raft index %d, diff: %s", raftIndex, cmp.Diff(entryWithMostVotes, entry, protocmp.Transform(), protocmp.IgnoreDefaultScalars()))
+			if !areEntriesEqual(entryWithMostVotes, entry) {
+				diff := cmp.Diff(entryWithMostVotes, entry, protocmp.Transform(), protocmp.IgnoreDefaultScalars(), cmp.Comparer(bytes.Equal))
+				return nil, fmt.Errorf("mismatching entries on raft index %d, diff: %s", raftIndex, diff)
 			}
 		}
 		mergedHistory = append(mergedHistory, proto.Clone(entryWithMostVotes).(*raftpb.Entry))
@@ -189,6 +191,16 @@ func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]*raftpb.Entry)
 		return nil, errors.New("no WAL entries matched")
 	}
 	return mergedHistory, nil
+}
+
+func areEntriesEqual(e1, e2 *raftpb.Entry) bool {
+	if e1 == nil || e2 == nil {
+		return e1 == e2
+	}
+	return e1.GetIndex() == e2.GetIndex() &&
+		e1.GetTerm() == e2.GetTerm() &&
+		e1.GetType() == e2.GetType() &&
+		bytes.Equal(e1.GetData(), e2.GetData())
 }
 
 func ReadWAL(lg *zap.Logger, dataDir string) (state *raftpb.HardState, ents []*raftpb.Entry, err error) {
