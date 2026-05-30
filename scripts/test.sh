@@ -63,6 +63,9 @@ export ETCD_VERIFY=all
 source ./scripts/test_lib.sh
 source ./scripts/build_lib.sh
 
+GOPATH_BIN=$(go env GOPATH)/bin
+export PATH="${GOPATH_BIN}:${PATH}"
+
 OUTPUT_FILE=${OUTPUT_FILE:-""}
 
 if [ -n "${OUTPUT_FILE}" ]; then
