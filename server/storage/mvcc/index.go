@@ -109,7 +109,7 @@ func (ti *treeIndex) unsafeVisit(key, end []byte, f func(ki *keyIndex) bool) {
 // Revisions returns limited number of revisions from key(included) to end(excluded)
 // at the given rev. The returned slice is sorted in the order of key. There is no limit if limit <= 0.
 // The second return parameter isn't capped by the limit and reflects the total number of revisions.
-func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int, withTotalCount bool) (revs []Revision, total int) {
+func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int, withTotalCount bool) (revs []Revision, totalCount int) {
 	ti.RLock()
 	defer ti.RUnlock()
 
@@ -121,20 +121,19 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int, withTota
 		return []Revision{rev}, 1
 	}
 	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
+		reachedLimit := limit > 0 && len(revs) >= limit
+		if reachedLimit && !withTotalCount {
+			return false
+		}
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
-			reachedLimit := limit > 0 && len(revs) >= limit
 			if !reachedLimit {
 				revs = append(revs, rev)
-			} else {
-				if !withTotalCount {
-					return false
-				}
 			}
-			total++
+			totalCount++
 		}
 		return true
 	})
-	return revs, total
+	return revs, totalCount
 }
 
 // CountRevisions returns the number of revisions
