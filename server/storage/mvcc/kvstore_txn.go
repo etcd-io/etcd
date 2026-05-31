@@ -88,13 +88,12 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 	}
 
 	if ro.FastKeysOnly {
-		keys, modifies, creates, versions := tr.s.kvindex.Range(key, end, rev)
+		keys, modifies, creates, versions, total := tr.s.kvindex.Range(key, end, rev, int(ro.Limit), ro.WithTotalCount)
 		tr.trace.Step("keys only range from in-memory index tree")
 		if len(keys) == 0 {
 			return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
 		}
-		cappedKeysCount := sliceCapWithLimit(int(ro.Limit), keys)
-		kvs := make([]*mvccpb.KeyValue, cappedKeysCount)
+		kvs := make([]*mvccpb.KeyValue, len(keys))
 		for i := range len(kvs) {
 			kvs[i] = &mvccpb.KeyValue{
 				Key:            keys[i],
@@ -103,7 +102,7 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 				Version:        versions[i],
 			}
 		}
-		return &RangeResult{KVs: kvs, Count: len(keys), Rev: curRev}, nil
+		return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
 	}
 
 	revpairs, total := tr.s.kvindex.Revisions(key, end, rev, int(ro.Limit), ro.WithTotalCount)
@@ -296,7 +295,7 @@ func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
 	if len(tw.changes) > 0 {
 		rrev++
 	}
-	keys, _, _, _ := tw.s.kvindex.Range(key, end, rrev)
+	keys, _, _, _, _ := tw.s.kvindex.Range(key, end, rrev, 0, false)
 	if len(keys) == 0 {
 		return 0
 	}

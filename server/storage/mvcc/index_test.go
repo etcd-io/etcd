@@ -75,6 +75,8 @@ func TestIndexRange(t *testing.T) {
 	tests := []struct {
 		name                 string
 		rangeStart, rangeEnd []byte
+		rangeLimit           int
+		withTotalCount       bool
 		expectKeys           [][]byte
 		expectRevisions      []Revision
 		expectTotalCount     int
@@ -86,6 +88,8 @@ func TestIndexRange(t *testing.T) {
 			expectKeys:       nil,
 			expectRevisions:  nil,
 			expectTotalCount: 0,
+			rangeLimit:       0,
+			withTotalCount:   false,
 		},
 		{
 			name:             "single key that found",
@@ -94,6 +98,8 @@ func TestIndexRange(t *testing.T) {
 			expectKeys:       allKeys[:1],
 			expectRevisions:  allRevs[:1],
 			expectTotalCount: 1,
+			rangeLimit:       0,
+			withTotalCount:   false,
 		},
 		{
 			name:             "range keys, return first member",
@@ -102,6 +108,8 @@ func TestIndexRange(t *testing.T) {
 			expectKeys:       allKeys[:1],
 			expectRevisions:  allRevs[:1],
 			expectTotalCount: 1,
+			rangeLimit:       0,
+			withTotalCount:   false,
 		},
 		{
 			name:             "range keys, return first two members",
@@ -110,6 +118,8 @@ func TestIndexRange(t *testing.T) {
 			expectKeys:       allKeys[:2],
 			expectRevisions:  allRevs[:2],
 			expectTotalCount: 2,
+			rangeLimit:       0,
+			withTotalCount:   false,
 		},
 		{
 			name:             "range keys, return all members",
@@ -118,6 +128,108 @@ func TestIndexRange(t *testing.T) {
 			expectKeys:       allKeys,
 			expectRevisions:  allRevs,
 			expectTotalCount: 3,
+			rangeLimit:       0,
+			withTotalCount:   false,
+		},
+		{
+			name:             "range keys limiting to one result without total count, return the first member",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         []byte("fop"),
+			expectKeys:       allKeys[:1],
+			expectRevisions:  allRevs[:1],
+			expectTotalCount: 1,
+			rangeLimit:       1,
+			withTotalCount:   false,
+		},
+		{
+			name:             "range keys with limit equal the index size without total count, return all members",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         []byte("fop"),
+			expectKeys:       allKeys,
+			expectRevisions:  allRevs,
+			expectTotalCount: 3,
+			rangeLimit:       3,
+			withTotalCount:   false,
+		},
+		{
+			name:             "range keys with over limit, without total count, return all members",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         []byte("fop"),
+			expectKeys:       allKeys,
+			expectRevisions:  allRevs,
+			expectTotalCount: 3,
+			rangeLimit:       4,
+			withTotalCount:   false,
+		},
+		{
+			name:             "range keys limiting to one result with total count, return the first member and all total count",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         []byte("fop"),
+			expectKeys:       allKeys[:1],
+			expectRevisions:  allRevs[:1],
+			expectTotalCount: 3,
+			rangeLimit:       1,
+			withTotalCount:   true,
+		},
+		{
+			name:             "range keys with limit on non-existent keys, return nothing",
+			rangeStart:       []byte("fo"),
+			rangeEnd:         []byte("foo"),
+			expectKeys:       nil,
+			expectRevisions:  nil,
+			expectTotalCount: 0,
+			rangeLimit:       3,
+			withTotalCount:   true,
+		},
+		{
+			name:             "range keys with more limit than the one key found, returning the key",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         []byte("foo1"),
+			expectKeys:       allKeys[:1],
+			expectRevisions:  allRevs[:1],
+			expectTotalCount: 1,
+			rangeLimit:       3,
+			withTotalCount:   true,
+		},
+		{
+			name:             "range of 1 keys with 1 limit and total count, returning 1 key with 1 count",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         []byte("foo1"),
+			expectKeys:       allKeys[:1],
+			expectRevisions:  allRevs[:1],
+			expectTotalCount: 1,
+			rangeLimit:       1,
+			withTotalCount:   true,
+		},
+		{
+			name:             "range of 3 keys with 1 limit and total count, returning 1 key with 3 count",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         []byte("foo3"),
+			expectKeys:       allKeys[:1],
+			expectRevisions:  allRevs[:1],
+			expectTotalCount: 3,
+			rangeLimit:       1,
+			withTotalCount:   true,
+		},
+		{
+			name:             "range of 2 keys not starting from the beginning with 1 limit and total count, returning 1 key with 2 count",
+			rangeStart:       []byte("foo1"),
+			rangeEnd:         []byte("foo3"),
+			expectKeys:       allKeys[1:2],
+			expectRevisions:  allRevs[1:2],
+			expectTotalCount: 2,
+			rangeLimit:       1,
+			withTotalCount:   true,
+		},
+		{
+			name:             "range of all keys with equal-sized limit and total count, returning all keys with the same count",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         []byte("fop"),
+			expectKeys:       allKeys,
+			expectRevisions:  allRevs,
+			expectTotalCount: 3,
+			rangeLimit:       3,
+			withTotalCount:   true,
 		},
 		{
 			name:             "range keys, return last two members",
@@ -126,6 +238,8 @@ func TestIndexRange(t *testing.T) {
 			expectKeys:       allKeys[1:],
 			expectRevisions:  allRevs[1:],
 			expectTotalCount: 2,
+			rangeLimit:       0,
+			withTotalCount:   false,
 		},
 		{
 			name:             "range keys, return last member",
@@ -134,6 +248,8 @@ func TestIndexRange(t *testing.T) {
 			expectKeys:       allKeys[2:],
 			expectRevisions:  allRevs[2:],
 			expectTotalCount: 1,
+			rangeLimit:       0,
+			withTotalCount:   false,
 		},
 		{
 			name:             "range keys, return nothing",
@@ -142,16 +258,21 @@ func TestIndexRange(t *testing.T) {
 			expectKeys:       nil,
 			expectRevisions:  nil,
 			expectTotalCount: 0,
+			rangeLimit:       0,
+			withTotalCount:   false,
 		},
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			keys, revs, _, _ := ti.Range(tt.rangeStart, tt.rangeEnd, atRev)
+			keys, revs, _, _, total := ti.Range(tt.rangeStart, tt.rangeEnd, atRev, tt.rangeLimit, tt.withTotalCount)
 			if !reflect.DeepEqual(keys, tt.expectKeys) {
 				t.Errorf("#%d: keys = %+v, want %+v", i, keys, tt.expectKeys)
 			}
 			if !reflect.DeepEqual(revs, tt.expectRevisions) {
 				t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.expectRevisions)
+			}
+			if total != tt.expectTotalCount {
+				t.Errorf("#%d: total = %+d, want %+d", i, total, tt.expectTotalCount)
 			}
 		})
 	}

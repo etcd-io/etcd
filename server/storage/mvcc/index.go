@@ -23,7 +23,7 @@ import (
 
 type index interface {
 	Get(key []byte, atRev int64) (rev, created Revision, ver int64, err error)
-	Range(key, end []byte, atRev int64) (keys [][]byte, modifies, creates []Revision, versions []int64)
+	Range(key, end []byte, atRev int64, limit int, withTotalCount bool) (keys [][]byte, modifies, creates []Revision, versions []int64, totalCount int)
 	Revisions(key, end []byte, atRev int64, limit int, withTotalCount bool) ([]Revision, int)
 	CountRevisions(key, end []byte, atRev int64) int
 	Put(key []byte, rev Revision)
@@ -160,27 +160,34 @@ func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64) int {
 	return total
 }
 
-func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, modifies, creates []Revision, versions []int64) {
+func (ti *treeIndex) Range(key, end []byte, atRev int64, limit int, withTotalCount bool) (keys [][]byte, modifies, creates []Revision, versions []int64, totalCount int) {
 	ti.RLock()
 	defer ti.RUnlock()
 
 	if end == nil {
 		modified, created, version, err := ti.unsafeGet(key, atRev)
 		if err != nil {
-			return nil, nil, nil, nil
+			return nil, nil, nil, nil, 0
 		}
-		return [][]byte{key}, []Revision{modified}, []Revision{created}, []int64{version}
+		return [][]byte{key}, []Revision{modified}, []Revision{created}, []int64{version}, 1
 	}
 	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
+		reachedLimit := limit > 0 && len(keys) >= limit
+		if reachedLimit && !withTotalCount {
+			return false
+		}
 		if modified, created, version, err := ki.get(ti.lg, atRev); err == nil {
-			modifies = append(modifies, modified)
-			keys = append(keys, ki.key)
-			creates = append(creates, created)
-			versions = append(versions, version)
+			if !reachedLimit {
+				modifies = append(modifies, modified)
+				keys = append(keys, ki.key)
+				creates = append(creates, created)
+				versions = append(versions, version)
+			}
+			totalCount++
 		}
 		return true
 	})
-	return keys, modifies, creates, versions
+	return keys, modifies, creates, versions, totalCount
 }
 
 func (ti *treeIndex) Tombstone(key []byte, rev Revision) error {
