@@ -63,6 +63,9 @@ export ETCD_VERIFY=all
 source ./scripts/test_lib.sh
 source ./scripts/build_lib.sh
 
+GOPATH_BIN=$(go env GOPATH)/bin
+export PATH="${GOPATH_BIN}:${PATH}"
+
 OUTPUT_FILE=${OUTPUT_FILE:-""}
 
 if [ -n "${OUTPUT_FILE}" ]; then
@@ -118,7 +121,7 @@ fi
 
 function build_pass {
   log_callout "Building etcd"
-  run_for_modules run go build "${@}" || return 2
+  run_for_workspace_modules run go build "${@}" ./... || return 2
   GO_BUILD_FLAGS="-v" etcd_build "${@}"
   GO_BUILD_FLAGS="-v" tools_build "${@}"
 }

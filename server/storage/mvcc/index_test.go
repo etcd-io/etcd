@@ -73,51 +73,87 @@ func TestIndexRange(t *testing.T) {
 
 	atRev := int64(3)
 	tests := []struct {
-		key, end []byte
-		wkeys    [][]byte
-		wrevs    []Revision
+		name                 string
+		rangeStart, rangeEnd []byte
+		expectKeys           [][]byte
+		expectRevisions      []Revision
+		expectTotalCount     int
 	}{
-		// single key that not found
 		{
-			[]byte("bar"), nil, nil, nil,
+			name:             "single key that not found",
+			rangeStart:       []byte("bar"),
+			rangeEnd:         nil,
+			expectKeys:       nil,
+			expectRevisions:  nil,
+			expectTotalCount: 0,
 		},
-		// single key that found
 		{
-			[]byte("foo"), nil, allKeys[:1], allRevs[:1],
+			name:             "single key that found",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         nil,
+			expectKeys:       allKeys[:1],
+			expectRevisions:  allRevs[:1],
+			expectTotalCount: 1,
 		},
-		// range keys, return first member
 		{
-			[]byte("foo"), []byte("foo1"), allKeys[:1], allRevs[:1],
+			name:             "range keys, return first member",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         []byte("foo1"),
+			expectKeys:       allKeys[:1],
+			expectRevisions:  allRevs[:1],
+			expectTotalCount: 1,
 		},
-		// range keys, return first two members
 		{
-			[]byte("foo"), []byte("foo2"), allKeys[:2], allRevs[:2],
+			name:             "range keys, return first two members",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         []byte("foo2"),
+			expectKeys:       allKeys[:2],
+			expectRevisions:  allRevs[:2],
+			expectTotalCount: 2,
 		},
-		// range keys, return all members
 		{
-			[]byte("foo"), []byte("fop"), allKeys, allRevs,
+			name:             "range keys, return all members",
+			rangeStart:       []byte("foo"),
+			rangeEnd:         []byte("fop"),
+			expectKeys:       allKeys,
+			expectRevisions:  allRevs,
+			expectTotalCount: 3,
 		},
-		// range keys, return last two members
 		{
-			[]byte("foo1"), []byte("fop"), allKeys[1:], allRevs[1:],
+			name:             "range keys, return last two members",
+			rangeStart:       []byte("foo1"),
+			rangeEnd:         []byte("fop"),
+			expectKeys:       allKeys[1:],
+			expectRevisions:  allRevs[1:],
+			expectTotalCount: 2,
 		},
-		// range keys, return last member
 		{
-			[]byte("foo2"), []byte("fop"), allKeys[2:], allRevs[2:],
+			name:             "range keys, return last member",
+			rangeStart:       []byte("foo2"),
+			rangeEnd:         []byte("fop"),
+			expectKeys:       allKeys[2:],
+			expectRevisions:  allRevs[2:],
+			expectTotalCount: 1,
 		},
-		// range keys, return nothing
 		{
-			[]byte("foo3"), []byte("fop"), nil, nil,
+			name:             "range keys, return nothing",
+			rangeStart:       []byte("foo3"),
+			rangeEnd:         []byte("fop"),
+			expectKeys:       nil,
+			expectRevisions:  nil,
+			expectTotalCount: 0,
 		},
 	}
 	for i, tt := range tests {
-		keys, revs, _, _ := ti.Range(tt.key, tt.end, atRev)
-		if !reflect.DeepEqual(keys, tt.wkeys) {
-			t.Errorf("#%d: keys = %+v, want %+v", i, keys, tt.wkeys)
-		}
-		if !reflect.DeepEqual(revs, tt.wrevs) {
-			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			keys, revs, _, _ := ti.Range(tt.rangeStart, tt.rangeEnd, atRev)
+			if !reflect.DeepEqual(keys, tt.expectKeys) {
+				t.Errorf("#%d: keys = %+v, want %+v", i, keys, tt.expectKeys)
+			}
+			if !reflect.DeepEqual(revs, tt.expectRevisions) {
+				t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.expectRevisions)
+			}
+		})
 	}
 }
 

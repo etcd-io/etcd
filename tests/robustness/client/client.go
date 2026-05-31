@@ -42,6 +42,7 @@ type RecordingClient struct {
 
 	watchMux        sync.Mutex
 	watchOperations []model.WatchOperation
+	wg              sync.WaitGroup
 	// mux ensures order of request appending.
 	kvMux        sync.Mutex
 	kvOperations *model.AppendableHistory
@@ -73,7 +74,9 @@ func NewRecordingClient(endpoints []string, ids identity.Provider, baseTime time
 }
 
 func (c *RecordingClient) Close() error {
-	return c.client.Close()
+	err := c.client.Close()
+	c.wg.Wait()
+	return err
 }
 
 func (c *RecordingClient) Report() report.ClientReport {
@@ -349,7 +352,9 @@ func (c *RecordingClient) watch(ctx context.Context, request model.WatchRequest)
 	index := len(c.watchOperations) - 1
 	c.watchMux.Unlock()
 
+	c.wg.Add(1)
 	go func() {
+		defer c.wg.Done()
 		defer close(respCh)
 		for r := range c.client.Watch(ctx, request.Key, ops...) {
 			responses = append(responses, ToWatchResponse(r, c.baseTime))
@@ -359,6 +364,8 @@ func (c *RecordingClient) watch(ctx context.Context, request model.WatchRequest)
 			select {
 			case respCh <- r:
 			case <-ctx.Done():
+				return
+			case <-c.client.Ctx().Done():
 				return
 			}
 		}

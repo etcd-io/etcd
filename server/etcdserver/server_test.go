@@ -218,10 +218,12 @@ func TestApplyConfStateWithRestart(t *testing.T) {
 		},
 	}
 
-	confState := raftpb.ConfState{}
+	ep := &etcdProgress{
+		confState: &raftpb.ConfState{},
+	}
 
 	t.Log("Applying entries for the first time")
-	srv.apply(entries, &confState, nil)
+	srv.apply(entries, ep, nil)
 	got, _ := n.Wait(len(want))
 	if diff := cmp.Diff(want, got, protocmp.Transform(), cmpopts.EquateEmpty()); diff != "" {
 		t.Errorf("actions don't match (-want +got):\n%s", diff)
@@ -238,7 +240,7 @@ func TestApplyConfStateWithRestart(t *testing.T) {
 	srv.consistIndex.SetBackend(be)
 
 	t.Log("Reapplying same entries after restart")
-	srv.apply(entries, &confState, nil)
+	srv.apply(entries, ep, nil)
 	got, _ = n.Wait(2 * len(want))
 	if diff := cmp.Diff(want, got[len(want):], protocmp.Transform(), cmpopts.EquateEmpty()); diff != "" {
 		t.Errorf("actions don't match (-want +got):\n%s", diff)
@@ -388,8 +390,11 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		Type:   raftpb.ConfChangeRemoveNode.Enum(),
 		NodeId: new(uint64(2)),
 	}
+	ep := &etcdProgress{
+		confState: &raftpb.ConfState{},
+	}
 	// remove non-local member
-	shouldStop, err := srv.applyConfChange(&cc, &raftpb.ConfState{}, true)
+	shouldStop, err := srv.applyConfChange(&cc, ep, true)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -399,7 +404,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 
 	// remove local member
 	cc.NodeId = new(uint64(1))
-	shouldStop, err = srv.applyConfChange(&cc, &raftpb.ConfState{}, true)
+	shouldStop, err = srv.applyConfChange(&cc, ep, true)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -454,10 +459,13 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		Type:  raftpb.EntryConfChange.Enum(),
 		Data:  pbutil.MustMarshalMessage(cc),
 	}}
+	ep := &etcdProgress{
+		confState: &raftpb.ConfState{},
+	}
 
 	raftAdvancedC := make(chan struct{}, 1)
 	raftAdvancedC <- struct{}{}
-	_, appliedi, _ := srv.apply(ents, &raftpb.ConfState{}, raftAdvancedC)
+	_, appliedi, _ := srv.apply(ents, ep, raftAdvancedC)
 	consistIndex := srv.consistIndex.ConsistentIndex()
 	assert.Equal(t, uint64(2), appliedi)
 
@@ -541,10 +549,13 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 				}),
 		})
 	}
+	ep := &etcdProgress{
+		confState: &raftpb.ConfState{},
+	}
 
 	raftAdvancedC := make(chan struct{}, 1)
 	raftAdvancedC <- struct{}{}
-	_, _, shouldStop := srv.apply(ents, &raftpb.ConfState{}, raftAdvancedC)
+	_, _, shouldStop := srv.apply(ents, ep, raftAdvancedC)
 	if !shouldStop {
 		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
 	}
