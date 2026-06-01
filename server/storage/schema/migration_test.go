@@ -56,11 +56,16 @@ func TestNewPlan(t *testing.T) {
 			target:  version.V3_7,
 		},
 		{
-			name:           "Upgrade v3.7 to v3.8 should fail as v3.8 is unknown",
-			current:        version.V3_7,
-			target:         version.V3_8,
+			name:    "Upgrade v3.7 to v3.8 should work",
+			current: version.V3_7,
+			target:  version.V3_8,
+		},
+		{
+			name:           "Upgrade v3.8 to v3.9 should fail as v3.8 is unknown",
+			current:        version.V3_8,
+			target:         version.V3_9,
 			expectError:    true,
-			expectErrorMsg: `version "3.8.0" is not supported`,
+			expectErrorMsg: `version "3.9.0" is not supported`,
 		},
 		{
 			name:           "Upgrade v3.6 to v4.0 as major version changes are unsupported",

@@ -42,6 +42,7 @@ var (
 		"3.5.0": {AuthCapability: true, V3rpcCapability: true},
 		"3.6.0": {AuthCapability: true, V3rpcCapability: true},
 		"3.7.0": {AuthCapability: true, V3rpcCapability: true},
+		"3.8.0": {AuthCapability: true, V3rpcCapability: true},
 	}
 
 	enableMapMu sync.RWMutex
