@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
@@ -60,7 +60,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			name:                 "Invalid target version",
 			targetVersion:        "3.a",
 			clusterSize:          1,
-			expectLogsSubString:  `Error: failed to parse target version: strconv.ParseInt: parsing "a": invalid syntax`,
+			expectLogsSubString:  `Error: failed to parse target version: invalid semantic version`,
 			expectStorageVersion: &version.V3_7,
 		},
 		{
@@ -126,7 +126,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			clusterSize:          1,
 			force:                true,
 			expectLogsSubString:  "forcefully set storage version\t" + `{"storage-version": "3.8"}`,
-			expectStorageVersion: &semver.Version{Major: 3, Minor: 8},
+			expectStorageVersion: semver.New(3, 8, 0, "", ""),
 		},
 	}
 	for _, tc := range tcs {

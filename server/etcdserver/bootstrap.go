@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -483,7 +483,7 @@ func (c *bootstrappedCluster) Finalize(cfg config.ServerConfig, s *bootstrappedS
 }
 
 func (c *bootstrappedCluster) databaseFileMissing(s *bootstrappedStorage) bool {
-	v3Cluster := c.cl.Version() != nil && !c.cl.Version().LessThan(semver.Version{Major: 3})
+	v3Cluster := c.cl.Version() != nil && !c.cl.Version().LessThan(semver.New(3, 0, 0, "", ""))
 	return v3Cluster && !s.backend.beExist
 }
 

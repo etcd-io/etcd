@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -483,7 +483,7 @@ func TestMinSupportedVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			version.Version = tt.currentVersion.String()
-			require.True(t, minSupportedVersion().Equal(tt.minSupportedVersion))
+			require.True(t, minSupportedVersion().Equal(&tt.minSupportedVersion))
 		})
 	}
 }

@@ -21,7 +21,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 
@@ -104,16 +104,16 @@ func (a etcdVersionAnnotation) Validate() (errs []error) {
 	if a.version == nil {
 		return nil
 	}
-	if a.version.Major == 0 {
+	if a.version.Major() == 0 {
 		errs = append(errs, fmt.Errorf("%s: etcd_version major version should not be zero", a.fullName))
 	}
-	if a.version.Patch != 0 {
+	if a.version.Patch() != 0 {
 		errs = append(errs, fmt.Errorf("%s: etcd_version patch version should be zero", a.fullName))
 	}
-	if a.version.PreRelease != "" {
+	if a.version.Prerelease() != "" {
 		errs = append(errs, fmt.Errorf("%s: etcd_version should not be prerelease", a.fullName))
 	}
-	if a.version.Metadata != "" {
+	if a.version.Metadata() != "" {
 		errs = append(errs, fmt.Errorf("%s: etcd_version should not have metadata", a.fullName))
 	}
 	return errs
@@ -124,6 +124,6 @@ func (a etcdVersionAnnotation) PrintLine(out io.Writer) error {
 		_, err := fmt.Fprintf(out, "%s: \"\"\n", a.fullName)
 		return err
 	}
-	_, err := fmt.Fprintf(out, "%s: \"%d.%d\"\n", a.fullName, a.version.Major, a.version.Minor)
+	_, err := fmt.Fprintf(out, "%s: \"%d.%d\"\n", a.fullName, a.version.Major(), a.version.Minor())
 	return err
 }

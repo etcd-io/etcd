@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/time/rate"
 	"google.golang.org/protobuf/proto"
@@ -355,19 +355,19 @@ func TestCheckStreamSupport(t *testing.T) {
 	}{
 		// support
 		{
-			semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.1.0"),
 			streamTypeMsgAppV2,
 			true,
 		},
 		// ignore patch
 		{
-			semver.Must(semver.NewVersion("2.1.9")),
+			semver.MustParse("2.1.9"),
 			streamTypeMsgAppV2,
 			true,
 		},
 		// ignore prerelease
 		{
-			semver.Must(semver.NewVersion("2.1.0-alpha")),
+			semver.MustParse("2.1.0-alpha"),
 			streamTypeMsgAppV2,
 			true,
 		},

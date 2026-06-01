@@ -18,13 +18,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEtcdServerProcessConfig(t *testing.T) {
-	v3_6_0 := semver.Version{Major: 3, Minor: 6, Patch: 0}
-	v3_7_0 := semver.Version{Major: 3, Minor: 7, Patch: 0}
+	v3_6_0 := *semver.New(3, 6, 0, "", "")
+	v3_7_0 := *semver.New(3, 7, 0, "", "")
 	tcs := []struct {
 		name                 string
 		config               *EtcdProcessClusterConfig

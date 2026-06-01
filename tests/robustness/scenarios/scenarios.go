@@ -322,7 +322,7 @@ func Regression(t *testing.T) []TestScenario {
 			e2e.WithSnapshotCatchUpEntries(10),
 		),
 	})
-	if v.Compare(version.V3_5) >= 0 {
+	if v.Compare(&version.V3_5) >= 0 {
 		opts := []e2e.EPClusterOption{
 			e2e.WithSnapshotCount(100),
 			e2e.WithPeerProxy(true),
