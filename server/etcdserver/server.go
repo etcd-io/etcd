@@ -31,6 +31,8 @@ import (
 	humanize "github.com/dustin/go-humanize"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
@@ -221,6 +223,9 @@ type EtcdServer struct {
 	lgMu *sync.RWMutex
 	lg   *zap.Logger
 
+	requestLogger   *zap.Logger
+	requestLoggerWS *zapcore.BufferedWriteSyncer
+
 	w wait.Wait
 
 	read *read.Read
@@ -328,6 +333,36 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		consistIndex:          b.storage.backend.ci,
 		firstCommitInTerm:     notify.NewNotifier(),
 		clusterVersionChanged: notify.NewNotifier(),
+	}
+
+	// Initialize request logger if path is configured
+	if cfg.ExperimentalLogRequestPath != "" {
+		// Default rotation config
+		ljCfg := lumberjack.Logger{
+			Filename:   cfg.ExperimentalLogRequestPath,
+			MaxSize:    100, // MB
+			MaxBackups: 5,
+			MaxAge:     7, // days
+		}
+		// User-provided rotation config overrides defaults (Filename is never overridden)
+		if cfg.ExperimentalLogRequestRotationConfigJSON != "" {
+			if err := json.Unmarshal([]byte(cfg.ExperimentalLogRequestRotationConfigJSON), &ljCfg); err != nil {
+				return nil, fmt.Errorf("failed to parse request log rotation config: %w", err)
+			}
+			ljCfg.Filename = cfg.ExperimentalLogRequestPath
+		}
+		ws := &zapcore.BufferedWriteSyncer{
+			WS:            zapcore.AddSync(&ljCfg),
+			Size:          256 * 1024, // 256 KB
+			FlushInterval: time.Second,
+		}
+		core := zapcore.NewCore(
+			zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+			ws,
+			zap.InfoLevel,
+		)
+		srv.requestLogger = zap.New(core)
+		srv.requestLoggerWS = ws
 	}
 
 	addFeatureGateMetrics(cfg.ServerFeatureGate, serverFeatureEnabled)
@@ -444,6 +479,11 @@ func (s *EtcdServer) Logger() *zap.Logger {
 	l := s.lg
 	s.lgMu.RUnlock()
 	return l
+}
+
+// RequestLogger returns the dedicated logger for request logging, or nil if disabled.
+func (s *EtcdServer) RequestLogger() *zap.Logger {
+	return s.requestLogger
 }
 
 func (s *EtcdServer) Config() config.ServerConfig {
@@ -940,6 +980,9 @@ func (s *EtcdServer) ensureLeadership() bool {
 // Cleanup removes allocated objects by EtcdServer.NewServer in
 // situation that EtcdServer::Start was not called (that takes care of cleanup).
 func (s *EtcdServer) Cleanup() {
+	if s.requestLoggerWS != nil {
+		s.requestLoggerWS.Stop()
+	}
 	// kv, lessor and backend can be nil if running without v3 enabled
 	// or running unit tests.
 	if s.lessor != nil {

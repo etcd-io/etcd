@@ -133,6 +133,11 @@ type ServerConfig struct {
 
 	WarningApplyDuration        time.Duration
 	WarningUnaryRequestDuration time.Duration
+	// ExperimentalLogRequestPath enables lightweight request logging of all unary gRPC requests.
+	// When set to a file path, request entries are written to this dedicated file in JSON format.
+	ExperimentalLogRequestPath string
+	// ExperimentalLogRequestRotationConfigJSON configures log rotation for the request log file.
+	ExperimentalLogRequestRotationConfigJSON string
 
 	StrictReconfigCheck bool
 

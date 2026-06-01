@@ -262,6 +262,10 @@ Logging:
     Configures log rotation if enabled with a JSON logger config. MaxSize(MB), MaxAge(days,0=no limit), MaxBackups(0=no limit), LocalTime(use computers local time), Compress(gzip)".
   --warning-unary-request-duration '300ms'
     Set time duration after which a warning is logged if a unary request takes more than this duration.
+  --experimental-log-request-path ''
+    Enable lightweight request logging for all unary gRPC requests. When set to a file path, request entries are written to this dedicated file in JSON format.
+  --experimental-log-request-rotation-config-json '{"maxsize": 100, "maxage": 7, "maxbackups": 5, "localtime": false, "compress": false}'
+    Configures log rotation for the request log file. Default: MaxSize=100(MB), MaxAge=7(days), MaxBackups=5, LocalTime=false(UTC), Compress=false.
 
 Distributed tracing:
   --enable-distributed-tracing 'false'
