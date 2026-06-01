@@ -85,8 +85,8 @@ function update_versions_cmd() {
   log_info "v3version: ${v3version}"
   log_info "v2version: ${v2version}"
 
-  run_for_modules update_module_version "${v3version}" "${v2version}"
-  run_for_modules mod_tidy_fix || exit 2
+  run_for_workspace_modules update_module_version "${v3version}" "${v2version}"
+  run_for_workspace_modules mod_tidy_fix || exit 2
 }
 
 function get_gpg_key {
