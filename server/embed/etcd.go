@@ -228,6 +228,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		DowngradeCheckTime:                cfg.DowngradeCheckTime,
 		WarningApplyDuration:              cfg.WarningApplyDuration,
 		WarningUnaryRequestDuration:       cfg.WarningUnaryRequestDuration,
+		ExperimentalLogRequestInfo:        cfg.ExperimentalLogRequestInfo,
 		MemoryMlock:                       cfg.MemoryMlock,
 		BootstrapDefragThresholdMegabytes: cfg.BootstrapDefragThresholdMegabytes,
 		MaxLearners:                       cfg.MaxLearners,

@@ -379,6 +379,10 @@ type Config struct {
 	// WarningUnaryRequestDuration is the time duration after which a warning is generated if applying
 	// unary request takes more time than this value.
 	WarningUnaryRequestDuration time.Duration `json:"warning-unary-request-duration"`
+	// ExperimentalLogRequestInfo enables lightweight audit logging of all unary gRPC requests
+	// at warn level. Logs method, key, client IP, and duration without expensive
+	// proto serialization.
+	ExperimentalLogRequestInfo bool `json:"experimental-log-request-info"`
 	// MaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
 	MaxLearners int `json:"max-learners"`
 
@@ -758,6 +762,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.DurationVar(&cfg.DowngradeCheckTime, "downgrade-check-time", cfg.DowngradeCheckTime, "Duration of time between two downgrade status checks.")
 	fs.DurationVar(&cfg.WarningApplyDuration, "warning-apply-duration", cfg.WarningApplyDuration, "Time duration after which a warning is generated if watch progress takes more time.")
 	fs.DurationVar(&cfg.WarningUnaryRequestDuration, "warning-unary-request-duration", cfg.WarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time.")
+	fs.BoolVar(&cfg.ExperimentalLogRequestInfo, "experimental-log-request-info", cfg.ExperimentalLogRequestInfo, "Enable lightweight audit logging of all unary gRPC requests at warn level. Logs method, key, client IP, and duration.")
 	fs.BoolVar(&cfg.MemoryMlock, "memory-mlock", cfg.MemoryMlock, "Enable to enforce etcd pages (in particular bbolt) to stay in RAM.")
 	fs.UintVar(&cfg.BootstrapDefragThresholdMegabytes, "bootstrap-defrag-threshold-megabytes", 0, "Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.")
 	fs.IntVar(&cfg.MaxLearners, "max-learners", membership.DefaultMaxLearners, "Sets the maximum number of learners that can be available in the cluster membership.")
