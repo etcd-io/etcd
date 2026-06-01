@@ -2269,7 +2269,9 @@ func (s *EtcdServer) monitorKVHash() {
 			return
 		case <-checkTicker.C:
 		}
+		s.bemu.RLock()
 		backend.VerifyBackendConsistency(s.be, lg, false, schema.AllBuckets...)
+		s.bemu.RUnlock()
 		if !s.isLeader() {
 			continue
 		}
