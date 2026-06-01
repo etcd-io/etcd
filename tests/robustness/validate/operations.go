@@ -60,7 +60,6 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, keys []string, o
 
 	if model.LinearizationDeadlineTripped.Load() != 0 {
 		result.Status = DeadlineExceeded
-		result.Message = "deadline exceeded"
 		lg.Error("Linearization deadline exceeded", zap.Duration("duration", duration))
 		return result
 	}

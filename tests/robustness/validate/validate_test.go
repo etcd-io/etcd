@@ -193,8 +193,7 @@ func TestLinearizationVisualizeSkipsDeadlineExceeded(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "history.html")
 	result := LinearizationResult{
 		Result: Result{
-			Status:  DeadlineExceeded,
-			Message: "deadline exceeded",
+			Status: DeadlineExceeded,
 		},
 	}
 

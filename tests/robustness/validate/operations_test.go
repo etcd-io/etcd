@@ -295,56 +295,51 @@ func keyValueRevision(key, value string, rev int64) model.KeyValue {
 }
 
 func TestValidateLinearizableOperationsTimeoutIsRespected(t *testing.T) {
-	timeout := time.Second
-	const failedPutCount = 17
-	// Repeat the range read to make the final applyRequestWithResponse step slow.
-	const rangeReadCount = 3072
+	timeout := 100 * time.Millisecond
+	artificialDelay := 200 * time.Millisecond
 
-	history := []porcupine.Operation{}
-	for i := 0; i < failedPutCount; i++ {
-		history = append(history, porcupine.Operation{
-			ClientId: i,
-			Input:    putRequest(fmt.Sprintf("failed%03d", i), "value"),
-			Output:   errorResponse(fmt.Errorf("timeout")),
-			Call:     int64(i),
-			Return:   int64(failedPutCount + i),
-		})
-	}
-
-	rangeOperations := make([]model.EtcdOperation, 0, rangeReadCount)
-	for i := 0; i < rangeReadCount; i++ {
-		rangeOperations = append(rangeOperations, model.EtcdOperation{
-			Type: model.RangeOperation,
-			Range: model.RangeOptions{
-				Start: "failed",
-				End:   "faile~",
-			},
-		})
-	}
-	readRequest := model.EtcdRequest{
-		Type: model.Txn,
-		Txn: &model.TxnRequest{
-			OperationsOnSuccess: rangeOperations,
+	// Use a simple, non-CPU intensive history.
+	history := []porcupine.Operation{
+		{
+			ClientId: 0,
+			Input:    putRequest("key", "value"),
+			Output:   txnResponse(2, model.EtcdOperationResult{}),
+			Call:     0,
+			Return:   1,
+		},
+		{
+			ClientId: 1,
+			Input:    putRequest("key", "value2"),
+			Output:   txnResponse(3, model.EtcdOperationResult{}),
+			Call:     2,
+			Return:   3,
 		},
 	}
-
-	// Each failed put can be lost or persisted, so the large read-only
-	// transaction reaches applyRequestWithResponse with many possible states in
-	// a single Step call.
-	replay := model.NewReplayFromOperations(history)
-	state, err := replay.StateForRevision(failedPutCount + 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, readResponse := state.Step(readRequest)
-	history = append(history, porcupine.Operation{
-		ClientId: failedPutCount,
-		Input:    readRequest,
-		Output:   readResponse,
-		Call:     int64(2 * failedPutCount),
-		Return:   int64(2*failedPutCount + 1),
-	})
 	keys := model.ModelKeys(history)
+
+	originalModel := model.NonDeterministicModel
+	defer func() {
+		model.NonDeterministicModel = originalModel
+	}()
+	model.NonDeterministicModel = func(keys []string) porcupine.Model {
+		m := originalModel(keys)
+		originalStep := m.Step
+		var step func(st any, in any, out any, depth int) (bool, any) // for recursive call
+		step = func(st any, in any, out any, depth int) (bool, any) {
+			if model.LinearizationDeadlineTripped.Load() != 0 {
+				return false, nil
+			}
+			time.Sleep(artificialDelay)
+			if depth == 0 {
+				return step(st, in, out, 1)
+			}
+			return originalStep(st, in, out)
+		}
+		m.Step = func(st any, in any, out any) (bool, any) {
+			return step(st, in, out, 0)
+		}
+		return m
+	}
 
 	start := time.Now()
 	result := validateLinearizableOperationsAndVisualize(zap.NewNop(), keys, history, timeout)
@@ -353,10 +348,10 @@ func TestValidateLinearizableOperationsTimeoutIsRespected(t *testing.T) {
 	if result.Status != DeadlineExceeded {
 		t.Fatalf("validateLinearizableOperationsAndVisualize(...) status = %q, want %q", result.Status, DeadlineExceeded)
 	}
-	if result.Message != "deadline exceeded" {
-		t.Fatalf("validateLinearizableOperationsAndVisualize(...) message = %q, want %q", result.Message, "deadline exceeded")
+	if err := result.Error(); err == nil || err.Error() != "DeadlineExceeded" {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) error = %v, want %q", err, "DeadlineExceeded")
 	}
-	if elapsed > timeout+250*time.Millisecond {
+	if elapsed > artificialDelay+100*time.Millisecond {
 		t.Fatalf("validateLinearizableOperationsAndVisualize(...) does not respect timeout: %v, timeout was %v", elapsed, timeout)
 	}
 }
