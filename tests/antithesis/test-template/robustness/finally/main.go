@@ -62,11 +62,7 @@ func validateReports(lg *zap.Logger, serversDataPath map[string]string, reports 
 	validateConfig := validate.Config{ExpectRevisionUnique: tf.ExpectUniqueRevision}
 	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, persistedRequests, 5*time.Minute)
 	assertResult(result.Assumptions, "Validation assumptions fulfilled")
-	if result.Linearization.Timeout {
-		assert.Unreachable("Linearization timeout", nil)
-	} else {
-		assertResult(result.Linearization.Result, "Linearization validation passes")
-	}
+	assertResult(result.Linearization.Result, "Linearization validation passes")
 	assertResult(result.Watch, "Watch validation passes")
 	assertResult(result.Serializable, "Serializable validation passes")
 	lg.Info("Completed robustness validation")
@@ -77,8 +73,7 @@ func assertResult(result validate.Result, name string) {
 	switch result.Status {
 	case validate.Success, validate.Failure:
 		assert.Always(result.Status == validate.Success, name, map[string]any{"msg": result.Message})
-	case validate.Unknown:
 	default:
-		assert.Unreachable(name, map[string]any{"msg": result.Message})
+		assert.Unreachable(name, map[string]any{"error": result.Error().Error()})
 	}
 }
