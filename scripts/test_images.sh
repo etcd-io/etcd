@@ -100,7 +100,7 @@ function verify_images_architecture {
   local arch_tag
   local img_arch
 
-  for target_arch in "amd64" "arm64" "ppc64le" "s390x"; do
+  for target_arch in "amd64" "arm64" "ppc64le" "s390x" "loong64"; do
     arch_tag="v${version}-${target_arch}"
     img_arch=$(docker inspect --format '{{.Architecture}}' "${repository}:${arch_tag}")
     if [ "${img_arch}" != "${target_arch}" ];then

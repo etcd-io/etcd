@@ -53,11 +53,16 @@ cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${BINARYDIR}"/etcdutl "${IMAGEDIR
 
 cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
 
+BASE_IMAGE_ARG=""
+if [ "${ARCH}" = "loong64" ]; then
+    BASE_IMAGE_ARG="--build-arg=BASE_IMAGE=ghcr.io/loong64/debian:trixie-slim"
+fi
+
 if [ -z "${TAG:-}" ]; then
     # Fix incorrect image "Architecture" using buildkit
     # From https://stackoverflow.com/q/72144329/
-    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
-    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
+    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" ${BASE_IMAGE_ARG} -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
+    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" ${BASE_IMAGE_ARG} -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
 else
     docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
 fi

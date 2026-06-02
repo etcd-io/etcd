@@ -22,20 +22,20 @@ source ./scripts/release_mod.sh
 
 DRY_RUN=${DRY_RUN:-true}
 
-# Following preparation steps help with the release process: 
+# Following preparation steps help with the release process:
 
 # If you use password-protected gpg key, make sure the password is managed
-# by agent: 
+# by agent:
 #
 # % gpg-connect-agent reloadagent /bye
 # % gpg -s --default-key [git-email]@google.com -o /dev/null -s /dev/null
 #
-# Refresh your google credentials: 
+# Refresh your google credentials:
 #  % gcloud auth login
 # or
 #  % gcloud auth activate-service-account --key-file=gcp-key-etcd-development.json
 #
-# Make sure gcloud-docker plugin is configured: 
+# Make sure gcloud-docker plugin is configured:
 #  % gcloud auth configure-docker
 
 
@@ -85,7 +85,7 @@ main() {
   log_callout "BRANCH=${BRANCH}"
   log_callout "REPOSITORY=${REPOSITORY}"
   log_callout ""
-  
+
   # Required to enable 'docker manifest ...'
   export DOCKER_CLI_EXPERIMENTAL=enabled
 
@@ -289,7 +289,7 @@ main() {
       log_warning "login failed, retrying"
     done
 
-    for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
+    for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x" "loong64"; do
       log_callout "Pushing container images to quay.io ${RELEASE_VERSION}-${TARGET_ARCH}"
       maybe_run docker push "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
       log_callout "Pushing container images to gcr.io ${RELEASE_VERSION}-${TARGET_ARCH}"
@@ -298,7 +298,7 @@ main() {
 
     log_callout "Creating manifest-list (multi-image)..."
 
-    for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
+    for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x" "loong64"; do
       maybe_run docker manifest create --amend "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
       maybe_run docker manifest annotate "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
 
