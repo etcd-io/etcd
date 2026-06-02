@@ -55,7 +55,8 @@ cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
 
 BASE_IMAGE_ARG=""
 if [ "${ARCH}" = "loong64" ]; then
-    BASE_IMAGE_ARG="--build-arg=BASE_IMAGE=ghcr.io/loong64/debian:trixie-slim"
+    BASE_IMAGE=${BASE_IMAGE:-ghcr.io/loong64/debian:trixie-slim}
+    BASE_IMAGE_ARG="--build-arg=BASE_IMAGE=${BASE_IMAGE}"
 fi
 
 if [ -z "${TAG:-}" ]; then
