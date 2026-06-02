@@ -116,6 +116,7 @@ func newConfig() *config {
 		),
 		v2deprecation: flags.NewSelectiveStringsValue(
 			string(cconfig.V2Depr1WriteOnly),
+			string(cconfig.V2Depr1WriteOnlySkipCheck),
 			string(cconfig.V2Depr1WriteOnlyDrop),
 			string(cconfig.V2Depr2Gone)),
 	}
@@ -245,8 +246,11 @@ func (cfg *config) parse(arguments []string) error {
 		cfg.ec.DistributedTracingSamplingRatePerMillion = cfg.ec.ExperimentalDistributedTracingSamplingRatePerMillion
 	}
 
-	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
-	cfg.ec.V2Deprecation = cconfig.V2DeprDefault
+	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8.
+	// It can only be V2DeprDefault or V2Depr1WriteOnlySkipCheck, ignore other user input.
+	if cfg.ec.V2Deprecation != cconfig.V2Depr1WriteOnlySkipCheck {
+		cfg.ec.V2Deprecation = cconfig.V2DeprDefault
+	}
 
 	cfg.ec.WarningUnaryRequestDuration, perr = cfg.parseWarningUnaryRequestDuration()
 	if perr != nil {
