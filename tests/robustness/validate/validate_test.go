@@ -62,6 +62,13 @@ func TestDataReports(t *testing.T) {
 	}
 }
 
+type expectedStatuses struct {
+	assumptions   ResultStatus
+	linearization ResultStatus
+	watch         ResultStatus
+	serializable  ResultStatus
+}
+
 func TestValidateAndReturnVisualize(t *testing.T) {
 	tcs := []struct {
 		name              string
@@ -69,6 +76,7 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 		persistedRequests []model.EtcdRequest
 		config            Config
 		expectError       string
+		expectStatuses    expectedStatuses
 	}{
 		{
 			name: "Success with no persisted requests",
@@ -86,6 +94,12 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 				},
 			},
 			expectError: "",
+			expectStatuses: expectedStatuses{
+				assumptions:   Success,
+				linearization: Success,
+				watch:         Unknown,
+				serializable:  Unknown,
+			},
 		},
 		{
 			name: "Failure with not empty database",
@@ -103,7 +117,13 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 					},
 				},
 			},
-			expectError: "non empty database at start, required by model used for linearizability validation",
+			expectError: "assumptions: Failure: non empty database at start, required by model used for linearizability validation",
+			expectStatuses: expectedStatuses{
+				assumptions:   Failure,
+				linearization: Unknown,
+				watch:         Unknown,
+				serializable:  Unknown,
+			},
 		},
 		{
 			name: "Success",
@@ -137,6 +157,12 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 			},
 			persistedRequests: []model.EtcdRequest{putRequest("key", "value")},
 			expectError:       "",
+			expectStatuses: expectedStatuses{
+				assumptions:   Success,
+				linearization: Success,
+				watch:         Success,
+				serializable:  Success,
+			},
 		},
 		{
 			name: "Failure of watch",
@@ -170,6 +196,12 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 			},
 			persistedRequests: []model.EtcdRequest{putRequest("key", "value")},
 			expectError:       "watch: Failure: broke Reliable",
+			expectStatuses: expectedStatuses{
+				assumptions:   Success,
+				linearization: Success,
+				watch:         Failure,
+				serializable:  Success,
+			},
 		},
 	}
 	for _, tc := range tcs {
@@ -182,6 +214,10 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 			} else {
 				require.NoError(t, result.Error())
 			}
+			require.Equal(t, tc.expectStatuses.assumptions, result.Assumptions.Status)
+			require.Equal(t, tc.expectStatuses.linearization, result.Linearization.Status)
+			require.Equal(t, tc.expectStatuses.watch, result.Watch.Status)
+			require.Equal(t, tc.expectStatuses.serializable, result.Serializable.Status)
 			err := result.Linearization.Visualize(lg, filepath.Join(t.TempDir(), "history.html"))
 			require.NoError(t, err)
 		})

@@ -73,6 +73,8 @@ func assertResult(result validate.Result, name string) {
 	switch result.Status {
 	case validate.Success, validate.Failure:
 		assert.Always(result.Status == validate.Success, name, map[string]any{"msg": result.Message})
+	case validate.Unknown:
+		assert.Sometimes(result.Status == validate.Unknown, "either there are prior failures or the validation is skipped", map[string]any{"msg": result.Message})
 	default:
 		assert.Unreachable(name, map[string]any{"error": result.Error().Error()})
 	}
