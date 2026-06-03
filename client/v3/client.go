@@ -495,8 +495,7 @@ func newClient(cfg *Config) (*Client, error) {
 	if err != nil {
 		client.cancel()
 		client.resolver.Close()
-		// TODO: Error like `fmt.Errorf(dialing [%s] failed: %v, strings.Join(cfg.Endpoints, ";"), err)` would help with debugging a lot.
-		return nil, err
+		return nil, fmt.Errorf("dialing [%s] failed: %w", strings.Join(cfg.Endpoints, ";"), err)
 	}
 	client.conn = conn
 
@@ -516,8 +515,7 @@ func newClient(cfg *Config) (*Client, error) {
 	if err != nil {
 		client.Close()
 		cancel()
-		// TODO: Consider fmt.Errorf("communicating with [%s] failed: %v", strings.Join(cfg.Endpoints, ";"), err)
-		return nil, err
+		return nil, fmt.Errorf("communicating with [%s] failed: %w", strings.Join(cfg.Endpoints, ";"), err)
 	}
 	cancel()
 
