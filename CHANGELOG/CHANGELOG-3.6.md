@@ -4,7 +4,15 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.12 (TBC)
+## v3.6.13 (TBC)
+
+### etcd server
+
+- Add [`write-only-skip-check` option for `--v2-deprecation` to bypass the v2 content check](https://github.com/etcd-io/etcd/pull/21850)
+
+---
+
+## v3.6.12 (2026-06-01)
 
 ### etcd server
 
@@ -14,6 +22,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 ### etcdutl
 
 - [etcdutl: validate data file path instead of panic](https://github.com/etcd-io/etcd/pull/21768)
+
+### Dependencies
+
+- Compile binaries using [go 1.25.10](https://github.com/etcd-io/etcd/pull/21727)
 
 ---
 

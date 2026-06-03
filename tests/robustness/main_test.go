@@ -88,33 +88,36 @@ func TestRobustnessRegression(t *testing.T) {
 }
 
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenarios.TestScenario, c *e2e.EtcdProcessCluster) {
-	r := report.NewTestReport(lg, testResultsDirectory(t), report.ServerDataPaths(c), &report.TrafficDetail{ExpectUniqueRevision: s.Traffic.ExpectUniqueRevision()})
+	r, err := report.NewTestReport(lg, testResultsDirectory(t), report.ServerDataPaths(c), &report.TrafficDetail{ExpectUniqueRevision: s.Traffic.ExpectUniqueRevision()})
+	require.NoError(t, err)
 	// t.Failed() returns false during panicking. We need to forcibly
 	// save data on panicking.
 	// Refer to: https://github.com/golang/go/issues/49929
 	panicked := true
 	defer func() {
-		_, persistResults := os.LookupEnv("PERSIST_RESULTS")
-		shouldReport := t.Failed() || panicked || persistResults
-		if shouldReport {
-			if err := r.Report(); err != nil {
-				t.Error(err)
-			}
+		err = r.Finalize(t.Failed(), panicked)
+		if err != nil {
+			t.Error(err)
 		}
 	}()
 	clientReports := runScenario(ctx, t, s, lg, c)
 	r.SetClientReports(clientReports)
-	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
+	err = r.SaveEtcdData()
 	if err != nil {
 		t.Error(err)
 	}
 
 	validateConfig := validate.Config{ExpectRevisionUnique: s.Traffic.ExpectUniqueRevision()}
+	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
+	if err != nil {
+		t.Error(err)
+	}
 	result := validate.ValidateAndReturnVisualize(lg, validateConfig, clientReports, persistedRequests, 5*time.Minute)
-	r.SetVisualizer(result.Linearization.Visualize)
 	err = result.Error()
 	if err != nil {
 		t.Error(err)
+	} else {
+		r.SetVisualizer(result.Linearization.Visualize)
 	}
 	panicked = false
 }

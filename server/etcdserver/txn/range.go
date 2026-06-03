@@ -64,6 +64,7 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 		Limit:          limit,
 		Rev:            r.Revision,
 		CountOnly:      r.CountOnly,
+		FastKeysOnly:   r.KeysOnly && r.SortTarget != pb.RangeRequest_VALUE,
 		WithTotalCount: withTotalCount,
 	}
 

@@ -4,7 +4,13 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ---
 
-## v3.4.45 (TBC)
+## v3.4.45 (2026-06-01)
+
+Please note that this release marks the end of support (EOL) for v3.4. No further patches will be issued. If you are still using v3.4, please [upgrade to a supported version](https://etcd.io/docs/v3.6/upgrades/upgrade_3_5/) as soon as you can.
+
+### Dependencies
+
+- Compile binaries using [go 1.25.10](https://github.com/etcd-io/etcd/pull/21729)
 
 ---
 

@@ -28,6 +28,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -94,10 +95,13 @@ func (t streamType) String() string {
 // linkHeartbeatMessage is a special message used as heartbeat message in
 // link layer. It never conflicts with messages from raft because raft
 // doesn't send out messages without From and To fields.
-var linkHeartbeatMessage = raftpb.Message{Type: raftpb.MsgHeartbeat}
+var (
+	linkHeartbeatMessage = raftpb.Message{Type: raftpb.MsgHeartbeat.Enum()}
+	linkHeartbeatSize    = proto.Size(&linkHeartbeatMessage)
+)
 
 func isLinkHeartbeatMessage(m *raftpb.Message) bool {
-	return m.Type == raftpb.MsgHeartbeat && m.From == 0 && m.To == 0
+	return m.GetType() == raftpb.MsgHeartbeat && m.GetFrom() == 0 && m.GetTo() == 0
 }
 
 type outgoingConn struct {
@@ -176,8 +180,8 @@ func (cw *streamWriter) run() {
 	for {
 		select {
 		case <-heartbeatc:
-			err := enc.encode(&linkHeartbeatMessage)
-			unflushed += linkHeartbeatMessage.Size()
+			err := enc.encode(proto.Clone(&linkHeartbeatMessage).(*raftpb.Message))
+			unflushed += linkHeartbeatSize
 			if err == nil {
 				flusher.Flush()
 				batched = 0
@@ -203,7 +207,7 @@ func (cw *streamWriter) run() {
 		case m := <-msgc:
 			err := enc.encode(m)
 			if err == nil {
-				unflushed += m.Size()
+				unflushed += proto.Size(m)
 
 				if len(msgc) == 0 || batched > streamBufSize/2 {
 					flusher.Flush()
@@ -228,7 +232,7 @@ func (cw *streamWriter) run() {
 				)
 			}
 			heartbeatc, msgc = nil, nil
-			cw.r.ReportUnreachable(m.To)
+			cw.r.ReportUnreachable(m.GetTo())
 			sentFailures.WithLabelValues(cw.peerID.String()).Inc()
 
 		case conn := <-cw.connc:
@@ -500,7 +504,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 
 		// gofail: var raftDropHeartbeat struct{}
 		// continue labelRaftDropHeartbeat
-		receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(m.Size()))
+		receivedBytes.WithLabelValues(types.ID(m.GetFrom()).String()).Add(float64(proto.Size(m)))
 
 		cr.mu.Lock()
 		paused := cr.paused
@@ -518,7 +522,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 		}
 
 		recvc := cr.recvc
-		if m.Type == raftpb.MsgProp {
+		if m.GetType() == raftpb.MsgProp {
 			recvc = cr.propc
 		}
 
@@ -529,10 +533,10 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 				if cr.lg != nil {
 					cr.lg.Warn(
 						"dropped internal Raft message since receiving buffer is full (overloaded network)",
-						zap.String("message-type", m.Type.String()),
+						zap.String("message-type", m.GetType().String()),
 						zap.String("local-member-id", cr.tr.ID.String()),
-						zap.String("from", types.ID(m.From).String()),
-						zap.String("remote-peer-id", types.ID(m.To).String()),
+						zap.String("from", types.ID(m.GetFrom()).String()),
+						zap.String("remote-peer-id", types.ID(m.GetTo()).String()),
 						zap.Bool("remote-peer-active", cr.status.isActive()),
 					)
 				}
@@ -540,15 +544,15 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 				if cr.lg != nil {
 					cr.lg.Warn(
 						"dropped Raft message since receiving buffer is full (overloaded network)",
-						zap.String("message-type", m.Type.String()),
+						zap.String("message-type", m.GetType().String()),
 						zap.String("local-member-id", cr.tr.ID.String()),
-						zap.String("from", types.ID(m.From).String()),
-						zap.String("remote-peer-id", types.ID(m.To).String()),
+						zap.String("from", types.ID(m.GetFrom()).String()),
+						zap.String("remote-peer-id", types.ID(m.GetTo()).String()),
 						zap.Bool("remote-peer-active", cr.status.isActive()),
 					)
 				}
 			}
-			recvFailures.WithLabelValues(types.ID(m.From).String()).Inc()
+			recvFailures.WithLabelValues(types.ID(m.GetFrom()).String()).Inc()
 		}
 	}
 }

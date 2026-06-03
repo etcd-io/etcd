@@ -38,13 +38,13 @@ import (
 
 func TestGetIDs(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-	addcc := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2}
-	addEntry := &raftpb.Entry{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(addcc)}
-	removecc := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
-	removeEntry := &raftpb.Entry{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc)}
-	normalEntry := &raftpb.Entry{Type: raftpb.EntryNormal}
-	updatecc := &raftpb.ConfChange{Type: raftpb.ConfChangeUpdateNode, NodeID: 2}
-	updateEntry := &raftpb.Entry{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(updatecc)}
+	addcc := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode.Enum(), NodeId: new(uint64(2))}
+	addEntry := &raftpb.Entry{Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(addcc)}
+	removecc := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode.Enum(), NodeId: new(uint64(2))}
+	removeEntry := &raftpb.Entry{Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(removecc)}
+	normalEntry := &raftpb.Entry{Type: raftpb.EntryNormal.Enum()}
+	updatecc := &raftpb.ConfChange{Type: raftpb.ConfChangeUpdateNode.Enum(), NodeId: new(uint64(2))}
+	updateEntry := &raftpb.Entry{Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(updatecc)}
 
 	tests := []struct {
 		confState *raftpb.ConfState
@@ -88,7 +88,7 @@ func TestGetIDs(t *testing.T) {
 	for i, tt := range tests {
 		var snap raftpb.Snapshot
 		if tt.confState != nil {
-			snap.Metadata = raftpb.SnapshotMetadata{ConfState: *tt.confState}
+			snap.Metadata = &raftpb.SnapshotMetadata{ConfState: tt.confState}
 		}
 		idSet := serverstorage.GetEffectiveNodeIDsFromWALEntries(lg, &snap, tt.ents)
 		if !reflect.DeepEqual(idSet, tt.widSet) {
@@ -107,9 +107,9 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	addcc1 := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1, Context: ctx}
-	removecc2 := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
-	removecc3 := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 3}
+	addcc1 := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode.Enum(), NodeId: new(uint64(1)), Context: ctx}
+	removecc2 := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode.Enum(), NodeId: new(uint64(2))}
+	removecc3 := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode.Enum(), NodeId: new(uint64(3))}
 	tests := []struct {
 		ids         []uint64
 		self        uint64
@@ -129,14 +129,14 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 			1,
 			1, 1,
 
-			[]*raftpb.Entry{{Term: 1, Index: 2, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc2)}},
+			[]*raftpb.Entry{{Term: new(uint64(1)), Index: new(uint64(2)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(removecc2)}},
 		},
 		{
 			[]uint64{1, 2},
 			1,
 			2, 2,
 
-			[]*raftpb.Entry{{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc2)}},
+			[]*raftpb.Entry{{Term: new(uint64(2)), Index: new(uint64(3)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(removecc2)}},
 		},
 		{
 			[]uint64{1, 2, 3},
@@ -144,8 +144,8 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 			2, 2,
 
 			[]*raftpb.Entry{
-				{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc2)},
-				{Term: 2, Index: 4, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc3)},
+				{Term: new(uint64(2)), Index: new(uint64(3)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(removecc2)},
+				{Term: new(uint64(2)), Index: new(uint64(4)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(removecc3)},
 			},
 		},
 		{
@@ -154,7 +154,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 			2, 2,
 
 			[]*raftpb.Entry{
-				{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc3)},
+				{Term: new(uint64(2)), Index: new(uint64(3)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(removecc3)},
 			},
 		},
 		{
@@ -163,9 +163,9 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 			2, 2,
 
 			[]*raftpb.Entry{
-				{Term: 2, Index: 3, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(addcc1)},
-				{Term: 2, Index: 4, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc2)},
-				{Term: 2, Index: 5, Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc3)},
+				{Term: new(uint64(2)), Index: new(uint64(3)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(addcc1)},
+				{Term: new(uint64(2)), Index: new(uint64(4)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(removecc2)},
+				{Term: new(uint64(2)), Index: new(uint64(5)), Type: raftpb.EntryConfChange.Enum(), Data: pbutil.MustMarshalMessage(removecc3)},
 			},
 		},
 	}
@@ -232,7 +232,7 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 
 	n.readyc <- raft.Ready{
 		SoftState:        &raft.SoftState{RaftState: raft.StateFollower},
-		CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange}},
+		CommittedEntries: []*raftpb.Entry{{Type: raftpb.EntryConfChange.Enum()}},
 	}
 	ap := <-srv.r.applyc
 
@@ -292,10 +292,10 @@ func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 
 	lead := uint64(1)
 
-	n.readyc <- raft.Ready{Messages: []raftpb.Message{
-		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 1},
-		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 2},
-		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 3},
+	n.readyc <- raft.Ready{Messages: []*raftpb.Message{
+		{Type: raftpb.MsgAppResp.Enum(), From: new(uint64(2)), To: &lead, Term: new(uint64(1)), Index: new(uint64(1))},
+		{Type: raftpb.MsgAppResp.Enum(), From: new(uint64(2)), To: &lead, Term: new(uint64(1)), Index: new(uint64(2))},
+		{Type: raftpb.MsgAppResp.Enum(), From: new(uint64(2)), To: &lead, Term: new(uint64(1)), Index: new(uint64(3))},
 	}}
 
 	got, want := <-sendc, 1

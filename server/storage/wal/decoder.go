@@ -214,13 +214,13 @@ func (d *decoder) LastOffset() int64 { return d.lastValidOff }
 
 func MustUnmarshalEntry(d []byte) *raftpb.Entry {
 	var e raftpb.Entry
-	pbutil.MustUnmarshal(&e, d)
+	pbutil.MustUnmarshalMessage(&e, d)
 	return &e
 }
 
 func MustUnmarshalState(d []byte) *raftpb.HardState {
 	var s raftpb.HardState
-	pbutil.MustUnmarshal(&s, d)
+	pbutil.MustUnmarshalMessage(&s, d)
 	return &s
 }
 

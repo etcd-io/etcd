@@ -86,18 +86,34 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 		tr.trace.Step("count revisions from in-memory index tree")
 		return &RangeResult{KVs: nil, Count: total, Rev: curRev}, nil
 	}
+
+	if ro.FastKeysOnly {
+		keys, modifies, creates, versions, total := tr.s.kvindex.Range(key, end, rev, int(ro.Limit), ro.WithTotalCount)
+		tr.trace.Step("keys only range from in-memory index tree")
+		if len(keys) == 0 {
+			return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
+		}
+		kvs := make([]*mvccpb.KeyValue, len(keys))
+		for i := range len(kvs) {
+			kvs[i] = &mvccpb.KeyValue{
+				Key:            keys[i],
+				ModRevision:    modifies[i].Main,
+				CreateRevision: creates[i].Main,
+				Version:        versions[i],
+			}
+		}
+		return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
+	}
+
 	revpairs, total := tr.s.kvindex.Revisions(key, end, rev, int(ro.Limit), ro.WithTotalCount)
 	tr.trace.Step("range keys from in-memory index tree")
 	if len(revpairs) == 0 {
 		return &RangeResult{KVs: nil, Count: total, Rev: curRev}, nil
 	}
 
-	limit := int(ro.Limit)
-	if limit <= 0 || limit > len(revpairs) {
-		limit = len(revpairs)
-	}
+	cappedEntriesCount := sliceCapWithLimit(int(ro.Limit), revpairs)
 
-	kvs := make([]*mvccpb.KeyValue, limit)
+	kvs := make([]*mvccpb.KeyValue, cappedEntriesCount)
 	revBytes := NewRevBytes()
 	for i, revpair := range revpairs[:len(kvs)] {
 		select {
@@ -105,6 +121,7 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 			return nil, fmt.Errorf("rangeKeys: context cancelled: %w", ctx.Err())
 		default:
 		}
+
 		revBytes = RevToBytes(revpair, revBytes)
 		_, vs := tr.tx.UnsafeRange(schema.Key, revBytes, nil, 0)
 		if len(vs) != 1 {
@@ -132,6 +149,13 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 	}
 	tr.trace.Step("range keys from bolt db")
 	return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
+}
+
+func sliceCapWithLimit[S any](limit int, s []S) int {
+	if limit <= 0 || limit > len(s) {
+		return len(s)
+	}
+	return limit
 }
 
 func (tr *storeTxnRead) End() {
@@ -271,7 +295,7 @@ func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
 	if len(tw.changes) > 0 {
 		rrev++
 	}
-	keys, _ := tw.s.kvindex.Range(key, end, rrev)
+	keys, _, _, _, _ := tw.s.kvindex.Range(key, end, rrev, 0, false)
 	if len(keys) == 0 {
 		return 0
 	}

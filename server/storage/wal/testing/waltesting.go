@@ -58,9 +58,9 @@ func NewTmpWAL(tb testing.TB, reqs []*etcdserverpb.InternalRaftRequest) (*wal.WA
 		var entries []*raftpb.Entry
 		for _, req := range reqs {
 			entries = append(entries, &raftpb.Entry{
-				Term:  1,
-				Index: 1,
-				Type:  raftpb.EntryNormal,
+				Term:  new(uint64(1)),
+				Index: new(uint64(1)),
+				Type:  raftpb.EntryNormal.Enum(),
 				Data:  pbutil.MustMarshalMessage(req),
 			})
 		}

@@ -139,7 +139,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 
 		switch {
 		case err == nil:
-			walsnap.Index, walsnap.Term = new(snapshot.Metadata.Index), new(snapshot.Metadata.Term)
+			walsnap.Index, walsnap.Term = new(snapshot.Metadata.GetIndex()), new(snapshot.Metadata.GetTerm())
 			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
 
 			confStateJSON, merr := json.Marshal(snapshot.Metadata.ConfState)
@@ -176,7 +176,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		log.Printf("Failed reading all WAL: %v", err)
 	}
 	id, cid := parseWALMetadata(wmetadata)
-	vid := types.ID(state.Vote)
+	vid := types.ID(*state.Vote)
 	fmt.Printf("WAL metadata:\nnodeID=%s clusterID=%s term=%d commitIndex=%d vote=%s\n",
 		id, cid, state.Term, state.Commit, vid)
 	if endAtIndex {
@@ -184,7 +184,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		for _, e := range ents {
 			// WAL might contain entries with e.Index >= *endIndex from prev term, then e.Index < *endIndex in the next term.
 			// We cannot break when e.Index >= *endIndex.
-			if e.Index >= *endIndex {
+			if *e.Index >= *endIndex {
 				continue
 			}
 			entries = append(entries, e)
@@ -219,62 +219,62 @@ type EntryFilter func(e *raftpb.Entry) (bool, string)
 // The 9 pass functions below takes the raftpb.Entry and return if the entry should be printed and the type of entry,
 // the type of the entry will used in the following print function
 func passConfChange(entry *raftpb.Entry) (bool, string) {
-	return entry.Type == raftpb.EntryConfChange, "ConfigChange"
+	return *entry.Type == raftpb.EntryConfChange, "ConfigChange"
 }
 
 func passInternalRaftRequest(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil, "InternalRaftRequest"
+	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil, "InternalRaftRequest"
 }
 
 func passUnknownNormal(entry *raftpb.Entry) (bool, string) {
 	var rr2 etcdserverpb.InternalRaftRequest
-	return (entry.Type == raftpb.EntryNormal) && proto.Unmarshal(entry.Data, &rr2) != nil, "UnknownNormal"
+	return (*entry.Type == raftpb.EntryNormal) && proto.Unmarshal(entry.Data, &rr2) != nil, "UnknownNormal"
 }
 
 func passIRRRange(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Range != nil, "InternalRaftRequest"
+	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Range != nil, "InternalRaftRequest"
 }
 
 func passIRRPut(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Put != nil, "InternalRaftRequest"
+	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Put != nil, "InternalRaftRequest"
 }
 
 func passIRRDeleteRange(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.DeleteRange != nil, "InternalRaftRequest"
+	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.DeleteRange != nil, "InternalRaftRequest"
 }
 
 func passIRRTxn(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Txn != nil, "InternalRaftRequest"
+	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Txn != nil, "InternalRaftRequest"
 }
 
 func passIRRCompaction(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Compaction != nil, "InternalRaftRequest"
+	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Compaction != nil, "InternalRaftRequest"
 }
 
 func passIRRLeaseGrant(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseGrant != nil, "InternalRaftRequest"
+	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseGrant != nil, "InternalRaftRequest"
 }
 
 func passIRRLeaseRevoke(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseRevoke != nil, "InternalRaftRequest"
+	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseRevoke != nil, "InternalRaftRequest"
 }
 
 func passIRRLeaseCheckpoint(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseCheckpoint != nil, "InternalRaftRequest"
+	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseCheckpoint != nil, "InternalRaftRequest"
 }
 
 func passRequest(entry *raftpb.Entry) (bool, string) {
 	var rr2 etcdserverpb.InternalRaftRequest
-	return entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr2) != nil, "Request"
+	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr2) != nil, "Request"
 }
 
 type EntryPrinter func(e *raftpb.Entry)
@@ -302,10 +302,10 @@ func printConfChange(entry *raftpb.Entry) {
 	fmt.Printf("%4d\t%10d", entry.Term, entry.Index)
 	fmt.Print("\tconf")
 	var r raftpb.ConfChange
-	if err := r.Unmarshal(entry.Data); err != nil {
+	if err := proto.Unmarshal(entry.Data, &r); err != nil {
 		fmt.Print("\t???")
 	} else {
-		fmt.Printf("\tmethod=%s id=%s", r.Type, types.ID(r.NodeID))
+		fmt.Printf("\tmethod=%s id=%s", *r.Type, types.ID(*r.NodeId))
 	}
 }
 

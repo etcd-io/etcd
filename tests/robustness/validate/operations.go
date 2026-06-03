@@ -16,6 +16,7 @@ package validate
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/anishathalye/porcupine"
@@ -38,7 +39,9 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, keys []string, o
 
 	var timer *time.Timer
 	if timeout > 0 {
-		timer = time.AfterFunc(timeout, func() {
+		// Porcupine timeout is not always enforced (see https://github.com/anishathalye/porcupine/issues/44)
+		// Give it a small grace period before forcing the deadline from inside model execution.
+		timer = time.AfterFunc(timeout*11/10, func() {
 			model.LinearizationDeadlineTripped.Store(1)
 		})
 	}
@@ -48,6 +51,7 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, keys []string, o
 	if timer != nil {
 		timer.Stop()
 	}
+	duration := time.Since(start)
 
 	result := LinearizationResult{
 		Info:  info,
@@ -55,29 +59,26 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, keys []string, o
 	}
 
 	if model.LinearizationDeadlineTripped.Load() != 0 {
-		result.Status = Failure
-		result.Message = "timed out"
-		result.Timeout = true
-		lg.Error("Linearization timed out", zap.Duration("duration", time.Since(start)))
+		result.Status = DeadlineExceeded
+		result.Message = "deadline exceeded"
+		lg.Error("Linearization deadline exceeded", zap.Duration("duration", duration))
 		return result
 	}
 
 	switch check {
 	case porcupine.Ok:
 		result.Status = Success
-		lg.Info("Linearization success", zap.Duration("duration", time.Since(start)))
+		lg.Info("Linearization success", zap.Duration("duration", duration))
 	case porcupine.Unknown:
-		result.Status = Failure
-		result.Message = "timed out"
-		result.Timeout = true
-		lg.Error("Linearization timed out", zap.Duration("duration", time.Since(start)))
+		result.Status = Timeout
+		lg.Error("Linearization timed out", zap.Duration("duration", duration))
 	case porcupine.Illegal:
 		result.Status = Failure
 		result.Message = "illegal"
-		lg.Error("Linearization illegal", zap.Duration("duration", time.Since(start)))
+		lg.Error("Linearization illegal", zap.Duration("duration", duration))
 	default:
 		result.Status = Failure
-		result.Message = "unknown"
+		result.Message = fmt.Sprintf("unknown results from porcupine: %s", check)
 	}
 	return result
 }

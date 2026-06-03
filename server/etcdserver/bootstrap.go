@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -110,11 +111,11 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		}
 		cs := buildConfStateFromV3store(cfg.Logger, backend.be)
 
-		sn.Metadata.ConfState = cs
+		sn.Metadata.ConfState = &cs
 		s.wal.snapshot = sn
 
-		cfg.Logger.Info("Constructed a new raft snapshot from v3 state", zap.Uint64("index", sn.Metadata.Index),
-			zap.Uint64("term", sn.Metadata.Term), zap.String("confState", sn.Metadata.ConfState.String()))
+		cfg.Logger.Info("Constructed a new raft snapshot from v3 state", zap.Uint64("index", sn.Metadata.GetIndex()),
+			zap.Uint64("term", sn.Metadata.GetTerm()), zap.String("confState", sn.Metadata.ConfState.String()))
 	}
 
 	cfg.Logger.Info("bootstrapping raft")
@@ -420,17 +421,17 @@ func recoverSnapshot(cfg config.ServerConfig, be backend.Backend, beExist bool, 
 	if len(walSnaps) > 0 {
 		idx := len(walSnaps) - 1
 		snapshot = &raftpb.Snapshot{
-			Metadata: raftpb.SnapshotMetadata{
-				Term:  walSnaps[idx].GetTerm(),
-				Index: walSnaps[idx].GetIndex(),
+			Metadata: &raftpb.SnapshotMetadata{
+				Term:  new(walSnaps[idx].GetTerm()),
+				Index: new(walSnaps[idx].GetIndex()),
 			},
 		}
 		if walSnaps[idx].ConfState != nil {
-			snapshot.Metadata.ConfState = *walSnaps[idx].ConfState
+			snapshot.Metadata.ConfState = proto.Clone(walSnaps[idx].ConfState).(*raftpb.ConfState)
 		}
 		cfg.Logger.Info("constructed a snapshot from WAL record",
-			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-			zap.Int("snapshot-size", len(pbutil.MustMarshal(snapshot))), //TODO: use proto.Size after bumping to raft 3.7.0-beta.0
+			zap.Uint64("snapshot-index", snapshot.Metadata.GetIndex()),
+			zap.Int("snapshot-size", proto.Size(snapshot)),
 			zap.String("confState", snapshot.Metadata.ConfState.String()),
 			zap.Int("walSnaps-count", len(walSnaps)),
 		)
@@ -448,13 +449,13 @@ func recoverSnapshot(cfg config.ServerConfig, be backend.Backend, beExist bool, 
 			// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
 			// etcd from pre-3.0 release.
 			kvindex := ci.ConsistentIndex()
-			if kvindex < snapshot.Metadata.Index {
+			if kvindex < snapshot.Metadata.GetIndex() {
 				if kvindex != 0 {
-					return nil, be, fmt.Errorf("database file (%v index %d) does not match with snapshot (index %d)", cfg.BackendPath(), kvindex, snapshot.Metadata.Index)
+					return nil, be, fmt.Errorf("database file (%v index %d) does not match with snapshot (index %d)", cfg.BackendPath(), kvindex, snapshot.Metadata.GetIndex())
 				}
 				cfg.Logger.Warn(
 					"consistent index was never saved",
-					zap.Uint64("snapshot-index", snapshot.Metadata.Index),
+					zap.Uint64("snapshot-index", snapshot.Metadata.GetIndex()),
 				)
 			}
 		}
@@ -586,7 +587,7 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 
 	if cfg.ForceNewCluster {
 		consistentIndex := ci.ConsistentIndex()
-		oldCommitIndex := bwal.st.Commit
+		oldCommitIndex := bwal.st.GetCommit()
 		// If only `HardState.Commit` increases, HardState won't be persisted
 		// to disk, even though the committed entries might have already been
 		// applied. This can result in consistent_index > CommitIndex.
@@ -596,7 +597,7 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 		// committed, we reset Commit to max(HardState.Commit, consistent_index).
 		//
 		// See: https://github.com/etcd-io/raft/pull/300 for more details.
-		bwal.st.Commit = max(oldCommitIndex, consistentIndex)
+		bwal.st.Commit = new(max(oldCommitIndex, consistentIndex))
 
 		// discard the previously uncommitted entries
 		bwal.ents = bwal.CommitedEntries()
@@ -608,14 +609,14 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 			zap.String("cluster-id", meta.clusterID.String()),
 			zap.String("local-member-id", meta.nodeID.String()),
 			zap.Uint64("wal-commit-index", oldCommitIndex),
-			zap.Uint64("commit-index", bwal.st.Commit),
+			zap.Uint64("commit-index", bwal.st.GetCommit()),
 		)
 	} else {
 		cfg.Logger.Info(
 			"restarting local member",
 			zap.String("cluster-id", meta.clusterID.String()),
 			zap.String("local-member-id", meta.nodeID.String()),
-			zap.Uint64("commit-index", bwal.st.Commit),
+			zap.Uint64("commit-index", bwal.st.GetCommit()),
 		)
 	}
 	return bwal
@@ -627,7 +628,7 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*wal.WAL, *raftpb.HardState, []*raftpb.Entry, *raftpb.Snapshot, *snapshotMetadata) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
-		walsnap.Index, walsnap.Term = &snapshot.Metadata.Index, &snapshot.Metadata.Term
+		walsnap.Index, walsnap.Term = new(snapshot.Metadata.GetIndex()), new(snapshot.Metadata.GetTerm())
 	}
 	repaired := false
 	for {
@@ -700,30 +701,24 @@ type bootstrappedWAL struct {
 func (wal *bootstrappedWAL) MemoryStorage() *raft.MemoryStorage {
 	s := raft.NewMemoryStorage()
 	if wal.snapshot != nil {
-		s.ApplySnapshot(*wal.snapshot)
+		s.ApplySnapshot(wal.snapshot)
 	}
 	if wal.st != nil {
-		s.SetHardState(*wal.st)
+		s.SetHardState(wal.st)
 	}
 	if len(wal.ents) != 0 {
-		// TODO: remove such loop after bumping raft 3.7.0-beta.0
-		// Go 1.26: we can avoid *ent copy lock checks by index-referencing.
-		valEnts := make([]raftpb.Entry, len(wal.ents))
-		for i := range wal.ents {
-			valEnts[i] = *wal.ents[i]
-		}
-		s.Append(valEnts)
+		s.Append(wal.ents)
 	}
 	return s
 }
 
 func (wal *bootstrappedWAL) CommitedEntries() []*raftpb.Entry {
 	for i, ent := range wal.ents {
-		if ent.Index > wal.st.Commit {
+		if ent.GetIndex() > wal.st.GetCommit() {
 			wal.lg.Info(
 				"discarding uncommitted WAL entries",
-				zap.Uint64("entry-index", ent.Index),
-				zap.Uint64("commit-index-from-wal", wal.st.Commit),
+				zap.Uint64("entry-index", ent.GetIndex()),
+				zap.Uint64("commit-index-from-wal", wal.st.GetCommit()),
 				zap.Int("number-of-discarded-entries", len(wal.ents)-i),
 			)
 			return wal.ents[:i]
@@ -737,8 +732,8 @@ func (wal *bootstrappedWAL) NewConfigChangeEntries() []*raftpb.Entry {
 		wal.lg,
 		serverstorage.GetEffectiveNodeIDsFromWALEntries(wal.lg, wal.snapshot, wal.ents),
 		uint64(wal.meta.nodeID),
-		wal.st.Term,
-		wal.st.Commit,
+		wal.st.GetTerm(),
+		wal.st.GetCommit(),
 	)
 }
 

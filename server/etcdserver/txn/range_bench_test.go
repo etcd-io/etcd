@@ -106,3 +106,45 @@ func BenchmarkRange(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkRangeFastKeysOnlyWithLimit(b *testing.B) {
+	for _, keyCount := range []int{100, 1000, 10000, 100000} {
+		b.Run(fmt.Sprintf("keys_%d", keyCount), func(b *testing.B) {
+			bcfg := backend.DefaultBackendConfig(zap.NewNop())
+			dir, _ := os.MkdirTemp(b.TempDir(), "etcd_backend_bench")
+			bcfg.Path = filepath.Join(dir, "database")
+			be := backend.New(bcfg)
+			defer betesting.Close(b, be)
+			s := mvcc.NewStore(zap.NewNop(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+			defer s.Close()
+
+			for i := range keyCount {
+				s.Put([]byte(fmt.Sprintf("key-%06d", i)), []byte("value"), lease.NoLease)
+			}
+			s.Commit()
+
+			ctx := context.Background()
+			req := &pb.RangeRequest{
+				Key:       []byte(""),
+				RangeEnd:  []byte{0},
+				Limit:     10,
+				KeysOnly:  true,
+				SortOrder: pb.RangeRequest_NONE,
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				// TODO: This benchmark currently returns all keys due to the fast keys only optimization.
+				// We should update it to return the correct number of keys once the optimization is fixed.
+				resp, _, err := Range(ctx, zap.NewNop(), s, req, false /* withTotalCount */)
+				if err != nil {
+					b.Fatal(err)
+				}
+				if len(resp.Kvs) != int(req.Limit) {
+					b.Fatalf("expected %d kvs, got %d", req.Limit, len(resp.Kvs))
+				}
+			}
+		})
+	}
+}

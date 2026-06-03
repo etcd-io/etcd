@@ -40,7 +40,7 @@ func TestPipelineSend(t *testing.T) {
 	tp := &Transport{pipelineRt: tr}
 	p := startTestPipeline(t, tp, picker)
 
-	p.msgc <- &raftpb.Message{Type: raftpb.MsgApp}
+	p.msgc <- &raftpb.Message{Type: raftpb.MsgApp.Enum()}
 	tr.rec.Wait(1)
 	p.stop()
 	if p.followerStats.Counts.Success != 1 {
@@ -58,7 +58,7 @@ func TestPipelineKeepSendingWhenPostError(t *testing.T) {
 	defer p.stop()
 
 	for i := 0; i < 50; i++ {
-		p.msgc <- &raftpb.Message{Type: raftpb.MsgApp}
+		p.msgc <- &raftpb.Message{Type: raftpb.MsgApp.Enum()}
 	}
 
 	_, err := tr.rec.Wait(50)
@@ -111,7 +111,7 @@ func TestPipelineSendFailed(t *testing.T) {
 	tp := &Transport{pipelineRt: rt}
 	p := startTestPipeline(t, tp, picker)
 
-	p.msgc <- &raftpb.Message{Type: raftpb.MsgApp}
+	p.msgc <- &raftpb.Message{Type: raftpb.MsgApp.Enum()}
 	if _, err := rt.rec.Wait(1); err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestPipelinePost(t *testing.T) {
 		t.Errorf("content type = %s, want %s", g, "application/protobuf")
 	}
 	if g := req.Header.Get("X-Server-Version"); g != version.Version {
-		t.Errorf("version = %s, want %s", g, "version.Version")
+		t.Errorf("version = %s, want %s", g, version.Version)
 	}
 	if g := req.Header.Get("X-Min-Cluster-Version"); g != version.MinClusterVersion {
 		t.Errorf("min version = %s, want %s", g, version.MinClusterVersion)

@@ -25,7 +25,6 @@ import (
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -99,7 +98,7 @@ func visitEntry(ent *raftpb.Entry, visitor Visitor) error {
 	if err != nil {
 		return err
 	}
-	return visitEntryData(ent.Type, ent.Data, visitor)
+	return visitEntryData(ent.GetType(), ent.Data, visitor)
 }
 
 func visitEntryData(entryType raftpb.EntryType, data []byte, visitor Visitor) error {
@@ -123,7 +122,7 @@ func visitEntryData(entryType raftpb.EntryType, data []byte, visitor Visitor) er
 		}
 	case raftpb.EntryConfChange:
 		var confChange raftpb.ConfChange
-		err := pbutil.Unmarshaler(&confChange).Unmarshal(data)
+		err := proto.Unmarshal(data, &confChange)
 		if err != nil {
 			return nil
 		}
@@ -131,7 +130,7 @@ func visitEntryData(entryType raftpb.EntryType, data []byte, visitor Visitor) er
 		return visitor(msg.Descriptor().FullName(), &version.V3_0)
 	case raftpb.EntryConfChangeV2:
 		var confChange raftpb.ConfChangeV2
-		err := pbutil.Unmarshaler(&confChange).Unmarshal(data)
+		err := proto.Unmarshal(data, &confChange)
 		if err != nil {
 			return nil
 		}

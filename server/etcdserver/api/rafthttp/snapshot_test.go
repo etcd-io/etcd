@@ -37,7 +37,7 @@ func (s strReaderCloser) Close() error { return nil }
 
 func TestSnapshotSend(t *testing.T) {
 	tests := []struct {
-		m    raftpb.Message
+		m    *raftpb.Message
 		rc   io.ReadCloser
 		size int64
 
@@ -46,7 +46,7 @@ func TestSnapshotSend(t *testing.T) {
 	}{
 		// sent and receive with no errors
 		{
-			m:    raftpb.Message{Type: raftpb.MsgSnap, To: 1, Snapshot: &raftpb.Snapshot{}},
+			m:    &raftpb.Message{Type: raftpb.MsgSnap.Enum(), To: new(uint64(1)), Snapshot: &raftpb.Snapshot{}},
 			rc:   strReaderCloser{strings.NewReader("hello")},
 			size: 5,
 
@@ -55,7 +55,7 @@ func TestSnapshotSend(t *testing.T) {
 		},
 		// error when reading snapshot for send
 		{
-			m:    raftpb.Message{Type: raftpb.MsgSnap, To: 1, Snapshot: &raftpb.Snapshot{}},
+			m:    &raftpb.Message{Type: raftpb.MsgSnap.Enum(), To: new(uint64(1)), Snapshot: &raftpb.Snapshot{}},
 			rc:   &errReadCloser{fmt.Errorf("snapshot error")},
 			size: 1,
 
@@ -64,7 +64,7 @@ func TestSnapshotSend(t *testing.T) {
 		},
 		// sends less than the given snapshot length
 		{
-			m:    raftpb.Message{Type: raftpb.MsgSnap, To: 1, Snapshot: &raftpb.Snapshot{}},
+			m:    &raftpb.Message{Type: raftpb.MsgSnap.Enum(), To: new(uint64(1)), Snapshot: &raftpb.Snapshot{}},
 			rc:   strReaderCloser{strings.NewReader("hello")},
 			size: 10000,
 
@@ -73,7 +73,7 @@ func TestSnapshotSend(t *testing.T) {
 		},
 		// sends less than actual snapshot length
 		{
-			m:    raftpb.Message{Type: raftpb.MsgSnap, To: 1, Snapshot: &raftpb.Snapshot{}},
+			m:    &raftpb.Message{Type: raftpb.MsgSnap.Enum(), To: new(uint64(1)), Snapshot: &raftpb.Snapshot{}},
 			rc:   strReaderCloser{strings.NewReader("hello")},
 			size: 1,
 
@@ -83,7 +83,7 @@ func TestSnapshotSend(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sent, files := testSnapshotSend(t, snap.NewMessage(&tt.m, tt.rc, tt.size))
+		sent, files := testSnapshotSend(t, snap.NewMessage(tt.m, tt.rc, tt.size))
 		if tt.wsent != sent {
 			t.Errorf("#%d: snapshot expected %v, got %v", i, tt.wsent, sent)
 		}
@@ -107,7 +107,7 @@ func testSnapshotSend(t *testing.T, sm *snap.Message) (bool, []os.DirEntry) {
 	snapsend := newSnapshotSender(tr, picker, types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)))
 	defer snapsend.stop()
 
-	snapsend.send(*sm)
+	snapsend.send(sm)
 
 	sent := false
 	select {
