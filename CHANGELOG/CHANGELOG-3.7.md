@@ -7,6 +7,15 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 ---
 
+## v3.7.0-rc.1 (TBC)
+
+### Dependencies
+
+- Compile binaries using [go 1.26.4](https://github.com/etcd-io/etcd/pull/21891).
+- Bump golang.org/x/crypto to [v0.52.0](https://github.com/etcd-io/etcd/pull/21903) to resolve several CVEs.
+
+---
+
 ## v3.7.0-rc.0 (2026-06-01)
 
 ### Breaking Changes
