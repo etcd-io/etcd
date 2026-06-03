@@ -57,7 +57,8 @@ func TestCheckV2StoreDetectsWALContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	walsnap := walpb.Snapshot{Index: 1, Term: 1}
+	walsnap := walpb.Snapshot{Index: 1, Term: 1, ConfState: &raftpb.ConfState{Voters: []uint64{1}}}
+
 	if err := w.SaveSnapshot(walsnap); err != nil {
 		t.Fatal(err)
 	}
