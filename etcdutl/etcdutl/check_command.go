@@ -17,16 +17,29 @@ package etcdutl
 import (
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/datadir"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/wal"
+	"go.etcd.io/etcd/server/v3/wal/walpb"
+)
+
+// errors used to signal that custom v2 content was detected in
+// either the v2store snapshot or the WAL records.
+var (
+	errV2StoreCustomContent = errors.New("detected custom content in v2store")
+	errWALCustomContent     = errors.New("detected custom v2 content in WAL records")
 )
 
 // NewCheckCommand returns the cobra command for "check".
@@ -65,10 +78,22 @@ func checkV2StoreRunFunc(_ *cobra.Command, _ []string) {
 	}
 
 	err := checkV2StoreDataDir(snapDir, walDir)
-	if err != nil {
+	v2StoreHasCustom := errors.Is(err, errV2StoreCustomContent)
+	walHasCustom := errors.Is(err, errWALCustomContent)
+
+	switch {
+	case v2StoreHasCustom && walHasCustom:
+		cobrautl.ExitWithError(cobrautl.ExitError,
+			errors.New("detected custom v2 content in both v2store and WAL records"))
+	case v2StoreHasCustom:
+		cobrautl.ExitWithError(cobrautl.ExitError, errV2StoreCustomContent)
+	case walHasCustom:
+		cobrautl.ExitWithError(cobrautl.ExitError, errWALCustomContent)
+	case err != nil:
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	default:
+		fmt.Println("No custom content found in both v2store and WAL records.")
 	}
-	fmt.Println("No custom content found in v2store.")
 }
 
 func checkV2StoreDataDir(snapDir string, walDir string) error {
@@ -84,22 +109,95 @@ func checkV2StoreDataDir(snapDir string, walDir string) error {
 
 	ss := snap.New(lg, snapDir)
 	snapshot, err := ss.LoadNewestAvailable(walSnaps)
-	if err != nil {
-		if errors.Is(err, snap.ErrNoSnapshot) {
-			return nil
-		}
+	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
 		return err
 	}
-	if snapshot == nil {
+
+	// A nil snapshot means there is no v2 snapshot file on disk.
+	// WALs may still contain v2 requests, so we always scan the WALs.
+	// When a v2 snapshot exists we only need to scan records after it.
+	walStart := walpb.Snapshot{}
+	if snapshot != nil {
+		walStart.Index = snapshot.Metadata.Index
+		walStart.Term = snapshot.Metadata.Term
+		walStart.ConfState = &snapshot.Metadata.ConfState
+	}
+
+	var errs []error
+	if snapshot != nil {
+		st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
+		if err := st.Recovery(snapshot.Data); err != nil {
+			return fmt.Errorf("failed to recover v2store from snapshot: %w", err)
+		}
+		if err := assertNoV2StoreContent(st); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if err := checkV2WALRecords(lg, walDir, walStart); err != nil {
+		errs = append(errs, err)
+	}
+
+	return errors.Join(errs...)
+}
+
+// checkV2WALRecords walks every WAL record starting at walSnap and returns
+// errWALCustomContent if any record carries a v2 request that v3.6 would
+// refuse to replay.
+func checkV2WALRecords(lg *zap.Logger, walDir string, walSnap walpb.Snapshot) error {
+	w, err := wal.OpenForRead(lg, walDir, walSnap)
+	if err != nil {
+		if errors.Is(err, wal.ErrFileNotFound) {
+			return nil
+		}
+		return fmt.Errorf("failed to open WAL: %w", err)
+	}
+	defer w.Close()
+
+	// When walSnap is zero, ReadAll returns ErrSnapshotNotFound
+	_, _, ents, err := w.ReadAll()
+	if err != nil && !errors.Is(err, wal.ErrSnapshotNotFound) {
+		return fmt.Errorf("failed to read WAL: %w", err)
+	}
+
+	for i := range ents {
+		if err := assertNoCustomV2Request(&ents[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// assertNoCustomV2Request returns errWALCustomContent if the entry carries a
+// v2 request that v3.6 would panic on replay.
+func assertNoCustomV2Request(e *raftpb.Entry) error {
+	if e.Type != raftpb.EntryNormal || len(e.Data) == 0 {
 		return nil
 	}
 
-	st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
-
-	if err := st.Recovery(snapshot.Data); err != nil {
-		return fmt.Errorf("failed to recover v2store from snapshot: %w", err)
+	var raftReq pb.InternalRaftRequest
+	var v2Req *pb.Request
+	// v2 request is wrapped inside pb.InternalRaftRequest
+	if pbutil.MaybeUnmarshal(&raftReq, e.Data) {
+		v2Req = raftReq.V2
+	} else {
+		// legacy v2 request directly stored in Entry.Data
+		v2Req = &pb.Request{}
+		if err := v2Req.Unmarshal(e.Data); err != nil {
+			return fmt.Errorf("failed to unmarshal WAL entry at index %d: %w", e.Index, err)
+		}
 	}
-	return assertNoV2StoreContent(st)
+	if v2Req == nil {
+		return nil
+	}
+
+	// must satisfy v3.6's v2ToV3Request constraints, otherwise the upgrading panics on replay
+	if v2Req.Method == http.MethodPut &&
+		(etcdserver.StoreMemberAttributeRegexp.MatchString(v2Req.Path) ||
+			v2Req.Path == membership.StoreClusterVersionKey()) {
+		return nil
+	}
+
+	return errWALCustomContent
 }
 
 func assertNoV2StoreContent(st v2store.Store) error {
@@ -110,5 +208,5 @@ func assertNoV2StoreContent(st v2store.Store) error {
 	if metaOnly {
 		return nil
 	}
-	return fmt.Errorf("detected custom content in v2store")
+	return errV2StoreCustomContent
 }
