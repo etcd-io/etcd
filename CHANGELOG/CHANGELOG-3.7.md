@@ -3,7 +3,11 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 ---
 
-## v3.7.0 (TBD)
+## v3.7.0 (TBC)
+
+---
+
+## v3.7.0-rc.0 (2026-06-01)
 
 ### Breaking Changes
 

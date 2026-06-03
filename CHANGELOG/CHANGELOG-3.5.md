@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.31 (TBC)
+## v3.5.32 (TBC)
+
+---
+
+## v3.5.31 (2026-06-01)
 
 ### etcd server
 
@@ -13,6 +17,11 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### etcdutl
 
 - [etcdutl: validate data file path instead of panic](https://github.com/etcd-io/etcd/pull/21769)
+
+### Dependencies
+
+- Compile binaries using [go 1.25.9](https://github.com/etcd-io/etcd/pull/21728)
+- [Bump golang.org/x/crypto to v0.52.0 address GO-2026-5026](https://github.com/etcd-io/etcd/pull/21820)
 
 ---
 
