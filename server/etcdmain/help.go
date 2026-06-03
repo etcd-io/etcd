@@ -142,6 +142,7 @@ Clustering:
     Supported values:
       'not-yet'                // Issues a warning if v2store have meaningful content (default in v3.5)
       'write-only'             // Custom v2 state is not allowed (planned default in v3.6)
+      'write-only-skip-check'  // Custom v2 state is not allowed similar to 'write-only', but bypass the v2 content check. WARNING: Users should read the 3.5 -> 3.6 upgrade guide and use this option at their own risk.
       'write-only-drop-data'   // Custom v2 state will get DELETED !
       'gone'                   // v2store is not maintained any longer. (planned default in v3.7)
 

@@ -22,6 +22,10 @@ const (
 	// Default in v3.6.  Meaningful v2 state is not allowed.
 	// The V2 files are maintained for v3.5 rollback.
 	V2_DEPR_1_WRITE_ONLY = V2DeprecationEnum("write-only")
+	// V2_DEPR_1_WRITE_ONLY_SKIP_CHECK is like V2_DEPR_1_WRITE_ONLY, but bypasses the v2 content check.
+	// Use only for 3.5 -> 3.6 upgrades with existing v2 data.
+	// WARNING: Users should read the 3.5 -> 3.6 upgrade guide and use this option at their own risk.
+	V2_DEPR_1_WRITE_ONLY_SKIP_CHECK = V2DeprecationEnum("write-only-skip-check")
 	// V2store is WIPED if found !!!
 	V2_DEPR_1_WRITE_ONLY_DROP = V2DeprecationEnum("write-only-drop-data")
 	// V2store is neither written nor read. Usage of this configuration is blocking
@@ -39,7 +43,7 @@ func (e V2DeprecationEnum) level() int {
 	switch e {
 	case V2_DEPR_0_NOT_YET:
 		return 0
-	case V2_DEPR_1_WRITE_ONLY:
+	case V2_DEPR_1_WRITE_ONLY, V2_DEPR_1_WRITE_ONLY_SKIP_CHECK:
 		return 1
 	case V2_DEPR_1_WRITE_ONLY_DROP:
 		return 2
