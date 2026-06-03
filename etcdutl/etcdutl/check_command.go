@@ -20,13 +20,17 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/datadir"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/wal"
+	"go.etcd.io/etcd/server/v3/wal/walpb"
 )
 
 // NewCheckCommand returns the cobra command for "check".
@@ -99,6 +103,50 @@ func checkV2StoreDataDir(snapDir string, walDir string) error {
 	if err := st.Recovery(snapshot.Data); err != nil {
 		return fmt.Errorf("failed to recover v2store from snapshot: %w", err)
 	}
+
+	walsnap := walpb.Snapshot{Index: snapshot.Metadata.Index, Term: snapshot.Metadata.Term}
+	w, err := wal.OpenForRead(lg, walDir, walsnap)
+	if err != nil {
+		return fmt.Errorf("failed to open WAL: %w", err)
+	}
+	defer w.Close()
+
+	_, _, ents, err := w.ReadAll()
+	if err != nil {
+		return fmt.Errorf("failed to read WAL: %w", err)
+	}
+
+	applier := etcdserver.NewApplierV2(lg, st, nil)
+	for _, ent := range ents {
+		if ent.Type != raftpb.EntryNormal || len(ent.Data) == 0 {
+			continue
+		}
+		var raftReq etcdserverpb.InternalRaftRequest
+		var v2Req *etcdserverpb.Request
+		if pbutil.MaybeUnmarshal(&raftReq, ent.Data) {
+			v2Req = raftReq.V2
+		} else {
+			v2Req = &etcdserverpb.Request{}
+			pbutil.MustUnmarshal(v2Req, ent.Data)
+		}
+		if v2Req == nil {
+			continue
+		}
+		r := (*etcdserver.RequestV2)(v2Req)
+		switch v2Req.Method {
+		case "POST":
+			applier.Post(r)
+		case "PUT":
+			applier.Put(r, membership.ApplyBoth)
+		case "DELETE":
+			applier.Delete(r)
+		case "QGET":
+			applier.QGet(r)
+		case "SYNC":
+			applier.Sync(r)
+		}
+	}
+
 	return assertNoV2StoreContent(st)
 }
 
