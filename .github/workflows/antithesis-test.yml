@@ -78,7 +78,7 @@ jobs:
       - name: Run Antithesis Tests
         uses: antithesishq/antithesis-trigger-action@72e1bc49d6a5f66c9b892e2b311844e00d342554 # v0.11
         with:
-          notebook_name: etcd
+          notebook_name: etcd_k8s
           tenant: linuxfoundation
           username: ${{ secrets.ANTITHESIS_WEBHOOK_USERNAME }}
           password: ${{ secrets.ANTITHESIS_WEBHOOK_PASSWORD }}
@@ -89,5 +89,5 @@ jobs:
           email_recipients: ${{ inputs.email || 'siarkowicz@google.com' }}
           test_name: ${{ inputs.test || 'etcd nightly antithesis run' }}
           additional_parameters: |-
-            custom.duration = ${{ inputs.duration || 12 }}
+            antithesis.duration = ${{ inputs.duration || 12 }}
             antithesis.source = ${{ inputs.etcd_ref || 'main' }}
