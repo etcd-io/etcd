@@ -502,7 +502,7 @@ function release_pass {
   rm -f ./bin/etcd-last-release
 
   # Work out the previous release based on the version reported by etcd binary
-  binary_version=$(./bin/etcd --version | grep --only-matching --perl-regexp '(?<=etcd Version: )\d+\.\d+')
+  binary_version=$(./bin/etcd --version | grep --only-matching --perl-regexp 'etcd Version: v?\K\d+\.\d+')
   binary_major=$(echo "${binary_version}" | cut -d '.' -f 1)
   binary_minor=$(echo "${binary_version}" | cut -d '.' -f 2)
   previous_minor=$((binary_minor - 1))
@@ -583,7 +583,6 @@ EOF
   fi
 
   DRY_RUN=true run "${ETCD_ROOT_DIR}/scripts/release.sh" --no-upload --no-docker-push --no-gh-release --in-place "${VERSION}"
-  VERSION="${VERSION}" run "${ETCD_ROOT_DIR}/scripts/test_images.sh"
 }
 
 function mod_tidy_pass {

@@ -15,6 +15,9 @@
 		2379,
 		2380
 	],
+	"containerEnv": {
+		"GOTOOLCHAIN": "auto"
+	},
 	// Use 'postCreateCommand' to run commands after the container is created.
 	"postCreateCommand": "make build"
 	// Configure tool-specific properties.
