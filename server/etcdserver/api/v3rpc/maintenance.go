@@ -342,7 +342,7 @@ func (ams *authMaintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest
 }
 
 func (ams *authMaintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {
-	if err := ams.isAuthenticated(ctx); err != nil {
+	if err := ams.requireAuthInfo(ctx); err != nil {
 		return nil, togRPCError(err)
 	}
 	return ams.maintenanceServer.Status(ctx, ar)

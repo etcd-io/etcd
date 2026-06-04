@@ -914,8 +914,11 @@ func TestV3AuthMemberListAndStatus(t *testing.T) {
 	_, err = testUserCli.MemberList(ctx)
 	require.NoError(t, err)
 
+	_, err = anonCli.Status(ctx, clus.Client(0).Endpoints()[0])
+	require.ErrorContains(t, err, "etcdserver: user name is empty")
+
 	_, err = testUserCli.Status(ctx, clus.Client(0).Endpoints()[0])
-	require.ErrorContains(t, err, PermissionDenied)
+	require.NoError(t, err)
 
 	_, err = rootCli.MemberList(ctx)
 	require.NoError(t, err)
