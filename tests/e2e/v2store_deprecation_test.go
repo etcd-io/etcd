@@ -143,7 +143,7 @@ func TestV2DeprecationCheckCustomContentOffline(t *testing.T) {
 		proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath}, nil)
 		assert.NoError(t, err)
 
-		_, err = proc.Expect("No custom content found in v2store")
+		_, err = proc.Expect("No custom content found in both v2store and WAL records.")
 		assert.NoError(t, err)
 	})
 }
@@ -182,7 +182,7 @@ func TestCtlV2CustomContentWithDedicatedWALDir(t *testing.T) {
 	walDirPath := epc.Procs[0].Config().DedicatedWALDirPath
 	proc, err = e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath, "--wal-dir=" + walDirPath}, nil)
 	assert.NoError(t, err)
-	_, err = proc.Expect("detected custom content in v2store")
+	_, err = proc.Expect("detected custom v2 content in both v2store and WAL records")
 	assert.NoError(t, err)
 	proc.Wait()
 }
@@ -224,7 +224,7 @@ func TestCtlV2CustomContentWithAuthData(t *testing.T) {
 	doneC := make(chan struct{})
 	go func() {
 		defer close(doneC)
-		_, err = proc.Expect("No custom content found in v2store")
+		_, err = proc.Expect("No custom content found in both v2store and WAL records.")
 		assert.NoError(t, err)
 	}()
 
@@ -242,6 +242,6 @@ func assertVerifyCheckCustomContentOffline(t *testing.T, dataDirPath string) {
 	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
-	_, err = proc.Expect("detected custom content in v2store")
+	_, err = proc.Expect("detected custom v2 content in both v2store and WAL records")
 	assert.NoError(t, err)
 }
