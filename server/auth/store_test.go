@@ -850,6 +850,11 @@ func TestAuthInfoFromCtx(t *testing.T) {
 	if ai.Username != "foo" {
 		t.Errorf("expected %v, got %v", "foo", ai.Username)
 	}
+
+	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Bearer " + resp.Token}))
+	ai, err = as.AuthInfoFromCtx(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "foo", ai.Username)
 }
 
 func TestAuthDisable(t *testing.T) {
