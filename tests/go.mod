@@ -16,9 +16,9 @@ replace (
 )
 
 require (
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/anishathalye/porcupine v1.1.0
 	github.com/antithesishq/antithesis-sdk-go v0.4.3
-	github.com/coreos/go-semver v0.3.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0

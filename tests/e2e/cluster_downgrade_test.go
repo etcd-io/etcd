@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -102,17 +102,19 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	currentVersion, err := e2e.GetVersionFromBinary(currentEtcdBinary)
 	require.NoError(t, err)
 	// wipe any pre-release suffix like -alpha.0 we see commonly in builds
-	currentVersion.PreRelease = ""
+	currentVersionWithoutPrerelease, err := currentVersion.SetPrerelease("")
+	require.NoError(t, err)
+	currentVersion = &currentVersionWithoutPrerelease
 
 	lastVersion, err := e2e.GetVersionFromBinary(lastReleaseBinary)
 	require.NoError(t, err)
 
-	require.Equalf(t, lastVersion.Minor, currentVersion.Minor-1, "unexpected minor version difference")
+	require.Equalf(t, lastVersion.Minor(), currentVersion.Minor()-1, "unexpected minor version difference")
 	currentVersionStr := currentVersion.String()
 	lastVersionStr := lastVersion.String()
 
-	lastClusterVersion := semver.New(lastVersionStr)
-	lastClusterVersion.Patch = 0
+	lastClusterVersion := semver.MustParse(lastVersionStr)
+	lastClusterVersion = semver.New(lastClusterVersion.Major(), lastClusterVersion.Minor(), 0, "", "")
 
 	e2e.BeforeTest(t)
 

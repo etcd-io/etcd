@@ -5,7 +5,7 @@ go 1.26
 toolchain go1.26.4
 
 require (
-	github.com/coreos/go-semver v0.3.1
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0

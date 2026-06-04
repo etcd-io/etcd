@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -139,7 +139,7 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 	if lg == nil {
 		lg = clus.lg
 	}
-	isDowngrade := targetVersion.LessThan(*currentVersion)
+	isDowngrade := targetVersion.LessThan(currentVersion)
 	opString := "upgrading"
 	newExecPath := BinPath.Etcd
 	if isDowngrade {
@@ -242,16 +242,16 @@ func ValidateVersion(t *testing.T, cfg *EtcdProcessClusterConfig, member EtcdPro
 
 // OffsetMinor returns the version with offset from the original minor, with the same major.
 func OffsetMinor(v *semver.Version, offset int) *semver.Version {
-	var minor int64
+	var minor uint64
 	if offset >= 0 {
-		minor = v.Minor + int64(offset)
+		minor = v.Minor() + uint64(offset)
 	} else {
-		diff := int64(-offset)
-		if diff < v.Minor {
-			minor = v.Minor - diff
+		diff := uint64(-offset)
+		if diff < v.Minor() {
+			minor = v.Minor() - diff
 		}
 	}
-	return &semver.Version{Major: v.Major, Minor: minor}
+	return semver.New(v.Major(), minor, 0, "", "")
 }
 
 func majorMinorVersionsEqual(v1, v2 string) (bool, error) {
@@ -263,7 +263,7 @@ func majorMinorVersionsEqual(v1, v2 string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return ver1.Major == ver2.Major && ver1.Minor == ver2.Minor, nil
+	return ver1.Major() == ver2.Major() && ver1.Minor() == ver2.Minor(), nil
 }
 
 func compareMemberVersion(expect version.Versions, target version.Versions) error {

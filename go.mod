@@ -17,9 +17,9 @@ replace (
 )
 
 require (
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/bgentry/speakeasy v0.2.0
 	github.com/cheggaaa/pb/v3 v3.1.7
-	github.com/coreos/go-semver v0.3.1
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0

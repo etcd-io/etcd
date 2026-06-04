@@ -18,7 +18,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"

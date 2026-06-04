@@ -1,5 +1,14 @@
 [
 	{
+		"project": "github.com/Masterminds/semver/v3",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
+			}
+		]
+	},
+	{
 		"project": "github.com/VividCortex/ewma",
 		"licenses": [
 			{
@@ -85,15 +94,6 @@
 		"licenses": [
 			{
 				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/coreos/go-semver/semver",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
 				"confidence": 1
 			}
 		]

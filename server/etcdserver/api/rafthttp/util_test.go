@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/version"
@@ -58,32 +58,32 @@ func TestCompareMajorMinorVersion(t *testing.T) {
 	}{
 		// equal to
 		{
-			semver.Must(semver.NewVersion("2.1.0")),
-			semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.1.0"),
+			semver.MustParse("2.1.0"),
 			0,
 		},
 		// smaller than
 		{
-			semver.Must(semver.NewVersion("2.0.0")),
-			semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.0.0"),
+			semver.MustParse("2.1.0"),
 			-1,
 		},
 		// bigger than
 		{
-			semver.Must(semver.NewVersion("2.2.0")),
-			semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.2.0"),
+			semver.MustParse("2.1.0"),
 			1,
 		},
 		// ignore patch
 		{
-			semver.Must(semver.NewVersion("2.1.1")),
-			semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.1.1"),
+			semver.MustParse("2.1.0"),
 			0,
 		},
 		// ignore prerelease
 		{
-			semver.Must(semver.NewVersion("2.1.0-alpha.0")),
-			semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.1.0-alpha.0"),
+			semver.MustParse("2.1.0"),
 			0,
 		},
 	}
@@ -102,15 +102,15 @@ func TestServerVersion(t *testing.T) {
 		// backward compatibility with etcd 2.0
 		{
 			http.Header{},
-			semver.Must(semver.NewVersion("2.0.0")),
+			semver.MustParse("2.0.0"),
 		},
 		{
 			http.Header{"X-Server-Version": []string{"2.1.0"}},
-			semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.1.0"),
 		},
 		{
 			http.Header{"X-Server-Version": []string{"2.1.0-alpha.0+git"}},
-			semver.Must(semver.NewVersion("2.1.0-alpha.0+git")),
+			semver.MustParse("2.1.0-alpha.0+git"),
 		},
 	}
 	for i, tt := range tests {
@@ -129,15 +129,15 @@ func TestMinClusterVersion(t *testing.T) {
 		// backward compatibility with etcd 2.0
 		{
 			http.Header{},
-			semver.Must(semver.NewVersion("2.0.0")),
+			semver.MustParse("2.0.0"),
 		},
 		{
 			http.Header{"X-Min-Cluster-Version": []string{"2.1.0"}},
-			semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.1.0"),
 		},
 		{
 			http.Header{"X-Min-Cluster-Version": []string{"2.1.0-alpha.0+git"}},
-			semver.Must(semver.NewVersion("2.1.0-alpha.0+git")),
+			semver.MustParse("2.1.0-alpha.0+git"),
 		},
 	}
 	for i, tt := range tests {
@@ -149,8 +149,8 @@ func TestMinClusterVersion(t *testing.T) {
 }
 
 func TestCheckVersionCompatibility(t *testing.T) {
-	ls := semver.Must(semver.NewVersion(version.Version))
-	lmc := semver.Must(semver.NewVersion(version.MinClusterVersion))
+	ls := semver.MustParse(version.Version)
+	lmc := semver.MustParse(version.MinClusterVersion)
 	tests := []struct {
 		server     *semver.Version
 		minCluster *semver.Version
@@ -165,25 +165,25 @@ func TestCheckVersionCompatibility(t *testing.T) {
 		// one version lower
 		{
 			lmc,
-			&semver.Version{},
+			semver.New(0, 0, 0, "", ""),
 			true,
 		},
 		// one version higher
 		{
-			&semver.Version{Major: ls.Major + 1},
+			semver.New(ls.Major()+1, 0, 0, "", ""),
 			ls,
 			true,
 		},
 		// too low version
 		{
-			&semver.Version{Major: lmc.Major - 1},
-			&semver.Version{},
+			semver.New(lmc.Major()-1, 0, 0, "", ""),
+			semver.New(0, 0, 0, "", ""),
 			false,
 		},
 		// too high version
 		{
-			&semver.Version{Major: ls.Major + 1, Minor: 1},
-			&semver.Version{Major: ls.Major + 1},
+			semver.New(ls.Major()+1, 1, 0, "", ""),
+			semver.New(ls.Major()+1, 0, 0, "", ""),
 			false,
 		},
 	}
