@@ -143,10 +143,7 @@ func setupAuthAndGetRevision(c interfaces.Client, roles []authRole, users []auth
 		return 0, err
 	}
 
-	// This needs to happen before enabling auth for the TestAuthJWTOnly
-	// test case because once auth is enabled we can no longer mint a valid
-	// auth token without the revision, which we won't be able to obtain
-	// without a valid auth token.
+	// Retrieve the current auth revision after creating roles and users but before enabling auth
 	authrev, err := c.AuthStatus(context.TODO())
 	if err != nil {
 		return 0, err
