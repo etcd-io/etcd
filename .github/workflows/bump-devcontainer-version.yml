@@ -4,7 +4,6 @@ on: pull_request
 permissions:
   contents: write
   pull-requests: read
-  workflows: write
 jobs:
   dependabot-metadata:
     runs-on: ubuntu-latest
