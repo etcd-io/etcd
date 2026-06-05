@@ -932,6 +932,74 @@ func TestAuthJWTOnly(t *testing.T) {
 	})
 }
 
+func TestAuthJWTOnlySkipRevision(t *testing.T) {
+	// a verify-only provider must ignore a (stale) revision claim 1 and use the current auth store revision instead
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: verifyJWTOnlyAuth}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		authRev, err := setupAuthAndGetRevision(cc, []authRole{testRole}, []authUser{rootUser, testUser})
+		require.NoErrorf(t, err, "failed to enable auth")
+		require.Greaterf(t, authRev, uint64(1), "expected current auth revision %d to be greater than 1", authRev)
+
+		// get root token with (stale) auth revision 1
+		rootToken, err := createSignedJWT(defaultKeyPath, "RS256", rootUserName, 1)
+		require.NoErrorf(t, err, "failed to create root user JWT")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuthToken(rootToken)))
+
+		fetchAuthRevision := func(rev uint64) uint64 {
+			aresp, aerr := rootAuthClient.AuthStatus(ctx)
+			require.NoError(t, aerr)
+			require.Greaterf(t, aresp.AuthRevision, rev, "expected current auth revision to be greater than revision %d", rev)
+			return aresp.AuthRevision
+		}
+
+		// grant a new key, this bumps the auth revision, the new revision must be greater than authRev
+		_, err = rootAuthClient.RoleGrantPermission(ctx, testRoleName, "hoo", "", clientv3.PermissionType(clientv3.PermReadWrite))
+		require.NoError(t, err)
+		authRev = fetchAuthRevision(authRev)
+
+		// get testUser token with (stale) auth revision 1
+		testUserToken, err := createSignedJWT(defaultKeyPath, "RS256", testUserName, 1)
+		require.NoErrorf(t, err, "failed to create test user JWT")
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuthToken(testUserToken)))
+
+		// try a newly granted key using the "stale" token revision
+		_, err = testUserAuthClient.Put(ctx, "hoo", "bar", config.PutOptions{})
+		require.NoError(t, err)
+		// confirm put succeeded
+		resp, err := testUserAuthClient.Get(ctx, "hoo", config.GetOptions{})
+		require.NoError(t, err)
+		require.Lenf(t, resp.Kvs, 1, "want key value pair 'hoo', 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "hoo", string(resp.Kvs[0].Key), "want key value pair 'hoo', 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "bar", string(resp.Kvs[0].Value), "want key value pair 'hoo', 'bar' but got %+v", resp.Kvs)
+
+		// retry to get hoo after revoking testRole: PermissionDenied
+		_, err = rootAuthClient.UserRevokeRole(ctx, testUserName, testRoleName)
+		require.NoError(t, err)
+		authRev = fetchAuthRevision(authRev)
+		_, err = testUserAuthClient.Get(ctx, "hoo", config.GetOptions{})
+		require.ErrorContains(t, err, PermissionDenied)
+
+		// re-grant testRole
+		_, err = rootAuthClient.UserGrantRole(ctx, testUserName, testRoleName)
+		require.NoError(t, err)
+		authRev = fetchAuthRevision(authRev)
+		_, err = testUserAuthClient.Get(ctx, "hoo", config.GetOptions{})
+		require.NoError(t, err)
+
+		// testUser token must be invalid after user deletion
+		_, err = rootAuthClient.UserDelete(ctx, testUserName)
+		require.NoError(t, err)
+		_ = fetchAuthRevision(authRev)
+		_, err = testUserAuthClient.Get(ctx, "hoo", config.GetOptions{})
+		require.ErrorContains(t, err, PermissionDenied)
+	})
+}
+
 // TestAuthRevisionConsistency ensures auth revision is the same after member restarts
 func TestAuthRevisionConsistency(t *testing.T) {
 	testRunner.BeforeTest(t)
