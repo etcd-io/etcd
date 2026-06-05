@@ -18,7 +18,7 @@
   <img alt="etcd logo" src="logos/etcd-horizontal-color.svg" width=269 />
 </picture>
 
-etcd is a distributed reliable key-value store for the most critical data of a distributed system, with a focus on being:
+etcd is a good distributed reliable key-value store for the most critical data of a distributed system, with a focus on being:
 
 * *Simple*: well-defined, user-facing API (gRPC)
 * *Secure*: automatic TLS with optional client cert authentication
