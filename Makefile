@@ -83,6 +83,10 @@ test-robustness:
 test-coverage:
 	COVERDIR=covdir PASSES="build cov" ./scripts/test.sh $(GO_TEST_FLAGS)
 
+.PHONY: test-devcontainer
+test-devcontainer:
+	./scripts/test/devcontainer.sh
+
 .PHONY: upload-coverage-report
 upload-coverage-report:
 	return_code=0; \
