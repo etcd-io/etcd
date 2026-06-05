@@ -85,10 +85,18 @@ func TestValidate(t *testing.T) {
 			},
 		},
 		{
-			name:           `V3.8 schema is unknown and should return error`,
-			version:        version.V3_8,
+			name:    `V3.8 is correct`,
+			version: version.V3_8,
+			overrideKeys: func(tx backend.UnsafeReadWriter) {
+				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{AutoLeave: new(false)})
+				UnsafeUpdateConsistentIndex(tx, 1, 1)
+			},
+		},
+		{
+			name:           `V3.9 schema is unknown and should return error`,
+			version:        version.V3_9,
 			expectError:    true,
-			expectErrorMsg: `version "3.8.0" is not supported`,
+			expectErrorMsg: `version "3.9.0" is not supported`,
 		},
 	}
 	for _, tc := range tcs {
@@ -166,12 +174,18 @@ func TestMigrate(t *testing.T) {
 			expectVersion: &version.V3_7,
 		},
 		{
-			name:           "Upgrading 3.7 to v3.8 is not supported",
-			version:        version.V3_7,
-			targetVersion:  version.V3_8,
-			expectVersion:  &version.V3_7,
+			name:          "Upgrading 3.7 to v3.8 should work",
+			version:       version.V3_7,
+			targetVersion: version.V3_8,
+			expectVersion: &version.V3_8,
+		},
+		{
+			name:           "Upgrading 3.8 to v3.9 is not supported",
+			version:        version.V3_8,
+			targetVersion:  version.V3_9,
+			expectVersion:  &version.V3_8,
 			expectError:    true,
-			expectErrorMsg: `cannot create migration plan: version "3.8.0" is not supported`,
+			expectErrorMsg: `cannot create migration plan: version "3.9.0" is not supported`,
 		},
 		{
 			name:          "Downgrading v3.7 to v3.6 should work",
@@ -180,12 +194,18 @@ func TestMigrate(t *testing.T) {
 			expectVersion: &version.V3_6,
 		},
 		{
-			name:           "Downgrading v3.8 to v3.7 is not supported",
-			version:        version.V3_8,
-			targetVersion:  version.V3_7,
-			expectVersion:  &version.V3_8,
+			name:          "Downgrading v3.8 to v3.7 should work",
+			version:       version.V3_8,
+			targetVersion: version.V3_7,
+			expectVersion: &version.V3_7,
+		},
+		{
+			name:           "Downgrading v3.9 to v3.8 is not supported",
+			version:        version.V3_9,
+			targetVersion:  version.V3_8,
+			expectVersion:  &version.V3_9,
 			expectError:    true,
-			expectErrorMsg: `cannot create migration plan: version "3.8.0" is not supported`,
+			expectErrorMsg: `cannot create migration plan: version "3.9.0" is not supported`,
 		},
 		{
 			name:          "Downgrading v3.6 to v3.5 works as there are no v3.6 wal entries",
@@ -338,6 +358,11 @@ func setupBackendData(t *testing.T, ver semver.Version, overrideKeys func(tx bac
 			MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{AutoLeave: new(false)})
 			UnsafeUpdateConsistentIndex(tx, 1, 1)
 			UnsafeSetStorageVersion(tx, &version.V3_8)
+			tx.UnsafePut(Meta, []byte("future-key"), []byte(""))
+		case version.V3_9:
+			MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{AutoLeave: new(false)})
+			UnsafeUpdateConsistentIndex(tx, 1, 1)
+			UnsafeSetStorageVersion(tx, &version.V3_9)
 			tx.UnsafePut(Meta, []byte("future-key"), []byte(""))
 		default:
 			t.Fatalf("Unsupported storage version")
