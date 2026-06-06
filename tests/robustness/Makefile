@@ -13,8 +13,12 @@ test-robustness-reports:
 TOPLEVEL_MAKE := $(MAKE) --directory=$(REPOSITORY_ROOT)
 
 .PHONY: test-robustness-main
-test-robustness-main: /tmp/etcd-main-failpoints/bin /tmp/etcd-release-3.6-failpoints/bin
-	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-main-failpoints/bin --bin-last-release=/tmp/etcd-release-3.6-failpoints/bin/etcd" $(TOPLEVEL_MAKE) test-robustness
+test-robustness-main: /tmp/etcd-main-failpoints/bin /tmp/etcd-release-3.7-failpoints/bin
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-main-failpoints/bin --bin-last-release=/tmp/etcd-release-3.7-failpoints/bin/etcd" $(TOPLEVEL_MAKE) test-robustness
+
+.PHONY: test-robustness-release-3.7
+test-robustness-release-3.7: /tmp/etcd-release-3.7-failpoints/bin /tmp/etcd-release-3.6-failpoints/bin
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.7-failpoints/bin --bin-last-release=/tmp/etcd-release-3.6-failpoints/bin/etcd" $(TOPLEVEL_MAKE) test-robustness
 
 .PHONY: test-robustness-release-3.6
 test-robustness-release-3.6: /tmp/etcd-release-3.6-failpoints/bin /tmp/etcd-release-3.5-failpoints/bin
@@ -141,6 +145,14 @@ $(GOPATH)/bin/gofail: $(REPOSITORY_ROOT)/tools/mod/go.mod $(REPOSITORY_ROOT)/too
 	  git remote add origin https://github.com/etcd-io/etcd.git; \
 	  git fetch --depth 1 origin bc47e7711664ec5557c5ae528d0d02175ea6e166; \
 	  git checkout FETCH_HEAD; \
+	  $(MAKE) gofail-enable; \
+	  $(MAKE) build;
+
+/tmp/etcd-release-3.7-failpoints/bin: $(GOPATH)/bin/gofail
+	rm -rf /tmp/etcd-release-3.7-failpoints/
+	mkdir -p /tmp/etcd-release-3.7-failpoints/
+	cd /tmp/etcd-release-3.7-failpoints/; \
+	  git clone --depth 1 --branch release-3.7 https://github.com/etcd-io/etcd.git .; \
 	  $(MAKE) gofail-enable; \
 	  $(MAKE) build;
 
