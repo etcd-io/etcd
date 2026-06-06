@@ -746,3 +746,28 @@ func BenchmarkMergeMemberEntries(b *testing.B) {
 		}
 	}
 }
+
+func TestParseEntryNormal_IgnoreV2(t *testing.T) {
+	tcs := []struct {
+		name string
+		data []byte
+	}{
+		{
+			name: "invalid wire format (proto: cannot parse invalid wire-format data)",
+			// 0x1a is field number 3 (RangeRequest), wire type 2 (length-delimited).
+			// Followed by length 5 and bytes that do not form a valid RangeRequest message.
+			data: []byte{0x1a, 0x05, 'a', 'b', 'c', 'd', 'e'},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			ent := &raftpb.Entry{
+				Data: tc.data,
+			}
+			req, err := parseEntryNormal(ent)
+			require.NoError(t, err)
+			require.Nil(t, req)
+		})
+	}
+}

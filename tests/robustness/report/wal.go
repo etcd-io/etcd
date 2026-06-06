@@ -237,7 +237,7 @@ func parseEntryNormal(ent *raftpb.Entry) (*model.EtcdRequest, error) {
 		// v3.7 protobuf can no longer parse. As a result, robustness fails when
 		// parsing those WAL entries. We intentionally ignore this error here.
 		// See https://github.com/etcd-io/etcd/pull/21263#discussion_r2776042340
-		if strings.Contains(err.Error(), "proto: wrong wireType") {
+		if errors.Is(err, proto.Error) {
 			return nil, nil
 		}
 		return nil, err
