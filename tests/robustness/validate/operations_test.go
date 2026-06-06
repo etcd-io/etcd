@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/anishathalye/porcupine"
+	"go.uber.org/goleak"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -295,6 +296,7 @@ func keyValueRevision(key, value string, rev int64) model.KeyValue {
 }
 
 func TestValidateLinearizableOperationsTimeoutIsRespected(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	timeout := time.Second
 	const failedPutCount = 17
 	// Repeat the range read to make the final applyRequestWithResponse step slow.
@@ -350,11 +352,11 @@ func TestValidateLinearizableOperationsTimeoutIsRespected(t *testing.T) {
 	result := validateLinearizableOperationsAndVisualize(zap.NewNop(), keys, history, timeout)
 	elapsed := time.Since(start)
 
-	if result.Status != DeadlineExceeded {
-		t.Fatalf("validateLinearizableOperationsAndVisualize(...) status = %q, want %q", result.Status, DeadlineExceeded)
+	if result.Status != Timeout {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) status = %q, want %q", result.Status, Timeout)
 	}
-	if result.Message != "deadline exceeded" {
-		t.Fatalf("validateLinearizableOperationsAndVisualize(...) message = %q, want %q", result.Message, "deadline exceeded")
+	if result.Message != "timed out" {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) message = %q, want %q", result.Message, "timed out")
 	}
 	if elapsed > timeout+250*time.Millisecond {
 		t.Fatalf("validateLinearizableOperationsAndVisualize(...) does not respect timeout: %v, timeout was %v", elapsed, timeout)
