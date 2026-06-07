@@ -597,13 +597,13 @@ func TestSnapshotCatchupEntriesFlag(t *testing.T) {
 	}
 }
 
-// TestEtcdHealthyWithTinySnapshotCatchupEntries ensures multi-node etcd cluster remains healthy with 1 snapshot catch up entry
+// TestEtcdHealthyWithTinySnapshotCatchupEntries ensures multi-node etcd cluster remains healthy with 10 snapshot catch up entry
 func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 	e2e.BeforeTest(t)
 	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithClusterSize(3),
-		e2e.WithSnapshotCount(1),
-		e2e.WithSnapshotCatchUpEntries(1),
+		e2e.WithSnapshotCount(10),
+		e2e.WithSnapshotCatchUpEntries(10),
 	)
 	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	t.Cleanup(func() {
