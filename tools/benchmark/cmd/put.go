@@ -125,10 +125,11 @@ func putFunc(cmd *cobra.Command, _ []string) {
 		}()
 	}
 
+	finish := printReport(r)
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()
-	printReport(r)
+	finish()
 
 	if checkHashkv {
 		hashKV(cmd, clients)

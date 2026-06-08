@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2026 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,17 +31,27 @@ func init() {
 // printReport writes benchmark statistics to stdout in the format chosen by
 // --output-format. All sub-commands should call this function instead of
 // printing report.Run() output directly so that JSON support is automatic.
-func printReport(r report.Report) {
+func printReport(r report.Report, prefixes ...string) func() {
+	prefix := ""
+	if len(prefixes) > 0 {
+		prefix = prefixes[0]
+	}
 	switch outputFormat {
 	case "json":
-		s := <-r.Stats()
-		out, err := report.FormatJSON(s)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "benchmark: JSON encode error: %v\n", err)
-			os.Exit(1)
+		rc := r.Stats()
+		return func() {
+			s := <-rc
+			out, err := report.FormatJSON(s)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "benchmark: JSON encode error: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println(out)
 		}
-		fmt.Println(out)
-	default: // "text" — original behaviour, unchanged
-		fmt.Println(<-r.Run())
+	default:
+		rc := r.Run()
+		return func() {
+			fmt.Printf("%s%s", prefix, <-rc)
+		}
 	}
 }

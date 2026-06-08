@@ -118,6 +118,7 @@ func benchMakeWatches(clients []*clientv3.Client, wk *watchedKeys) {
 	bar.Start()
 
 	r := newReport("watch-make")
+	finish := printReport(r)
 	rch := r.Results()
 
 	wg.Add(len(streams) + 1)
@@ -149,11 +150,11 @@ func benchMakeWatches(clients []*clientv3.Client, wk *watchedKeys) {
 		}
 	}()
 
-	rc := r.Run()
+
 	wg.Wait()
 	bar.Finish()
 	close(r.Results())
-	fmt.Printf("Watch creation summary:\n%s", <-rc)
+	finish()
 
 	for i := 0; i < len(streams); i++ {
 		wk.watches = append(wk.watches, (<-wc)...)
@@ -190,6 +191,7 @@ func benchPutWatches(clients []*clientv3.Client, wk *watchedKeys) {
 	bar.Start()
 
 	r := newReport("watch-put")
+	finish := printReport(r)
 
 	wg.Add(len(wk.watches))
 	nrRxed := int32(eventsTotal)
@@ -228,11 +230,11 @@ func benchPutWatches(clients []*clientv3.Client, wk *watchedKeys) {
 		}(cc)
 	}
 
-	rc := r.Run()
+
 	wg.Wait()
 	bar.Finish()
 	close(r.Results())
-	fmt.Printf("Watch events received summary:\n%s", <-rc)
+	finish()
 }
 
 func recvWatchChan(wch clientv3.WatchChan, results chan<- report.Result, nrRxed *int32) {
