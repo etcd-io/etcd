@@ -9,6 +9,7 @@ nodes:
         readOnly: true
     kubeadmConfigPatches:
       - |
+        apiVersion: kubeadm.k8s.io/v1beta4
         kind: ClusterConfiguration
         etcd:
           external:
@@ -16,7 +17,8 @@ nodes:
               - http://192.168.32.1:2379
         apiServer:
             extraArgs:
-              tracing-config-file: "/apiserver-shared-conf/tracing.yaml"
+              - name: tracing-config-file
+                value: "/apiserver-shared-conf/tracing.yaml"
             extraVolumes:
               - name: tracing
                 hostPath: "/apiserver-shared-conf"
