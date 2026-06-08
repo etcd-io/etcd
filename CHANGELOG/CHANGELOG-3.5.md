@@ -11,6 +11,11 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Add [`write-only-skip-check` option for `--v2-deprecation` to bypass the v2 content check](https://github.com/etcd-io/etcd/pull/21897)
 - [server: allow non-admin maintenance status](https://github.com/etcd-io/etcd/pull/21815)
 
+### Dependencies
+
+- Compile binaries using [go 1.25.11](https://github.com/etcd-io/etcd/pull/21893)
+- Bump `go.opentelemetry.io/otel` from `v1.40.0` to `v1.43.0` and `go.opentelemetry.io/otel/sdk` from `v1.40.0` to `v1.43.0` to address CVE-2026-29181 and CVE-2026-39883 ([#21919](https://github.com/etcd-io/etcd/pull/21919)).
+
 ---
 
 ## v3.5.31 (2026-06-01)
