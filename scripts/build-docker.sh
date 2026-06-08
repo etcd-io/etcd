@@ -15,49 +15,63 @@
 
 set -euo pipefail
 
-if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 VERSION" >&2
+if [ "$#" -lt 1 ]; then
+  echo "Usage: $0 VERSION [NO_DOCKER_PUSH]" >&2
   exit 1
 fi
 
 VERSION=${1}
 if [ -z "$VERSION" ]; then
-  echo "Usage: ${0} VERSION" >&2
+  echo "Usage: ${0} VERSION [NO_DOCKER_PUSH]" >&2
   exit 1
 fi
+NO_DOCKER_PUSH=${2:-}
 
-ARCH=$(go env GOARCH)
-VERSION="${VERSION}-${ARCH}"
-DOCKERFILE="Dockerfile"
+PLATFORMS=${PLATFORMS:-"linux/amd64,linux/arm64,linux/ppc64le,linux/s390x"}
 
-if [ -z "${BINARYDIR:-}" ]; then
-  RELEASE="etcd-${1}"-$(go env GOOS)-${ARCH}
-  BINARYDIR="${RELEASE}"
-  TARFILE="${RELEASE}.tar.gz"
-  TARURL="https://github.com/etcd-io/etcd/releases/download/${1}/${TARFILE}"
-  if ! curl -f -L -o "${TARFILE}" "${TARURL}" ; then
-    echo "Failed to download ${TARURL}."
-    exit 1
+BUILDDIR=${BUILDDIR:-release}
+mkdir -p "${BUILDDIR}"
+
+for platform in $(echo "${PLATFORMS}" | tr ',' ' '); do
+  RELEASE="etcd-${VERSION}-linux-${platform#linux/}"
+  if [ ! -d "${BUILDDIR}/${RELEASE}" ]; then
+    TARFILE="${RELEASE}.tar.gz"
+    TARURL="https://github.com/etcd-io/etcd/releases/download/${VERSION}/${TARFILE}"
+    if ! curl -f -L -o "${BUILDDIR}/${TARFILE}" "${TARURL}" ; then
+      echo "Failed to download ${TARURL}."
+      exit 1
+    fi
+    tar -C "${BUILDDIR}" -zvxf "${BUILDDIR}/${TARFILE}"
   fi
-  tar -zvxf "${TARFILE}"
+done
+
+tag_args=()
+if [ -z "${OCI_REGISTRY:-}" ]; then
+  tag_args+=("-t" "gcr.io/etcd-development/etcd:${VERSION}")
+  tag_args+=("-t" "quay.io/coreos/etcd:${VERSION}")
+else
+  tag_args+=("-t" "${OCI_REGISTRY}/${OCI_PATH:-etcd}:${VERSION}")
 fi
 
-BINARYDIR=${BINARYDIR:-.}
-BUILDDIR=${BUILDDIR:-.}
-
-IMAGEDIR=${BUILDDIR}/image-docker
-
-mkdir -p "${IMAGEDIR}"/var/etcd
-mkdir -p "${IMAGEDIR}"/var/lib/etcd
-cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${BINARYDIR}"/etcdutl "${IMAGEDIR}"
-
-cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
-
-if [ -z "${TAG:-}" ]; then
-    # Fix incorrect image "Architecture" using buildkit
-    # From https://stackoverflow.com/q/72144329/
-    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
-    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
+if [ "${NO_DOCKER_PUSH}" == 1 ]; then
+  # Build a single architecture to be tested later.
+  docker build --build-arg="VERSION=${VERSION}" \
+    --build-arg="BUILDDIR=${BUILDDIR}" \
+    --build-arg="TARGETARCH=$(go env GOARCH)" \
+    "${tag_args[@]}" \
+    .
 else
-    docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
+  docker run --privileged --rm tonistiigi/binfmt --install all
+  docker buildx rm --force multiarch-multiplatform-builder || true
+  docker buildx create \
+    --name multiarch-multiplatform-builder \
+    --driver docker-container \
+    --bootstrap --use
+  docker buildx build --build-arg="VERSION=${VERSION}" \
+    --build-arg="BUILDDIR=${BUILDDIR}" \
+    --platform="${PLATFORMS}" \
+    --push \
+    "${tag_args[@]}" \
+    .
+  docker buildx stop multiarch-multiplatform-builder
 fi
