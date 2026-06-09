@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -881,6 +883,11 @@ func TestAuthInfoFromCtx(t *testing.T) {
 	if ai.Username != "foo" {
 		t.Errorf("expected %v, got %v", "foo", ai.Username)
 	}
+
+	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Bearer " + resp.Token}))
+	ai, err = as.AuthInfoFromCtx(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "foo", ai.Username)
 }
 
 func TestAuthDisable(t *testing.T) {
