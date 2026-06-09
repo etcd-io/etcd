@@ -13,15 +13,16 @@ ALLOWLIST="${TOOL_SRC}/allowlist.txt"
 
 FAILURES=0
 
-for MOD_DIR in $(module_dirs); do
+modules=()
+load_workspace_relative_modules modules
+
+for module in "${modules[@]}"; do
   echo "------------------------------------------------"
-  echo "Checking module: ${MOD_DIR}"
-  pushd "${MOD_DIR}" > /dev/null
-    if ! go run "${TOOL_SRC}" -allow-list="${ALLOWLIST}" ./...; then
-      echo "ERROR: Experimental usage found in ${MOD_DIR}"
-      FAILURES=$((FAILURES+1))
-    fi
-  popd > /dev/null
+  echo "Checking module: ${module}"
+  if ! go run "${TOOL_SRC}" -allow-list="${ALLOWLIST}" "${module}"; then
+    echo "ERROR: Experimental usage found in ${module}"
+    FAILURES=$((FAILURES+1))
+  fi
 done
 
 echo "------------------------------------------------"
