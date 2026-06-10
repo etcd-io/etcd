@@ -143,7 +143,7 @@ func TestV2DeprecationCheckCustomContentOffline(t *testing.T) {
 		proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath}, nil)
 		assert.NoError(t, err)
 
-		_, err = proc.Expect("No custom content found in v2store")
+		_, err = proc.Expect("No custom content found in both v2store and WAL records.")
 		assert.NoError(t, err)
 	})
 }
@@ -154,7 +154,7 @@ func TestCtlV2CustomContentWithDedicatedWALDir(t *testing.T) {
 	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
 		ClusterSize:           1,
 		EnableV2:              true,
-		SnapshotCount:         1,
+		SnapshotCount:         3,
 		EnableDedicatedWALDir: true,
 	})
 	require.NoError(t, err)
@@ -182,7 +182,7 @@ func TestCtlV2CustomContentWithDedicatedWALDir(t *testing.T) {
 	walDirPath := epc.Procs[0].Config().DedicatedWALDirPath
 	proc, err = e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath, "--wal-dir=" + walDirPath}, nil)
 	assert.NoError(t, err)
-	_, err = proc.Expect("detected custom content in v2store")
+	_, err = proc.Expect("detected custom v2 content in both v2store and WAL records")
 	assert.NoError(t, err)
 	proc.Wait()
 }
@@ -224,7 +224,7 @@ func TestCtlV2CustomContentWithAuthData(t *testing.T) {
 	doneC := make(chan struct{})
 	go func() {
 		defer close(doneC)
-		_, err = proc.Expect("No custom content found in v2store")
+		_, err = proc.Expect("No custom content found in both v2store and WAL records.")
 		assert.NoError(t, err)
 	}()
 
@@ -242,6 +242,66 @@ func assertVerifyCheckCustomContentOffline(t *testing.T, dataDirPath string) {
 	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
+	_, err = proc.Expect("detected custom v2 content in both v2store and WAL records")
+	assert.NoError(t, err)
+}
+
+// TestCtlV2CustomContentOnlyV2Store verifies the case that only v2store has custom v2 content.
+func TestCtlV2CustomContentOnlyV2Store(t *testing.T) {
+	BeforeTestV2(t)
+
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize:   1,
+		EnableV2:      true,
+		SnapshotCount: 5,
+	})
+	require.NoError(t, err)
+
+	if err := e2e.CURLPut(epc, e2e.CURLReq{
+		Endpoint: "/v2/keys/foo", Value: "bar0",
+		Expected: `{"action":"set","node":{"key":"/foo","value":"bar0"`,
+	}); err != nil {
+		t.Fatalf("failed put with curl (%v)", err)
+	}
+
+	cCtx := getDefaultCtlCtx(t)
+	cCtx.epc = epc
+	for i := 0; i < 5; i++ {
+		assert.NoError(t, ctlV3Put(cCtx, fmt.Sprintf("key%d", i), fmt.Sprintf("value%d", i), ""))
+	}
+
+	require.NoError(t, epc.Stop())
+
+	dataDirPath := epc.Procs[0].Config().DataDirPath
+	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath}, nil)
+	assert.NoError(t, err)
 	_, err = proc.Expect("detected custom content in v2store")
+	assert.NoError(t, err)
+}
+
+// TestCtlV2CustomContentOnlyWAL verifies the case that only WAL records have custom v2 content.
+func TestCtlV2CustomContentOnlyWAL(t *testing.T) {
+	BeforeTestV2(t)
+
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize:   1,
+		EnableV2:      true,
+		SnapshotCount: 100,
+	})
+	require.NoError(t, err)
+
+	if err := e2e.CURLPut(epc, e2e.CURLReq{
+		Endpoint: "/v2/keys/foo", Value: "bar0",
+		Expected: `{"action":"set","node":{"key":"/foo","value":"bar0"`,
+	}); err != nil {
+		t.Fatalf("failed put with curl (%v)", err)
+	}
+
+	require.NoError(t, epc.Stop())
+
+	dataDirPath := epc.Procs[0].Config().DataDirPath
+	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath}, nil)
+	assert.NoError(t, err)
+	_, err = proc.Expect("detected custom v2 content in WAL records")
 	assert.NoError(t, err)
 }

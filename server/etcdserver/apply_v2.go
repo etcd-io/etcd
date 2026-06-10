@@ -82,7 +82,7 @@ func (a *applierV2store) Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV
 	case r.PrevIndex > 0 || r.PrevValue != "":
 		return toResponse(a.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
 	default:
-		if storeMemberAttributeRegexp.MatchString(r.Path) {
+		if StoreMemberAttributeRegexp.MatchString(r.Path) {
 			id := membership.MustParseMemberIDFromKey(a.lg, path.Dir(r.Path))
 			var attr membership.Attributes
 			if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {

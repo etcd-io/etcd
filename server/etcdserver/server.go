@@ -114,7 +114,7 @@ var (
 	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
 
 	recommendedMaxRequestBytesString = humanize.Bytes(uint64(recommendedMaxRequestBytes))
-	storeMemberAttributeRegexp       = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
+	StoreMemberAttributeRegexp       = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
 )
 
 func init() {
