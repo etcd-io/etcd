@@ -48,6 +48,7 @@ var (
 type StoreConfig struct {
 	CompactionBatchLimit    int
 	CompactionSleepInterval time.Duration
+	IndexDrivenCompaction   bool
 }
 
 type store struct {
@@ -238,17 +239,26 @@ func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64, prevC
 			s.compactBarrier(ctx, ch)
 			return
 		}
-		hash, err := s.scheduleCompaction(rev, prevCompactRev)
+		var hash KeyValueHash
+		var err error
+		if s.cfg.IndexDrivenCompaction {
+			hash, err = s.scheduleCompactionIndexDriven(rev, prevCompactRev)
+		} else {
+			hash, err = s.scheduleCompaction(rev, prevCompactRev)
+		}
 		if err != nil {
 			s.lg.Warn("Failed compaction", zap.Error(err))
 			s.compactBarrier(context.TODO(), ch)
 			return
 		}
-		// Only store the hash value if the previous hash is completed, i.e. this compaction
-		// hashes every revision from last compaction. For more details, see #15919.
-		if prevCompactionCompleted {
+		switch {
+		case s.cfg.IndexDrivenCompaction:
+			s.lg.Info("index-driven compaction enabled, skip storing compaction hash value")
+		case prevCompactionCompleted:
+			// Only store the hash value if the previous hash is completed, i.e. this compaction
+			// hashes every revision from last compaction. For more details, see #15919.
 			s.hashes.Store(hash)
-		} else {
+		default:
 			s.lg.Info("previous compaction was interrupted, skip storing compaction hash value")
 		}
 		close(ch)
