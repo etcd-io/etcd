@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
@@ -441,6 +442,45 @@ func TestWriteTxnPanicWithoutApply(t *testing.T) {
 	// we verify the following properties below:
 	// 1. server panics after a write txn aply fails (invariant: server should never try to move on from a failed write)
 	// 2. no writes from the txn are applied to the backend (invariant: failed write should have no side-effect on DB state besides panic)
+	assert.Panicsf(t, func() { Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}, false) }, "Expected panic in Txn with writes")
+	dbHashAfter, err := computeFileHash(bePath)
+	require.NoErrorf(t, err, "failed to compute DB file hash after txn")
+	require.Equalf(t, dbHashBefore, dbHashAfter, "mismatch in DB hash before and after failed write txn")
+}
+
+// Copy of TestWriteTxnPanicWithoutApply, but with goleak to verify that all background goroutines have exited.
+func TestWriteTxnPanicWithoutApply_deadlock(t *testing.T) {
+	testutil.RegisterLeakDetection(t)
+	b, bePath := betesting.NewDefaultTmpBackend(t)
+	s := mvcc.NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	defer s.Close()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	txn := &pb.TxnRequest{
+		Success: []*pb.RequestOp{
+			{
+				Request: &pb.RequestOp_RequestPut{
+					RequestPut: &pb.PutRequest{
+						Key:   []byte("foo"),
+						Value: []byte("bar"),
+					},
+				},
+			},
+			{
+				Request: &pb.RequestOp_RequestRange{
+					RequestRange: &pb.RangeRequest{
+						Key: []byte("foo"),
+					},
+				},
+			},
+		},
+	}
+
+	dbHashBefore, err := computeFileHash(bePath)
+	require.NoErrorf(t, err, "failed to compute DB file hash before txn")
+
 	assert.Panicsf(t, func() { Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}, false) }, "Expected panic in Txn with writes")
 	dbHashAfter, err := computeFileHash(bePath)
 	require.NoErrorf(t, err, "failed to compute DB file hash after txn")
