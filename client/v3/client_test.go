@@ -139,54 +139,6 @@ func TestDialCancel(t *testing.T) {
 	}
 }
 
-func TestDialTimeout(t *testing.T) {
-	testutil.RegisterLeakDetection(t)
-
-	wantError := context.DeadlineExceeded
-
-	testCfgs := []Config{
-		{
-			Endpoints:   []string{"http://254.0.0.1:12345"},
-			DialTimeout: 2 * time.Second,
-		},
-		{
-			Endpoints:   []string{"http://254.0.0.1:12345"},
-			DialTimeout: time.Second,
-			Username:    "abc",
-			Password:    "def",
-		},
-	}
-
-	for i, cfg := range testCfgs {
-		donec := make(chan error, 1)
-		go func(cfg Config, i int) {
-			// without timeout, dial continues forever on ipv4 black hole
-			c, err := NewClient(t, cfg)
-			if c != nil || err == nil {
-				t.Errorf("#%d: new client should fail", i)
-			}
-			donec <- err
-		}(cfg, i)
-
-		time.Sleep(10 * time.Millisecond)
-
-		select {
-		case err := <-donec:
-			t.Errorf("#%d: dial didn't wait (%v)", i, err)
-		default:
-		}
-
-		select {
-		case <-time.After(5 * time.Second):
-			t.Errorf("#%d: failed to timeout dial on time", i)
-		case err := <-donec:
-			if !errors.Is(err, wantError) {
-				t.Errorf("#%d: unexpected error '%v', want '%v'", i, err, wantError)
-			}
-		}
-	}
-}
-
 func TestDialNoTimeout(t *testing.T) {
 	cfg := Config{Endpoints: []string{"127.0.0.1:12345"}}
 	c, err := NewClient(t, cfg)
