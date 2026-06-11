@@ -32,7 +32,7 @@ func TestTLSClientCipherSuitesValid(t *testing.T)    { testTLSCipherSuites(t, tr
 func TestTLSClientCipherSuitesMismatch(t *testing.T) { testTLSCipherSuites(t, false) }
 
 // testTLSCipherSuites ensures mismatching client-side cipher suite
-// fail TLS handshake with the server.
+// fail the range request to the server.
 func testTLSCipherSuites(t *testing.T, valid bool) {
 	integration.BeforeTest(t)
 
@@ -67,14 +67,20 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 		DialTimeout: time.Second,
 		TLS:         cc,
 	})
-	if cli != nil {
-		cli.Close()
-	}
-	if !valid && !errors.Is(cerr, context.DeadlineExceeded) {
-		t.Fatalf("expected %v with TLS handshake failure, got %v", context.DeadlineExceeded, cerr)
-	}
-	if valid && cerr != nil {
-		t.Fatalf("expected TLS handshake success, got %v", cerr)
+	require.NoError(t, cerr)
+	defer func() {
+		require.NoError(t, cli.Close())
+	}()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	_, rerr := cli.Get(ctx, "foo")
+	cancel()
+	if valid {
+		require.NoError(t, rerr)
+	} else {
+		if !errors.Is(rerr, context.DeadlineExceeded) {
+			t.Fatalf("expected %v with TLS handshake failure, got %v", context.DeadlineExceeded, rerr)
+		}
 	}
 }
 
