@@ -19,6 +19,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -182,6 +183,10 @@ func TestDialTimeout(t *testing.T) {
 		case err := <-donec:
 			if !errors.Is(err, wantError) {
 				t.Errorf("#%d: unexpected error '%v', want '%v'", i, err, wantError)
+			}
+
+			if !strings.Contains(err.Error(), cfg.Endpoints[0]) {
+				t.Errorf("#%d: error should contain endpoint, got '%v'", i, err)
 			}
 		}
 	}
