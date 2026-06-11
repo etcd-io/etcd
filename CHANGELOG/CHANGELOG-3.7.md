@@ -11,7 +11,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 ### Package `clientv3`
 
-- [Make the etcd client creation non-blocking](https://github.com/etcd-io/etcd/pull/21832): etcd no longer honors the deprecated `grpc.WithBlock` dial option. To preserve the previous blocking behavior when needed, follow the guidance in grpc-go's [anti-patterns documentation](https://github.com/grpc/grpc-go/blob/master/Documentation/anti-patterns.md#especially-bad-using-deprecated-dialoptions).
+- [Make the etcd client creation non-blocking](https://github.com/etcd-io/etcd/pull/21942): etcd no longer honors the deprecated `grpc.WithBlock` dial option. To preserve the previous blocking behavior when needed, follow the guidance in grpc-go's [anti-patterns documentation](https://github.com/grpc/grpc-go/blob/master/Documentation/anti-patterns.md#especially-bad-using-deprecated-dialoptions).
 
 ### etcd server
 
