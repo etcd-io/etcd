@@ -77,6 +77,13 @@ type Config struct {
 	// "grpc.WithBlock()". Use DialTimeout to bound client initialization time.
 	DialOptions []grpc.DialOption
 
+	// ChannelKeys is a list of additional gRPC channels to initialize during
+	// client creation.
+	//
+	// Experimental: this option is subject to change or removal without notice.
+	// The reserved empty and "default" keys are not allowed.
+	ChannelKeys []string
+
 	// Context is the default client context; it can be used to cancel grpc dial out and
 	// other operations that do not have an explicit context.
 	Context context.Context

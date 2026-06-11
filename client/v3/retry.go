@@ -100,7 +100,7 @@ type retryKVClient struct {
 // RetryKVClient implements a KVClient.
 func RetryKVClient(c *Client) pb.KVClient {
 	return &retryKVClient{
-		kc: pb.NewKVClient(c.conn),
+		kc: pb.NewKVClient(&routingClientConn{client: c}),
 	}
 }
 
