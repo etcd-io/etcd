@@ -12,6 +12,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - [server: allow non-admin maintenance status](https://github.com/etcd-io/etcd/pull/21815)
 - Fix [websocket authentication with bearer-prefixed auth tokens](https://github.com/etcd-io/etcd/pull/21935).
 
+### etcdutl
+
+- [enhance `etcdutl check v2store` to check both v2 snapshot and WAL records](https://github.com/etcd-io/etcd/pull/21889)
+
 ### Dependencies
 
 - Compile binaries using [go 1.25.11](https://github.com/etcd-io/etcd/pull/21893)
