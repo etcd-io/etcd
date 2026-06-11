@@ -17,6 +17,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -1951,9 +1952,13 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	clus.Members[0].ClientTLSInfo = &integration.TestTLSInfo
 	clus.Members[0].GRPCURL = strings.Replace(clus.Members[0].GRPCURL, "http://", "https://", 1)
 	client, err := integration.NewClientV3(clus.Members[0])
-	if client != nil || err == nil {
-		client.Close()
-		t.Fatalf("expected no client")
+	require.NoError(t, err)
+	defer client.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	_, err = client.Status(ctx, client.Endpoints()[0])
+	cancel()
+	if err == nil {
+		t.Fatalf("expected error")
 	} else if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("unexpected error (%v)", err)
 	}
@@ -2082,11 +2087,15 @@ func testTLSReload(
 	})
 	defer clus.Terminate(t)
 
-	// 3. concurrent client dialing while certs become expired
+	// 3. concurrent client creation while certs become expired
 	errc := make(chan error, 1)
+	donec := make(chan struct{})
+	var tlsInvalid *tls.Config
 	go func() {
+		defer close(donec)
 		for {
-			cc, err := tlsInfo.ClientConfig()
+			var err error
+			tlsInvalid, err = tlsInfo.ClientConfig()
 			if err != nil {
 				// errors in 'go/src/crypto/tls/tls.go'
 				// tls: private key does not match public key
@@ -2099,44 +2108,67 @@ func testTLSReload(
 			cli, cerr := integration.NewClient(t, clientv3.Config{
 				Endpoints:   []string{clus.Members[0].GRPCURL},
 				DialTimeout: time.Second,
-				TLS:         cc,
+				TLS:         tlsInvalid,
 			})
 			if cerr != nil {
 				errc <- cerr
-				return
 			}
 			cli.Close()
+			return
 		}
 	}()
 
 	// 4. replace certs with expired ones
 	replaceFunc()
 
-	// 5. expect dial time-out when loading expired certs
 	select {
 	case gerr := <-errc:
-		if !errors.Is(gerr, context.DeadlineExceeded) {
-			t.Fatalf("expected %v, got %v", context.DeadlineExceeded, gerr)
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("failed to receive dial timeout error")
+		t.Fatalf("expected no error, got %v", gerr)
+	case <-time.After(2 * time.Second):
 	}
+	<-donec
+
+	readTest := func(tlsCfg *tls.Config, expectedErr error) {
+		cli, cerr := integration.NewClient(t, clientv3.Config{
+			Endpoints:   []string{clus.Members[0].GRPCURL},
+			DialTimeout: time.Second,
+			TLS:         tlsCfg,
+		})
+		require.NoError(t, cerr)
+		defer func() {
+			require.NoError(t, cli.Close())
+		}()
+
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+		_, rerr := cli.Get(ctx, "foo")
+		cancel()
+		if expectedErr != nil {
+			require.ErrorIs(t, rerr, expectedErr)
+		} else {
+			require.NoError(t, rerr)
+		}
+	}
+
+	// 5. expect read request timed out when loading expired certs
+	readTest(tlsInvalid, context.DeadlineExceeded)
 
 	// 6. replace expired certs back with valid ones
 	revertFunc()
 
-	// 7. new requests should trigger listener to reload valid certs
-	tls, terr := tlsInfo.ClientConfig()
+	tlsValid, terr := tlsInfo.ClientConfig()
 	require.NoError(t, terr)
 	cl, cerr := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: 5 * time.Second,
-		TLS:         tls,
+		TLS:         tlsValid,
 	})
 	if cerr != nil {
 		t.Fatalf("expected no error, got %v", cerr)
 	}
-	cl.Close()
+	require.NoError(t, cl.Close())
+
+	// 7. new requests should trigger listener to reload valid certs
+	readTest(tlsValid, nil)
 }
 
 func TestGRPCRequireLeader(t *testing.T) {
