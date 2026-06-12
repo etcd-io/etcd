@@ -17,6 +17,7 @@ package concurrency_test
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -58,6 +59,51 @@ func TestMutexLockSessionExpired(t *testing.T) {
 	require.NoError(t, m1.Unlock(t.Context()))
 
 	<-m2Locked
+}
+
+func TestMutexLockEarlyTerminationOnSessionExpired(t *testing.T) {
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
+	require.NoError(t, err)
+	defer cli.Close()
+
+	// create two separate sessions for lock competition
+	s1, err := concurrency.NewSession(cli)
+	require.NoError(t, err)
+	defer s1.Close()
+	m1 := concurrency.NewMutex(s1, "/my-lock/")
+
+	s2, err := concurrency.NewSession(cli)
+	require.NoError(t, err)
+	m2 := concurrency.NewMutex(s2, "/my-lock/")
+
+	// acquire lock for s1
+	require.NoError(t, m1.Lock(t.Context()))
+
+	// m2 blocks since m1 already acquired lock /my-lock/
+	m2Done := make(chan error)
+	go func() {
+		m2Done <- m2.Lock(t.Context())
+	}()
+
+	// wait until m2's key appears in etcd
+	require.Eventually(t, func() bool {
+		resp, err := cli.Get(t.Context(), "/my-lock/", clientv3.WithPrefix())
+		if err != nil {
+			return false
+		}
+		return len(resp.Kvs) >= 2
+	}, 5*time.Second, 50*time.Millisecond)
+
+	// revoke s2's session while m1 still holds the lock,
+	// this should trigger early termination,
+	// m2 should return with an error without waiting for m1 to unlock
+	s2.Close()
+
+	err = <-m2Done
+	require.EqualError(t, err, concurrency.ErrLeaseExpiredDuringWait.Error())
+
+	// m1 still holds the lock
+	require.NoError(t, m1.Unlock(t.Context()))
 }
 
 func TestMutexUnlock(t *testing.T) {
