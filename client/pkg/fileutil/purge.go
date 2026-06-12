@@ -74,6 +74,9 @@ func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval
 					}
 				}
 				if err = os.Remove(f); err != nil {
+					if l != nil {
+						l.Close()
+					}
 					lg.Error("failed to remove file", zap.String("path", f), zap.Error(err))
 					errC <- err
 					return
