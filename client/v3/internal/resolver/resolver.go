@@ -45,12 +45,21 @@ func (r *EtcdManualResolver) Build(target resolver.Target, cc resolver.ClientCon
 	if r.serviceConfig.Err != nil {
 		return nil, r.serviceConfig.Err
 	}
+	// Pre-seed the manual resolver's initial state with the complete resolver
+	// state (endpoints + service config) so that manual.Resolver.Build() emits
+	// a single cc.UpdateState call instead of two.
+	//
+	// Previously Build() called r.Resolver.Build() first, which sent the state
+	// that was stored by a prior SetEndpoints/updateState call (endpoints only,
+	// service config nil), and then called r.updateState() to send a second
+	// update with the service config.  The two rapid cc.UpdateState calls caused
+	// gRPC to switch load-balancing policies mid-connection, killing in-flight
+	// SubConns and producing spurious "operation was canceled" warnings.
+	r.Resolver.InitialState(r.buildResolverState())
 	res, err := r.Resolver.Build(target, cc, opts)
 	if err != nil {
 		return nil, err
 	}
-	// Populates endpoints stored in r into ClientConn (cc).
-	r.updateState()
 	return res, nil
 }
 
@@ -61,18 +70,23 @@ func (r *EtcdManualResolver) SetEndpoints(endpoints []string) {
 
 func (r EtcdManualResolver) updateState() {
 	if getCC(r) != nil {
-		eps := make([]resolver.Endpoint, len(r.endpoints))
-		for i, ep := range r.endpoints {
-			addr, serverName := endpoint.Interpret(ep)
-			eps[i] = resolver.Endpoint{Addresses: []resolver.Address{
-				{Addr: addr, ServerName: serverName},
-			}}
-		}
-		state := resolver.State{
-			Endpoints:     eps,
-			ServiceConfig: r.serviceConfig,
-		}
-		r.UpdateState(state)
+		r.UpdateState(r.buildResolverState())
+	}
+}
+
+// buildResolverState constructs the complete resolver.State from the current
+// endpoints and service config.
+func (r EtcdManualResolver) buildResolverState() resolver.State {
+	eps := make([]resolver.Endpoint, len(r.endpoints))
+	for i, ep := range r.endpoints {
+		addr, serverName := endpoint.Interpret(ep)
+		eps[i] = resolver.Endpoint{Addresses: []resolver.Address{
+			{Addr: addr, ServerName: serverName},
+		}}
+	}
+	return resolver.State{
+		Endpoints:     eps,
+		ServiceConfig: r.serviceConfig,
 	}
 }
 
