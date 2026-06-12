@@ -22,9 +22,31 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
+
+func TestIsRPCSupportedForLearner(t *testing.T) {
+	tt := []struct {
+		req  any
+		want bool
+	}{
+		{req: &pb.StatusRequest{}, want: true},
+		{req: &pb.DefragmentRequest{}, want: true},
+		{req: &pb.RangeRequest{Serializable: true}, want: true},
+		{req: &pb.RangeRequest{Serializable: false}, want: false},
+		{req: &pb.PutRequest{}, want: false},
+		{req: &pb.DeleteRangeRequest{}, want: false},
+		{req: &pb.AlarmRequest{}, want: false},
+	}
+	for i, tc := range tt {
+		got := isRPCSupportedForLearner(tc.req)
+		if got != tc.want {
+			t.Errorf("#%d: isRPCSupportedForLearner(%T) = %v, want %v", i, tc.req, got, tc.want)
+		}
+	}
+}
 
 func TestGRPCError(t *testing.T) {
 	tt := []struct {
