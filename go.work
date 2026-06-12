@@ -1,6 +1,6 @@
 // This is a generated file. Do not edit directly.
 
-go 1.26
+go 1.26.3
 
 toolchain go1.26.4
 
