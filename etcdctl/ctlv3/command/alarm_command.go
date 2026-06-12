@@ -53,7 +53,7 @@ func alarmDisarmCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("alarm disarm command accepts no arguments"))
 	}
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).AlarmDisarm(ctx, &v3.AlarmMember{})
+	resp, err := newCommandClientFromCmd(cmd).AlarmDisarm(ctx, &v3.AlarmMember{})
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -76,7 +76,7 @@ func alarmListCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("alarm list command accepts no arguments"))
 	}
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).AlarmList(ctx)
+	resp, err := newCommandClientFromCmd(cmd).AlarmList(ctx)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)

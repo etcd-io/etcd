@@ -144,7 +144,7 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 
 	urls := strings.Split(memberPeerURLs, ",")
 	ctx, cancel := commandCtx(cmd)
-	cli := mustClientFromCmd(cmd)
+	cli := newCommandClientFromCmd(cmd)
 	var (
 		resp *clientv3.MemberAddResponse
 		err  error
@@ -194,7 +194,7 @@ func memberRemoveCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).MemberRemove(ctx, id)
+	resp, err := newCommandClientFromCmd(cmd).MemberRemove(ctx, id)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -220,7 +220,7 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 	urls := strings.Split(memberPeerURLs, ",")
 
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).MemberUpdate(ctx, id, urls)
+	resp, err := newCommandClientFromCmd(cmd).MemberUpdate(ctx, id, urls)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -236,7 +236,7 @@ func memberListCommandFunc(cmd *cobra.Command, args []string) {
 		opts = append(opts, clientv3.WithSerializable())
 	}
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).MemberList(ctx, opts...)
+	resp, err := newCommandClientFromCmd(cmd).MemberList(ctx, opts...)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -257,7 +257,7 @@ func memberPromoteCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).MemberPromote(ctx, id)
+	resp, err := newCommandClientFromCmd(cmd).MemberPromote(ctx, id)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)

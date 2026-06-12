@@ -54,7 +54,7 @@ func compactionCommandFunc(cmd *cobra.Command, args []string) {
 		opts = append(opts, clientv3.WithCompactPhysical())
 	}
 
-	c := mustClientFromCmd(cmd)
+	c := newCommandClientFromCmd(cmd)
 	ctx, cancel := commandCtx(cmd)
 	_, cerr := c.Compact(ctx, rev, opts...)
 	cancel()
