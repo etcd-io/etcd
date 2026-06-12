@@ -16,6 +16,7 @@ package concurrency
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
@@ -35,6 +36,8 @@ type Session struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	donec  <-chan struct{}
+
+	lastKeepAlive atomic.Int64
 }
 
 // NewSession gets the leased session for a client.
@@ -64,6 +67,8 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 	donec := make(chan struct{})
 	s := &Session{client: client, opts: ops, id: id, ctx: ctx, cancel: cancel, donec: donec}
 
+	s.lastKeepAlive.Store(time.Now().UnixNano())
+
 	// keep the lease alive until client error or cancelled context
 	go func() {
 		defer func() {
@@ -71,7 +76,7 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 			cancel()
 		}()
 		for range keepAlive {
-			// eat messages until keep alive channel closes
+			s.lastKeepAlive.Store(time.Now().UnixNano())
 		}
 	}()
 
@@ -95,6 +100,13 @@ func (s *Session) Ctx() context.Context {
 // Done returns a channel that closes when the lease is orphaned, expires, or
 // is otherwise no longer being refreshed.
 func (s *Session) Done() <-chan struct{} { return s.donec }
+
+// IsLeaseValid reports whether the session's lease is likely still
+// valid on the server, based on the time since the last keepalive ack.
+func (s *Session) IsLeaseValid() bool {
+	last := time.Unix(0, s.lastKeepAlive.Load())
+	return time.Since(last) < time.Duration(s.opts.ttl)*time.Second
+}
 
 // Orphan ends the refresh for the session lease. This is useful
 // in case the state of the client connection is indeterminate (revoke
