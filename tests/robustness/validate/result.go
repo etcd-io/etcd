@@ -75,7 +75,7 @@ func ResultFromError(err error) Result {
 
 func (r Result) Error() error {
 	switch r.Status {
-	case Success, Unknown:
+	case Success:
 		return nil
 	default:
 		return errors.New(r.String())

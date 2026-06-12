@@ -51,6 +51,8 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 	}
 	if len(persistedRequests) == 0 {
 		lg.Info("Skipping other validations as persisted requests were empty")
+		result.Watch = Result{Status: Success}
+		result.Serializable = Result{Status: Success}
 		return result
 	}
 	replay := model.NewReplay(persistedRequests)
