@@ -4,6 +4,8 @@ This document describes the etcd test integration with [Antithesis].
 Antithesis provides a testing platform that allows you to explore edge cases, race conditions, and rare
 bugs that are difficult or impossible to reproduce in a normal environment.
 
+[![Watch the video](https://img.youtube.com/vi/qgCpdb2sbh8/hqdefault.jpg)](https://youtu.be/qgCpdb2sbh8)
+
 [Antithesis]: https://antithesis.com/
 
 ## Robustness vs Antithesis tests
