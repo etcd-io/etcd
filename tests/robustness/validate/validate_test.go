@@ -188,19 +188,19 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 	}
 }
 
-func TestLinearizationVisualizeSkipsDeadlineExceeded(t *testing.T) {
+func TestLinearizationVisualizeSkipsTimeout(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	path := filepath.Join(t.TempDir(), "history.html")
 	result := LinearizationResult{
 		Result: Result{
-			Status:  DeadlineExceeded,
-			Message: "deadline exceeded",
+			Status:  Timeout,
+			Message: "timed out",
 		},
 	}
 
 	require.NoError(t, result.Visualize(lg, path))
 	_, err := os.Stat(path)
-	require.Truef(t, os.IsNotExist(err), "deadline exceeded should not produce visualization")
+	require.Truef(t, os.IsNotExist(err), "timeout should not produce visualization")
 }
 
 func watchEvent(rev int64, isCreate bool, eventType model.OperationType, key, value string) model.WatchEvent {

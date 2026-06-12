@@ -16,7 +16,7 @@ replace (
 )
 
 require (
-	github.com/anishathalye/porcupine v1.1.0
+	github.com/anishathalye/porcupine v1.2.0
 	github.com/antithesishq/antithesis-sdk-go v0.4.3
 	github.com/coreos/go-semver v0.3.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -45,6 +45,7 @@ require (
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/proto/otlp v1.10.0
+	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.52.0
 	golang.org/x/sync v0.20.0
