@@ -16,6 +16,7 @@ package rafthttp
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/protobuf/proto"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
 	"go.etcd.io/raft/v3"
@@ -138,6 +140,67 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 			}
 			return
 		}
+	}
+}
+
+// TestRecvMsgAppV2Oversize verifies that a peer feeding the msgappv2 stream a
+// crafted frame with the maximum entry count cannot crash the receiving member.
+// Before the bound was added, the count narrowed to a negative slice length and
+// panicked makeslice in the stream reader goroutine, taking the process down.
+func TestRecvMsgAppV2Oversize(t *testing.T) {
+	served := make(chan struct{}, 1)
+
+	// member 2: a malicious peer that serves a crafted msgappv2 frame claiming
+	// the maximum possible entry count.
+	mux := http.NewServeMux()
+	mux.HandleFunc(RaftStreamPrefix+"/msgapp/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Server-Version", version.Version)
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		w.Write(appendUint64([]byte{msgTypeAppEntries}, ^uint64(0)))
+		w.(http.Flusher).Flush()
+		select {
+		case served <- struct{}{}:
+		default:
+		}
+		<-r.Context().Done()
+	})
+	mux.HandleFunc(RaftStreamPrefix+"/message/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Server-Version", version.Version)
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	})
+	srv2 := httptest.NewServer(mux)
+	defer srv2.Close()
+
+	// member 1: the victim that reads from the malicious peer.
+	recvc := make(chan *raftpb.Message, 1)
+	tr := &Transport{
+		ID:          types.ID(1),
+		ClusterID:   types.ID(1),
+		Raft:        &fakeRaft{recvc: recvc},
+		ServerStats: newServerStats(),
+		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "1"),
+	}
+	tr.Start()
+	defer tr.Stop()
+	tr.AddPeer(types.ID(2), []string{srv2.URL})
+
+	select {
+	case <-served:
+	case <-time.After(5 * time.Second):
+		t.Fatal("peer never dialed the msgappv2 stream")
+	}
+
+	// Give the reader time to decode the crafted frame; before the fix this
+	// panicked in the stream reader goroutine and crashed the test binary.
+	time.Sleep(100 * time.Millisecond)
+
+	select {
+	case m := <-recvc:
+		t.Fatalf("unexpected message delivered from oversized frame: %+v", m)
+	default:
 	}
 }
 
