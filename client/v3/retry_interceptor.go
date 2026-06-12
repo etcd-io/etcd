@@ -65,6 +65,14 @@ func (c *Client) unaryClientInterceptor(optFuncs ...retryOption) grpc.UnaryClien
 			if lastErr == nil {
 				return nil
 			}
+			if isContextError(lastErr) {
+				if ctx.Err() != nil {
+					// Expected context cancellation (e.g., client.Close()); avoid noisy warn log.
+					return lastErr
+				}
+				// its the callCtx deadline or cancellation, in which case try again.
+				continue
+			}
 			c.GetLogger().Warn(
 				"retrying of unary invoker failed",
 				zap.String("target", cc.Target()),
@@ -73,14 +81,6 @@ func (c *Client) unaryClientInterceptor(optFuncs ...retryOption) grpc.UnaryClien
 				zap.Uint("attempt", attempt),
 				zap.Error(lastErr),
 			)
-			if isContextError(lastErr) {
-				if ctx.Err() != nil {
-					// its the context deadline or cancellation.
-					return lastErr
-				}
-				// its the callCtx deadline or cancellation, in which case try again.
-				continue
-			}
 			if c.shouldRefreshToken(lastErr, callOpts) {
 				gtErr := c.refreshToken(ctx)
 				if gtErr != nil {
@@ -117,7 +117,12 @@ func (c *Client) streamClientInterceptor(optFuncs ...retryOption) grpc.StreamCli
 		// (see https://github.com/etcd-io/etcd/issues/11954 for more).
 		err := c.getToken(ctx)
 		if err != nil {
-			c.GetLogger().Error("clientv3/retry_interceptor: getToken failed", zap.Error(err))
+			if isContextError(err) {
+				// Context cancelled (e.g., client.Close()); log at debug to avoid noisy error during expected shutdown.
+				c.GetLogger().Debug("clientv3/retry_interceptor: getToken failed", zap.Error(err))
+			} else {
+				c.GetLogger().Error("clientv3/retry_interceptor: getToken failed", zap.Error(err))
+			}
 			return nil, err
 		}
 		grpcOpts, retryOpts := filterCallOptions(opts)
