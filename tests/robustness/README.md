@@ -3,6 +3,8 @@
 This document describes the robustness testing framework for etcd, a distributed key-value store.
 The purpose of these tests is to rigorously validate that etcd maintains its [KV API guarantees] and [watch API guarantees] under a wide range of conditions and failures.
 
+[![Watch the video](https://img.youtube.com/vi/IIMs0EjQZHg/hqdefault.jpg)](https://youtu.be/IIMs0EjQZHg)
+
 [KV API guarantees]: https://etcd.io/docs/v3.6/learning/api_guarantees/#kv-apis
 [watch API guarantees]: https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 
