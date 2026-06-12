@@ -449,11 +449,8 @@ func (e *Etcd) Close() {
 
 	for _, sctx := range e.sctxs {
 		sctx.cancel()
-	}
-
-	for i := range e.Clients {
-		if e.Clients[i] != nil {
-			e.Clients[i].Close()
+		if sctx.owned {
+			sctx.l.Close()
 		}
 	}
 
@@ -682,6 +679,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.scheme = u.Scheme
 		sctx.addr = addr
 		sctx.network = network
+		sctx.owned = true
 	}
 
 	for _, u := range cfg.ListenClientHttpUrls {
@@ -700,6 +698,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.addr = addr
 		sctx.network = network
 		sctx.httpOnly = true
+		sctx.owned = true
 	}
 
 	for u, l := range cfg.ClientListeners {
