@@ -59,6 +59,12 @@ func (wbs *watchBroadcasts) coalesce(wb *watchBroadcast) {
 		if wbswb == wb {
 			continue
 		}
+		// Do not coalesce into a dead broadcast whose goroutine has exited.
+		select {
+		case <-wbswb.donec:
+			continue
+		default:
+		}
 		wb.mu.Lock()
 		wbswb.mu.Lock()
 		// 1. check if wbswb is behind wb so it won't skip any events in wb
@@ -85,6 +91,10 @@ func (wbs *watchBroadcasts) coalesce(wb *watchBroadcast) {
 func (wbs *watchBroadcasts) add(w *watcher) {
 	wbs.mu.Lock()
 	defer wbs.mu.Unlock()
+	// Reassign any watchers orphaned by dead broadcasts before adding the
+	// new one.  This ensures that watchers do not silently stop receiving
+	// events after a backend watch connection is broken.
+	wbs.pruneDeadBroadcasts()
 	// find fitting bcast
 	for wb := range wbs.bcasts {
 		if wb.add(w) {
@@ -96,6 +106,73 @@ func (wbs *watchBroadcasts) add(w *watcher) {
 	wb := newWatchBroadcast(wbs.wp.lg, wbs.wp, w, wbs.update)
 	wbs.watchers[w] = wb
 	wbs.bcasts[wb] = struct{}{}
+}
+
+// pruneDeadBroadcasts removes broadcasts whose goroutines have exited and
+// reassigns their watchers to live broadcasts (or new ones).  It must be
+// called with wbs.mu held.
+func (wbs *watchBroadcasts) pruneDeadBroadcasts() {
+	if wbs.bcasts == nil {
+		return
+	}
+
+	// First pass: collect dead broadcasts and their orphaned watchers.
+	type deadEntry struct {
+		wb      *watchBroadcast
+		orphans []*watcher
+	}
+	var dead []deadEntry
+
+	for wb := range wbs.bcasts {
+		select {
+		case <-wb.donec:
+		default:
+			continue
+		}
+		wb.mu.Lock()
+		orphans := make([]*watcher, 0, len(wb.receivers))
+		for w := range wb.receivers {
+			orphans = append(orphans, w)
+			delete(wbs.watchers, w)
+		}
+		wb.receivers = nil
+		wb.mu.Unlock()
+		dead = append(dead, deadEntry{wb: wb, orphans: orphans})
+	}
+
+	if len(dead) == 0 {
+		return
+	}
+
+	// Second pass: remove dead broadcasts.
+	for _, d := range dead {
+		delete(wbs.bcasts, d.wb)
+	}
+
+	// Third pass: re-add each orphaned watcher to a live broadcast or a
+	// freshly created one.
+	for _, d := range dead {
+		for _, w := range d.orphans {
+			added := false
+			for candidate := range wbs.bcasts {
+				select {
+				case <-candidate.donec:
+					continue
+				default:
+				}
+				if candidate.add(w) {
+					wbs.watchers[w] = candidate
+					added = true
+					break
+				}
+			}
+			if !added {
+				newWb := newWatchBroadcast(wbs.wp.lg, wbs.wp, w, wbs.update)
+				wbs.watchers[w] = newWb
+				wbs.bcasts[newWb] = struct{}{}
+			}
+		}
+	}
 }
 
 // delete removes a watcher and returns the number of remaining watchers.
