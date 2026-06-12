@@ -45,7 +45,7 @@ initial-advertise-peer-urls: http://localhost:2380
 # The URLs needed to be a comma-separated list.
 advertise-client-urls: http://localhost:2379
 
-# Discovery URL used to bootstrap the cluster.
+# Discovery URL used to bootstrap the cluster (v2 discovery, deprecated).
 discovery:
 
 # Valid values include 'exit', 'proxy'
@@ -56,6 +56,66 @@ discovery-proxy:
 
 # DNS domain used to bootstrap initial cluster.
 discovery-srv:
+
+# Service name to query when using DNS discovery.
+discovery-srv-name:
+
+# V3 discovery: Discovery token for bootstrapping the cluster.
+# Note: Both discovery-config.token and discovery-config.client.endpoints must be set to use v3 discovery.
+# Note: Only one of "initial-cluster", "discovery-srv" or "discovery-config" can be set.
+discovery-config:
+  # V3 discovery: Discovery token for the etcd cluster to be bootstrapped.
+  token:
+
+  client:
+    # V3 discovery: List of gRPC endpoints of the discovery service.
+    endpoints:
+
+    # V3 discovery: Dial timeout for client connections.
+    # Default: 2000000000 (2 seconds in nanoseconds)
+    # Note: Duration fields must be specified in nanoseconds (not as strings like "2s")
+    dial-timeout:
+
+    # V3 discovery: Timeout for discovery requests (excluding dial timeout).
+    # Default: 5000000000 (5 seconds in nanoseconds)
+    request-timeout:
+
+    # V3 discovery: Keepalive time for client connections.
+    # Default: 2000000000 (2 seconds in nanoseconds)
+    keepalive-time:
+
+    # V3 discovery: Keepalive timeout for client connections.
+    # Default: 6000000000 (6 seconds in nanoseconds)
+    keepalive-timeout:
+
+    secure:
+      # V3 discovery: Identify secure client using this TLS certificate file.
+      cert:
+
+      # V3 discovery: Identify secure client using this TLS key file.
+      key:
+
+      # V3 discovery: Verify certificates of TLS-enabled secure servers using this CA bundle.
+      cacert:
+
+      # V3 discovery: Server name to use for server certificate verification.
+      server-name:
+
+      # V3 discovery: Disable transport security for client connections.
+      # Default: true
+      insecure-transport:
+
+      # V3 discovery: Skip server certificate verification.
+      # CAUTION: This option should be enabled only for testing purposes.
+      # Default: false
+      insecure-skip-tls-verify:
+
+    auth:
+      # V3 discovery: Username[:password] for authentication (prompt if password is not supplied).
+      username:
+
+      # V3 discovery: Password for authentication (if this option is used, --user option shouldn't include password).
+      password:
 
 # Comma separated string of initial cluster configuration for bootstrapping.
 # Example: initial-cluster: "infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"
@@ -68,10 +128,10 @@ initial-cluster-token: 'etcd-cluster'
 initial-cluster-state: 'new'
 
 # Reject reconfiguration requests that would cause quorum loss.
-strict-reconfig-check: false
+strict-reconfig-check: true
 
 # Enable runtime profiling data via HTTP server
-enable-pprof: true
+enable-pprof: false
 
 # Valid values include 'on', 'readonly', 'off'
 proxy: 'off'
@@ -98,11 +158,20 @@ client-transport-security:
   # Path to the client server TLS key file.
   key-file:
 
+  # Path to an explicit peer client TLS cert file otherwise cert file will be used when client auth is required.
+  client-cert-file:
+
+  # Path to an explicit peer client TLS key file otherwise key file will be used when client auth is required.
+  client-key-file:
+
   # Enable client cert authentication.
   client-cert-auth: false
 
   # Path to the client server TLS trusted CA cert file.
   trusted-ca-file:
+
+  # Path to the client certificate revocation list file.
+  client-crl-file:
 
   # Client TLS using generated certificates
   auto-tls: false
@@ -114,11 +183,20 @@ peer-transport-security:
   # Path to the peer server TLS key file.
   key-file:
 
+  # Path to an explicit peer client TLS cert file otherwise peer cert file will be used when client auth is required.
+  peer-client-cert-file:
+
+  # Path to an explicit peer client TLS key file otherwise peer key file will be used when client auth is required.
+  peer-client-key-file:
+
   # Enable peer client cert authentication.
   client-cert-auth: false
 
   # Path to the peer server TLS trusted CA cert file.
   trusted-ca-file:
+
+  # Path to the peer certificate revocation list file.
+  peer-crl-file:
 
   # Peer TLS using generated certificates.
   auto-tls: false
@@ -129,22 +207,11 @@ peer-transport-security:
   # Allowed TLS hostname for inter peer authentication.
   allowed-hostname:
 
+  # Skip verification of SAN field in client certificate for peer connections.
+  peer-skip-client-san-verification: false
+
 # The validity period of the self-signed certificate, the unit is year.
 self-signed-cert-validity: 1
-
-# Enable debug-level logging for etcd.
-log-level: debug
-
-logger: zap
-
-# Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
-log-outputs: [stderr]
-
-# Force to create a new one member cluster.
-force-new-cluster: false
-
-auto-compaction-mode: periodic
-auto-compaction-retention: "1"
 
 # Limit etcd to a specific set of tls cipher suites
 cipher-suites: [
@@ -152,6 +219,49 @@ cipher-suites: [
   TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 ]
 
-# Limit etcd to specific TLS protocol versions 
+# Minimum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3.
 tls-min-version: 'TLS1.2'
+
+# Maximum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3 (empty defers to Go).
 tls-max-version: 'TLS1.3'
+
+# Specify auth token specific options ('simple' or 'jwt').
+auth-token: simple
+
+# Enable debug-level logging for etcd.
+log-level: info
+
+# Currently only supports 'zap' for structured logging.
+logger: zap
+
+# Configures log format. Only supports json, console. Default is 'json'.
+log-format: json
+
+# Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
+log-outputs: [default]
+
+# Enable log rotation of a single log-outputs file target.
+enable-log-rotation: false
+
+# Configures log rotation if enabled with a JSON logger config.
+# Default: MaxSize=100(MB), MaxAge=0(days,no limit), MaxBackups=0(no limit), LocalTime=false(UTC), Compress=false(gzip)
+log-rotation-config-json: '{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}'
+
+# Force to create a new one member cluster.
+force-new-cluster: false
+
+# Auto compaction mode. Valid values: "periodic", "revision".
+auto-compaction-mode: periodic
+
+# Auto compaction retention length. 0 means disable auto compaction.
+# For "periodic" mode: duration string (e.g. "5m", "1h"). Defaults to hours if no time unit is provided.
+# For "revision" mode: number of revisions (e.g. "5000").
+auto-compaction-retention: "0"
+
+# Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics.
+metrics: basic
+
+
+# Feature gates for enabling/disabling features.
+# Format: feature1=true,feature2=false
+feature-gates:
