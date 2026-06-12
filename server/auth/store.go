@@ -826,10 +826,30 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 		return bytes.Compare(role.KeyPermission[i].Key, r.Perm.Key) >= 0
 	})
 
-	if idx < len(role.KeyPermission) && bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) && bytes.Equal(role.KeyPermission[idx].RangeEnd, r.Perm.RangeEnd) {
-		// update existing permission
-		role.KeyPermission[idx].PermType = r.Perm.PermType
-	} else {
+	for ; idx < len(role.KeyPermission); idx++ {
+		if !bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) {
+			break
+		}
+		if bytes.Equal(role.KeyPermission[idx].RangeEnd, r.Perm.RangeEnd) {
+			// update existing permission
+			role.KeyPermission[idx].PermType = r.Perm.PermType
+			tx.UnsafePutRole(role)
+
+			as.commitRevision(tx)
+			as.refreshRangePermCache(tx)
+
+			as.lg.Info(
+				"granted/updated a permission to a user",
+				zap.String("user-name", r.Name),
+				zap.String("permission-name", authpb.Permission_Type_name[int32(r.Perm.PermType)]),
+				zap.ByteString("key", r.Perm.Key),
+				zap.ByteString("range-end", r.Perm.RangeEnd),
+			)
+			return &pb.AuthRoleGrantPermissionResponse{}, nil
+		}
+	}
+
+	{
 		// append new permission to the role
 		newPerm := &authpb.Permission{
 			Key:      r.Perm.Key,

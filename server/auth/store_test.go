@@ -15,6 +15,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -507,6 +508,78 @@ func TestRoleGrantPermission(t *testing.T) {
 	}
 
 	assert.Equal(t, perm, r.Perm[0])
+}
+
+func TestRoleGrantPermissionUpdatesExactKeyRangeEnd(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	key := []byte("Keys")
+	firstRangeEnd := []byte("RangeEnd-1")
+	secondRangeEnd := []byte("RangeEnd-2")
+
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+		Perm: &authpb.Permission{
+			PermType: authpb.Permission_WRITE,
+			Key:      key,
+			RangeEnd: firstRangeEnd,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+		Perm: &authpb.Permission{
+			PermType: authpb.Permission_WRITE,
+			Key:      key,
+			RangeEnd: secondRangeEnd,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+		Perm: &authpb.Permission{
+			PermType: authpb.Permission_READ,
+			Key:      key,
+			RangeEnd: secondRangeEnd,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	require.Len(t, r.Perm, 2)
+
+	var firstPerm, secondPerm *authpb.Permission
+	for _, perm := range r.Perm {
+		switch {
+		case bytes.Equal(perm.Key, key) && bytes.Equal(perm.RangeEnd, firstRangeEnd):
+			firstPerm = perm
+		case bytes.Equal(perm.Key, key) && bytes.Equal(perm.RangeEnd, secondRangeEnd):
+			secondPerm = perm
+		}
+	}
+
+	require.NotNil(t, firstPerm)
+	require.NotNil(t, secondPerm)
+	assert.Equal(t, authpb.Permission_WRITE, firstPerm.PermType)
+	assert.Equal(t, authpb.Permission_READ, secondPerm.PermType)
 }
 
 func TestRoleGrantInvalidPermission(t *testing.T) {
