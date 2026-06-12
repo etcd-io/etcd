@@ -53,6 +53,10 @@ You can refer to the guide [here](https://github.com/kubernetes/community/blob/m
 
 ### Build etcd image
 
+> **Deprecated**: Since Kubernetes now uses the officially released etcd image, building the etcd image via `cluster/images/etcd` is no longer necessary.
+> This section is kept for historical reference and will be removed when `cluster/images/etcd` is removed from the Kubernetes repository.
+> Refer to the [Publish etcd image](#publish-etcd-image) section below for the current workflow.
+
 > Reference: [link 1](https://github.com/kubernetes/kubernetes/pull/131105) [link 2](https://github.com/kubernetes/kubernetes/pull/131126)
 
 1. In `build/dependencies.yaml`, update the `version` of `etcd-image` to the new version. Update `golang: etcd release version` if necessary.
