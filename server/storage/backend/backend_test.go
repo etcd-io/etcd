@@ -17,6 +17,7 @@ package backend_test
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -86,6 +87,102 @@ func TestBackendSnapshot(t *testing.T) {
 		t.Errorf("len(kvs) = %d, want 1", len(ks))
 	}
 	newTx.Unlock()
+}
+
+func TestBackendSnapshotDefragmented(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	// Populate the backend with enough keys that subsequent deletes free
+	// at least a page or two, otherwise the defragmented snapshot may not
+	// be smaller than the raw snapshot.
+	tx := b.BatchTx()
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	for i := 0; i < backend.DefragLimitForTest()+100; i++ {
+		tx.UnsafePut(schema.Test, []byte(fmt.Sprintf("foo_%d", i)), []byte("bar"))
+	}
+	tx.Unlock()
+	b.ForceCommit()
+
+	// Delete most keys to create freed pages in the live DB.
+	tx = b.BatchTx()
+	tx.Lock()
+	for i := 0; i < backend.DefragLimitForTest()+50; i++ {
+		tx.UnsafeDelete(schema.Test, []byte(fmt.Sprintf("foo_%d", i)))
+	}
+	tx.Unlock()
+	b.ForceCommit()
+
+	sizeBefore := b.Size()
+	hashBefore, err := b.Hash(nil)
+	require.NoError(t, err)
+
+	// Capture the live data dir state so we can later verify the temp file
+	// produced by SnapshotDefragmented is removed on Close.
+	dataDir := filepath.Dir(backend.DbFromBackendForTest(b).Path())
+	entriesBefore := listDir(t, dataDir)
+
+	// Raw snapshot for size comparison.
+	rawFile, err := os.CreateTemp(t.TempDir(), "raw_snap_*.db")
+	require.NoError(t, err)
+	rawSnap := b.Snapshot()
+	rawN, err := rawSnap.WriteTo(rawFile)
+	require.NoError(t, err)
+	require.NoError(t, rawSnap.Close())
+	require.NoError(t, rawFile.Close())
+
+	// Defragmented snapshot.
+	defragFile, err := os.CreateTemp(t.TempDir(), "defrag_snap_*.db")
+	require.NoError(t, err)
+	defragSnap, err := b.SnapshotDefragmented()
+	require.NoError(t, err)
+	defragN, err := defragSnap.WriteTo(defragFile)
+	require.NoError(t, err)
+	require.NoError(t, defragSnap.Close())
+	require.NoError(t, defragFile.Close())
+
+	// The defragmented snapshot must be strictly smaller — that's the
+	// whole point of the feature.
+	if defragN >= rawN {
+		t.Errorf("defragmented snapshot size = %d, want < raw size = %d", defragN, rawN)
+	}
+
+	// The live backend must be untouched: same byte size, same content hash.
+	require.Equal(t, sizeBefore, b.Size(),
+		"SnapshotDefragmented must not mutate the live backend")
+	hashAfter, err := b.Hash(nil)
+	require.NoError(t, err)
+	require.Equal(t, hashBefore, hashAfter,
+		"SnapshotDefragmented must not change live backend contents")
+
+	// The data dir contents must match what we saw before — no temp files
+	// left behind by SnapshotDefragmented.
+	require.ElementsMatch(t, entriesBefore, listDir(t, dataDir),
+		"SnapshotDefragmented must remove its temp file on Close")
+
+	// The defragmented snapshot must be a valid bbolt DB containing the
+	// same surviving keys as the live backend.
+	bcfg := backend.DefaultBackendConfig(zaptest.NewLogger(t))
+	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = defragFile.Name(), time.Hour, 10000
+	nb := backend.New(bcfg)
+	defer betesting.Close(t, nb)
+
+	nbHash, err := nb.Hash(nil)
+	require.NoError(t, err)
+	require.Equal(t, hashBefore, nbHash,
+		"reopened defragmented snapshot must hash identically to the source backend")
+}
+
+func listDir(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	return names
 }
 
 func TestBackendBatchIntervalCommit(t *testing.T) {
