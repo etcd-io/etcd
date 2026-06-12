@@ -449,11 +449,8 @@ func (e *Etcd) Close() {
 
 	for _, sctx := range e.sctxs {
 		sctx.cancel()
-	}
-
-	for i := range e.Clients {
-		if e.Clients[i] != nil {
-			e.Clients[i].Close()
+		if sctx.owned {
+			sctx.l.Close()
 		}
 	}
 
@@ -671,6 +668,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 
 	for _, u := range cfg.ListenClientUrls {
 		addr, secure, network := resolveURL(u)
+
 		sctx := sctxs[addr]
 		if sctx == nil {
 			sctx = newServeCtx(cfg.logger)
@@ -681,7 +679,9 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.scheme = u.Scheme
 		sctx.addr = addr
 		sctx.network = network
+		sctx.owned = true
 	}
+
 	for _, u := range cfg.ListenClientHttpUrls {
 		addr, secure, network := resolveURL(u)
 
@@ -698,17 +698,57 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.addr = addr
 		sctx.network = network
 		sctx.httpOnly = true
+		sctx.owned = true
+	}
+
+	for u, l := range cfg.ClientListeners {
+		addr, secure, network := resolveURL(u)
+
+		sctx := sctxs[addr]
+		if sctx != nil {
+			return nil, fmt.Errorf("cannot specify the URL %v in both ClientListeners and ListenClientUrls or ListenClientHttpUrls", &u)
+		}
+
+		sctx = newServeCtx(cfg.logger)
+		sctxs[addr] = sctx
+		sctx.secure = sctx.secure || secure
+		sctx.insecure = sctx.insecure || !secure
+		sctx.scheme = u.Scheme
+		sctx.addr = addr
+		sctx.network = network
+		sctx.l = l
+	}
+
+	for u, l := range cfg.HTTPClientListeners {
+		addr, secure, network := resolveURL(u)
+
+		sctx := sctxs[addr]
+		if sctx != nil {
+			return nil, fmt.Errorf("cannot specify the URL %v in both HTTPClientListeners and ClientListeners, ListenClientUrls, or ListenClientHttpUrls", &u)
+		}
+
+		sctx = newServeCtx(cfg.logger)
+		sctxs[addr] = sctx
+		sctx.secure = sctx.secure || secure
+		sctx.insecure = sctx.insecure || !secure
+		sctx.scheme = u.Scheme
+		sctx.addr = addr
+		sctx.network = network
+		sctx.httpOnly = true
+		sctx.l = l
 	}
 
 	for _, sctx := range sctxs {
-		if sctx.l, err = transport.NewListenerWithOpts(sctx.addr, sctx.scheme,
-			transport.WithSocketOpts(&cfg.SocketOpts),
-			transport.WithSkipTLSInfoCheck(true),
-		); err != nil {
-			return nil, err
+		if sctx.l == nil {
+			if sctx.l, err = transport.NewListenerWithOpts(sctx.addr, sctx.scheme,
+				transport.WithSocketOpts(&cfg.SocketOpts),
+				transport.WithSkipTLSInfoCheck(true),
+			); err != nil {
+				return nil, err
+			}
+			// net.Listener will rewrite ipv4 0.0.0.0 to ipv6 [::], breaking
+			// hosts that disable ipv6. So, use the address given by the user.
 		}
-		// net.Listener will rewrite ipv4 0.0.0.0 to ipv6 [::], breaking
-		// hosts that disable ipv6. So, use the address given by the user.
 
 		if fdLimit, fderr := runtimeutil.FDLimit(); fderr == nil {
 			if fdLimit <= reservedInternalFDNum {
