@@ -23,7 +23,6 @@ const (
 )
 
 var (
-
 	ErrGeneralError  = errors.New("general error")
 	ErrArgumentError = errors.New("bad argument")
 )
