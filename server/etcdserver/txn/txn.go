@@ -68,8 +68,12 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	} else {
 		txnWrite = mvcc.NewReadOnlyTxnWrite(txnRead)
 	}
+	// Use defer to ensure txnWrite.End() is called even if txn() panics (e.g.
+	// when a write operation fails and lg.Panic is called). Without defer, a
+	// panic would leave the batchTx lock permanently held, causing a deadlock
+	// when the panic is recovered and the server attempts a subsequent write.
+	defer txnWrite.End()
 	txnResp, err = txn(ctx, lg, txnWrite, rt, isWrite, txnPath, skipRangeExecution)
-	txnWrite.End()
 
 	trace.AddField(
 		traceutil.Field{Key: "number_of_response", Value: len(txnResp.Responses)},
