@@ -90,24 +90,17 @@ index 00000000000..c16eecb20fa
 +	return k.Interface.OptimisticDelete(ctx, key, expectedRevision, opts)
 +}
 diff --git a/staging/src/k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go b/staging/src/k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go
-index 6b60601a784..235850a44f2 100644
+index 48ee1708642..05dba85f1b5 100644
 --- a/staging/src/k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go
 +++ b/staging/src/k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go
-@@ -354,8 +354,16 @@ var newETCD3Client = func(c storagebackend.TransportConfig) (*kubernetes.Client,
- 		TLS:                  tlsConfig,
- 		Logger:               etcd3ClientLogger,
+@@ -358,6 +358,10 @@ var newETCD3Client = func(c storagebackend.TransportConfig) (*kubernetes.Client,
+ 	if err != nil {
+ 		return nil, err
  	}
-+	client, err := kubernetes.New(cfg)
-+	if err != nil {
-+		return nil, err
-+	}
 +	if c.TracerProvider != nil {
 +		// Decorate the Kubernetes instance so all events added later will belong to short-lived Spans.
-+		client.Kubernetes = etcd3.NewKubernetesEtcdContractTracker(client, c.TracerProvider)
++		kClient.Kubernetes = etcd3.NewKubernetesEtcdContractTracker(kClient.Kubernetes, c.TracerProvider)
 +	}
  
--	return kubernetes.New(cfg)
-+	return client, nil
- }
- 
- type runningCompactor struct {
+ 	if err := blockUntilReady(dialTimeout, kClient); err != nil {
+ 		return nil, err
