@@ -16,10 +16,12 @@ RUN for file in $(grep -rl '// gofail'); do sed -i 's|\/\/ gofail.*var \([[:alnu
 RUN go mod tidy
 
 # replace verify with antithesis
-WORKDIR /etcd/client/pkg/verify
-COPY inject/verify.patch verify.patch
-RUN if [ "${REF}" = "main" ]; then git apply verify.patch; fi
+WORKDIR /etcd
+COPY inject/* .
+RUN if [ "${REF}" = "main" ]; then git apply *.patch; fi
 WORKDIR /etcd/client/pkg
+RUN go mod tidy
+WORKDIR /etcd/server
 RUN go mod tidy
 WORKDIR /etcd
 
