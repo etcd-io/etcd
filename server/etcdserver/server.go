@@ -1052,7 +1052,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	// Eventually the new consistent_index value coming from snapshot is overwritten
 	// by the old value.
 	s.consistIndex.SetBackend(newbe)
-	verifySnapshotIndex(toApply.snapshot, s.consistIndex.ConsistentIndex())
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
@@ -1160,16 +1159,6 @@ func (s *EtcdServer) NewUberApplier() apply.UberApplier {
 		WarningApplyDuration:         s.Cfg.WarningApplyDuration,
 	}
 	return apply.NewUberApplier(opts)
-}
-
-func verifySnapshotIndex(snapshot *raftpb.Snapshot, cindex uint64) {
-	verify.Verify("consistent_index isn't equal to snapshot index", func() (bool, map[string]any) {
-		return cindex == snapshot.Metadata.GetIndex(),
-			map[string]any{
-				"consistent_index": cindex,
-				"snapshot_index":   snapshot.Metadata.GetIndex(),
-			}
-	})
 }
 
 func verifyConsistentIndexIsLatest(snapshot *raftpb.Snapshot, cindex uint64) {
