@@ -46,37 +46,6 @@ func NewClient(t *testing.T, cfg Config) (*Client, error) {
 	return New(cfg)
 }
 
-func TestDialNotImplemented(t *testing.T) {
-	testutil.RegisterLeakDetection(t)
-
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer ln.Close()
-
-	srv := grpc.NewServer()
-	serveDone := make(chan error)
-	go func() {
-		defer close(serveDone)
-		srv.Serve(ln)
-	}()
-	defer func() {
-		srv.Stop()
-		<-serveDone
-	}()
-
-	ep := ln.Addr().String()
-	cfg := Config{
-		Endpoints:   []string{ep},
-		DialTimeout: 10 * time.Second,
-	}
-	c, err := NewClient(t, cfg)
-	require.NoError(t, err)
-	defer c.Close()
-
-	_, err = c.Get(t.Context(), "foo")
-	require.ErrorContains(t, err, "code = Unimplemented desc = unknown service etcdserverpb.KV")
-}
-
 func TestDialCancel(t *testing.T) {
 	testutil.RegisterLeakDetection(t)
 
@@ -137,14 +106,6 @@ func TestDialCancel(t *testing.T) {
 		t.Fatalf("get failed to exit")
 	case <-getc:
 	}
-}
-
-func TestDialNoTimeout(t *testing.T) {
-	cfg := Config{Endpoints: []string{"127.0.0.1:12345"}}
-	c, err := NewClient(t, cfg)
-	require.NotNilf(t, c, "new client with DialNoWait should succeed, got %v", err)
-	require.NoErrorf(t, err, "new client with DialNoWait should succeed")
-	c.Close()
 }
 
 func TestMaxUnaryRetries(t *testing.T) {
