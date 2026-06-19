@@ -73,7 +73,7 @@ func txnCommandFunc(cmd *cobra.Command, args []string) {
 
 	reader := bufio.NewReader(os.Stdin)
 
-	txn := mustClientFromCmd(cmd).Txn(context.Background())
+	txn := newCommandClientFromCmd(cmd).Txn(context.Background())
 	promptInteractive("compares:")
 	txn.If(readCompares(reader)...)
 	promptInteractive("success requests (get, put, del):")

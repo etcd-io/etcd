@@ -67,7 +67,7 @@ func leaseGrantCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).Grant(ctx, ttl)
+	resp, err := newCommandClientFromCmd(cmd).Grant(ctx, ttl)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, fmt.Errorf("failed to grant lease (%w)", err))
@@ -95,7 +95,7 @@ func leaseRevokeCommandFunc(cmd *cobra.Command, args []string) {
 
 	id := leaseFromArgs(args[0])
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).Revoke(ctx, id)
+	resp, err := newCommandClientFromCmd(cmd).Revoke(ctx, id)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, fmt.Errorf("failed to revoke lease (%w)", err))
@@ -127,7 +127,7 @@ func leaseTimeToLiveCommandFunc(cmd *cobra.Command, args []string) {
 	if timeToLiveKeys {
 		opts = append(opts, v3.WithAttachedKeys())
 	}
-	resp, rerr := mustClientFromCmd(cmd).TimeToLive(context.TODO(), leaseFromArgs(args[0]), opts...)
+	resp, rerr := newCommandClientFromCmd(cmd).TimeToLive(context.TODO(), leaseFromArgs(args[0]), opts...)
 	if rerr != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, rerr)
 	}
@@ -146,7 +146,7 @@ func NewLeaseListCommand() *cobra.Command {
 
 // leaseListCommandFunc executes the "lease list" command.
 func leaseListCommandFunc(cmd *cobra.Command, args []string) {
-	resp, rerr := mustClientFromCmd(cmd).Leases(context.TODO())
+	resp, rerr := newCommandClientFromCmd(cmd).Leases(context.TODO())
 	if rerr != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, rerr)
 	}
@@ -178,7 +178,7 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 	id := leaseFromArgs(args[0])
 
 	if leaseKeepAliveOnce {
-		respc, kerr := mustClientFromCmd(cmd).KeepAliveOnce(context.TODO(), id)
+		respc, kerr := newCommandClientFromCmd(cmd).KeepAliveOnce(context.TODO(), id)
 		if kerr != nil {
 			cobrautl.ExitWithError(cobrautl.ExitBadConnection, kerr)
 		}
@@ -186,7 +186,7 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	respc, kerr := mustClientFromCmd(cmd).KeepAlive(context.TODO(), id)
+	respc, kerr := newCommandClientFromCmd(cmd).KeepAlive(context.TODO(), id)
 	if kerr != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, kerr)
 	}

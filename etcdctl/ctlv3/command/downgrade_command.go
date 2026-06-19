@@ -87,7 +87,7 @@ func downgradeValidateCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	ctx, cancel := commandCtx(cmd)
-	cli := mustClientFromCmd(cmd)
+	cli := newCommandClientFromCmd(cmd)
 
 	resp, err := cli.Downgrade(ctx, clientv3.DowngradeValidate, targetVersion)
 	cancel()
@@ -113,7 +113,7 @@ func downgradeEnableCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	ctx, cancel := commandCtx(cmd)
-	cli := mustClientFromCmd(cmd)
+	cli := newCommandClientFromCmd(cmd)
 
 	resp, err := cli.Downgrade(ctx, clientv3.DowngradeEnable, targetVersion)
 	cancel()
@@ -127,7 +127,7 @@ func downgradeEnableCommandFunc(cmd *cobra.Command, args []string) {
 // downgradeCancelCommandFunc executes the "downgrade cancel" command.
 func downgradeCancelCommandFunc(cmd *cobra.Command, args []string) {
 	ctx, cancel := commandCtx(cmd)
-	cli := mustClientFromCmd(cmd)
+	cli := newCommandClientFromCmd(cmd)
 
 	resp, err := cli.Downgrade(ctx, clientv3.DowngradeCancel, "")
 	cancel()

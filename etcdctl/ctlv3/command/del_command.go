@@ -52,7 +52,7 @@ func NewDelCommand() *cobra.Command {
 func delCommandFunc(cmd *cobra.Command, args []string) {
 	key, opts := getDelOp(args)
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).Delete(ctx, key, opts...)
+	resp, err := newCommandClientFromCmd(cmd).Delete(ctx, key, opts...)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
