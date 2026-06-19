@@ -791,7 +791,7 @@ func (c *RaftCluster) IsLocalMemberLearner() bool {
 		// The local member may have been concurrently removed (e.g. during
 		// ConfChangeRemoveNode). Treat it as a non-learner rather than
 		// panicking, which would turn a clean removal into a crash.
-		c.lg.Warn(
+		c.lg.Debug(
 			"local member ID not found in cluster members during learner check; member may have been removed",
 			zap.String("cluster-id", c.cid.String()),
 			zap.String("local-member-id", c.localID.String()),
