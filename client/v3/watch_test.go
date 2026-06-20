@@ -204,3 +204,53 @@ func TestServeSubstreamLogsSlowConsumer(t *testing.T) {
 	}
 	w.wg.Wait()
 }
+
+// TestBroadcastResponseNoPanicOnCancelledSubstream is a regression test for
+// https://github.com/etcd-io/etcd/issues/21969.
+//
+// When a cancel response is received in run(), ws.recvc is closed and the
+// substream is removed from w.substreams.  If a progress-notify response
+// arrives before closeSubstream drains closingc, broadcastResponse iterates
+// w.substreams and would previously panic with "send on closed channel"
+// because the cancelled substream was still present.  The fix removes the
+// substream from w.substreams eagerly at cancel time so broadcastResponse
+// never encounters a closed recvc.
+func TestBroadcastResponseNoPanicOnCancelledSubstream(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	ws := &watcherStream{
+		initReq: watchRequest{ctx: ctx},
+		outc:    make(chan WatchResponse, 1),
+		recvc:   make(chan *WatchResponse, 1),
+		donec:   make(chan struct{}),
+		id:      1,
+	}
+
+	w := &watchGRPCStream{
+		ctx:        t.Context(),
+		substreams: map[int64]*watcherStream{1: ws},
+		closingc:   make(chan *watcherStream, 1),
+		lg:         zap.NewNop(),
+	}
+
+	// Reproduce the fixed cancel-response path: close ws.recvc and immediately
+	// remove the substream from w.substreams so that broadcastResponse cannot
+	// send on the closed channel.
+	close(ws.recvc)
+	delete(w.substreams, ws.id)
+
+	panicked := false
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				panicked = true
+			}
+		}()
+		w.broadcastResponse(&WatchResponse{Header: &pb.ResponseHeader{Revision: 1}})
+	}()
+
+	if panicked {
+		t.Fatal("broadcastResponse panicked after substream was removed from w.substreams")
+	}
+}
