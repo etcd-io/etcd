@@ -104,9 +104,8 @@ func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 			txr.buckets[k] = wb
 			continue
 		}
-		if seq, ok := txw.bucket2seq[k]; ok && !seq && wb.used > 1 {
-			// assume no duplicate keys
-			sort.Sort(wb)
+		if seq, ok := txw.bucket2seq[k]; ok && !seq {
+			wb.dedupe()
 		}
 		rb.merge(wb)
 	}
@@ -213,6 +212,7 @@ func (bb *bucketBuffer) add(k, v []byte) {
 
 // merge merges data from bbsrc into bb.
 func (bb *bucketBuffer) merge(bbsrc *bucketBuffer) {
+	bbsrc.dedupe()
 	for i := 0; i < bbsrc.used; i++ {
 		bb.add(bbsrc.buf[i].key, bbsrc.buf[i].val)
 	}

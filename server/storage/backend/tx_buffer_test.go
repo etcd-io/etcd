@@ -140,3 +140,24 @@ func TestDedupe(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeNoOverlapKeepsNewestForIntraBatchDuplicate(t *testing.T) {
+	// read buffer already holds a key strictly less than the src keys,
+	// so bucketBuffer.merge takes the no-overlap fast-path (around line 222).
+	rb := &bucketBuffer{buf: make([]kv, 10), used: 0}
+	rb.add([]byte("a"), []byte("1"))
+
+	// write buffer holds the SAME key twice (a key overwritten within one batch):
+	// pre-ordered OLD-before-NEW so the test does not depend on Go's sort behavior.
+	wb := &bucketBuffer{buf: make([]kv, 10), used: 0}
+	wb.add([]byte("k"), []byte("OLD"))
+	wb.add([]byte("k"), []byte("NEW"))
+
+	rb.merge(wb) // 'a' < 'k' -> no-overlap fast-path returns WITHOUT dedupe (the bug)
+
+	// limit=1 single-key read, as read_tx forces for endKey==nil on a non-safeRange bucket
+	keys, vals := rb.Range([]byte("k"), nil, 1)
+	assert.Equal(t, [][]byte{[]byte("k")}, keys)
+	// EXPECT newest; buggy code returns the stale "OLD" (smallest-index match)
+	assert.Equal(t, [][]byte{[]byte("NEW")}, vals)
+}
