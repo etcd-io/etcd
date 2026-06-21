@@ -151,7 +151,16 @@ func serverVersion(h http.Header) *semver.Version {
 	if verStr == "" {
 		verStr = "2.0.0"
 	}
-	return semver.Must(semver.NewVersion(verStr))
+	v, err := semver.NewVersion(verStr)
+	if err != nil {
+		// The header is peer-supplied, so a malformed value must not panic
+		// the request goroutine via semver.Must. Fall back to the 2.0
+		// default so the request is rejected by the normal version
+		// compatibility check, matching how cluster_util.go tolerates an
+		// unparsable remote version.
+		return semver.Must(semver.NewVersion("2.0.0"))
+	}
+	return v
 }
 
 // serverVersion returns the min cluster version from the given header.
@@ -161,7 +170,16 @@ func minClusterVersion(h http.Header) *semver.Version {
 	if verStr == "" {
 		verStr = "2.0.0"
 	}
-	return semver.Must(semver.NewVersion(verStr))
+	v, err := semver.NewVersion(verStr)
+	if err != nil {
+		// The header is peer-supplied, so a malformed value must not panic
+		// the request goroutine via semver.Must. Fall back to the 2.0
+		// default so the request is rejected by the normal version
+		// compatibility check, matching how cluster_util.go tolerates an
+		// unparsable remote version.
+		return semver.Must(semver.NewVersion("2.0.0"))
+	}
+	return v
 }
 
 // checkVersionCompatibility checks whether the given version is compatible
