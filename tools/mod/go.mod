@@ -16,6 +16,7 @@ require (
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	go.etcd.io/raft/v3 v3.7.0-rc.1
 	golang.org/x/tools v0.45.0
+	golang.org/x/vuln v1.3.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.2
 	google.golang.org/protobuf v1.36.11
 	gotest.tools/gotestsum v1.13.0
