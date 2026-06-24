@@ -137,7 +137,7 @@ cleanbranch="${NEWBRANCHUNIQ}"
 gitamcleanup=true
 for pull in "${PULLS[@]}"; do
   echo "+++ Downloading patch to /tmp/${pull}.patch (in case you need to do this again)"
-  curl -o "/tmp/${pull}.patch" -sSL "http://github.com/etcd-io/etcd/pull/${pull}.patch"
+  curl --proto '=https' --proto-redir '=https' --tlsv1.2 -o "/tmp/${pull}.patch" -fsSL "https://github.com/etcd-io/etcd/pull/${pull}.patch"
   echo
   echo "+++ About to attempt cherry pick of PR. To reattempt:"
   echo "  $ git am -3 /tmp/${pull}.patch"
