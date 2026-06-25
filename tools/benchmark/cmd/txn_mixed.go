@@ -17,10 +17,14 @@ package cmd
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/rand"
 	"os"
+	"os/signal"
+	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/cheggaaa/pb/v3"
@@ -45,6 +49,7 @@ var (
 	mixedTxnReadWriteRatio float64
 	mixedTxnRangeLimit     int64
 	mixedTxnEndKey         string
+	mixedTxnReportInterval int
 
 	writeOpsTotal uint64
 	readOpsTotal  uint64
@@ -62,11 +67,40 @@ func init() {
 	mixedTxnCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
 	mixedTxnCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
 	mixedTxnCmd.Flags().Float64Var(&mixedTxnReadWriteRatio, "rw-ratio", 1, "Read/write ops ratio")
+	mixedTxnCmd.Flags().IntVar(&mixedTxnReportInterval, "report-interval", 10, "Print live JSON metrics every N seconds (min=1, -1 to disable)")
 }
 
 type request struct {
 	isWrite bool
 	op      v3.Op
+}
+
+// liveSnapshot is the JSON record emitted to stdout on each tick by txn-mixed.
+// It carries separate read and write statistics for the reporting interval.
+type liveSnapshot struct {
+	ID         uint64  `json:"id"`
+	Timestamp  string  `json:"ts"`
+	ElapsedSec float64 `json:"elapsed_sec"`
+
+	Read struct {
+		Ops    int     `json:"ops"`
+		RPS    float64 `json:"rps"`
+		Avg    float64 `json:"avg"`
+		StdDev float64 `json:"stddev"`
+		P50    float64 `json:"p50"`
+		P90    float64 `json:"p90"`
+		P99    float64 `json:"p99"`
+	} `json:"read"`
+
+	Write struct {
+		Ops    int     `json:"ops"`
+		RPS    float64 `json:"rps"`
+		Avg    float64 `json:"avg"`
+		StdDev float64 `json:"stddev"`
+		P50    float64 `json:"p50"`
+		P90    float64 `json:"p90"`
+		P99    float64 `json:"p99"`
+	} `json:"write"`
 }
 
 func mixedTxnFunc(cmd *cobra.Command, _ []string) {
@@ -75,10 +109,20 @@ func mixedTxnFunc(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if mixedTxnReportInterval < -1 || mixedTxnReportInterval == 0 {
+		fmt.Fprintf(os.Stderr, "--report-interval must be >=1. Or -1 to disable.\n")
+		os.Exit(1)
+	}
+
+	messageOut := os.Stdout
+	if mixedTxnReportInterval > 0 {
+		messageOut = os.Stderr
+	}
+
 	if rangeConsistency == "l" {
-		fmt.Println("bench with linearizable range")
+		fmt.Fprintln(messageOut, "bench with linearizable range")
 	} else if rangeConsistency == "s" {
-		fmt.Println("bench with serializable range")
+		fmt.Fprintln(messageOut, "bench with serializable range")
 	} else {
 		fmt.Fprintln(os.Stderr, cmd.Usage())
 		os.Exit(1)
@@ -93,22 +137,125 @@ func mixedTxnFunc(cmd *cobra.Command, _ []string) {
 	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
 
 	bar = pb.New(mixedTxnTotal)
+	// when live reporting is active, use stderr for the progress bar
+	// to keep stdout as a clean stream for JSON metrics
+	if mixedTxnReportInterval > 0 {
+		bar.SetWriter(os.Stderr)
+	}
 	bar.Start()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+	defer signal.Stop(sigCh)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		select {
+		case <-sigCh:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
 
 	reportRead := newReport(cmd.Name() + "-read")
 	reportWrite := newReport(cmd.Name() + "-write")
+
+	readTracker := newIntervalTracker()
+	writeTracker := newIntervalTracker()
+
+	var snapshotID uint64
+	var stopLive chan struct{}
+
+	if mixedTxnReportInterval > 0 {
+		stopLive = make(chan struct{})
+		ticker := time.NewTicker(time.Duration(mixedTxnReportInterval) * time.Second)
+
+		go func() {
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					readLats, readElapsed := readTracker.snapshot()
+					writeLats, writeElapsed := writeTracker.snapshot()
+
+					if len(readLats)+len(writeLats) == 0 {
+						continue
+					}
+
+					// Use the longer of the two elapsed windows so RPS values
+					// for both operation types share a consistent denominator.
+					elapsed := readElapsed
+					if writeElapsed > elapsed {
+						elapsed = writeElapsed
+					}
+
+					rc, rrps, ravg, rstddev, rp50, rp90, rp99 :=
+						summarize(readLats, elapsed)
+					wc, wrps, wavg, wstddev, wp50, wp90, wp99 :=
+						summarize(writeLats, elapsed)
+
+					snap := liveSnapshot{
+						ID:         atomic.AddUint64(&snapshotID, 1),
+						Timestamp:  time.Now().UTC().Format(time.RFC3339),
+						ElapsedSec: elapsed,
+					}
+
+					snap.Read.Ops = rc
+					snap.Read.RPS = rrps
+					snap.Read.Avg = ravg
+					snap.Read.StdDev = rstddev
+					snap.Read.P50 = rp50
+					snap.Read.P90 = rp90
+					snap.Read.P99 = rp99
+
+					snap.Write.Ops = wc
+					snap.Write.RPS = wrps
+					snap.Write.Avg = wavg
+					snap.Write.StdDev = wstddev
+					snap.Write.P50 = wp50
+					snap.Write.P90 = wp90
+					snap.Write.P99 = wp99
+
+					b, err := json.Marshal(snap)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "marshal error: %v\n", err)
+						continue
+					}
+					// write intermediate JSON snapshot to stdout, when report interval is enabled
+					fmt.Fprintln(os.Stdout, string(b))
+				case <-stopLive:
+					return
+				}
+			}
+		}()
+	}
+
 	for i := range clients {
 		wg.Add(1)
 		go func(c *v3.Client) {
 			defer wg.Done()
 			for req := range requests {
-				limit.Wait(context.Background())
+				if err := limit.Wait(ctx); err != nil {
+					return
+				}
 				st := time.Now()
 				_, err := c.Txn(context.TODO()).Then(req.op).Commit()
+				end := time.Now()
+
+				res := report.Result{
+					Err:   err,
+					Start: st,
+					End:   end,
+				}
+
 				if req.isWrite {
-					reportWrite.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
+					reportWrite.Results() <- res
+					writeTracker.add(end.Sub(st))
 				} else {
-					reportRead.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
+					reportRead.Results() <- res
+					readTracker.add(end.Sub(st))
 				}
 				bar.Increment()
 			}
@@ -116,7 +263,13 @@ func mixedTxnFunc(cmd *cobra.Command, _ []string) {
 	}
 
 	go func() {
+		defer close(requests)
 		for i := 0; i < mixedTxnTotal; i++ {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			var req request
 			if rand.Float64() < mixedTxnReadWriteRatio/(1+mixedTxnReadWriteRatio) {
 				opts := []v3.OpOption{v3.WithRange(mixedTxnEndKey)}
@@ -126,16 +279,19 @@ func mixedTxnFunc(cmd *cobra.Command, _ []string) {
 				opts = append(opts, v3.WithPrefix(), v3.WithLimit(mixedTxnRangeLimit))
 				req.op = v3.OpGet("", opts...)
 				req.isWrite = false
-				readOpsTotal++
+				atomic.AddUint64(&readOpsTotal, 1)
 			} else {
 				binary.PutVarint(k, int64(i%keySpaceSize))
 				req.op = v3.OpPut(string(k), v)
 				req.isWrite = true
-				writeOpsTotal++
+				atomic.AddUint64(&writeOpsTotal, 1)
 			}
-			requests <- req
+			select {
+			case requests <- req:
+			case <-ctx.Done():
+				return
+			}
 		}
-		close(requests)
 	}()
 
 	rcRead := reportRead.Run()
@@ -144,8 +300,18 @@ func mixedTxnFunc(cmd *cobra.Command, _ []string) {
 	close(reportRead.Results())
 	close(reportWrite.Results())
 	bar.Finish()
-	fmt.Printf("Total Read Ops: %d\nDetails:", readOpsTotal)
-	fmt.Println(<-rcRead)
-	fmt.Printf("Total Write Ops: %d\nDetails:", writeOpsTotal)
-	fmt.Println(<-rcWrite)
+	if stopLive != nil {
+		close(stopLive)
+	}
+
+	// direct final summary to stderr if report interval is enabled,
+	// to separate it from live JSON snapshots in stdout
+	summaryOut := os.Stdout
+	if mixedTxnReportInterval > 0 {
+		summaryOut = os.Stderr
+	}
+	fmt.Fprintf(summaryOut, "Total Read Ops: %d\nDetails:", atomic.LoadUint64(&readOpsTotal))
+	fmt.Fprintln(summaryOut, <-rcRead)
+	fmt.Fprintf(summaryOut, "Total Write Ops: %d\nDetails:", atomic.LoadUint64(&writeOpsTotal))
+	fmt.Fprintln(summaryOut, <-rcWrite)
 }
