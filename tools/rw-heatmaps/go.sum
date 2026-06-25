@@ -2,8 +2,8 @@ codeberg.org/go-fonts/dejavu v0.4.0 h1:2yn58Vkh4CFK3ipacWUAIE3XVBGNa0y1bc95Bmfx9
 codeberg.org/go-fonts/dejavu v0.4.0/go.mod h1:abni088lmhQJvso2Lsb7azCKzwkfcnttl6tL1UTWKzg=
 codeberg.org/go-fonts/latin-modern v0.4.0 h1:vkRCc1y3whKA7iL9Ep0fSGVuJfqjix0ica9UflHORO8=
 codeberg.org/go-fonts/latin-modern v0.4.0/go.mod h1:BF68mZznJ9QHn+hic9ks2DaFl4sR5YhfM6xTYaP9vNw=
-codeberg.org/go-fonts/liberation v0.5.0 h1:SsKoMO1v1OZmzkG2DY+7ZkCL9U+rrWI09niOLfQ5Bo0=
-codeberg.org/go-fonts/liberation v0.5.0/go.mod h1:zS/2e1354/mJ4pGzIIaEtm/59VFCFnYC7YV6YdGl5GU=
+codeberg.org/go-fonts/liberation v0.6.0 h1:15Gh6SdwYve22CWCm9jYpVpRuaTh726av2TgHTHvAtQ=
+codeberg.org/go-fonts/liberation v0.6.0/go.mod h1:J15VAa+lyxdcI/Je7lDDDl6QOhLk9feNBnnwXqEHXOk=
 codeberg.org/go-latex/latex v0.1.0 h1:hoGO86rIbWVyjtlDLzCqZPjNykpWQ9YuTZqAzPcfL3c=
 codeberg.org/go-latex/latex v0.1.0/go.mod h1:LA0q/AyWIYrqVd+A9Upkgsb+IqPcmSTKc9Dny04MHMw=
 codeberg.org/go-pdf/fpdf v0.12.0 h1:g8E/1VqGqB2lZUUaqQrrTnA0IEJLPTTX1DZ0qS/ZmhU=
