@@ -24,50 +24,61 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-func BenchmarkWrite100EntryWithoutBatch(b *testing.B) { benchmarkWriteEntry(b, 100, 0) }
-func BenchmarkWrite100EntryBatch10(b *testing.B)      { benchmarkWriteEntry(b, 100, 10) }
-func BenchmarkWrite100EntryBatch100(b *testing.B)     { benchmarkWriteEntry(b, 100, 100) }
-func BenchmarkWrite100EntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 100, 500) }
-func BenchmarkWrite100EntryBatch1000(b *testing.B)    { benchmarkWriteEntry(b, 100, 1000) }
+var k8sBatchDistribution = []int{
+	2, 1, 1, 1, 1, 2, 83, 2, 83, 1, 1, 101, 148, 252, 147, 152, 1, 101, 104, 1,
+	203, 195, 174, 22, 31, 1, 212, 187, 1, 124, 248, 28, 1, 1, 216, 183, 187, 184, 30, 1,
+	30, 190, 180, 191, 204, 1, 25, 1, 1, 179, 221, 1, 398, 1, 1, 2, 170, 230, 168, 229,
+	1, 3, 1, 370, 9, 1, 157, 241, 21, 1, 1, 343, 43, 353, 44, 16, 1, 4, 307, 89,
+	308, 91, 2, 1, 136, 143, 1, 166, 231, 122, 1, 1, 50, 294, 101, 295, 59, 2, 1,
+	327, 27, 176, 193, 1, 76, 1, 1, 29, 300, 38, 356, 10, 67, 1, 320, 13, 178, 114,
+	1, 168, 5, 185, 48, 210, 184, 26, 143, 191, 44, 1, 256, 143, 1, 4, 163, 233, 1,
+	237, 163, 1, 48, 202, 1, 85,
+}
 
-func BenchmarkWrite1000EntryWithoutBatch(b *testing.B) { benchmarkWriteEntry(b, 1000, 0) }
-func BenchmarkWrite1000EntryBatch10(b *testing.B)      { benchmarkWriteEntry(b, 1000, 10) }
-func BenchmarkWrite1000EntryBatch100(b *testing.B)     { benchmarkWriteEntry(b, 1000, 100) }
-func BenchmarkWrite1000EntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 1000, 500) }
-func BenchmarkWrite1000EntryBatch1000(b *testing.B)    { benchmarkWriteEntry(b, 1000, 1000) }
+func BenchmarkWrite100EntryWithoutBatch(b *testing.B) { benchmarkWriteEntry(b, 100, []int{1}) }
+func BenchmarkWrite100EntryBatch10(b *testing.B)      { benchmarkWriteEntry(b, 100, []int{10}) }
+func BenchmarkWrite100EntryBatch100(b *testing.B)     { benchmarkWriteEntry(b, 100, []int{100}) }
+func BenchmarkWrite100EntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 100, []int{500}) }
+func BenchmarkWrite100EntryBatch1000(b *testing.B)    { benchmarkWriteEntry(b, 100, []int{1000}) }
 
-func BenchmarkWrite10KEntryWithoutBatch(b *testing.B) { benchmarkWriteEntry(b, 10145, 0) }
-func BenchmarkWrite10KEntryBatch10(b *testing.B)      { benchmarkWriteEntry(b, 10145, 10) }
-func BenchmarkWrite10KEntryBatch50(b *testing.B)      { benchmarkWriteEntry(b, 10145, 50) }
-func BenchmarkWrite10KEntryBatch100(b *testing.B)     { benchmarkWriteEntry(b, 10145, 100) }
-func BenchmarkWrite10KEntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 10145, 500) }
+func BenchmarkWrite1000EntryWithoutBatch(b *testing.B) { benchmarkWriteEntry(b, 1000, []int{1}) }
+func BenchmarkWrite1000EntryBatch10(b *testing.B)      { benchmarkWriteEntry(b, 1000, []int{10}) }
+func BenchmarkWrite1000EntryBatch100(b *testing.B)     { benchmarkWriteEntry(b, 1000, []int{100}) }
+func BenchmarkWrite1000EntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 1000, []int{500}) }
+func BenchmarkWrite1000EntryBatch1000(b *testing.B)    { benchmarkWriteEntry(b, 1000, []int{1000}) }
+
+func BenchmarkWrite10KEntryWithoutBatch(b *testing.B) { benchmarkWriteEntry(b, 10145, []int{1}) }
+func BenchmarkWrite10KEntryBatch10(b *testing.B)      { benchmarkWriteEntry(b, 10145, []int{10}) }
+func BenchmarkWrite10KEntryBatch50(b *testing.B)      { benchmarkWriteEntry(b, 10145, []int{50}) }
+func BenchmarkWrite10KEntryBatch100(b *testing.B)     { benchmarkWriteEntry(b, 10145, []int{100}) }
+func BenchmarkWrite10KEntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 10145, []int{500}) }
 
 func BenchmarkWrite10KEntryK8sDistribution(b *testing.B) {
+	benchmarkWriteEntry(b, 10145, k8sBatchDistribution)
+}
+
+func benchmarkWriteEntry(b *testing.B, size int, batchSamples []int) {
 	p := b.TempDir()
 
 	w, err := Create(zaptest.NewLogger(b), p, []byte("somedata"))
 	require.NoErrorf(b, err, "err = %v, want nil", err)
-	data := make([]byte, 10145)
-	for i := 0; i < len(data); i++ {
+	data := make([]byte, size)
+	for i := 0; i < size; i++ {
 		data[i] = byte(i % 256)
 	}
 	e := &raftpb.Entry{Data: data}
-
-	// Distribution of batch sizes observed during K8s delete-create benchmark run
-	batchSizes := []int{
-		2, 1, 1, 1, 1, 1, 63, 6, 63, 1, 4, 1, 1, 392, 8, 194, 205, 1, 1, 1,
-		388, 11, 123, 277, 1, 3, 1, 133, 176, 1, 110, 204, 7, 1, 1, 369, 31,
-		273, 126, 1, 1, 65, 308, 91, 308, 28, 2, 1, 238, 126,
-	}
-	batchIdx := 0
 
 	b.ResetTimer()
 	b.SetBytes(int64(proto.Size(e)))
 
 	i := 0
+	batchIdx := 0
 	for i < b.N {
-		batchLimit := batchSizes[batchIdx]
-		batchIdx = (batchIdx + 1) % len(batchSizes)
+		batchLimit := 1
+		if len(batchSamples) > 0 {
+			batchLimit = batchSamples[batchIdx]
+			batchIdx = (batchIdx + 1) % len(batchSamples)
+		}
 
 		for j := 0; j < batchLimit && i < b.N; j++ {
 			err := w.saveEntry(e)
@@ -77,35 +88,5 @@ func BenchmarkWrite10KEntryK8sDistribution(b *testing.B) {
 			i++
 		}
 		w.sync()
-	}
-}
-
-
-
-
-func benchmarkWriteEntry(b *testing.B, size int, batch int) {
-	p := b.TempDir()
-
-	w, err := Create(zaptest.NewLogger(b), p, []byte("somedata"))
-	require.NoErrorf(b, err, "err = %v, want nil", err)
-	data := make([]byte, size)
-	for i := 0; i < size; i++ {
-		data[i] = byte(i)
-	}
-	e := &raftpb.Entry{Data: data}
-
-	b.ResetTimer()
-	n := 0
-	b.SetBytes(int64(proto.Size(e)))
-	for i := 0; i < b.N; i++ {
-		err := w.saveEntry(e)
-		if err != nil {
-			b.Fatal(err)
-		}
-		n++
-		if n > batch {
-			w.sync()
-			n = 0
-		}
 	}
 }
