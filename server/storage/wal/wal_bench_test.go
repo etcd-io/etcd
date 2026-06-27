@@ -42,6 +42,45 @@ func BenchmarkWrite10KEntryBatch50(b *testing.B)      { benchmarkWriteEntry(b, 1
 func BenchmarkWrite10KEntryBatch100(b *testing.B)     { benchmarkWriteEntry(b, 10145, 100) }
 func BenchmarkWrite10KEntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 10145, 500) }
 
+func BenchmarkWrite10KEntryK8sDistribution(b *testing.B) {
+	p := b.TempDir()
+
+	w, err := Create(zaptest.NewLogger(b), p, []byte("somedata"))
+	require.NoErrorf(b, err, "err = %v, want nil", err)
+	data := make([]byte, 10145)
+	for i := 0; i < len(data); i++ {
+		data[i] = byte(i % 256)
+	}
+	e := &raftpb.Entry{Data: data}
+
+	// Distribution of batch sizes observed during K8s delete-create benchmark run
+	batchSizes := []int{
+		2, 1, 1, 1, 1, 1, 63, 6, 63, 1, 4, 1, 1, 392, 8, 194, 205, 1, 1, 1,
+		388, 11, 123, 277, 1, 3, 1, 133, 176, 1, 110, 204, 7, 1, 1, 369, 31,
+		273, 126, 1, 1, 65, 308, 91, 308, 28, 2, 1, 238, 126,
+	}
+	batchIdx := 0
+
+	b.ResetTimer()
+	b.SetBytes(int64(proto.Size(e)))
+
+	i := 0
+	for i < b.N {
+		batchLimit := batchSizes[batchIdx]
+		batchIdx = (batchIdx + 1) % len(batchSizes)
+
+		for j := 0; j < batchLimit && i < b.N; j++ {
+			err := w.saveEntry(e)
+			if err != nil {
+				b.Fatal(err)
+			}
+			i++
+		}
+		w.sync()
+	}
+}
+
+
 
 
 func benchmarkWriteEntry(b *testing.B, size int, batch int) {
