@@ -303,7 +303,7 @@ func (lkv *leasingKV) get(ctx context.Context, op v3.Op) (*v3.GetResponse, error
 		r, err := lkv.kv.Do(ctx, op)
 		return r.Get(), err
 	}
-	if !lkv.readySession() {
+	if !lkv.readySession() || !lkv.session.IsLeaseValid() {
 		return do()
 	}
 
