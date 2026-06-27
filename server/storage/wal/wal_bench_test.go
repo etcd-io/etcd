@@ -36,6 +36,14 @@ func BenchmarkWrite1000EntryBatch100(b *testing.B)     { benchmarkWriteEntry(b, 
 func BenchmarkWrite1000EntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 1000, 500) }
 func BenchmarkWrite1000EntryBatch1000(b *testing.B)    { benchmarkWriteEntry(b, 1000, 1000) }
 
+func BenchmarkWrite10KEntryWithoutBatch(b *testing.B) { benchmarkWriteEntry(b, 10145, 0) }
+func BenchmarkWrite10KEntryBatch10(b *testing.B)      { benchmarkWriteEntry(b, 10145, 10) }
+func BenchmarkWrite10KEntryBatch50(b *testing.B)      { benchmarkWriteEntry(b, 10145, 50) }
+func BenchmarkWrite10KEntryBatch100(b *testing.B)     { benchmarkWriteEntry(b, 10145, 100) }
+func BenchmarkWrite10KEntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 10145, 500) }
+
+
+
 func benchmarkWriteEntry(b *testing.B, size int, batch int) {
 	p := b.TempDir()
 
