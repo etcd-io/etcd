@@ -16,16 +16,34 @@ package v3rpc
 
 import "github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
 
+// vtMarshaler and vtUnmarshaler are implemented by messages generated with
+// protoc-gen-go-vtproto. When a message provides these zero-reflection methods
+// we use them; otherwise we fall back to the standard reflection-based codec.
+type vtMarshaler interface{ MarshalVT() ([]byte, error) }
+
+type vtUnmarshaler interface{ UnmarshalVT([]byte) error }
+
 type codec struct{}
 
 func (c *codec) Marshal(v any) ([]byte, error) {
-	b, err := proto.Marshal(v.(proto.Message))
+	var (
+		b   []byte
+		err error
+	)
+	if m, ok := v.(vtMarshaler); ok {
+		b, err = m.MarshalVT()
+	} else {
+		b, err = proto.Marshal(v.(proto.Message))
+	}
 	sentBytes.Add(float64(len(b)))
 	return b, err
 }
 
 func (c *codec) Unmarshal(data []byte, v any) error {
 	receivedBytes.Add(float64(len(data)))
+	if m, ok := v.(vtUnmarshaler); ok {
+		return m.UnmarshalVT(data)
+	}
 	return proto.Unmarshal(data, v.(proto.Message))
 }
 

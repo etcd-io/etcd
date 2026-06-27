@@ -81,6 +81,7 @@ GOGEN_BIN=$(tool_get_bin google.golang.org/protobuf/cmd/protoc-gen-go)
 GOGENGRPC_BIN=$(tool_get_bin google.golang.org/grpc/cmd/protoc-gen-go-grpc)
 GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway)
 OPENAPIV2_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2)
+GOVTPROTO_BIN=$(tool_get_bin github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto)
 GOGOPROTO_ROOT="$(tool_pkg_dir github.com/gogo/protobuf/proto)/.."
 GRPC_GATEWAY_ROOT="$(tool_pkg_dir github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway)/.."
 RAFT_ROOT="$(tool_pkg_dir go.etcd.io/raft/v3/raftpb)/.."
@@ -119,6 +120,7 @@ echo "  - protoc-gen-go:           ${GOGEN_BIN}"
 echo "  - protoc-gen-go-grpc:      ${GOGENGRPC_BIN}"
 echo "  - protoc-gen-grpc-gateway: ${GRPC_GATEWAY_BIN}"
 echo "  - openapiv2:               ${OPENAPIV2_BIN}"
+echo "  - protoc-gen-go-vtproto:   ${GOVTPROTO_BIN}"
 echo "  - gogoproto-root:          ${GOGOPROTO_ROOT}"
 echo "  - grpc-gateway-root:       ${GRPC_GATEWAY_ROOT}"
 echo "  - raft-root:               ${RAFT_ROOT}"
@@ -135,6 +137,8 @@ for dir in ${DIRS}; do
       "--go_opt=paths=source_relative,${module_mappings}" \
       --go-grpc_out=. \
       "--go-grpc_opt=paths=source_relative,${module_mappings}" \
+      --go-vtproto_out=. \
+      "--go-vtproto_opt=paths=source_relative,features=marshal+unmarshal+size,${module_mappings}" \
       -I"${GRPC_GATEWAY_ROOT}" \
       ./**/*.proto
 

@@ -29,6 +29,7 @@ import (
 	_ "github.com/google/yamlfmt/cmd/yamlfmt"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2"
+	_ "github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto"
 	_ "github.com/ryancurrah/gomodguard/cmd/gomodguard"
 	_ "golang.org/x/tools/cmd/goimports"
 	_ "golang.org/x/vuln/cmd/govulncheck"
