@@ -80,21 +80,33 @@ func (e *encoder) encode(rec *walpb.Record) error {
 
 	size := proto.Size(rec)
 	opts := proto.MarshalOptions{UseCachedSize: true}
-	if size > len(e.buf) {
-		data, err = proto.Marshal(rec)
+	if size > len(e.buf)-8 {
+		raw, err := proto.Marshal(rec)
 		if err != nil {
 			return err
 		}
+		data = make([]byte, 8+len(raw))
+		copy(data[8:], raw)
 	} else {
-		data, err = opts.MarshalAppend(e.buf[:0], rec)
+		data, err = opts.MarshalAppend(e.buf[:8], rec)
 		if err != nil {
 			return err
 		}
 	}
 
-	data, lenField := prepareDataWithPadding(data)
+	payloadSize := len(data) - 8
+	lenField, padBytes := encodeFrameSize(payloadSize)
+	if padBytes != 0 {
+		data = append(data, make([]byte, padBytes)...)
+	}
 
-	return write(e.bw, e.uint64buf, data, lenField)
+	binary.LittleEndian.PutUint64(data[0:8], lenField)
+
+	start := time.Now()
+	n, err := e.bw.Write(data)
+	walWriteSec.Observe(time.Since(start).Seconds())
+	walWriteBytes.Add(float64(n))
+	return err
 }
 
 func encodeFrameSize(dataBytes int) (lenField uint64, padBytes int) {
@@ -113,28 +125,3 @@ func (e *encoder) flush() error {
 	return e.bw.Flush()
 }
 
-func prepareDataWithPadding(data []byte) ([]byte, uint64) {
-	lenField, padBytes := encodeFrameSize(len(data))
-	if padBytes != 0 {
-		data = append(data, make([]byte, padBytes)...)
-	}
-	return data, lenField
-}
-
-func write(w io.Writer, uint64buf, data []byte, lenField uint64) error {
-	// write padding info
-	binary.LittleEndian.PutUint64(uint64buf, lenField)
-
-	start := time.Now()
-	nv, err := w.Write(uint64buf)
-	walWriteBytes.Add(float64(nv))
-	if err != nil {
-		return err
-	}
-
-	// write the record with padding
-	n, err := w.Write(data)
-	walWriteSec.Observe(time.Since(start).Seconds())
-	walWriteBytes.Add(float64(n))
-	return err
-}
