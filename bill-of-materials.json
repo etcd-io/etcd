@@ -324,6 +324,15 @@
 		]
 	},
 	{
+		"project": "github.com/planetscale/vtprotobuf/protohelpers",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
 		"project": "github.com/pmezard/go-difflib/difflib",
 		"licenses": [
 			{
