@@ -972,14 +972,22 @@ func (w *WAL) Save(st *raftpb.HardState, ents []*raftpb.Entry) error {
 
 	mustSync := raft.MustSync(st, w.state, len(ents))
 
-	// TODO(xiangli): no more reference operator
+	recs := make([]*walpb.Record, 0, len(ents)+1)
 	for i := range ents {
-		if err := w.saveEntry(ents[i]); err != nil {
+		b := pbutil.MustMarshalMessage(ents[i])
+		recs = append(recs, &walpb.Record{Type: new(EntryType), Data: b})
+		w.enti = ents[i].GetIndex()
+	}
+	if !raft.IsEmptyHardState(st) {
+		w.state = st
+		b := pbutil.MustMarshalMessage(st)
+		recs = append(recs, &walpb.Record{Type: new(StateType), Data: b})
+	}
+
+	if len(recs) > 0 {
+		if err := w.encoder.encodeBatch(recs); err != nil {
 			return err
 		}
-	}
-	if err := w.saveState(st); err != nil {
-		return err
 	}
 
 	curOff, err := w.tail().Seek(0, io.SeekCurrent)

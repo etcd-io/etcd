@@ -64,12 +64,15 @@ func newFileEncoder(f *os.File, prevCrc uint32) (*encoder, error) {
 }
 
 func (e *encoder) encode(rec *walpb.Record) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.encodeUnlocked(rec)
+}
+
+func (e *encoder) encodeUnlocked(rec *walpb.Record) error {
 	if rec.Type == nil {
 		return errors.New("record is missing type")
 	}
-
-	e.mu.Lock()
-	defer e.mu.Unlock()
 
 	e.crc.Write(rec.Data)
 	rec.Crc = new(e.crc.Sum32())
@@ -107,6 +110,17 @@ func (e *encoder) encode(rec *walpb.Record) error {
 	walWriteSec.Observe(time.Since(start).Seconds())
 	walWriteBytes.Add(float64(n))
 	return err
+}
+
+func (e *encoder) encodeBatch(recs []*walpb.Record) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for _, rec := range recs {
+		if err := e.encodeUnlocked(rec); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func encodeFrameSize(dataBytes int) (lenField uint64, padBytes int) {
