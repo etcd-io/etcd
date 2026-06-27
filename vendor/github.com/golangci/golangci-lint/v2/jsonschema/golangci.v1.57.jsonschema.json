@@ -1,0 +1,3480 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json.schemastore.org/golangci-lint.json",
+  "definitions": {
+    "gocritic-checks": {
+      "enum": [
+        "appendAssign",
+        "appendCombine",
+        "argOrder",
+        "assignOp",
+        "badCall",
+        "badCond",
+        "badLock",
+        "badRegexp",
+        "badSorting",
+        "boolExprSimplify",
+        "builtinShadow",
+        "builtinShadowDecl",
+        "captLocal",
+        "caseOrder",
+        "codegenComment",
+        "commentedOutCode",
+        "commentedOutImport",
+        "commentFormatting",
+        "defaultCaseOrder",
+        "deferUnlambda",
+        "deferInLoop",
+        "deprecatedComment",
+        "docStub",
+        "dupArg",
+        "dupBranchBody",
+        "dupCase",
+        "dupImport",
+        "dupSubExpr",
+        "dynamicFmtString",
+        "elseif",
+        "emptyDecl",
+        "emptyFallthrough",
+        "emptyStringTest",
+        "equalFold",
+        "evalOrder",
+        "exitAfterDefer",
+        "exposedSyncMutex",
+        "externalErrorReassign",
+        "filepathJoin",
+        "flagDeref",
+        "flagName",
+        "hexLiteral",
+        "httpNoBody",
+        "hugeParam",
+        "ifElseChain",
+        "importShadow",
+        "indexAlloc",
+        "initClause",
+        "ioutilDeprecated",
+        "mapKey",
+        "methodExprCall",
+        "nestingReduce",
+        "newDeref",
+        "nilValReturn",
+        "octalLiteral",
+        "offBy1",
+        "paramTypeCombine",
+        "preferDecodeRune",
+        "preferFilepathJoin",
+        "preferFprint",
+        "preferStringWriter",
+        "preferWriteByte",
+        "ptrToRefParam",
+        "rangeExprCopy",
+        "rangeValCopy",
+        "redundantSprint",
+        "regexpMust",
+        "regexpPattern",
+        "regexpSimplify",
+        "returnAfterHttpError",
+        "ruleguard",
+        "singleCaseSwitch",
+        "sliceClear",
+        "sloppyLen",
+        "sloppyReassign",
+        "sloppyTypeAssert",
+        "sortSlice",
+        "sprintfQuotedString",
+        "sqlQuery",
+        "stringConcatSimplify",
+        "stringsCompare",
+        "stringXbytes",
+        "suspiciousSorting",
+        "switchTrue",
+        "syncMapLoadAndDelete",
+        "timeCmpSimplify",
+        "timeExprSimplify",
+        "tooManyResultsChecker",
+        "truncateCmp",
+        "typeAssertChain",
+        "typeDefFirst",
+        "typeSwitchVar",
+        "typeUnparen",
+        "uncheckedInlineErr",
+        "underef",
+        "unlabelStmt",
+        "unlambda",
+        "unnamedResult",
+        "unnecessaryBlock",
+        "unnecessaryDefer",
+        "unslice",
+        "valSwap",
+        "weakCond",
+        "whyNoLint",
+        "wrapperFunc",
+        "yodaStyleExpr"
+      ]
+    },
+    "gocritic-tags": {
+      "enum": [
+        "diagnostic",
+        "style",
+        "performance",
+        "experimental",
+        "opinionated",
+        "security"
+      ]
+    },
+    "gosec-rules": {
+      "enum": [
+        "G101",
+        "G102",
+        "G103",
+        "G104",
+        "G106",
+        "G107",
+        "G108",
+        "G109",
+        "G110",
+        "G111",
+        "G112",
+        "G113",
+        "G114",
+        "G201",
+        "G202",
+        "G203",
+        "G204",
+        "G301",
+        "G302",
+        "G303",
+        "G304",
+        "G305",
+        "G306",
+        "G307",
+        "G401",
+        "G402",
+        "G403",
+        "G404",
+        "G501",
+        "G502",
+        "G503",
+        "G504",
+        "G505",
+        "G601",
+        "G602"
+      ]
+    },
+    "govet-analyzers": {
+      "enum": [
+        "appends",
+        "asmdecl",
+        "assign",
+        "atomic",
+        "atomicalign",
+        "bools",
+        "buildtag",
+        "cgocall",
+        "composites",
+        "copylocks",
+        "deepequalerrors",
+        "defers",
+        "directive",
+        "errorsas",
+        "fieldalignment",
+        "findcall",
+        "framepointer",
+        "httpresponse",
+        "ifaceassert",
+        "loopclosure",
+        "lostcancel",
+        "nilfunc",
+        "nilness",
+        "printf",
+        "reflectvaluecompare",
+        "shadow",
+        "shift",
+        "sigchanyzer",
+        "slog",
+        "sortslice",
+        "stdmethods",
+        "stringintconv",
+        "structtag",
+        "testinggoroutine",
+        "tests",
+        "unmarshal",
+        "unreachable",
+        "unsafeptr",
+        "unusedresult",
+        "unusedwrite"
+      ]
+    },
+    "linters": {
+      "$comment": "anyOf with enum is used to allow auto completion of non-custom linters",
+      "description": "Linters usable.",
+      "anyOf": [
+        {
+          "enum": [
+            "asasalint",
+            "asciicheck",
+            "bidichk",
+            "bodyclose",
+            "containedctx",
+            "contextcheck",
+            "copyloopvar",
+            "cyclop",
+            "deadcode",
+            "decorder",
+            "depguard",
+            "dogsled",
+            "dupl",
+            "dupword",
+            "durationcheck",
+            "errcheck",
+            "errchkjson",
+            "errname",
+            "errorlint",
+            "execinquery",
+            "exhaustive",
+            "exhaustivestruct",
+            "exhaustruct",
+            "exportloopref",
+            "forbidigo",
+            "forcetypeassert",
+            "funlen",
+            "gci",
+            "ginkgolinter",
+            "gocheckcompilerdirectives",
+            "gochecknoglobals",
+            "gochecknoinits",
+            "gochecksumtype",
+            "gocognit",
+            "goconst",
+            "gocritic",
+            "gocyclo",
+            "godot",
+            "godox",
+            "goerr113",
+            "gofmt",
+            "gofumpt",
+            "goheader",
+            "goimports",
+            "golint",
+            "gomnd",
+            "gomoddirectives",
+            "gomodguard",
+            "goprintffuncname",
+            "gosec",
+            "gosimple",
+            "gosmopolitan",
+            "govet",
+            "grouper",
+            "ifshort",
+            "importas",
+            "inamedparam",
+            "ineffassign",
+            "interfacebloat",
+            "interfacer",
+            "intrange",
+            "ireturn",
+            "lll",
+            "loggercheck",
+            "maintidx",
+            "makezero",
+            "maligned",
+            "mirror",
+            "misspell",
+            "musttag",
+            "nakedret",
+            "nestif",
+            "nilerr",
+            "nilnil",
+            "nlreturn",
+            "noctx",
+            "nolintlint",
+            "nonamedreturns",
+            "nosnakecase",
+            "nosprintfhostport",
+            "paralleltest",
+            "perfsprint",
+            "prealloc",
+            "predeclared",
+            "promlinter",
+            "protogetter",
+            "reassign",
+            "revive",
+            "rowserrcheck",
+            "scopelint",
+            "sloglint",
+            "sqlclosecheck",
+            "staticcheck",
+            "structcheck",
+            "stylecheck",
+            "tagalign",
+            "tagliatelle",
+            "tenv",
+            "testableexamples",
+            "testifylint",
+            "testpackage",
+            "thelper",
+            "tparallel",
+            "typecheck",
+            "unconvert",
+            "unparam",
+            "unused",
+            "usestdlibvars",
+            "varcheck",
+            "varnamelen",
+            "wastedassign",
+            "whitespace",
+            "wrapcheck",
+            "wsl",
+            "zerologlint"
+          ]
+        },
+        {
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "run": {
+      "description": "Options for analysis running,",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "concurrency": {
+          "description": "Number of concurrent runners. Defaults to the number of available CPU cores.",
+          "type": "integer",
+          "minimum": 0,
+          "examples": [4]
+        },
+        "timeout": {
+          "description": "Timeout for the analysis.",
+          "type": "string",
+          "pattern": "^((\\d+h)?(\\d+m)?(\\d+(?:\\.\\d)?s)?|0)$",
+          "default": "1m",
+          "examples": ["30s", "5m", "5m30s"]
+        },
+        "issues-exit-code": {
+          "description": "Exit code when at least one issue was found.",
+          "type": "integer",
+          "default": 1
+        },
+        "tests": {
+          "description": "Enable inclusion of test files.",
+          "type": "boolean",
+          "default": true
+        },
+        "build-tags": {
+          "description": "List of build tags to pass to all linters.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "examples": [["mytag"]]
+        },
+        "modules-download-mode": {
+          "description": "Option to pass to \"go list -mod={option}\".\nSee \"go help modules\" for more information.",
+          "enum": ["mod", "readonly", "vendor"]
+        },
+        "allow-parallel-runners": {
+          "description": "Allow multiple parallel golangci-lint instances running. If disabled, golangci-lint acquires file lock on start.",
+          "type": "boolean",
+          "default": false
+        },
+        "allow-serial-runners": {
+          "description": "Allow multiple golangci-lint instances running, but serialize them around a lock.",
+          "type": "boolean",
+          "default": false
+        },
+        "go": {
+          "description": "Targeted Go version.",
+          "type": "string",
+          "default": "1.17"
+        }
+      }
+    },
+    "output": {
+      "description": "Output configuration options.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "formats": {
+          "description": "Output formats to use.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "default": "stdout",
+                "anyOf": [
+                  {
+                    "enum": [ "stdout", "stderr" ]
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "format": {
+                "default": "colored-line-number",
+                "enum": [
+                  "colored-line-number",
+                  "line-number",
+                  "json",
+                  "colored-tab",
+                  "tab",
+                  "checkstyle",
+                  "code-climate",
+                  "junit-xml",
+                  "github-actions",
+                  "teamcity"
+                ]
+              }
+            },
+            "required": ["format"]
+          }
+        },
+        "print-issued-lines": {
+          "description": "Print lines of code with issue.",
+          "type": "boolean",
+          "default": true
+        },
+        "print-linter-name": {
+          "description": "Print linter name in the end of issue text.",
+          "type": "boolean",
+          "default": true
+        },
+        "uniq-by-line": {
+          "description": "Make issues output unique by line.",
+          "type": "boolean",
+          "default": true
+        },
+        "path-prefix": {
+          "description": "Add a prefix to the output file references.",
+          "type": "string",
+          "default": ""
+        },
+        "show-stats": {
+          "description": "Show statistics per linter.",
+          "type": "boolean",
+          "default": false
+        },
+        "sort-order": {
+          "type": "array",
+          "items": {
+            "enum": ["linter", "severity", "file"]
+          }
+        },
+        "sort-results": {
+          "description": "Sort results by: filepath, line and column.",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "linters-settings": {
+      "description": "All available settings of specific linters.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dupword": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "keywords": {
+              "description": "Keywords for detecting duplicate words. If this list is not empty, only the words defined in this list will be detected.",
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "examples": ["the", "and", "a"]
+              }
+            },
+            "ignore": {
+              "description": "Keywords used to ignore detection.",
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "examples": ["0C0C"]
+              }
+            }
+          }
+        },
+        "asasalint": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "exclude": {
+              "description": "To specify a set of function names to exclude.",
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "examples": ["\\.Wrapf"]
+              }
+            },
+            "use-builtin-exclusions": {
+              "description": "To enable/disable the asasalint builtin exclusions of function names.",
+              "type": "boolean",
+              "default": true
+            },
+            "ignore-test": {
+              "description": "Ignore *_test.go files.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "bidichk": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "left-to-right-embedding": {
+              "description": "Disallow: LEFT-TO-RIGHT-EMBEDDING",
+              "type": "boolean",
+              "default": false
+            },
+            "right-to-left-embedding": {
+              "description": "Disallow: RIGHT-TO-LEFT-EMBEDDING",
+              "type": "boolean",
+              "default": false
+            },
+            "pop-directional-formatting": {
+              "description": "Disallow: POP-DIRECTIONAL-FORMATTING",
+              "type": "boolean",
+              "default": false
+            },
+            "left-to-right-override": {
+              "description": "Disallow: LEFT-TO-RIGHT-OVERRIDE",
+              "type": "boolean",
+              "default": false
+            },
+            "right-to-left-override": {
+              "description": "Disallow: RIGHT-TO-LEFT-OVERRIDE",
+              "type": "boolean",
+              "default": false
+            },
+            "left-to-right-isolate": {
+              "description": "Disallow: LEFT-TO-RIGHT-ISOLATE",
+              "type": "boolean",
+              "default": false
+            },
+            "right-to-left-isolate": {
+              "description": "Disallow: RIGHT-TO-LEFT-ISOLATE",
+              "type": "boolean",
+              "default": false
+            },
+            "first-strong-isolate": {
+              "description": "Disallow: FIRST-STRONG-ISOLATE",
+              "type": "boolean",
+              "default": false
+            },
+            "pop-directional-isolate": {
+              "description": "Disallow: POP-DIRECTIONAL-ISOLATE",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "cyclop": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "skip-tests": {
+              "description": "Should the linter execute on test files as well",
+              "type": "boolean",
+              "default": false
+            },
+            "max-complexity": {
+              "description": "Max complexity the function can have",
+              "type": "integer",
+              "default": 10,
+              "minimum": 0
+            },
+            "package-average": {
+              "description": "Max average complexity in package",
+              "type": "number",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        },
+        "decorder": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "dec-order": {
+              "type": "array",
+              "default": [["type", "const", "var", "func"]],
+              "items": {
+                "enum": ["type", "const", "var", "func"]
+              }
+            },
+            "ignore-underscore-vars": {
+              "description": "Underscore vars (vars with \"_\" as the name) will be ignored at all checks",
+              "default": true,
+              "type": "boolean"
+            },
+            "disable-dec-order-check": {
+              "description": "Order of declarations is not checked",
+              "default": true,
+              "type": "boolean"
+            },
+            "disable-init-func-first-check": {
+              "description": "Allow init func to be anywhere in file",
+              "default": true,
+              "type": "boolean"
+            },
+            "disable-dec-num-check": {
+              "description": "Multiple global type, const and var declarations are allowed",
+              "default": true,
+              "type": "boolean"
+            },
+            "disable-type-dec-num-check": {
+              "description": "Type declarations will be ignored for dec num check",
+              "default": true,
+              "type": "boolean"
+            },
+            "disable-const-dec-num-check": {
+              "description": "Const declarations will be ignored for dec num check",
+              "default": true,
+              "type": "boolean"
+            },
+            "disable-var-dec-num-check": {
+              "description": "Var declarations will be ignored for dec num check",
+              "default": true,
+              "type": "boolean"
+            }
+          }
+        },
+        "depguard": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "rules": {
+              "description": "Rules to apply.",
+              "type": "object",
+              "additionalProperties": false,
+              "patternProperties": {
+                "^[^.]+$": {
+                  "description": "Name of a rule.",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "list-mode": {
+                      "description": "Used to determine the package matching priority.",
+                      "enum": ["original", "strict", "lax"],
+                      "default": "original"
+                    },
+                    "files": {
+                      "description": "List of file globs that will match this list of settings to compare against.",
+                      "additionalProperties": false,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "allow": {
+                      "description": "List of allowed packages.",
+                      "additionalProperties": false,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "deny": {
+                      "description": "Packages that are not allowed where the value is a suggestion.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "desc": {
+                            "description": "Description",
+                            "type": "string"
+                          },
+                          "pkg": {
+                            "description": "Package",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "dogsled": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max-blank-identifiers": {
+              "description": "Check assignments with too many blank identifiers.",
+              "type": "integer",
+              "default": 2,
+              "minimum": 0
+            }
+          }
+        },
+        "dupl": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "threshold": {
+              "description": "Tokens count to trigger issue.",
+              "type": "integer",
+              "default": 150,
+              "minimum": 0
+            }
+          }
+        },
+        "errcheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check-type-assertions": {
+              "description": "Report about not checking errors in type assertions, i.e.: `a := b.(MyStruct)`",
+              "type": "boolean",
+              "default": false
+            },
+            "check-blank": {
+              "description": "Report about assignment of errors to blank identifier",
+              "type": "boolean",
+              "default": false
+            },
+            "ignore": {
+              "description": "DEPRECATED: use `exclude-functions` instead. Comma-separated list of pairs of the form \"pkg:regex\".",
+              "type": "string",
+              "default": "fmt:.*"
+            },
+            "exclude": {
+              "description": "DEPRECATED: use `exclude-functions` instead. Path to a file containing a list of functions to exclude from checking.",
+              "type": "string",
+              "examples": ["/path/to/file.txt"]
+            },
+            "exclude-functions": {
+              "description": "List of functions to exclude from checking, where each entry is a single function to exclude",
+              "type": "array",
+              "examples": ["io/ioutil.ReadFile", "io.Copy(*bytes.Buffer)"],
+              "items": {
+                "type": "string"
+              }
+            },
+            "disable-default-exclusions": {
+              "description": "To disable the errcheck built-in exclude list",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "errchkjson": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check-error-free-encoding": {
+              "type": "boolean",
+              "default": false
+            },
+            "report-no-exported": {
+              "description": "Issue on struct that doesn't have exported fields.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "errorlint": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "errorf": {
+              "description": "Check whether fmt.Errorf uses the %w verb for formatting errors",
+              "type": "boolean",
+              "default": true
+            },
+            "errorf-multi": {
+              "description": "Permit more than 1 %w verb, valid per Go 1.20",
+              "type": "boolean",
+              "default": true
+            },
+            "asserts": {
+              "description": "Check for plain type assertions and type switches.",
+              "type": "boolean",
+              "default": true
+            },
+            "comparison": {
+              "description": "Check for plain error comparisons",
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "exhaustive": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check": {
+              "description": "Program elements to check for exhaustiveness.",
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "examples": ["switch", "map"]
+              }
+            },
+            "check-generated": {
+              "description": "Check switch statements in generated files",
+              "type": "boolean",
+              "default": false
+            },
+            "explicit-exhaustive-switch": {
+              "description": "Only run exhaustive check on switches with \"//exhaustive:enforce\" comment.",
+              "type": "boolean",
+              "default": false
+            },
+            "explicit-exhaustive-map": {
+              "description": "Only run exhaustive check on map literals with \"//exhaustive:enforce\" comment.",
+              "type": "boolean",
+              "default": false
+            },
+            "default-case-required": {
+              "description": "Switch statement requires default case even if exhaustive.",
+              "type": "boolean",
+              "default": false
+            },
+            "default-signifies-exhaustive": {
+              "description": "Presence of `default` case in switch statements satisfies exhaustiveness, even if all enum members are not listed.",
+              "type": "boolean",
+              "default": false
+            },
+            "ignore-enum-members": {
+              "description": "Enum members matching `regex` do not have to be listed in switch statements to satisfy exhaustiveness",
+              "type": "string"
+            },
+            "ignore-enum-types": {
+              "description": "Enum types matching the supplied regex do not have to be listed in switch statements to satisfy exhaustiveness.",
+              "type": "string"
+            },
+            "package-scope-only": {
+              "description": "Consider enums only in package scopes, not in inner scopes.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "exhaustruct": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "include": {
+              "description": "List of regular expressions to match struct packages and names.",
+              "type": "array",
+              "examples": [".*\\.Test"],
+              "items": {
+                "type": "string"
+              }
+            },
+            "exclude": {
+              "description": "List of regular expressions to exclude struct packages and names from check.",
+              "type": "array",
+              "examples": ["cobra\\.Command$"],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "forbidigo": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "exclude-godoc-examples": {
+              "description": "Exclude code in godoc examples.",
+              "type": "boolean",
+              "default": true
+            },
+            "analyze-types": {
+              "description": "Instead of matching the literal source code, use type information to replace expressions with strings that contain the package name and (for methods and fields) the type name.",
+              "type": "boolean",
+              "default": true
+            },
+            "forbid": {
+              "description": "List of identifiers to forbid (written using `regexp`)",
+              "type": "array",
+              "examples": ["^print.*$"],
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "p": {
+                        "description": "Pattern",
+                        "type": "string"
+                      },
+                      "pkg": {
+                        "description": "Package",
+                        "type": "string"
+                      },
+                      "msg": {
+                        "description": "Message",
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "funlen": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "lines": {
+              "description": "Limit lines number per function.",
+              "type": "integer",
+              "default": 60
+            },
+            "statements": {
+              "description": "Limit statements number per function.",
+              "type": "integer",
+              "default": 40
+            },
+            "ignore-comments": {
+              "description": "Ignore comments when counting lines.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "gci": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "local-prefixes": {
+              "description": "DEPRECATED: use 'sections' and 'prefix(github.com/org/project)' instead.",
+              "type": "string",
+              "examples": ["github.com/org/project"]
+            },
+            "sections": {
+              "description": "Section configuration to compare against.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": ["standard", "default"]
+            },
+            "skip-generated": {
+              "description": "Skip generated files.",
+              "type": "boolean",
+              "default": true
+            },
+            "custom-order": {
+              "description": "Enable custom order of sections.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "ginkgolinter": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "suppress-len-assertion": {
+              "description": "Suppress the wrong length assertion warning.",
+              "type": "boolean",
+              "default": false
+            },
+            "suppress-nil-assertion": {
+              "description": "Suppress the wrong nil assertion warning.",
+              "type": "boolean",
+              "default": false
+            },
+            "suppress-err-assertion": {
+              "description": "Suppress the wrong error assertion warning.",
+              "type": "boolean",
+              "default": false
+            },
+            "suppress-compare-assertion": {
+              "description": "Suppress the wrong comparison assertion warning.",
+              "type": "boolean",
+              "default": false
+            },
+            "suppress-async-assertion": {
+              "description": "Suppress the function all in async assertion warning.",
+              "type": "boolean",
+              "default": false
+            },
+            "suppress-type-compare-assertion": {
+              "description": "Suppress warning for comparing values from different types, like int32 and uint32.",
+              "type": "boolean",
+              "default": false
+            },
+            "forbid-focus-container": {
+              "description": "Trigger warning for ginkgo focus containers like FDescribe, FContext, FWhen or FIt.",
+              "type": "boolean",
+              "default": false
+            },
+            "allow-havelen-zero": {
+              "description": "Don't trigger warnings for HaveLen(0).",
+              "type": "boolean",
+              "default": false
+            },
+            "force-expect-to": {
+              "description": "Force using `Expect` with `To`, `ToNot` or `NotTo`",
+              "type": "boolean",
+              "default": false
+            },
+            "validate-async-intervals": {
+              "description": "Best effort validation of async intervals (timeout and polling).",
+              "type": "boolean",
+              "default": false
+            },
+            "forbid-spec-pollution": {
+              "description": "Trigger a warning for variable assignments in ginkgo containers like `Describe`, `Context` and `When`, instead of in `BeforeEach()`.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "gocognit": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "min-complexity": {
+              "description": "Minimal code complexity to report (we recommend 10-20).",
+              "type": "integer",
+              "default": 30
+            }
+          }
+        },
+        "goconst": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "match-constant": {
+              "description": "Look for existing constants matching the values",
+              "type": "boolean",
+              "default": true
+            },
+            "min-len": {
+              "description": "Minimum length of string constant.",
+              "type": "integer",
+              "default": 3
+            },
+            "min-occurrences": {
+              "description": "Minimum occurrences count to trigger.",
+              "type": "integer",
+              "default": 3
+            },
+            "ignore-tests": {
+              "description": "Ignore test files.",
+              "type": "boolean",
+              "default": false
+            },
+            "ignore-calls": {
+              "description": "Ignore when constant is not used as function argument",
+              "type": "boolean",
+              "default": true
+            },
+            "ignore-strings": {
+              "description": "Exclude strings matching the given regular expression",
+              "type": "string"
+            },
+            "numbers": {
+              "description": "Search also for duplicated numbers.",
+              "type": "boolean",
+              "default": false
+            },
+            "min": {
+              "description": "Minimum value, only works with `numbers`",
+              "type": "integer",
+              "default": 3
+            },
+            "max": {
+              "description": "Maximum value, only works with `numbers`",
+              "type": "integer",
+              "default": 3
+            }
+          }
+        },
+        "gocritic": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled-checks": {
+              "description": "Which checks should be enabled. By default, a list of stable checks is used. To see it, run `GL_DEBUG=gocritic golangci-lint run`.",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/gocritic-checks"
+              }
+            },
+            "disabled-checks": {
+              "description": "Which checks should be disabled.",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/gocritic-checks"
+              },
+              "default": []
+            },
+            "enabled-tags": {
+              "description": "Enable multiple checks by tags, run `GL_DEBUG=gocritic golangci-lint run` to see all tags and checks.",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/gocritic-tags"
+              }
+            },
+            "disabled-tags": {
+              "description": "Disable multiple checks by tags, run `GL_DEBUG=gocritic golangci-lint run` to see all tags and checks.",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/gocritic-tags"
+              }
+            },
+            "settings": {
+              "description": "Settings passed to gocritic. Properties must be valid and enabled check names.",
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/definitions/gocritic-checks"
+              }
+            },
+            "disable-all": {
+              "type": "boolean",
+              "default": false
+            },
+            "enable-all": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "gocyclo": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "min-complexity": {
+              "description": "Minimum code complexity to report (we recommend 10-20).",
+              "type": "integer",
+              "default": 30
+            }
+          }
+        },
+        "godot": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "scope": {
+              "description": "Comments to be checked.",
+              "enum": ["declarations", "toplevel", "all"],
+              "default": "declarations"
+            },
+            "exclude": {
+              "description": "List of regexps for excluding particular comment lines from check.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "period": {
+              "description": "Check that each sentence ends with a period.",
+              "type": "boolean",
+              "default": true
+            },
+            "capital": {
+              "description": "Check that each sentence starts with a capital letter.",
+              "type": "boolean",
+              "default": false
+            },
+            "check-all": {
+              "description": "DEPRECATED: Check all top-level comments, not only declarations.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "godox": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "keywords": {
+              "description": "Report any comments starting with one of these keywords. This is useful for TODO or FIXME comments that might be left in the code accidentally and should be resolved before merging.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": ["TODO", "BUG", "FIXME"]
+            }
+          }
+        },
+        "gofmt": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "simplify": {
+              "description": "Simplify code.",
+              "type": "boolean",
+              "default": true
+            },
+            "rewrite-rules": {
+              "description": "Apply the rewrite rules to the source before reformatting.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "pattern": {
+                    "type": "string"
+                  },
+                  "replacement": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "interfacebloat": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max": {
+              "description": "The maximum number of methods allowed for an interface.",
+              "type": "integer"
+            }
+          }
+        },
+        "gofumpt": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "extra-rules": {
+              "description": "Choose whether or not to use the extra rules that are disabled by default.",
+              "type": "boolean",
+              "default": false
+            },
+            "lang-version": {
+              "description": "Select the Go version to target.",
+              "type": "string",
+              "default": "1.15"
+            },
+            "module-path": {
+              "description": " Module path which contains the source code being formatted.",
+              "type": "string"
+            }
+          }
+        },
+        "goheader": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "values": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "const": {
+                  "description": "Constants to use in the template.",
+                  "type": "object",
+                  "patternProperties": {
+                    "^.+$": {
+                      "description": "Value for the constant.",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "examples": [
+                    {
+                      "YEAR": "2030",
+                      "COMPANY": "MY FUTURISTIC COMPANY"
+                    }
+                  ]
+                },
+                "regexp": {
+                  "description": "Regular expressions to use in your template.",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "patternProperties": {
+                    "^.+$": {
+                      "type": "string"
+                    }
+                  },
+                  "examples": [
+                    {
+                      "AUTHOR": ".*@mycompany\\.com"
+                    }
+                  ]
+                }
+              }
+            },
+            "template": {
+              "description": "Template to put on top of every file.",
+              "type": "string",
+              "examples": [
+                "{{ MY COMPANY }}\nSPDX-License-Identifier: Apache-2.0\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at:\n\n    http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License."
+              ]
+            },
+            "template-path": {
+              "description": "Path to the file containing the template source.",
+              "type": "string",
+              "examples": ["my_header_template.txt"]
+            }
+          },
+          "oneOf": [
+            { "required": ["template"] },
+            { "required": ["template-path"] }
+          ]
+        },
+        "goimports": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "local-prefixes": {
+              "description": "Put imports beginning with prefix after 3rd-party packages. It is a comma-separated list of prefixes.",
+              "type": "string",
+              "examples": ["github.com/org/project"]
+            }
+          }
+        },
+        "gomnd": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ignored-files": {
+              "description": "List of file patterns to exclude from analysis.",
+              "examples": [["magic1_.*.go"]],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ignored-functions": {
+              "description": "Comma-separated list of function patterns to exclude from the analysis.",
+              "examples": [["math.*", "http.StatusText", "make"]],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ignored-numbers": {
+              "description": "List of numbers to exclude from analysis.",
+              "examples": [["1000", "1234_567_890", "3.14159264"]],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "checks": {
+              "description": "The list of enabled checks, see https://github.com/tommy-muehle/go-mnd/#checks for description.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "argument",
+                  "case",
+                  "condition",
+                  "operation",
+                  "return",
+                  "assign"
+                ]
+              }
+            }
+          }
+        },
+        "gomoddirectives": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "replace-local": {
+              "description": "Allow local `replace` directives.",
+              "type": "boolean",
+              "default": true
+            },
+            "replace-allow-list": {
+              "description": "List of allowed `replace` directives.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "retract-allow-no-explanation": {
+              "description": "Allow to not explain why the version has been retracted in the `retract` directives.",
+              "type": "boolean",
+              "default": true
+            },
+            "exclude-forbidden": {
+              "description": "Forbid the use of the `exclude` directives.",
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "gomodguard": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allowed": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "modules": {
+                  "description": "List of allowed modules.",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "examples": ["gopkg.in/yaml.v2"]
+                  }
+                },
+                "domains": {
+                  "description": "List of allowed module domains.",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "examples": ["golang.org"]
+                  }
+                }
+              }
+            },
+            "blocked": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "modules": {
+                  "description": "List of blocked modules.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "patternProperties": {
+                      "^.+$": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "recommendations": {
+                            "description": "Recommended modules that should be used instead.",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "reason": {
+                            "description": "Reason why the recommended module should be used.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "versions": {
+                  "description": "List of blocked module version constraints.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "patternProperties": {
+                      "^.*$": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "version": {
+                            "description": "Version constraint.",
+                            "type": "string"
+                          },
+                          "reason": {
+                            "description": "Reason why the version constraint exists.",
+                            "type": "string"
+                          }
+                        },
+                        "required": ["reason"]
+                      }
+                    }
+                  }
+                },
+                "local_replace_directives": {
+                  "description": "Raise lint issues if loading local path with replace directive",
+                  "type": "boolean",
+                  "default": true
+                }
+              }
+            }
+          }
+        },
+        "gosimple": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "go": {
+              "description": "Targeted Go version",
+              "type": "string",
+              "default": "1.13"
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "enum": ["all"]
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "gosec": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "includes": {
+              "type": "array",
+              "description": "To select a subset of rules to run",
+              "examples": [["G401"]],
+              "items": {
+                "$ref": "#/definitions/gosec-rules"
+              }
+            },
+            "excludes": {
+              "type": "array",
+              "description": "To specify a set of rules to explicitly exclude",
+              "examples": [["G401"]],
+              "items": {
+                "$ref": "#/definitions/gosec-rules"
+              }
+            },
+            "exclude-generated": {
+              "description": "Exclude generated files",
+              "type": "boolean",
+              "default": false
+            },
+            "severity": {
+              "description": "Filter out the issues with a lower severity than the given value",
+              "type": "string",
+              "enum": ["low", "medium", "high"],
+              "default": "low"
+            },
+            "confidence": {
+              "description": "Filter out the issues with a lower confidence than the given value",
+              "type": "string",
+              "enum": ["low", "medium", "high"],
+              "default": "low"
+            },
+            "config": {
+              "description": "To specify the configuration of rules",
+              "type": "object"
+            },
+            "concurrency": {
+              "description": "Concurrency value",
+              "type": "integer"
+            }
+          }
+        },
+        "gosmopolitan": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow-time-local": {
+              "description": "Allow and ignore `time.Local` usages.",
+              "type": "boolean",
+              "default": false
+            },
+            "escape-hatches": {
+              "description": "List of fully qualified names in the `full/pkg/path.name` form, to act as \"i18n escape hatches\".",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ignore-tests": {
+              "description": "Ignore test files.",
+              "type": "boolean",
+              "default": false
+            },
+            "watch-for-scripts": {
+              "description": "List of Unicode scripts to watch for any usage in string literals.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "govet": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "settings": {
+              "description": "Settings per analyzer. Map of analyzer name to specific settings.\nRun `go tool vet help` to find out more.",
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/definitions/govet-analyzers"
+              },
+              "patternProperties": {
+                "^.*$": {
+                  "description": "Run `go tool vet help <analyzer>` to see all settings.",
+                  "type": "object"
+                }
+              }
+            },
+            "enable": {
+              "description": "Enable analyzers by name.",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/govet-analyzers"
+              }
+            },
+            "disable": {
+              "description": "Disable analyzers by name.",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/govet-analyzers"
+              }
+            },
+            "enable-all": {
+              "description": "Enable all analyzers.",
+              "type": "boolean",
+              "default": false
+            },
+            "disable-all": {
+              "description": "Disable all analyzers.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "grouper": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "const-require-single-const": {
+              "type": "boolean",
+              "default": false
+            },
+            "const-require-grouping": {
+              "type": "boolean",
+              "default": false
+            },
+            "import-require-single-import": {
+              "type": "boolean",
+              "default": false
+            },
+            "import-require-grouping": {
+              "type": "boolean",
+              "default": false
+            },
+            "type-require-single-type": {
+              "type": "boolean",
+              "default": false
+            },
+            "type-require-grouping": {
+              "type": "boolean",
+              "default": false
+            },
+            "var-require-single-var": {
+              "type": "boolean",
+              "default": false
+            },
+            "var-require-grouping": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "importas": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "no-unaliased": {
+              "description": "Do not allow unaliased imports of aliased packages.",
+              "type": "boolean",
+              "default": false
+            },
+            "no-extra-aliases": {
+              "description": "Do not allow non-required aliases.",
+              "type": "boolean",
+              "default": false
+            },
+            "alias": {
+              "description": "List of aliases",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "pkg": {
+                    "description": "Package path e.g. knative.dev/serving/pkg/apis/autoscaling/v1alpha1",
+                    "type": "string"
+                  },
+                  "alias": {
+                    "description": "Package alias e.g. autoscalingv1alpha1",
+                    "type": "string"
+                  }
+                },
+                "required": ["pkg", "alias"]
+              }
+            }
+          }
+        },
+        "inamedparam": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "skip-single-param": {
+              "description": "Skips check for interface methods with only a single parameter.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "ireturn": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Use either `reject` or `allow` properties for interfaces matching.",
+          "properties": {
+            "allow": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "enum": ["anon", "error", "empty", "stdlib"]
+                  }
+                ]
+              }
+            },
+            "reject": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "enum": ["anon", "error", "empty", "stdlib"]
+                  }
+                ]
+              }
+            }
+          },
+          "anyOf": [
+            {
+              "not": {
+                "properties": {
+                  "allow": {
+                    "const": "reject"
+                  }
+                }
+              },
+              "required": ["allow"]
+            },
+            {
+              "required": ["reject"]
+            }
+          ]
+        },
+        "lll": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tab-width": {
+              "description": "Width of \"\\t\" in spaces.",
+              "type": "integer",
+              "minimum": 0,
+              "default": 1
+            },
+            "line-length": {
+              "description": "Maximum allowed line length, lines longer will be reported.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 120
+            }
+          }
+        },
+        "maintidx": {
+          "description": "Maintainability index https://docs.microsoft.com/en-us/visualstudio/code-quality/code-metrics-maintainability-index-range-and-meaning?view=vs-2022",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "under": {
+              "description": "Minimum accatpable maintainability index level (see https://docs.microsoft.com/en-us/visualstudio/code-quality/code-metrics-maintainability-index-range-and-meaning?view=vs-2022)",
+              "type": "number",
+              "default": 20
+            }
+          }
+        },
+        "makezero": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "always": {
+              "description": "Allow only slices initialized with a length of zero.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "loggercheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kitlog": {
+              "description": "Allow check for the github.com/go-kit/log library.",
+              "type": "boolean",
+              "default": true
+            },
+            "klog": {
+              "description": "Allow check for the k8s.io/klog/v2 library.",
+              "type": "boolean",
+              "default": true
+            },
+            "logr": {
+              "description": "Allow check for the github.com/go-logr/logr library.",
+              "type": "boolean",
+              "default": true
+            },
+            "zap": {
+              "description": "Allow check for the \"sugar logger\" from go.uber.org/zap library.",
+              "type": "boolean",
+              "default": true
+            },
+            "require-string-key": {
+              "description": "Require all logging keys to be inlined constant strings.",
+              "type": "boolean",
+              "default": false
+            },
+            "no-printf-like": {
+              "description": "Require printf-like format specifier (%s, %d for example) not present.",
+              "type": "boolean",
+              "default": false
+            },
+            "rules": {
+              "description": "List of custom rules to check against, where each rule is a single logger pattern, useful for wrapped loggers.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "misspell": {
+          "description": "Correct spellings using locale preferences for US or UK. Default is to use a neutral variety of English.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "enum": ["US", "UK"]
+            },
+            "ignore-words": {
+              "description": "List of words to ignore.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "mode": {
+              "description": "Mode of the analysis.",
+              "enum": ["restricted", "", "default"],
+              "default": ""
+            },
+            "extra-words": {
+              "description": "Extra word corrections.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "correction": {
+                    "type": "string"
+                  },
+                  "typo": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "musttag": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "functions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "tag": {
+                    "type": "string"
+                  },
+                  "arg-pos": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nakedret": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max-func-lines": {
+              "description": "Report if a function has more lines of code than this value and it has naked returns.",
+              "type": "integer",
+              "minimum": 0,
+              "default": 30
+            }
+          }
+        },
+        "nestif": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "min-complexity": {
+              "description": "Minimum complexity of \"if\" statements to report.",
+              "type": "integer",
+              "default": 5
+            }
+          }
+        },
+        "nilnil": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "checked-types": {
+              "type": "array",
+              "description": "Order of return types to check.",
+              "items": {
+                "enum": ["ptr", "func", "iface", "map", "chan"]
+              },
+              "default": ["ptr", "func", "iface", "map", "chan"]
+            }
+          }
+        },
+        "nlreturn": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "block-size": {
+              "description": "set block size that is still ok",
+              "type": "number",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        },
+        "nolintlint": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow-unused": {
+              "description": "Enable to ensure that nolint directives are all used.",
+              "type": "boolean",
+              "default": true
+            },
+            "allow-no-explanation": {
+              "description": "Exclude these linters from requiring an explanation.",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/linters"
+              },
+              "default": []
+            },
+            "require-explanation": {
+              "description": "Enable to require an explanation of nonzero length after each nolint directive.",
+              "type": "boolean",
+              "default": false
+            },
+            "require-specific": {
+              "description": "Enable to require nolint directives to mention the specific linter being suppressed.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "reassign": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "patterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "nonamedreturns": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "report-error-in-defer": {
+              "description": "Report named error if it is assigned inside defer.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "paralleltest": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ignore-missing": {
+              "description": "Ignore missing calls to `t.Parallel()` and only report incorrect uses of it.",
+              "type": "boolean",
+              "default": false
+            },
+            "ignore-missing-subtests": {
+              "description": "Ignore missing calls to `t.Parallel()` in subtests. Top-level tests are still required to have `t.Parallel`, but subtests are allowed to skip it.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "perfsprint": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "int-conversion": {
+              "description": "Optimizes even if it requires an int or uint type cast.",
+              "type": "boolean",
+              "default": true
+            },
+            "err-error": {
+              "description": "Optimizes into `err.Error()` even if it is only equivalent for non-nil errors.",
+              "type": "boolean",
+              "default": false
+            },
+            "errorf": {
+              "description": "Optimizes `fmt.Errorf`.",
+              "type": "boolean",
+              "default": true
+            },
+            "sprintf1": {
+              "description": "Optimizes `fmt.Sprintf` with only one argument.",
+              "type": "boolean",
+              "default": true
+            },
+            "strconcat": {
+              "description": "Optimizes into strings concatenation.",
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "prealloc": {
+          "description": "We do not recommend using this linter before doing performance profiling.\nFor most programs usage of `prealloc` will be premature optimization.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "simple": {
+              "description": "Report preallocation suggestions only on simple loops that have no returns/breaks/continues/gotos in them.",
+              "type": "boolean",
+              "default": true
+            },
+            "range-loops": {
+              "description": "Report preallocation suggestions on range loops.",
+              "type": "boolean",
+              "default": true
+            },
+            "for-loops": {
+              "description": "Report preallocation suggestions on for loops.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "predeclared": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ignore": {
+              "description": "Comma-separated list of predeclared identifiers to not report on.",
+              "type": "string"
+            },
+            "q": {
+              "description": "Include method names and field names (i.e., qualified names) in checks.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "promlinter": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "strict": {},
+            "disabled-linters": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "Help",
+                  "MetricUnits",
+                  "Counter",
+                  "HistogramSummaryReserved",
+                  "MetricTypeInName",
+                  "ReservedChars",
+                  "CamelCase",
+                  "UnitAbbreviations"
+                ]
+              }
+            }
+          }
+        },
+        "protogetter": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "skip-generated-by": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "examples": ["protoc-gen-go-my-own-generator"]
+              }
+            },
+            "skip-files": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "examples": ["*.pb.go"]
+              }
+            },
+            "skip-any-generated": {
+              "description": "Skip any generated files from the checking.",
+              "type": "boolean",
+              "default": false
+            },
+            "replace-first-arg-in-append": {
+              "description": "Skip first argument of append function.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "revive": {
+          "type": "object",
+          "additionalProperties": false,
+          "examples": [
+            {
+              "ignore-generated-header": true,
+              "severity": "warning",
+              "rules": [
+                {
+                  "name": "indent-error-flow",
+                  "severity": "warning"
+                },
+                {
+                  "name": "add-constant",
+                  "severity": "warning",
+                  "arguments": [
+                    {
+                      "maxLitCount": "3",
+                      "allowStrs": "\"\"",
+                      "allowInts": "0,1,2",
+                      "allowFloats": "0.0,0.,1.0,1.,2.0,2."
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "max-open-files": {
+              "type": "integer"
+            },
+            "ignore-generated-header": {
+              "type": "boolean"
+            },
+            "confidence": {
+              "type": "number"
+            },
+            "severity": {
+              "type": "string",
+              "enum": ["warning", "error"]
+            },
+            "enable-all-rules": {
+              "type": "boolean",
+              "default": false
+            },
+            "directives": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "enum": ["specify-disable-reason"]
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": ["warning", "error"]
+                  },
+                  "exclude": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "arguments": {
+                    "type": "array"
+                  }
+                }
+              }
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "title": "The rule name"
+                  },
+                  "disabled": {
+                    "type": "boolean"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": ["warning", "error"]
+                  },
+                  "exclude": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "arguments": {
+                    "type": "array"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "rowserrcheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "packages": {
+              "type": "array",
+              "items": {
+                "description": "",
+                "type": "string",
+                "examples": ["github.com/jmoiron/sqlx"]
+              }
+            }
+          }
+        },
+        "sloglint": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kv-only": {
+              "description": "Enforce using key-value pairs only (incompatible with attr-only).",
+              "type": "boolean",
+              "default": false
+            },
+            "no-global": {
+              "description": "Enforce not using global loggers.",
+              "enum": ["", "all", "default"],
+              "default": ""
+            },
+            "no-mixed-args": {
+              "description": "Enforce not mixing key-value pairs and attributes.",
+              "type": "boolean",
+              "default": true
+            },
+            "context-only": {
+              "description": "Enforce using methods that accept a context.",
+              "type": "boolean",
+              "default": false
+            },
+            "static-msg": {
+              "description": "Enforce using static values for log messages.",
+              "type": "boolean",
+              "default": false
+            },
+            "key-naming-case": {
+              "description": "Enforce a single key naming convention.",
+              "enum": ["snake", "kebab", "camel", "pascal"]
+            },
+            "attr-only": {
+              "description": "Enforce using attributes only (incompatible with kv-only).",
+              "type": "boolean",
+              "default": false
+            },
+            "no-raw-keys": {
+              "description": "Enforce using constants instead of raw keys.",
+              "type": "boolean",
+              "default": false
+            },
+            "args-on-sep-lines": {
+              "description": "Enforce putting arguments on separate lines.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "spancheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "checks": {
+              "description": "Checks to enable.",
+              "type": "array",
+              "items": {
+                "enum": ["end", "record-error", "set-status"]
+              }
+            },
+            "ignore-check-signatures": {
+              "description": "A list of regexes for function signatures that silence `record-error` and `set-status` reports if found in the call path to a returned error.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "staticcheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "go": {
+              "description": "Targeted Go version",
+              "type": "string",
+              "default": "1.13"
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "enum": ["all"]
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "stylecheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "go": {
+              "description": "Targeted Go version",
+              "type": "string",
+              "default": "1.13"
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "enum": ["all"]
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "default": [
+                "all",
+                "-ST1000",
+                "-ST1003",
+                "-ST1016",
+                "-ST1020",
+                "-ST1021",
+                "-ST1022"
+              ]
+            },
+            "dot-import-whitelist": {
+              "description": "By default, ST1001 forbids all uses of dot imports in non-test packages. This setting allows setting a whitelist of import paths that can be dot-imported anywhere.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "http-status-code-whitelist": {
+              "description": "ST1013 recommends using constants from the net/http package instead of hard-coding numeric HTTP status codes. This setting specifies a list of numeric status codes that this check does not complain about.",
+              "default": ["200", "400", "404", "500"],
+              "type": "array",
+              "items": {
+                "enum": [
+                  "100",
+                  "101",
+                  "102",
+                  "103",
+                  "200",
+                  "201",
+                  "202",
+                  "203",
+                  "204",
+                  "205",
+                  "206",
+                  "207",
+                  "208",
+                  "226",
+                  "300",
+                  "301",
+                  "302",
+                  "303",
+                  "304",
+                  "305",
+                  "306",
+                  "307",
+                  "308",
+                  "400",
+                  "401",
+                  "402",
+                  "403",
+                  "404",
+                  "405",
+                  "406",
+                  "407",
+                  "408",
+                  "409",
+                  "410",
+                  "411",
+                  "412",
+                  "413",
+                  "414",
+                  "415",
+                  "416",
+                  "417",
+                  "418",
+                  "421",
+                  "422",
+                  "423",
+                  "424",
+                  "425",
+                  "426",
+                  "428",
+                  "429",
+                  "431",
+                  "451",
+                  "500",
+                  "501",
+                  "502",
+                  "503",
+                  "504",
+                  "505",
+                  "506",
+                  "507",
+                  "508",
+                  "510",
+                  "511"
+                ]
+              }
+            },
+            "initialisms": {
+              "description": "ST1003 check, among other things, for the correct capitalization of initialisms. The set of known initialisms can be configured with this option.",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "default": [
+                  "ACL",
+                  "API",
+                  "ASCII",
+                  "CPU",
+                  "CSS",
+                  "DNS",
+                  "EOF",
+                  "GUID",
+                  "HTML",
+                  "HTTP",
+                  "HTTPS",
+                  "ID",
+                  "IP",
+                  "JSON",
+                  "QPS",
+                  "RAM",
+                  "RPC",
+                  "SLA",
+                  "SMTP",
+                  "SQL",
+                  "SSH",
+                  "TCP",
+                  "TLS",
+                  "TTL",
+                  "UDP",
+                  "UI",
+                  "GID",
+                  "UID",
+                  "UUID",
+                  "URI",
+                  "URL",
+                  "UTF8",
+                  "VM",
+                  "XML",
+                  "XMPP",
+                  "XSRF",
+                  "XSS",
+                  "SIP",
+                  "RTP",
+                  "AMQP",
+                  "DB",
+                  "TS"
+                ]
+              }
+            }
+          }
+        },
+        "tagalign": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "align": {
+              "description": "Align and sort can be used together or separately.",
+              "type": "boolean",
+              "default": true
+            },
+            "sort": {
+              "description": "Whether enable tags sort.",
+              "type": "boolean",
+              "default": true
+            },
+            "order": {
+              "description": "Specify the order of tags, the other tags will be sorted by name.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "examples": [
+                [
+                  "json",
+                  "yaml",
+                  "yml",
+                  "toml",
+                  "mapstructure",
+                  "binding",
+                  "validate"
+                ]
+              ]
+            },
+            "strict": {
+              "description": "Whether enable strict style.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "tagliatelle": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "case": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "use-field-name": {
+                  "description": "Use the struct field name to check the name of the struct tag.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "rules": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^.+$": {
+                      "enum": [
+                        "camel",
+                        "pascal",
+                        "kebab",
+                        "snake",
+                        "goCamel",
+                        "goPascal",
+                        "goKebab",
+                        "goSnake",
+                        "upper",
+                        "upperSnake",
+                        "lower",
+                        "header"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tenv": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "description": "The option `all` will run against whole test files (`_test.go`) regardless of method/function signatures.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "testifylint": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bool-compare": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "ignore-custom-types": {
+                  "type": "boolean",
+                  "default": false
+                }
+              }
+            },
+            "enable-all": {
+              "description": "Enable all checkers.",
+              "type": "boolean",
+              "default": false
+            },
+            "disable-all": {
+              "description": "Disable all checkers.",
+              "type": "boolean",
+              "default": false
+            },
+            "enable": {
+              "description": "Enable specific checkers.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "blank-import",
+                  "bool-compare",
+                  "compares",
+                  "empty",
+                  "error-is-as",
+                  "error-nil",
+                  "expected-actual",
+                  "go-require",
+                  "float-compare",
+                  "len",
+                  "nil-compare",
+                  "require-error",
+                  "suite-dont-use-pkg",
+                  "suite-extra-assert-call",
+                  "suite-thelper",
+                  "useless-assert"
+                ]
+              }
+            },
+            "disable": {
+              "description": "Enable specific checkers.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "blank-import",
+                  "bool-compare",
+                  "compares",
+                  "empty",
+                  "error-is-as",
+                  "error-nil",
+                  "expected-actual",
+                  "go-require",
+                  "float-compare",
+                  "len",
+                  "nil-compare",
+                  "require-error",
+                  "suite-dont-use-pkg",
+                  "suite-extra-assert-call",
+                  "suite-thelper",
+                  "useless-assert"
+                ]
+              }
+            },
+            "expected-actual": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "pattern": {
+                  "description": "Regexp for expected variable name.",
+                  "type": "string"
+                }
+              }
+            },
+            "require-error": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "fn-pattern": {
+                  "description": "Regexp for expected variable name.",
+                  "type": "string"
+                }
+              }
+            },
+            "suite-extra-assert-call": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "mode": {
+                  "description": "To require or remove extra Assert() call?",
+                  "type": "string",
+                  "enum": ["remove", "require"]
+                }
+              }
+            }
+          }
+        },
+        "testpackage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "skip-regexp": {
+              "description": "Files with names matching this regular expression are skipped.",
+              "type": "string",
+              "examples": ["(export|internal)_test\\.go"]
+            },
+            "allow-packages": {
+              "description": "List of packages that don't end with _test that tests are allowed to be in.",
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "examples": ["example"]
+              }
+            }
+          }
+        },
+        "thelper": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "test": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "begin": {
+                  "description": "Check if `t.Helper()` begins helper function.",
+                  "default": true,
+                  "type": "boolean"
+                },
+                "first": {
+                  "description": "Check if *testing.T is first param of helper function.",
+                  "default": true,
+                  "type": "boolean"
+                },
+                "name": {
+                  "description": "Check if *testing.T param has t name.",
+                  "default": true,
+                  "type": "boolean"
+                }
+              }
+            },
+            "benchmark": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "begin": {
+                  "description": "Check if `b.Helper()` begins helper function.",
+                  "default": true,
+                  "type": "boolean"
+                },
+                "first": {
+                  "description": "Check if *testing.B is first param of helper function.",
+                  "default": true,
+                  "type": "boolean"
+                },
+                "name": {
+                  "description": "Check if *testing.B param has b name.",
+                  "default": true,
+                  "type": "boolean"
+                }
+              }
+            },
+            "tb": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "begin": {
+                  "description": "Check if `tb.Helper()` begins helper function.",
+                  "default": true,
+                  "type": "boolean"
+                },
+                "first": {
+                  "description": "Check if *testing.TB is first param of helper function.",
+                  "default": true,
+                  "type": "boolean"
+                },
+                "name": {
+                  "description": "Check if *testing.TB param has tb name.",
+                  "default": true,
+                  "type": "boolean"
+                }
+              }
+            },
+            "fuzz": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "begin": {
+                  "description": "Check if `f.Helper()` begins helper function.",
+                  "default": true,
+                  "type": "boolean"
+                },
+                "first": {
+                  "description": "Check if *testing.F is first param of helper function.",
+                  "default": true,
+                  "type": "boolean"
+                },
+                "name": {
+                  "description": "Check if *testing.F param has f name.",
+                  "default": true,
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "usestdlibvars": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "http-method": {
+              "description": "Suggest the use of http.MethodXX.",
+              "type": "boolean",
+              "default": true
+            },
+            "http-status-code": {
+              "description": "Suggest the use of http.StatusXX.",
+              "type": "boolean",
+              "default": true
+            },
+            "time-weekday": {
+              "description": "Suggest the use of time.Weekday.String().",
+              "type": "boolean",
+              "default": false
+            },
+            "time-month": {
+              "description": "Suggest the use of time.Month.String().",
+              "type": "boolean",
+              "default": false
+            },
+            "time-layout": {
+              "description": "Suggest the use of time.Layout.",
+              "type": "boolean",
+              "default": false
+            },
+            "crypto-hash": {
+              "description": "Suggest the use of crypto.Hash.String().",
+              "type": "boolean",
+              "default": false
+            },
+            "default-rpc-path": {
+              "description": "Suggest the use of rpc.DefaultXXPath.",
+              "type": "boolean",
+              "default": false
+            },
+            "os-dev-null": {
+              "description": "Suggest the use of os.DevNull.",
+              "type": "boolean",
+              "default": false
+            },
+            "sql-isolation-level": {
+              "description": "Suggest the use of sql.LevelXX.String().",
+              "type": "boolean",
+              "default": false
+            },
+            "tls-signature-scheme": {
+              "description": "Suggest the use of tls.SignatureScheme.String().",
+              "type": "boolean",
+              "default": false
+            },
+            "constant-kind": {
+              "description": "Suggest the use of constant.Kind.String().",
+              "type": "boolean",
+              "default": false
+            },
+            "syslog-priority": {
+              "description": "Suggest the use of syslog.Priority.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "unconvert": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fast-math": {
+              "type": "boolean",
+              "default": false
+            },
+            "safe": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "unparam": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "check-exported": {
+              "description": "Inspect exported functions. Set to true if no external program/library imports your code.\n\nWARNING: if you enable this setting, unparam will report a lot of false-positives in text editors:\nif it's called for subdir of a project it can't find external interfaces. All text editor integrations\nwith golangci-lint call it on a directory with the changed file.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "unused": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "field-writes-are-uses": {
+              "description": "",
+              "type": "boolean",
+              "default": true
+            },
+            "post-statements-are-reads": {
+              "description": "",
+              "type": "boolean",
+              "default": false
+            },
+            "exported-is-used": {
+              "description": "",
+              "type": "boolean",
+              "default": true
+            },
+            "exported-fields-are-used": {
+              "description": "",
+              "type": "boolean",
+              "default": true
+            },
+            "parameters-are-used": {
+              "description": "",
+              "type": "boolean",
+              "default": true
+            },
+            "local-variables-are-used": {
+              "description": "",
+              "type": "boolean",
+              "default": true
+            },
+            "generated-is-used": {
+              "description": "",
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "varnamelen": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max-distance": {
+              "description": "Variables used in at most this N-many lines will be ignored.",
+              "type": "integer",
+              "default": 5
+            },
+            "min-name-length": {
+              "description": "The minimum length of a variable's name that is considered `long`.",
+              "type": "integer",
+              "default": 3
+            },
+            "check-receiver": {
+              "description": "Check method receiver names.",
+              "default": false,
+              "type": "boolean"
+            },
+            "check-return": {
+              "description": "Check named return values.",
+              "default": false,
+              "type": "boolean"
+            },
+            "check-type-param": {
+              "description": "Check type parameters.",
+              "default": false,
+              "type": "boolean"
+            },
+            "ignore-type-assert-ok": {
+              "description": "Ignore `ok` variables that hold the bool return value of a type assertion",
+              "default": false,
+              "type": "boolean"
+            },
+            "ignore-map-index-ok": {
+              "description": "Ignore `ok` variables that hold the bool return value of a map index.",
+              "default": false,
+              "type": "boolean"
+            },
+            "ignore-chan-recv-ok": {
+              "description": "Ignore `ok` variables that hold the bool return value of a channel receive.",
+              "default": false,
+              "type": "boolean"
+            },
+            "ignore-names": {
+              "description": "Optional list of variable names that should be ignored completely.",
+              "default": [[]],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ignore-decls": {
+              "description": "Optional list of variable declarations that should be ignored completely.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "examples": [
+                ["c echo.Context", "t testing.T", "f *foo.Bar", "const C"]
+              ]
+            }
+          }
+        },
+        "whitespace": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "multi-if": {
+              "description": "Enforces newlines (or comments) after every multi-line if statement",
+              "type": "boolean",
+              "default": false
+            },
+            "multi-func": {
+              "description": "Enforces newlines (or comments) after every multi-line function signature",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "wrapcheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ignoreSigs": {
+              "description": "An array of strings which specify substrings of signatures to ignore.",
+              "default": [
+                ".Errorf(",
+                "errors.New(",
+                "errors.Unwrap(",
+                ".Wrap(",
+                ".Wrapf(",
+                ".WithMessage(",
+                ".WithMessagef(",
+                ".WithStack("
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ignoreSigRegexps": {
+              "description": "An array of strings which specify regular expressions of signatures to ignore.",
+              "default": [""],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ignorePackageGlobs": {
+              "description": "An array of glob patterns which, if any match the package of the function returning the error, will skip wrapcheck analysis for this error.",
+              "default": [""],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ignoreInterfaceRegexps": {
+              "description": "An array of glob patterns which, if matched to an underlying interface name, will ignore unwrapped errors returned from a function whose call is defined on the given interface.",
+              "default": [""],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "wsl": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow-assign-and-anything": {
+              "description": "Controls if you may cuddle assignments and anything without needing an empty line between them.",
+              "type": "boolean",
+              "default": false
+            },
+            "allow-assign-and-call": {
+              "description": "Allow calls and assignments to be cuddled as long as the lines have any matching variables, fields or types.",
+              "type": "boolean",
+              "default": true
+            },
+            "allow-cuddle-declarations": {
+              "description": "Allow declarations (var) to be cuddled.",
+              "type": "boolean",
+              "default": false
+            },
+            "allow-cuddle-with-calls": {
+              "description": "A list of call idents that everything can be cuddled with.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "allow-cuddle-with-rhs": {
+              "description": "AllowCuddleWithRHS is a list of right hand side variables that is allowed to be cuddled with anything.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "allow-multiline-assign": {
+              "description": "Allow multiline assignments to be cuddled.",
+              "type": "boolean",
+              "default": true
+            },
+            "allow-separated-leading-comment": {
+              "description": "Allow leading comments to be separated with empty lines.",
+              "type": "boolean",
+              "default": false
+            },
+            "allow-trailing-comment": {
+              "description": "Allow trailing comments in ending of blocks.",
+              "type": "boolean",
+              "default": false
+            },
+            "error-variable-names": {
+              "description": "When force-err-cuddling is enabled this is a list of names used for error variables to check for in the conditional.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "force-case-trailing-whitespace": {
+              "description": "Force newlines in end of case at this limit (0 = never).",
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "force-err-cuddling": {
+              "description": "Causes an error when an If statement that checks an error variable doesn't cuddle with the assignment of that variable.",
+              "type": "boolean",
+              "default": false
+            },
+            "force-short-decl-cuddling": {
+              "description": "Causes an error if a short declaration (:=) cuddles with anything other than another short declaration.",
+              "type": "boolean",
+              "default": false
+            },
+            "strict-append": {
+              "description": "If true, append is only allowed to be cuddled if appending value is matching variables, fields or types on line above.",
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "copyloopvar": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ignore-alias": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "custom": {
+          "description": "The custom section can be used to define linter plugins to be loaded at runtime. See README of golangci-lint for more information.\nEach custom linter should have a unique name.",
+          "type": "object",
+          "patternProperties": {
+            "^.*$": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "description": "The plugin type.",
+                  "enum": ["module", "goplugin"],
+                  "default": "goplugin"
+                },
+                "path": {
+                  "description": "The path to the plugin *.so. Can be absolute or local.",
+                  "type": "string",
+                  "examples": ["/path/to/example.so"]
+                },
+                "description": {
+                  "description": "The description of the linter, for documentation purposes only.",
+                  "type": "string"
+                },
+                "original-url": {
+                  "description": "Intended to point to the repo location of the linter, for documentation purposes only.",
+                  "type": "string"
+                },
+                "settings": {
+                  "description": "Plugins settings/configuration. Only work with plugin based on `linterdb.PluginConstructor`.",
+                  "type": "object"
+                }
+              },
+              "oneOf": [
+                {
+                  "properties": {
+                    "type": {"enum": ["module"] }
+                  },
+                  "required": ["type"]
+                },
+                {
+                  "required": ["path"]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "linters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enable": {
+          "description": "List of enabled linters.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/linters"
+          }
+        },
+        "disable": {
+          "description": "List of disabled linters.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/linters"
+          }
+        },
+        "enable-all": {
+          "description": "Whether to enable all linters. You can re-disable them with `disable` explicitly.",
+          "type": "boolean",
+          "default": false
+        },
+        "disable-all": {
+          "description": "Whether to disable all linters. You can re-enable them with `enable` explicitly.",
+          "type": "boolean",
+          "default": false
+        },
+        "presets": {
+          "description": "Allow to use different presets of linters",
+          "type": "array",
+          "items": {
+            "enum": [
+              "bugs",
+              "comment",
+              "complexity",
+              "error",
+              "format",
+              "import",
+              "metalinter",
+              "module",
+              "performance",
+              "sql",
+              "style",
+              "test",
+              "unused"
+            ]
+          }
+        },
+        "fast": {
+          "description": "Enable run of fast linters.",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "issues": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "exclude": {
+          "description": "List of regular expressions of issue texts to exclude.\nBut independently from this option we use default exclude patterns. Their usage can be controlled through `exclude-use-default`.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude-rules": {
+          "description": "Exclude configuration per-path, per-linter, per-text and per-source",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "path-except": {
+                "type": "string"
+              },
+              "linters": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/linters"
+                }
+              },
+              "text": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "exclude-use-default": {
+          "description": "Independently from option `exclude` we use default exclude patterns. This behavior can be disabled by this option.",
+          "type": "boolean",
+          "default": true
+        },
+        "exclude-case-sensitive": {
+          "description": "If set to true, exclude and exclude-rules regular expressions become case sensitive.",
+          "type": "boolean",
+          "default": false
+        },
+        "exclude-generated-strict": {
+          "description": "To follow strict Go generated file convention",
+          "type": "boolean",
+          "default": false
+        },
+        "exclude-dirs": {
+          "description": "Which directories to exclude: issues from them won't be reported.",
+          "type": "array",
+          "items": {
+            "description": "You can use regexp here. The regexp is applied on the full path.\n\"/\" will be replaced by current OS file path separator to properly work on Windows.",
+            "type": "string",
+            "examples": ["generated.*"]
+          },
+          "default": [],
+          "examples": [["src/external_libs", "autogenerated_by_my_lib"]]
+        },
+        "exclude-dirs-use-default": {
+          "description": "Enable exclusion of directories \"vendor\", \"third_party\", \"testdata\", \"examples\", \"Godeps\", and \"builtin\".",
+          "type": "boolean",
+          "default": true
+        },
+        "exclude-files": {
+          "description": "Which files to exclude: they will be analyzed, but issues from them will not be reported.",
+          "type": "array",
+          "items": {
+            "description": "You can use regexp here. There is no need to include all autogenerated files, we confidently recognize them. If that is not the case, please let us know.\n\"/\" will be replaced by current OS file path separator to properly work on Windows.",
+            "type": "string",
+            "examples": [".*\\.my\\.go$"]
+          },
+          "default": [],
+          "examples": [[".*\\.my\\.go$", "lib/bad.go"]]
+        },
+        "include": {
+          "description": "The list of ids of default excludes to include or disable.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "max-issues-per-linter": {
+          "description": "Maximum issues count per one linter. Set to 0 to disable.",
+          "type": "integer",
+          "default": 50,
+          "minimum": 0
+        },
+        "max-same-issues": {
+          "description": "Maximum count of issues with the same text. Set to 0 to disable.",
+          "type": "integer",
+          "default": 3,
+          "minimum": 0
+        },
+        "new": {
+          "description": "Show only new issues: if there are unstaged changes or untracked files, only those changes are analyzed, else only changes in HEAD~ are analyzed.",
+          "type": "boolean",
+          "default": false
+        },
+        "new-from-rev": {
+          "description": "Show only new issues created after this git revision.",
+          "type": "string"
+        },
+        "new-from-patch": {
+          "description": "Show only new issues created in git patch with this file path.",
+          "type": "string",
+          "examples": ["path/to/patch/file"]
+        },
+        "fix": {
+          "description": "Fix found issues (if it's supported by the linter).",
+          "type": "boolean",
+          "default": false
+        },
+        "whole-files": {
+          "description": "Show issues in any part of update files (requires new-from-rev or new-from-patch).",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "severity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default-severity": {
+          "description": "Set the default severity for issues. If severity rules are defined and the issues do not match or no severity is provided to the rule this will be the default severity applied. Severities should match the supported severity names of the selected out format.",
+          "type": "string",
+          "default": ""
+        },
+        "case-sensitive": {
+          "description": "If set to true, severity-rules regular expressions become case sensitive.",
+          "type": "boolean",
+          "default": false
+        },
+        "rules": {
+          "description": "When a list of severity rules are provided, severity information will be added to lint issues. Severity rules have the same filtering capability as exclude rules except you are allowed to specify one matcher per severity rule.\nOnly affects out formats that support setting severity information.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "severity": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "path-except": {
+                "type": "string"
+              },
+              "linters": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/linters"
+                }
+              },
+              "text": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": ["severity"],
+            "anyOf": [
+              { "required": ["path"] },
+              { "required": ["path-except"] },
+              { "required": ["linters"] },
+              { "required": ["text"] },
+              { "required": ["source"] }
+            ]
+          },
+          "default": []
+        }
+      },
+      "required": ["default-severity"]
+    }
+  }
+}

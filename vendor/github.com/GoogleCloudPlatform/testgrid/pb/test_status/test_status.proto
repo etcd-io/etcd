@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package testgrid.test_status;
+
+option go_package = "github.com/GoogleCloudPlatform/testgrid/pb/test_status";
+
+enum TestStatus {
+  // Proto versions of test_status.py's GathererStatus
+  // Note that: NO_RESULT is used to signal that there should be no change.
+  // This must be updated every time a new GathererStatus is added.
+  NO_RESULT = 0;
+  PASS = 1;
+  PASS_WITH_ERRORS = 2;
+  PASS_WITH_SKIPS = 3;
+  RUNNING = 4;
+  CATEGORIZED_ABORT = 5;
+  UNKNOWN = 6;
+  CANCEL = 7;
+  BLOCKED = 8;
+  TIMED_OUT = 9;
+  CATEGORIZED_FAIL = 10;
+  BUILD_FAIL = 11;
+  FAIL = 12;
+  FLAKY = 13;
+  TOOL_FAIL = 14;
+  BUILD_PASSED = 15;
+}

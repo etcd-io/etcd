@@ -1,0 +1,263 @@
+<lexer>
+  <config>
+    <name>Gherkin</name>
+    <alias>cucumber</alias>
+    <alias>Cucumber</alias>
+    <alias>gherkin</alias>
+    <alias>Gherkin</alias>
+    <filename>*.feature</filename>
+    <filename>*.FEATURE</filename>
+    <mime_type>text/x-gherkin</mime_type>
+  </config>
+  <rules>
+    <state name="comments">
+      <rule pattern="\s*#.*$">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="featureElementsOnStack">
+      <rule pattern="^(\s*)(하지만|조건|먼저|만일|만약|단|그리고|그러면|那麼|那么|而且|當|当|前提|假設|假设|假如|假定|但是|但し|並且|并且|同時|同时|もし|ならば|ただし|しかし|かつ|و |متى |لكن |عندما |ثم |بفرض |اذاً |כאשר |וגם |בהינתן |אזי |אז |אבל |Якщо |Унда |То |Припустимо, що |Припустимо |Онда |Но |Нехай |Лекин |Когато |Када |Кад |К тому же |И |Задато |Задати |Задате |Если |Допустим |Дадено |Ва |Бирок |Аммо |Али |Але |Агар |А |І |Și |És |Zatati |Zakładając |Zadato |Zadate |Zadano |Zadani |Zadan |Youse know when youse got |Youse know like when |Yna |Ya know how |Ya gotta |Y |Wun |Wtedy |When y&#39;all |When |Wenn |WEN |Và |Ve |Und |Un |Thì |Then y&#39;all |Then |Tapi |Tak |Tada |Tad |Så |Stel |Soit |Siis |Si |Sed |Se |Quando |Quand |Quan |Pryd |Pokud |Pokiaľ |Però |Pero |Pak |Oraz |Onda |Ond |Oletetaan |Og |Och |O zaman |Når |När |Niin |Nhưng |N |Mutta |Men |Mas |Maka |Majd |Mais |Maar |Ma |Lorsque |Lorsqu&#39;|Kun |Kuid |Kui |Khi |Keď |Ketika |Když |Kaj |Kai |Kada |Kad |Jeżeli |Ja |Ir |I CAN HAZ |I |Ha |Givun |Givet |Given y&#39;all |Given |Gitt |Gegeven |Gegeben sei |Fakat |Eğer ki |Etant donné |Et |Então |Entonces |Entao |En |Eeldades |E |Duota |Dun |Donitaĵo |Donat |Donada |Do |Diyelim ki |Dengan |Den youse gotta |De |Dato |Dar |Dann |Dan |Dado |Dacă |Daca |DEN |Când |Cuando |Cho |Cept |Cand |Cal |But y&#39;all |But |Buh |Biết |Bet |BUT |Atès |Atunci |Atesa |Anrhegedig a |Angenommen |And y&#39;all |And |An |Ama |Als |Alors |Allora |Ali |Aleshores |Ale |Akkor |Aber |AN |A také |A |\* )">
+        <token type="Keyword"/>
+        <pop depth="2"/>
+      </rule>
+      <rule>
+        <include state="comments"/>
+      </rule>
+      <rule pattern="(\s|.)">
+        <token type="NameFunction"/>
+      </rule>
+    </state>
+    <state name="tableContent">
+      <rule pattern="\s+\|\s*$">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="comments"/>
+      </rule>
+      <rule pattern="\\\|">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\s*\|">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="doubleStringTable"/>
+      </rule>
+      <rule>
+        <include state="string"/>
+      </rule>
+    </state>
+    <state name="numbers">
+      <rule pattern="(\d+\.?\d*|\d*\.\d+)([eE][+-]?[0-9]+)?">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="tableVars">
+      <rule pattern="(&lt;[^&gt;]+&gt;)">
+        <token type="NameVariable"/>
+      </rule>
+    </state>
+    <state name="doubleString">
+      <rule pattern="&#34;">
+        <token type="NameFunction"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="string"/>
+      </rule>
+    </state>
+    <state name="featureElements">
+      <rule pattern="^(\s*)(하지만|조건|먼저|만일|만약|단|그리고|그러면|那麼|那么|而且|當|当|前提|假設|假设|假如|假定|但是|但し|並且|并且|同時|同时|もし|ならば|ただし|しかし|かつ|و |متى |لكن |عندما |ثم |بفرض |اذاً |כאשר |וגם |בהינתן |אזי |אז |אבל |Якщо |Унда |То |Припустимо, що |Припустимо |Онда |Но |Нехай |Лекин |Когато |Када |Кад |К тому же |И |Задато |Задати |Задате |Если |Допустим |Дадено |Ва |Бирок |Аммо |Али |Але |Агар |А |І |Și |És |Zatati |Zakładając |Zadato |Zadate |Zadano |Zadani |Zadan |Youse know when youse got |Youse know like when |Yna |Ya know how |Ya gotta |Y |Wun |Wtedy |When y&#39;all |When |Wenn |WEN |Và |Ve |Und |Un |Thì |Then y&#39;all |Then |Tapi |Tak |Tada |Tad |Så |Stel |Soit |Siis |Si |Sed |Se |Quando |Quand |Quan |Pryd |Pokud |Pokiaľ |Però |Pero |Pak |Oraz |Onda |Ond |Oletetaan |Og |Och |O zaman |Når |När |Niin |Nhưng |N |Mutta |Men |Mas |Maka |Majd |Mais |Maar |Ma |Lorsque |Lorsqu&#39;|Kun |Kuid |Kui |Khi |Keď |Ketika |Když |Kaj |Kai |Kada |Kad |Jeżeli |Ja |Ir |I CAN HAZ |I |Ha |Givun |Givet |Given y&#39;all |Given |Gitt |Gegeven |Gegeben sei |Fakat |Eğer ki |Etant donné |Et |Então |Entonces |Entao |En |Eeldades |E |Duota |Dun |Donitaĵo |Donat |Donada |Do |Diyelim ki |Dengan |Den youse gotta |De |Dato |Dar |Dann |Dan |Dado |Dacă |Daca |DEN |Când |Cuando |Cho |Cept |Cand |Cal |But y&#39;all |But |Buh |Biết |Bet |BUT |Atès |Atunci |Atesa |Anrhegedig a |Angenommen |And y&#39;all |And |An |Ama |Als |Alors |Allora |Ali |Aleshores |Ale |Akkor |Aber |AN |A také |A |\* )">
+        <token type="Keyword"/>
+        <push state="stepContentStack"/>
+      </rule>
+      <rule>
+        <include state="comments"/>
+      </rule>
+      <rule pattern="(\s|.)">
+        <token type="NameFunction"/>
+      </rule>
+    </state>
+    <state name="examplesTableHeader">
+      <rule pattern="\s+\|\s*$">
+        <token type="Keyword"/>
+        <pop depth="2"/>
+      </rule>
+      <rule>
+        <include state="comments"/>
+      </rule>
+      <rule pattern="\\\|">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\s*\|">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="[^|]">
+        <token type="NameVariable"/>
+      </rule>
+    </state>
+    <state name="stepContentStack">
+      <rule pattern="$">
+        <token type="Keyword"/>
+        <pop depth="2"/>
+      </rule>
+      <rule>
+        <include state="stepContent"/>
+      </rule>
+    </state>
+    <state name="pyString">
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="string"/>
+      </rule>
+    </state>
+    <state name="examplesTable">
+      <rule pattern="\s+\|">
+        <token type="Keyword"/>
+        <push state="examplesTableHeader"/>
+      </rule>
+      <rule>
+        <include state="comments"/>
+      </rule>
+      <rule pattern="(\s|.)">
+        <token type="NameFunction"/>
+      </rule>
+    </state>
+    <state name="stepContentRoot">
+      <rule pattern="$">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="stepContent"/>
+      </rule>
+    </state>
+    <state name="doubleStringTable">
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="string"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule>
+        <include state="tableVars"/>
+      </rule>
+      <rule pattern="(\s|.)">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="stepContent">
+      <rule pattern="&#34;">
+        <token type="NameFunction"/>
+        <push state="doubleString"/>
+      </rule>
+      <rule>
+        <include state="tableVars"/>
+      </rule>
+      <rule>
+        <include state="numbers"/>
+      </rule>
+      <rule>
+        <include state="comments"/>
+      </rule>
+      <rule pattern="(\s|.)">
+        <token type="NameFunction"/>
+      </rule>
+    </state>
+    <state name="scenarioSectionsOnStack">
+      <rule pattern="^(\s*)(시나리오 개요|시나리오|배경|背景|場景大綱|場景|场景大纲|场景|劇本大綱|劇本|剧本大纲|剧本|テンプレ|シナリオテンプレート|シナリオテンプレ|シナリオアウトライン|シナリオ|سيناريو مخطط|سيناريو|الخلفية|תרחיש|תבנית תרחיש|רקע|Тарих|Сценарій|Сценарио|Сценарий структураси|Сценарий|Структура сценарію|Структура сценарија|Структура сценария|Скица|Рамка на сценарий|Пример|Предыстория|Предистория|Позадина|Передумова|Основа|Концепт|Контекст|Założenia|Wharrimean is|Tình huống|The thing of it is|Tausta|Taust|Tapausaihio|Tapaus|Szenariogrundriss|Szenario|Szablon scenariusza|Stsenaarium|Struktura scenarija|Skica|Skenario konsep|Skenario|Situācija|Senaryo taslağı|Senaryo|Scénář|Scénario|Schema dello scenario|Scenārijs pēc parauga|Scenārijs|Scenár|Scenaro|Scenariusz|Scenariul de şablon|Scenariul de sablon|Scenariu|Scenario Outline|Scenario Amlinellol|Scenario|Scenarijus|Scenarijaus šablonas|Scenarij|Scenarie|Rerefons|Raamstsenaarium|Primer|Pozadí|Pozadina|Pozadie|Plan du scénario|Plan du Scénario|Osnova scénáře|Osnova|Náčrt Scénáře|Náčrt Scenáru|Mate|MISHUN SRSLY|MISHUN|Kịch bản|Konturo de la scenaro|Kontext|Konteksts|Kontekstas|Kontekst|Koncept|Khung tình huống|Khung kịch bản|Háttér|Grundlage|Geçmiş|Forgatókönyv vázlat|Forgatókönyv|Fono|Esquema do Cenário|Esquema do Cenario|Esquema del escenario|Esquema de l&#39;escenari|Escenario|Escenari|Dis is what went down|Dasar|Contexto|Contexte|Contesto|Condiţii|Conditii|Cenário|Cenario|Cefndir|Bối cảnh|Blokes|Bakgrunn|Bakgrund|Baggrund|Background|B4|Antecedents|Antecedentes|All y&#39;all|Achtergrond|Abstrakt Scenario|Abstract Scenario)(:)(.*)$">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Keyword"/>
+          <token type="Keyword"/>
+          <token type="NameFunction"/>
+        </bygroups>
+        <push state="featureElementsOnStack"/>
+      </rule>
+    </state>
+    <state name="narrative">
+      <rule>
+        <include state="scenarioSectionsOnStack"/>
+      </rule>
+      <rule pattern="(\s|.)">
+        <token type="NameFunction"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\n">
+        <token type="NameFunction"/>
+      </rule>
+      <rule>
+        <include state="comments"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="Keyword"/>
+        <push state="pyString"/>
+      </rule>
+      <rule pattern="\s+\|">
+        <token type="Keyword"/>
+        <push state="tableContent"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="NameFunction"/>
+        <push state="doubleString"/>
+      </rule>
+      <rule>
+        <include state="tableVars"/>
+      </rule>
+      <rule>
+        <include state="numbers"/>
+      </rule>
+      <rule pattern="(\s*)(@[^@\r\n\t ]+)">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(\s*)(하지만|조건|먼저|만일|만약|단|그리고|그러면|那麼|那么|而且|當|当|前提|假設|假设|假如|假定|但是|但し|並且|并且|同時|同时|もし|ならば|ただし|しかし|かつ|و |متى |لكن |عندما |ثم |بفرض |اذاً |כאשר |וגם |בהינתן |אזי |אז |אבל |Якщо |Унда |То |Припустимо, що |Припустимо |Онда |Но |Нехай |Лекин |Когато |Када |Кад |К тому же |И |Задато |Задати |Задате |Если |Допустим |Дадено |Ва |Бирок |Аммо |Али |Але |Агар |А |І |Și |És |Zatati |Zakładając |Zadato |Zadate |Zadano |Zadani |Zadan |Youse know when youse got |Youse know like when |Yna |Ya know how |Ya gotta |Y |Wun |Wtedy |When y&#39;all |When |Wenn |WEN |Và |Ve |Und |Un |Thì |Then y&#39;all |Then |Tapi |Tak |Tada |Tad |Så |Stel |Soit |Siis |Si |Sed |Se |Quando |Quand |Quan |Pryd |Pokud |Pokiaľ |Però |Pero |Pak |Oraz |Onda |Ond |Oletetaan |Og |Och |O zaman |Når |När |Niin |Nhưng |N |Mutta |Men |Mas |Maka |Majd |Mais |Maar |Ma |Lorsque |Lorsqu&#39;|Kun |Kuid |Kui |Khi |Keď |Ketika |Když |Kaj |Kai |Kada |Kad |Jeżeli |Ja |Ir |I CAN HAZ |I |Ha |Givun |Givet |Given y&#39;all |Given |Gitt |Gegeven |Gegeben sei |Fakat |Eğer ki |Etant donné |Et |Então |Entonces |Entao |En |Eeldades |E |Duota |Dun |Donitaĵo |Donat |Donada |Do |Diyelim ki |Dengan |Den youse gotta |De |Dato |Dar |Dann |Dan |Dado |Dacă |Daca |DEN |Când |Cuando |Cho |Cept |Cand |Cal |But y&#39;all |But |Buh |Biết |Bet |BUT |Atès |Atunci |Atesa |Anrhegedig a |Angenommen |And y&#39;all |And |An |Ama |Als |Alors |Allora |Ali |Aleshores |Ale |Akkor |Aber |AN |A také |A |\* )">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Keyword"/>
+        </bygroups>
+        <push state="stepContentRoot"/>
+      </rule>
+      <rule pattern="^(기능|機能|功能|フィーチャ|خاصية|תכונה|Функціонал|Функционалност|Функционал|Фича|Особина|Могућност|Özellik|Właściwość|Tính năng|Trajto|Savybė|Požiadavka|Požadavek|Osobina|Ominaisuus|Omadus|OH HAI|Mogućnost|Mogucnost|Jellemző|Fīča|Funzionalità|Funktionalität|Funkcionalnost|Funkcionalitāte|Funcționalitate|Functionaliteit|Functionalitate|Funcionalitat|Funcionalidade|Fonctionnalité|Fitur|Feature|Egenskap|Egenskab|Crikey|Característica|Arwedd)(:)(.*)$">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Keyword"/>
+          <token type="NameFunction"/>
+        </bygroups>
+        <push state="narrative"/>
+      </rule>
+      <rule pattern="^(\s*)(시나리오 개요|시나리오|배경|背景|場景大綱|場景|场景大纲|场景|劇本大綱|劇本|剧本大纲|剧本|テンプレ|シナリオテンプレート|シナリオテンプレ|シナリオアウトライン|シナリオ|سيناريو مخطط|سيناريو|الخلفية|תרחיש|תבנית תרחיש|רקע|Тарих|Сценарій|Сценарио|Сценарий структураси|Сценарий|Структура сценарію|Структура сценарија|Структура сценария|Скица|Рамка на сценарий|Пример|Предыстория|Предистория|Позадина|Передумова|Основа|Концепт|Контекст|Założenia|Wharrimean is|Tình huống|The thing of it is|Tausta|Taust|Tapausaihio|Tapaus|Szenariogrundriss|Szenario|Szablon scenariusza|Stsenaarium|Struktura scenarija|Skica|Skenario konsep|Skenario|Situācija|Senaryo taslağı|Senaryo|Scénář|Scénario|Schema dello scenario|Scenārijs pēc parauga|Scenārijs|Scenár|Scenaro|Scenariusz|Scenariul de şablon|Scenariul de sablon|Scenariu|Scenario Outline|Scenario Amlinellol|Scenario|Scenarijus|Scenarijaus šablonas|Scenarij|Scenarie|Rerefons|Raamstsenaarium|Primer|Pozadí|Pozadina|Pozadie|Plan du scénario|Plan du Scénario|Osnova scénáře|Osnova|Náčrt Scénáře|Náčrt Scenáru|Mate|MISHUN SRSLY|MISHUN|Kịch bản|Konturo de la scenaro|Kontext|Konteksts|Kontekstas|Kontekst|Koncept|Khung tình huống|Khung kịch bản|Háttér|Grundlage|Geçmiş|Forgatókönyv vázlat|Forgatókönyv|Fono|Esquema do Cenário|Esquema do Cenario|Esquema del escenario|Esquema de l&#39;escenari|Escenario|Escenari|Dis is what went down|Dasar|Contexto|Contexte|Contesto|Condiţii|Conditii|Cenário|Cenario|Cefndir|Bối cảnh|Blokes|Bakgrunn|Bakgrund|Baggrund|Background|B4|Antecedents|Antecedentes|All y&#39;all|Achtergrond|Abstrakt Scenario|Abstract Scenario)(:)(.*)$">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Keyword"/>
+          <token type="Keyword"/>
+          <token type="NameFunction"/>
+        </bygroups>
+        <push state="featureElements"/>
+      </rule>
+      <rule pattern="^(\s*)(예|例子|例|サンプル|امثلة|דוגמאות|Сценарији|Примери|Приклади|Мисоллар|Значения|Örnekler|Voorbeelden|Variantai|Tapaukset|Scenarios|Scenariji|Scenarijai|Příklady|Példák|Príklady|Przykłady|Primjeri|Primeri|Piemēri|Pavyzdžiai|Paraugs|Juhtumid|Exemplos|Exemples|Exemplele|Exempel|Examples|Esempi|Enghreifftiau|Ekzemploj|Eksempler|Ejemplos|EXAMPLZ|Dữ liệu|Contoh|Cobber|Beispiele)(:)(.*)$">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Keyword"/>
+          <token type="Keyword"/>
+          <token type="NameFunction"/>
+        </bygroups>
+        <push state="examplesTable"/>
+      </rule>
+      <rule pattern="(\s|.)">
+        <token type="NameFunction"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,168 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    - decorder
+    - depguard
+    - err113
+    - exhaustruct
+    - nlreturn
+    - nonamedreturns
+    - paralleltest
+    - recvcheck
+    - testpackage
+    - varnamelen
+    - wrapcheck
+
+  settings:
+    cyclop:
+      max-complexity: 30
+    dogsled:
+      max-blank-identifiers: 2
+    dupl:
+      threshold: 150
+    errcheck:
+      check-type-assertions: false
+      check-blank: true
+      exclude-functions:
+        - fmt.Print
+        - fmt.Printf
+        - fmt.Println
+        - fmt.Fprint(*bytes.Buffer)
+        - fmt.Fprintf(*bytes.Buffer)
+        - fmt.Fprintln(*bytes.Buffer)
+        - fmt.Fprint(*strings.Builder)
+        - fmt.Fprintf(*strings.Builder)
+        - fmt.Fprintln(*strings.Builder)
+        - fmt.Fprint(os.Stderr)
+        - fmt.Fprintf(os.Stderr)
+        - fmt.Fprintln(os.Stderr)
+        - io/ioutil.ReadFile
+        - io/ioutil.ReadDir
+    gocognit:
+      min-complexity: 30
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    gocritic:
+      disabled-checks:
+        - regexpMust
+        - rangeValCopy
+        - importShadow
+        - docStub
+      enabled-tags:
+        - performance
+        - style
+        - diagnostic
+        - experimental
+        - opinionated
+      settings:
+        captLocal:
+          paramsOnly: true
+        hugeParam:
+          sizeThreshold: 1024
+    gocyclo:
+      min-complexity: 30
+    godox:
+      keywords:
+        - FIXME
+    govet:
+      enable:
+        - atomicalign
+      disable:
+        - shadow
+      enable-all: false
+      disable-all: false
+    ireturn:
+      allow:
+        - anon
+        - error
+        - empty
+        - stdlib
+        - generic
+    lll:
+      line-length: 160
+    misspell:
+      locale: US
+    mnd:
+      ignored-functions:
+        - ^strings\.SplitN
+    nakedret:
+      max-func-lines: 30
+    perfsprint:
+      strconcat: false
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: false
+    staticcheck:
+      checks:
+        - '*'
+        - -ST1003
+        - -QF1008
+    unparam:
+      check-exported: false
+    unused:
+      field-writes-are-uses: true
+      post-statements-are-reads: false
+      exported-fields-are-used: true
+      parameters-are-used: true
+      local-variables-are-used: true
+      generated-is-used: true
+    usetesting:
+      context-background: true
+      context-todo: true
+      os-chdir: true
+      os-mkdir-temp: true
+      os-setenv: true
+      os-temp-dir: false
+      os-create-temp: true
+    varnamelen:
+      min-name-length: 2
+    whitespace:
+      multi-if: false
+      multi-func: false
+
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters:
+          - bodyclose
+          - containedctx
+          - contextcheck
+          - dogsled
+          - errcheck
+          - errchkjson
+          - errorlint
+          - forcetypeassert
+          - funlen
+          - gosec
+          - lll
+          - mnd
+          - musttag
+          - nilnil
+          - unparam
+          - gosmopolitan
+
+
+formatters:
+  enable:
+    - gci
+    - gofumpt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule
+        - blank
+        - dot
+    gofumpt:
+      extra-rules: true
+

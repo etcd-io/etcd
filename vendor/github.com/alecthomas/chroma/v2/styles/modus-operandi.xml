@@ -1,0 +1,13 @@
+<style name="modus-operandi">
+  <entry type="Background" style="#000000 bg:#ffffff"/>
+  <entry type="Keyword" style="#5317ac"/>
+  <entry type="KeywordConstant" style="#0000c0"/>
+  <entry type="KeywordType" style="#005a5f"/>
+  <entry type="NameBuiltin" style="#8f0075"/>
+  <entry type="NameFunction" style="#721045"/>
+  <entry type="NameVariable" style="#00538b"/>
+  <entry type="Literal" style="#0000c0"/>
+  <entry type="LiteralString" style="#2544bb"/>
+  <entry type="Operator" style="#00538b"/>
+  <entry type="Comment" style="#505050"/>
+</style>

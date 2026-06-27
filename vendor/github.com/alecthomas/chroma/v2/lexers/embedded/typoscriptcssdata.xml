@@ -1,0 +1,52 @@
+<lexer>
+  <config>
+    <name>TypoScriptCssData</name>
+    <alias>typoscriptcssdata</alias>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="(.*)(###\w+###)(.*)">
+        <bygroups>
+          <token type="LiteralString"/>
+          <token type="NameConstant"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\{)(\$)((?:[\w\-]+\.)*)([\w\-]+)(\})">
+        <bygroups>
+          <token type="LiteralStringSymbol"/>
+          <token type="Operator"/>
+          <token type="NameConstant"/>
+          <token type="NameConstant"/>
+          <token type="LiteralStringSymbol"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(.*)(\{)([\w\-]+)(\s*:\s*)([\w\-]+)(\})(.*)">
+        <bygroups>
+          <token type="LiteralString"/>
+          <token type="LiteralStringSymbol"/>
+          <token type="NameConstant"/>
+          <token type="Operator"/>
+          <token type="NameConstant"/>
+          <token type="LiteralStringSymbol"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="/\*(?:(?!\*/).)*\*/">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(?&lt;!(#|\&#39;|&#34;))(?:#(?!(?:[a-fA-F0-9]{6}|[a-fA-F0-9]{3}))[^\n#]+|//[^\n]*)">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="[&lt;&gt;,:=.*%+|]">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="[\w&#34;\-!/&amp;;(){}]+">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

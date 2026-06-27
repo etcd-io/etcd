@@ -1,0 +1,23 @@
+# See https://golangci-lint.run/usage/configuration/
+linters:
+  enable-all: true
+  disable:
+    - tenv
+    - lll
+    - gomodguard
+    - gochecknoglobals
+    - paralleltest
+    - varnamelen
+    - exhaustruct
+    - depguard
+    - forbidigo
+    - funlen
+    - nlreturn
+    - gofumpt
+    - nonamedreturns
+    - cyclop
+    - err113
+    - perfsprint
+    - tagliatelle
+    - wrapcheck
+    - mnd

@@ -1,0 +1,123 @@
+<lexer>
+  <config>
+    <name>PromQL</name>
+    <alias>promql</alias>
+    <filename>*.promql</filename>
+  </config>
+  <rules>
+    <state name="range">
+      <rule pattern="\]">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[1-9][0-9]*[smhdwy]">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="function">
+      <rule pattern="\)">
+        <token type="Operator"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Operator"/>
+        <push/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\n">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern=",">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(group_right|group_left|ignoring|without|offset|bool|on|by)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(count_values|quantile|bottomk|stdvar|stddev|count|group|topk|sum|min|max|avg)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(histogram_quantile|quantile_over_time|absent_over_time|stdvar_over_time|stddev_over_time|count_over_time|predict_linear|label_replace|max_over_time|avg_over_time|sum_over_time|days_in_month|min_over_time|day_of_month|holt_winters|day_of_week|label_join|sort_desc|clamp_max|timestamp|clamp_min|increase|changes|resets|vector|absent|idelta|minute|scalar|log10|delta|month|floor|deriv|round|irate|rate|year|sort|log2|sqrt|ceil|time|hour|abs|exp|ln)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="[1-9][0-9]*[smhdwy]">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="-?[0-9]+\.[0-9]+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="-?[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="#.*?$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="(\+|\-|\*|\/|\%|\^)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="==|!=|&gt;=|&lt;=|&lt;|&gt;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="and|or|unless">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="[_a-zA-Z][a-zA-Z0-9_]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="([&#34;\&#39;])(.*?)([&#34;\&#39;])">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="LiteralString"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\(">
+        <token type="Operator"/>
+        <push state="function"/>
+      </rule>
+      <rule pattern="\)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="Punctuation"/>
+        <push state="labels"/>
+      </rule>
+      <rule pattern="\[">
+        <token type="Punctuation"/>
+        <push state="range"/>
+      </rule>
+    </state>
+    <state name="labels">
+      <rule pattern="\}">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern=",">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="([_a-zA-Z][a-zA-Z0-9_]*?)(\s*?)(=~|!=|=|!~)(\s*?)(&#34;|&#39;)(.*?)(&#34;|&#39;)">
+        <bygroups>
+          <token type="NameLabel"/>
+          <token type="TextWhitespace"/>
+          <token type="Operator"/>
+          <token type="TextWhitespace"/>
+          <token type="Punctuation"/>
+          <token type="LiteralString"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+    </state>
+  </rules>
+</lexer>

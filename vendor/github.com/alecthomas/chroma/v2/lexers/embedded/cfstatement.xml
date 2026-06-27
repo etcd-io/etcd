@@ -1,0 +1,92 @@
+<lexer>
+  <config>
+    <name>cfstatement</name>
+    <alias>cfs</alias>
+    <case_insensitive>true</case_insensitive>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*(?:.|\n)*?\*/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="\+\+|--">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[-+*/^&amp;=!]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="&lt;=|&gt;=|&lt;|&gt;|==">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="mod\b">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(eq|lt|gt|lte|gte|not|is|and|or)\b">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\|\||&amp;&amp;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\?">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="&#39;.*?&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="(if|else|len|var|xml|default|break|switch|component|property|function|do|try|catch|in|continue|for|return|while|required|any|array|binary|boolean|component|date|guid|numeric|query|string|struct|uuid|case)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(true|false|null)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(application|session|client|cookie|super|this|variables|arguments)\b">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="([a-z_$][\w.]*)(\s*)(\()">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[a-z_$][\w.]*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[()\[\]{};:,.\\]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="&#34;&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="#.+?#">
+        <token type="LiteralStringInterpol"/>
+      </rule>
+      <rule pattern="[^&#34;#]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="#">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

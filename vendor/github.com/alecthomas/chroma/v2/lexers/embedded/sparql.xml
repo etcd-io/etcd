@@ -1,0 +1,160 @@
+<lexer>
+  <config>
+    <name>SPARQL</name>
+    <alias>sparql</alias>
+    <filename>*.rq</filename>
+    <filename>*.sparql</filename>
+    <mime_type>application/sparql-query</mime_type>
+  </config>
+  <rules>
+    <state name="string-escape">
+      <rule pattern="u[0-9A-Fa-f]{4}">
+        <token type="LiteralStringEscape"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="U[0-9A-Fa-f]{8}">
+        <token type="LiteralStringEscape"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=".">
+        <token type="LiteralStringEscape"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="end-of-string">
+      <rule pattern="(@)([a-zA-Z]+(?:-[a-zA-Z0-9]+)*)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="NameFunction"/>
+        </bygroups>
+        <pop depth="2"/>
+      </rule>
+      <rule pattern="\^\^">
+        <token type="Operator"/>
+        <pop depth="2"/>
+      </rule>
+      <rule>
+        <pop depth="2"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="((?i)select|construct|describe|ask|where|filter|group\s+by|minus|distinct|reduced|from\s+named|from|order\s+by|desc|asc|limit|offset|bindings|load|clear|drop|create|add|move|copy|insert\s+data|delete\s+data|delete\s+where|delete|insert|using\s+named|using|graph|default|named|all|optional|service|silent|bind|union|not\s+in|in|as|having|to|prefix|base)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(a)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(&lt;(?:[^&lt;&gt;&#34;{}|^`\\\x00-\x20])*&gt;)">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="(_:[_\p{L}\p{N}](?:[-_.\p{L}\p{N}]*[-_\p{L}\p{N}])?)">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="[?$][_\p{L}\p{N}]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="([\p{L}][-_.\p{L}\p{N}]*)?(\:)((?:[_:\p{L}\p{N}]|(?:%[0-9A-Fa-f][0-9A-Fa-f])|(?:\\[ _~.\-!$&amp;&#34;()*+,;=/?#@%]))(?:(?:[-_:.\p{L}\p{N}]|(?:%[0-9A-Fa-f][0-9A-Fa-f])|(?:\\[ _~.\-!$&amp;&#34;()*+,;=/?#@%]))*(?:[-_:\p{L}\p{N}]|(?:%[0-9A-Fa-f][0-9A-Fa-f])|(?:\\[ _~.\-!$&amp;&#34;()*+,;=/?#@%])))?)?">
+        <bygroups>
+          <token type="NameNamespace"/>
+          <token type="Punctuation"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="((?i)str|lang|langmatches|datatype|bound|iri|uri|bnode|rand|abs|ceil|floor|round|concat|strlen|ucase|lcase|encode_for_uri|contains|strstarts|strends|strbefore|strafter|year|month|day|hours|minutes|seconds|timezone|tz|now|md5|sha1|sha256|sha384|sha512|coalesce|if|strlang|strdt|sameterm|isiri|isuri|isblank|isliteral|isnumeric|regex|substr|replace|exists|not\s+exists|count|sum|min|max|avg|sample|group_concat|separator)\b">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="(true|false)">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="[+\-]?(\d+\.\d*[eE][+-]?\d+|\.?\d+[eE][+-]?\d+)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[+\-]?(\d+\.\d*|\.\d+)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[+\-]?\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="(\|\||&amp;&amp;|=|\*|\-|\+|/|!=|&lt;=|&gt;=|!|&lt;|&gt;)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[(){}.;,:^\[\]]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="#[^\n]*">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="LiteralString"/>
+        <push state="triple-double-quoted-string"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="single-double-quoted-string"/>
+      </rule>
+      <rule pattern="&#39;&#39;&#39;">
+        <token type="LiteralString"/>
+        <push state="triple-single-quoted-string"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralString"/>
+        <push state="single-single-quoted-string"/>
+      </rule>
+    </state>
+    <state name="triple-double-quoted-string">
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="LiteralString"/>
+        <push state="end-of-string"/>
+      </rule>
+      <rule pattern="[^\\]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+        <push state="string-escape"/>
+      </rule>
+    </state>
+    <state name="single-double-quoted-string">
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="end-of-string"/>
+      </rule>
+      <rule pattern="[^&#34;\\\n]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+        <push state="string-escape"/>
+      </rule>
+    </state>
+    <state name="triple-single-quoted-string">
+      <rule pattern="&#39;&#39;&#39;">
+        <token type="LiteralString"/>
+        <push state="end-of-string"/>
+      </rule>
+      <rule pattern="[^\\]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralStringEscape"/>
+        <push state="string-escape"/>
+      </rule>
+    </state>
+    <state name="single-single-quoted-string">
+      <rule pattern="&#39;">
+        <token type="LiteralString"/>
+        <push state="end-of-string"/>
+      </rule>
+      <rule pattern="[^&#39;\\\n]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+        <push state="string-escape"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

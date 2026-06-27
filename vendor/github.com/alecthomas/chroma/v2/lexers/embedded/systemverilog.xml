@@ -1,0 +1,181 @@
+<lexer>
+  <config>
+    <name>systemverilog</name>
+    <alias>systemverilog</alias>
+    <alias>sv</alias>
+    <filename>*.sv</filename>
+    <filename>*.svh</filename>
+    <mime_type>text/x-systemverilog</mime_type>
+    <ensure_nl>true</ensure_nl>
+  </config>
+  <rules>
+    <state name="macro">
+      <rule pattern="[^/\n]+">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="/[*](.|\n)*?[*]/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="/">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="(?&lt;=\\)\n">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="CommentPreproc"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="import">
+      <rule pattern="[\w:]+\*?">
+        <token type="NameNamespace"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="^\s*`define">
+        <token type="CommentPreproc"/>
+        <push state="macro"/>
+      </rule>
+      <rule pattern="^(\s*)(package)(\s+)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(\s*)(import)(\s+)(&#34;DPI(?:-C)?&#34;)(\s+)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+          <token type="LiteralString"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(\s*)(import)(\s+)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="import"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="/(\\\n)?/(\n|(.|\n)*?[^\\]\n)">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/(\\\n)?[*](.|\n)*?[*](\\\n)?/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="[{}#@]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="L?&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="L?&#39;(\\.|\\[0-7]{1,3}|\\x[a-fA-F0-9]{1,2}|[^\\\&#39;\n])&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="(\d+\.\d*|\.\d+|\d+)[eE][+-]?\d+[lL]?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="(\d+\.\d*|\.\d+|\d+[fF])[fF]?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="([0-9]+)|(\&#39;h)[0-9a-fA-F]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="([0-9]+)|(\&#39;b)[01]+">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="([0-9]+)|(\&#39;d)[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="([0-9]+)|(\&#39;o)[0-7]+">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="\&#39;[01xz]">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="\d+[Ll]?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="\*/">
+        <token type="Error"/>
+      </rule>
+      <rule pattern="[~!%^&amp;*+=|?:&lt;&gt;/-]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[()\[\],.;\&#39;]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="`[a-zA-Z_]\w*">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="(pulsestyle_ondetect|pulsestyle_onevent|noshowcancelled|sync_accept_on|sync_reject_on|showcancelled|timeprecision|endprimitive|randsequence|s_until_with|s_eventually|always_latch|endinterface|illegal_bins|macromodule|always_comb|endfunction|endproperty|first_match|endsequence|endgenerate|ignore_bins|endclocking|until_with|localparam|coverpoint|eventually|throughout|s_nexttime|endprogram|endspecify|endchecker|wait_order|constraint|covergroup|endpackage|endconfig|interface|accept_on|shortreal|parameter|primitive|intersect|protected|join_none|automatic|reject_on|always_ff|specparam|endmodule|shortint|join_any|endclass|sequence|defparam|scalared|deassign|endgroup|timeunit|instance|continue|restrict|clocking|nexttime|s_always|rtranif1|endtable|rtranif0|unsigned|priority|vectored|property|pulldown|wildcard|generate|function|realtime|forkjoin|randcase|context|forever|release|virtual|strong0|program|untyped|posedge|package|foreach|extends|specify|unique0|typedef|chandle|implies|checker|negedge|tranif1|initial|modport|strong1|matches|tranif0|endtask|integer|supply0|endcase|supply1|longint|disable|s_until|default|liblist|library|include|bufif0|design|tagged|struct|inside|medium|signed|config|highz1|incdir|import|expect|triand|trireg|export|unique|notif0|notif1|return|ifnone|output|highz0|packed|bufif1|repeat|global|genvar|binsof|extern|string|before|static|assume|assign|pullup|assert|always|within|strong|module|final|union|rcmos|casex|casez|trior|alias|pull1|pull0|break|uwire|randc|rnmos|rpmos|rtran|class|const|cover|weak1|until|logic|local|weak0|large|table|force|input|inout|small|solve|begin|super|event|while|cross|void|fork|enum|wait|cmos|bind|else|edge|join|nand|task|this|dist|time|cell|nmos|tran|wand|wire|bins|with|tri1|pmos|xnor|pure|type|real|rand|case|byte|weak|tri0|null|int|use|ref|var|tri|end|for|wor|iff|xor|bit|let|new|nor|and|not|reg|buf|or|if|do)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(`nounconnected_drive|`unconnected_drive|`default_nettype|`begin_keywords|`endcelldefine|`end_keywords|`undefineall|`celldefine|`timescale|`__LINE__|`resetall|`__FILE__|`include|`ifndef|`pragma|`define|`undef|`endif|`elsif|`ifdef|`else|`line)\b">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="(\$dumpportsflush|\$dumpportslimit|\$value\$plusargs|\$dumpportsoff|\$dumpportsall|\$dumpportson|\$monitoroff|\$writememb|\$fdisplayo|\$fdisplayh|\$dumpports|\$dumplimit|\$dumpflush|\$fmonitorb|\$fmonitoro|\$monitoron|\$fdisplayb|\$writememh|\$fmonitorh|\$readmemb|\$fdisplay|\$monitorh|\$dumpfile|\$sformatf|\$monitorb|\$monitoro|\$displayb|\$plusargs|\$fmonitor|\$displayo|\$fstrobeo|\$displayh|\$fstrobeh|\$fstrobeb|\$readmemh|\$dumpvars|\$fstrobe|\$sformat|\$strobeb|\$swriteh|\$strobeh|\$strobeo|\$swriteb|\$fwriteh|\$fwriteo|\$monitor|\$dumpall|\$dumpoff|\$fwriteb|\$display|\$swriteo|\$fflush|\$random|\$dumpon|\$fscanf|\$rewind|\$writeh|\$writeo|\$sscanf|\$strobe|\$writeb|\$finish|\$ungetc|\$fclose|\$ferror|\$swrite|\$fwrite|\$fgetc|\$fseek|\$fgets|\$write|\$fopen|\$fread|\$ftell|\$test|\$feof)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(class)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="classname"/>
+      </rule>
+      <rule pattern="(woshortreal|shortint|realtime|longint|integer|supply0|supply1|triand|trireg|uwire|logic|trior|byte|wand|tri0|tri1|time|real|wire|reg|bit|int|tri)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*:(?!:)">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="\$?[a-zA-Z_]\w*">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="classname">
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\([\\abfnrtv&#34;\&#39;]|x[a-fA-F0-9]{2,4}|[0-7]{1,3})">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^\\&#34;\n]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

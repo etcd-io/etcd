@@ -1,0 +1,90 @@
+<lexer>
+  <config>
+    <name>Groff</name>
+    <alias>groff</alias>
+    <alias>nroff</alias>
+    <alias>man</alias>
+    <filename>*.[1-9]</filename>
+    <filename>*.1p</filename>
+    <filename>*.3pm</filename>
+    <filename>*.man</filename>
+    <mime_type>application/x-troff</mime_type>
+    <mime_type>text/troff</mime_type>
+  </config>
+  <rules>
+    <state name="request">
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="&#34;[^\n&#34;]+&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="\S+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="(\.)(\w+)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+        <push state="request"/>
+      </rule>
+      <rule pattern="\.">
+        <token type="Punctuation"/>
+        <push state="request"/>
+      </rule>
+      <rule pattern="[^\\\n]+">
+        <token type="Text"/>
+        <push state="textline"/>
+      </rule>
+      <rule>
+        <push state="textline"/>
+      </rule>
+    </state>
+    <state name="textline">
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="[^\\\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="escapes">
+      <rule pattern="\\&#34;[^\n]*">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="\\[fn]\w">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\\(.{2}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\.\[.*\]">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="Text"/>
+        <push state="request"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

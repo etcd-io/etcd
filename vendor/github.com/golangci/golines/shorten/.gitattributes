@@ -1,0 +1,3 @@
+/testdata/** text eol=lf
+/internal/graph/testdata/** text eol=lf
+/internal/comments/testdata/** text eol=lf

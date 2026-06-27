@@ -1,0 +1,52 @@
+<style name="colorful">
+  <entry type="Error" style="#ff0000 bg:#ffaaaa"/>
+  <entry type="Background" style="bg:#ffffff"/>
+  <entry type="Keyword" style="bold #008800"/>
+  <entry type="KeywordPseudo" style="#003388"/>
+  <entry type="KeywordType" style="#333399"/>
+  <entry type="NameAttribute" style="#0000cc"/>
+  <entry type="NameBuiltin" style="#007020"/>
+  <entry type="NameClass" style="bold #bb0066"/>
+  <entry type="NameConstant" style="bold #003366"/>
+  <entry type="NameDecorator" style="bold #555555"/>
+  <entry type="NameEntity" style="bold #880000"/>
+  <entry type="NameException" style="bold #ff0000"/>
+  <entry type="NameFunction" style="bold #0066bb"/>
+  <entry type="NameLabel" style="bold #997700"/>
+  <entry type="NameNamespace" style="bold #0e84b5"/>
+  <entry type="NameTag" style="#007700"/>
+  <entry type="NameVariable" style="#996633"/>
+  <entry type="NameVariableClass" style="#336699"/>
+  <entry type="NameVariableGlobal" style="bold #dd7700"/>
+  <entry type="NameVariableInstance" style="#3333bb"/>
+  <entry type="LiteralString" style="bg:#fff0f0"/>
+  <entry type="LiteralStringChar" style="#0044dd"/>
+  <entry type="LiteralStringDoc" style="#dd4422"/>
+  <entry type="LiteralStringEscape" style="bold #666666"/>
+  <entry type="LiteralStringInterpol" style="bg:#eeeeee"/>
+  <entry type="LiteralStringOther" style="#dd2200"/>
+  <entry type="LiteralStringRegex" style="#000000 bg:#fff0ff"/>
+  <entry type="LiteralStringSymbol" style="#aa6600"/>
+  <entry type="LiteralNumber" style="bold #6600ee"/>
+  <entry type="LiteralNumberFloat" style="bold #6600ee"/>
+  <entry type="LiteralNumberHex" style="bold #005588"/>
+  <entry type="LiteralNumberInteger" style="bold #0000dd"/>
+  <entry type="LiteralNumberOct" style="bold #4400ee"/>
+  <entry type="Operator" style="#333333"/>
+  <entry type="OperatorWord" style="bold #000000"/>
+  <entry type="Comment" style="#888888"/>
+  <entry type="CommentSpecial" style="bold #cc0000"/>
+  <entry type="CommentPreproc" style="#557799"/>
+  <entry type="GenericDeleted" style="#a00000"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericError" style="#ff0000"/>
+  <entry type="GenericHeading" style="bold #000080"/>
+  <entry type="GenericInserted" style="#00a000"/>
+  <entry type="GenericOutput" style="#888888"/>
+  <entry type="GenericPrompt" style="bold #c65d09"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="bold #800080"/>
+  <entry type="GenericTraceback" style="#0044dd"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="TextWhitespace" style="#bbbbbb"/>
+</style>

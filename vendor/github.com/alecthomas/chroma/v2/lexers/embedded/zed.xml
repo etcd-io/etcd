@@ -1,0 +1,51 @@
+<lexer>
+  <config>
+    <name>Zed</name>
+    <alias>zed</alias>
+    <filename>*.zed</filename>
+    <mime_type>text/zed</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\n">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/(\\\n)?[*][\w\W]*?[*](\\\n)?/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="/(\\\n)?[*][\w\W]*">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="(definition)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(relation)\b">
+        <token type="KeywordNamespace"/>
+      </rule>
+      <rule pattern="(permission)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*/">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="#[a-zA-Z_]\w*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[+%=&gt;&lt;|^!?/\-*&amp;~:]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[{}()\[\],.;]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

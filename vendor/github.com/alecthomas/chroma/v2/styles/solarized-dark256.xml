@@ -1,0 +1,41 @@
+<style name="solarized-dark256">
+  <entry type="Other" style="#d75f00"/>
+  <entry type="Background" style="#8a8a8a bg:#1c1c1c"/>
+  <entry type="Keyword" style="#5f8700"/>
+  <entry type="KeywordConstant" style="#d75f00"/>
+  <entry type="KeywordDeclaration" style="#0087ff"/>
+  <entry type="KeywordNamespace" style="#d75f00"/>
+  <entry type="KeywordReserved" style="#0087ff"/>
+  <entry type="KeywordType" style="#af0000"/>
+  <entry type="NameAttribute" style="#8a8a8a"/>
+  <entry type="NameBuiltin" style="#0087ff"/>
+  <entry type="NameBuiltinPseudo" style="#0087ff"/>
+  <entry type="NameClass" style="#0087ff"/>
+  <entry type="NameConstant" style="#d75f00"/>
+  <entry type="NameDecorator" style="#0087ff"/>
+  <entry type="NameEntity" style="#d75f00"/>
+  <entry type="NameException" style="#af8700"/>
+  <entry type="NameFunction" style="#0087ff"/>
+  <entry type="NameTag" style="#0087ff"/>
+  <entry type="NameVariable" style="#0087ff"/>
+  <entry type="LiteralString" style="#00afaf"/>
+  <entry type="LiteralStringBacktick" style="#4e4e4e"/>
+  <entry type="LiteralStringChar" style="#00afaf"/>
+  <entry type="LiteralStringDoc" style="#00afaf"/>
+  <entry type="LiteralStringEscape" style="#af0000"/>
+  <entry type="LiteralStringHeredoc" style="#00afaf"/>
+  <entry type="LiteralStringRegex" style="#af0000"/>
+  <entry type="LiteralNumber" style="#00afaf"/>
+  <entry type="Operator" style="#8a8a8a"/>
+  <entry type="OperatorWord" style="#5f8700"/>
+  <entry type="Comment" style="#4e4e4e"/>
+  <entry type="CommentSpecial" style="#5f8700"/>
+  <entry type="CommentPreproc" style="#5f8700"/>
+  <entry type="GenericDeleted" style="#af0000"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericError" style="bold #af0000"/>
+  <entry type="GenericHeading" style="#d75f00"/>
+  <entry type="GenericInserted" style="#5f8700"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="#0087ff"/>
+</style>

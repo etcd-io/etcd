@@ -1,0 +1,19 @@
+<style name="fruity">
+  <entry type="Background" style="#ffffff bg:#111111"/>
+  <entry type="Keyword" style="bold #fb660a"/>
+  <entry type="KeywordPseudo" style="nobold"/>
+  <entry type="KeywordType" style="bold #cdcaa9"/>
+  <entry type="NameAttribute" style="bold #ff0086"/>
+  <entry type="NameConstant" style="#0086d2"/>
+  <entry type="NameFunction" style="bold #ff0086"/>
+  <entry type="NameTag" style="bold #fb660a"/>
+  <entry type="NameVariable" style="#fb660a"/>
+  <entry type="LiteralString" style="#0086d2"/>
+  <entry type="LiteralNumber" style="bold #0086f7"/>
+  <entry type="Comment" style="italic #008800 bg:#0f140f"/>
+  <entry type="CommentPreproc" style="bold #ff0007"/>
+  <entry type="GenericHeading" style="bold #ffffff"/>
+  <entry type="GenericOutput" style="#444444 bg:#222222"/>
+  <entry type="GenericSubheading" style="bold #ffffff"/>
+  <entry type="TextWhitespace" style="#888888"/>
+</style>

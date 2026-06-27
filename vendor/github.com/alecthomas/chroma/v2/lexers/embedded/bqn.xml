@@ -1,0 +1,83 @@
+<lexer>
+  <config>
+    <name>BQN</name>
+    <alias>bqn</alias>
+    <filename>*.bqn</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="\A#!.+$">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="#.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="&quot;(?:[^&quot;]|&quot;&quot;)*&quot;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="[{}]">
+        <token type="KeywordPseudo"/>
+      </rule>
+      <rule pattern="[⟨⟩\[\]‿]">
+        <token type="KeywordPseudo"/>
+      </rule>
+      <rule pattern="[()]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[:;?]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[⋄,]">
+        <token type="KeywordPseudo"/>
+      </rule>
+      <rule pattern="[←⇐↩→]">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="'.'">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="[˙˜˘¨⌜⁼´˝`]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[∘○⊸⟜⌾⊘◶⎉⚇⍟⎊]">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="[𝔽𝔾𝕎𝕏𝕊+\-×÷⋆√⌊⌈|¬∧∨&lt;&gt;≠=≤≥≡≢⊣⊢⥊∾≍⋈↑↓↕«»⌽⍉/⍋⍒⊏⊑⊐⊒∊⍷⊔!⍕⍎]">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="[𝕗𝕘𝕨𝕩𝕤]">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="·">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="@">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="\d+(?:\.\d+)?[eE]¯?\d+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[¯∞π]?(?:\d*\.?\b\d+(?:e[+¯]?\d+|E[+¯]?\d+)?|¯|∞|π)(?:j¯?(?:(?:\d+(?:\.\d+)?|\.\d+)(?:e[+¯]?\d+|E[+¯]?\d+)?|¯|∞|π))?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="(•?[a-z][A-Z_a-z0-9π∞¯]*|𝕣)">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="•?[A-Z][A-Z_a-z0-9π∞¯]*">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="(•?_[A-Za-z][A-Z_a-z0-9π∞¯]*|_𝕣)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(•?_[A-Za-z][A-Z_a-z0-9π∞¯]*_|_𝕣_)">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="\.">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

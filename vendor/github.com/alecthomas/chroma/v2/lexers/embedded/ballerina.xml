@@ -1,0 +1,97 @@
+<lexer>
+  <config>
+    <name>Ballerina</name>
+    <alias>ballerina</alias>
+    <filename>*.bal</filename>
+    <mime_type>text/x-ballerina</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*.*?\*/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="(break|catch|continue|done|else|finally|foreach|forever|fork|if|lock|match|return|throw|transaction|try|while)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="((?:(?:[^\W\d]|\$)[\w.\[\]$&lt;&gt;]*\s+)+?)((?:[^\W\d]|\$)[\w$]*)(\s*)(\()">
+        <bygroups>
+          <usingself state="root"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="@[^\W\d][\w.]*">
+        <token type="NameDecorator"/>
+      </rule>
+      <rule pattern="(annotation|bind|but|endpoint|error|function|object|private|public|returns|service|type|var|with|worker)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(boolean|byte|decimal|float|int|json|map|nil|record|string|table|xml)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(true|false|null)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(import)(\s+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="import"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;\\.&#39;|&#39;[^\\]&#39;|&#39;\\u[0-9a-fA-F]{4}&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="(\.)((?:[^\W\d]|\$)[\w$]*)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="NameAttribute"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^\s*([^\W\d]|\$)[\w$]*:">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="([^\W\d]|\$)[\w$]*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="([0-9][0-9_]*\.([0-9][0-9_]*)?|\.[0-9][0-9_]*)([eE][+\-]?[0-9][0-9_]*)?[fFdD]?|[0-9][eE][+\-]?[0-9][0-9_]*[fFdD]?|[0-9]([eE][+\-]?[0-9][0-9_]*)?[fFdD]|0[xX]([0-9a-fA-F][0-9a-fA-F_]*\.?|([0-9a-fA-F][0-9a-fA-F_]*)?\.[0-9a-fA-F][0-9a-fA-F_]*)[pP][+\-]?[0-9][0-9_]*[fFdD]?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="0[xX][0-9a-fA-F][0-9a-fA-F_]*[lL]?">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="0[bB][01][01_]*[lL]?">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="0[0-7_]+[lL]?">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0|[1-9][0-9_]*[lL]?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[~^*!%&amp;\[\](){}&lt;&gt;|+=:;,./?-]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="import">
+      <rule pattern="[\w.]+">
+        <token type="NameNamespace"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

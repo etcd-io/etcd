@@ -1,0 +1,37 @@
+<lexer>
+  <config>
+    <name>PacmanConf</name>
+    <alias>pacmanconf</alias>
+    <filename>pacman.conf</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="#.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="^\s*\[.*?\]\s*$">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(\w+)(\s*)(=)">
+        <bygroups>
+          <token type="NameAttribute"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(\s*)(\w+)(\s*)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="NameAttribute"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\$repo|\$arch|%o|%u)\b">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

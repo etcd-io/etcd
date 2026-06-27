@@ -1,0 +1,230 @@
+<lexer>
+  <config>
+    <name>PowerShell</name>
+    <alias>powershell</alias>
+    <alias>posh</alias>
+    <alias>ps1</alias>
+    <alias>psm1</alias>
+    <alias>psd1</alias>
+    <alias>pwsh</alias>
+    <filename>*.ps1</filename>
+    <filename>*.psm1</filename>
+    <filename>*.psd1</filename>
+    <mime_type>text/x-powershell</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <push state="child"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(\s*)(#)(requires)(\s+)">
+        <bygroups>
+          <token type="TextWhitespace"/>
+          <token type="Comment"/>
+          <token type="Keyword"/>
+          <token type="TextWhitespace"/>
+        </bygroups>
+        <push state="requires"/>
+      </rule>
+      <rule pattern="^(\s*#[#\s]*)(\.(?:component|description|example|externalhelp|forwardhelpcategory|forwardhelptargetname|functionality|inputs|link|notes|outputs|parameter|remotehelprunspace|role|synopsis))([^\n]*$)">
+        <bygroups>
+          <token type="Comment"/>
+          <token type="LiteralStringDoc"/>
+          <token type="Comment"/>
+        </bygroups>
+      </rule>
+      <rule pattern="#[^\n]*?$">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(&amp;lt;|&lt;)#">
+        <token type="CommentMultiline"/>
+        <push state="multline"/>
+      </rule>
+      <rule pattern="(?i)([A-Z]:)">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="@&#34;\n">
+        <token type="LiteralStringHeredoc"/>
+        <push state="heredoc-double"/>
+      </rule>
+      <rule pattern="@&#39;\n.*?\n&#39;@">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+      <rule pattern="@(?=\(|{)|\$(?=\()">
+        <token type="NameVariableMagic"/>
+      </rule>
+      <rule pattern="`[\&#39;&#34;$@-]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="&#39;([^&#39;]|&#39;&#39;)*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="(?&lt;!\S)(function|filter|workflow)(\s*)(global:|script:|private:|env:)?(\w\S*\b)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="TextWhitespace"/>
+          <token type="NameVariableMagic"/>
+          <token type="NameBuiltin"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?&lt;!\S)(class|configuration)(\s+)(\w\S*)(\s*)(:*)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="TextWhitespace"/>
+          <token type="NameBuiltin"/>
+          <token type="NameBuiltin"/>
+          <token type="NameBuiltin"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\$false|\$null|\$true(?=\b)">
+        <token type="NameVariableMagic"/>
+      </rule>
+      <rule pattern="(\$|@@|@)((global|script|private|env):)?\w+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(parameter|validatenotnullorempty|validatescript|validaterange|validateset|validaterange|validatepattern|validatelength|validatecount|validatenotnullorempty|validatescript|cmdletbinding|alias)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="[a-z]\w*-[a-z]\w*\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(mandatory|parametersetname|position|helpmessage|valuefrompipeline|valuefrompipelinebypropertyname|valuefromremainingarguments|dontshow)\b">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="(confirmimpact|defaultparametersetname|helpuri|supportspaging|supportsshouldprocess|positionalbinding)\b">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="(while|until|trap|switch|return|ref|process|param|parameter|in|if|global:|foreach|for|finally|filter|end|elseif|else|dynamicparam|do|default|continue|break|begin|\?|%|#script|#private|#local|#global|try|catch|throw)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="-(and|as|band|bnot|bor|bxor|casesensitive|ccontains|ceq|cge|cgt|cle|clike|clt|cmatch|cne|cnotcontains|cnotlike|cnotmatch|contains|creplace|eq|exact|f|file|ge|gt|icontains|ieq|ige|igt|ile|ilike|ilt|imatch|ine|inotcontains|inotlike|inotmatch|ireplace|is|isnot|le|like|lt|match|ne|not|notcontains|notlike|notmatch|or|regex|replace|wildcard)\b">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(ac|asnp|cat|cd|cfs|chdir|clc|clear|clhy|cli|clp|cls|clv|cnsn|compare|copy|cp|cpi|cpp|curl|cvpa|dbp|del|diff|dir|dnsn|ebp|echo|epal|epcsv|epsn|erase|etsn|exsn|fc|fhx|fl|foreach|ft|fw|gal|gbp|gc|gci|gcm|gcs|gdr|ghy|gi|gjb|gl|gm|gmo|gp|gps|gpv|group|gsn|gsnp|gsv|gu|gv|gwmi|h|history|icm|iex|ihy|ii|ipal|ipcsv|ipmo|ipsn|irm|ise|iwmi|iwr|kill|lp|ls|man|md|measure|mi|mount|move|mp|mv|nal|ndr|ni|nmo|npssc|nsn|nv|ogv|oh|popd|ps|pushd|pwd|r|rbp|rcjb|rcsn|rd|rdr|ren|ri|rjb|rm|rmdir|rmo|rni|rnp|rp|rsn|rsnp|rujb|rv|rvpa|rwmi|sajb|sal|saps|sasv|sbp|sc|select|set|shcm|si|sl|sleep|sls|sort|sp|spjb|spps|spsv|start|sujb|sv|swmi|tee|trcm|type|wget|where|wjb|write)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(\[)([a-z_\[][\w. `,\[\]]*)(\])">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="NameConstant"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?&lt;!\[)(?&lt;=\S[^\*|\n]\.)\w+(?=\s+|\(|\{|\.)">
+        <token type="NameProperty"/>
+      </rule>
+      <rule pattern="(?&lt;!\w)([-+]?(?:[0-9]+)?\.?[0-9]+(?:(?:e|E)[0-9]+)?(?:F|f|D|d|M|m)?)((?i:[kmgtp]b)?)\b">
+        <bygroups>
+          <token type="LiteralNumberFloat"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="-[a-z_]\w*:*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\w+">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="[.,;@{}\[\]$()=+*/\\&amp;%!~?^\x60|&lt;&gt;-]|::">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="requires">
+      <rule pattern="\s*\n|\s*$">
+        <token type="TextWhitespace"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="-(?i:modules|pssnapin|runasadministrator|ahellid|version|assembly|psedition)">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="-\S*\b">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="\s+(\S+)">
+        <token type="NameAttribute"/>
+      </rule>
+    </state>
+    <state name="child">
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="multline">
+      <rule pattern="[^#&amp;.]+">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="#(&gt;|&amp;gt;)">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(\s*\.)(component|description|example|externalhelp|forwardhelpcategory|forwardhelptargetname|functionality|inputs|link|notes|outputs|parameter|remotehelprunspace|role|synopsis)(\s*$)">
+        <bygroups>
+          <token type="CommentMultiline"/>
+          <token type="LiteralStringDoc"/>
+          <token type="CommentMultiline"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[#&amp;.]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="`[0abfnrtv&#39;\&#34;$`]">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^$`&#34;]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="\$\(">
+        <token type="Punctuation"/>
+        <push state="child"/>
+      </rule>
+      <rule pattern="((\$)((global|script|private|env):)?\w+)|((\$){((global|script|private|env):)?\w+})">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="&#34;&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="[`$]">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="heredoc-double">
+      <rule pattern="\n&#34;@">
+        <token type="LiteralStringHeredoc"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\$\(">
+        <token type="Punctuation"/>
+        <push state="child"/>
+      </rule>
+      <rule pattern="((\$)((global|script|private|env):)?\w+)|((\$){((global|script|private|env):)?\w+})">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[^@\n]+&#34;]">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+      <rule pattern=".">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

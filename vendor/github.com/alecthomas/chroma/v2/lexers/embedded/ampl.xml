@@ -1,0 +1,98 @@
+<lexer>
+  <config>
+    <name>AMPL</name>
+    <alias>ampl</alias>
+    <filename>*.mod</filename>
+    <filename>*.run</filename>
+    <mime_type>text/x-ampl</mime_type>
+    <case_insensitive>false</case_insensitive>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="root">
+      <!-- Whitespace -->
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+
+      <!-- Comments: '#' to end-of-line and C-style comments -->
+      <rule pattern="#[^\n]*">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="Comment"/>
+        <push state="comment"/>
+      </rule>
+
+      <!-- Strings -->
+      <rule pattern="&quot;(\\.|[^\\&quot;])*&quot;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;(\\.|[^\\&#39;])*&#39;">
+        <token type="LiteralString"/>
+      </rule>
+
+      <!-- Numbers -->
+      <rule pattern="\b\d+\.\d*([eE][+-]?\d+)?\b">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\b\d+[eE][+-]?\d+\b">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\b\d+\b">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+
+      <!-- Commands / Reserved keywords -->
+      <rule pattern="\b(call|cd|close|commands|data|delete|display|drop|end|environ|exit|expand|include|load|model|objective|option|problem|purge|quit|redeclare|reload|remove|reset|restore|shell|show|solexpand|solution|solve|update|unload|xref|coeff|coef|cover|obj|interval|default|from|to|to_come|net_in|net_out|dimen|dimension|check|complements|write|function|pipe|format|if|then|else|in|while|repeat|for)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+
+      <!-- Types -->
+      <rule pattern="\b(integer|binary|symbolic|ordered|circular|reversed|INOUT|IN|OUT|LOCAL)\b">
+        <token type="KeywordType"/>
+      </rule>
+
+      <!-- Declarations (set/param/var etc) -->
+      <rule pattern="\b(set|param|var|arc|minimize|maximize|subject to|s\.t\.|subj to|node|table|suffix|read table|write table)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+
+      <!-- Builtins / Functions -->
+      <rule pattern="\b(abs|acos|acosh|alias|asin|asinh|atan|atan2|atanh|ceil|ctime|cos|exp|floor|log|log10|max|min|precision|round|sin|sinh|sqrt|tan|tanh|time|trunc|Beta|Cauchy|Exponential|Gamma|Irand224|Normal|Normal01|Poisson|Uniform|Uniform01|num|num0|ichar|char|length|substr|sprintf|match|sub|gsub|print|printf|next|nextw|prev|prevw|first|last|ord|ord0|card|arity|indexarity)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+
+      <!-- Operator words (logical/set operators) -->
+      <rule pattern="\b(or|exists|forall|and|in|not|within|union|diff|difference|symdiff|inter|intersect|intersection|cross|setof|by|less|sum|prod|product|div|mod)\b">
+        <token type="OperatorWord"/>
+      </rule>
+
+      <!-- Identifiers -->
+      <rule pattern="[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)*">
+        <token type="Name"/>
+      </rule>
+
+      <!-- Operators and punctuation -->
+      <rule pattern="\+|\-|\*|/|\*\*|=|&lt;=|&gt;=|==|\||\^|&lt;|&gt;|\!|\.\.|:=|\&amp;|\!=|&lt;&lt;|&gt;&gt;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[(),;:\[\]{}.]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+
+    <state name="comment">
+      <rule pattern="[^*]+">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="\*/">
+        <token type="Comment"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\*">
+        <token type="Comment"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

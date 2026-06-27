@@ -1,0 +1,72 @@
+---
+project_name: asasalint
+
+release:
+  github:
+    owner: alingse
+    name: asasalint
+
+builds:
+  - binary: asasalint
+    goos:
+      - darwin
+      - windows
+      - linux
+      - freebsd
+    goarch:
+      - amd64
+      - arm64
+      - arm
+      - 386
+      - ppc64le
+      - s390x
+      - mips64
+      - mips64le
+      - riscv64
+    goarm:
+      - 6
+      - 7
+    gomips:
+      - hardfloat
+    env:
+      - CGO_ENABLED=0
+    ignore:
+      - goos: darwin
+        goarch: 386
+      - goos: freebsd
+        goarch: arm64
+    main: ./cmd/asasalint/
+    flags:
+      - -trimpath
+    ldflags: -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+
+archives:
+  - format: tar.gz
+    wrap_in_directory: true
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: '{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    files:
+      - LICENSE
+      - README.md
+
+snapshot:
+  name_template: SNAPSHOT-{{ .Commit }}
+
+checksum:
+  name_template: '{{ .ProjectName }}-{{ .Version }}-checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '(?i)^docs?:'
+      - '(?i)^docs\([^:]+\):'
+      - '(?i)^docs\[[^:]+\]:'
+      - '^tests?:'
+      - '(?i)^dev:'
+      - '^build\(deps\): bump .* in /docs \(#\d+\)'
+      - '^build\(deps\): bump .* in /\.github/peril \(#\d+\)'
+      - Merge pull request
+      - Merge branch

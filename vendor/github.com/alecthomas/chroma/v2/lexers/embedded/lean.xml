@@ -1,0 +1,56 @@
+<lexer>
+  <config>
+    <name>Lean4</name>
+    <alias>lean4</alias>
+    <alias>lean</alias>
+    <filename>*.lean</filename>
+    <mime_type>text/x-lean4</mime_type>
+    <mime_type>text/x-lean</mime_type>
+  </config>
+  <rules>
+    <state name="expression">
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+      <rule pattern="/--"><token type="LiteralStringDoc"/><push state="docstring"/></rule>
+      <rule pattern="/-"><token type="Comment"/><push state="comment"/></rule>
+      <rule pattern="--.*$"><token type="CommentSingle"/></rule>
+      <rule pattern="\b(Type|Prop|Sort)\b"><token type="KeywordType"/></rule>
+      <rule pattern="\b(sorry|admit)\b"><token type="GenericError"/></rule>
+      <rule pattern="(!=|\#|\&amp;|\&amp;\&amp;|\*|\+|\-|/|@|!|\-\.|\-&gt;|\.|\.\.|\.\.\.|::|:&gt;|;|;;|&lt;|&lt;\-|=|==|&gt;|_|\||\|\||\~|=&gt;|&lt;=|&gt;=|/\\|\\/|∀|Π|λ|↔|∧|∨|≠|≤|≥|¬|⁻¹|⬝|▸|→|∃|≈|×|⌞|⌟|≡|⟨|⟩|↦)"><token type="NameBuiltinPseudo"/></rule>
+      <rule pattern="(\(|\)|:|\{|\}|\[|\]|⦃|⦄|:=|,)"><token type="Operator"/></rule>
+      <rule pattern="(?![λΠΣ])[_a-zA-Zα-ωΑ-Ωϊ-ϻἀ-῾℀-⅏𝒜-𝖟](?:(?![λΠΣ])[_a-zA-Zα-ωΑ-Ωϊ-ϻἀ-῾℀-⅏𝒜-𝖟0-9&#x27;ⁿ-₉ₐ-ₜᵢ-ᵪ!?])*"><token type="Name"/></rule>
+      <rule pattern="``?(?![λΠΣ])[_a-zA-Zα-ωΑ-Ωϊ-ϻἀ-῾℀-⅏𝒜-𝖟](?:(?![λΠΣ])[_a-zA-Zα-ωΑ-Ωϊ-ϻἀ-῾℀-⅏𝒜-𝖟0-9&#x27;ⁿ-₉ₐ-ₜᵢ-ᵪ!?])*(\.(?![λΠΣ])[_a-zA-Zα-ωΑ-Ωϊ-ϻἀ-῾℀-⅏𝒜-𝖟](?:(?![λΠΣ])[_a-zA-Zα-ωΑ-Ωϊ-ϻἀ-῾℀-⅏𝒜-𝖟0-9&#x27;ⁿ-₉ₐ-ₜᵢ-ᵪ!?])*)*"><token type="LiteralStringSymbol"/></rule>
+      <rule pattern="(?&lt;=\.)\d+"><token type="LiteralNumber"/></rule>
+      <rule pattern="(\d+\.\d*)([eE][+-]?[0-9]+)?"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="\d+"><token type="LiteralNumberInteger"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><push state="string"/></rule>
+      <rule pattern="[~?][a-z][\w\&#x27;]*:"><token type="NameVariable"/></rule>
+      <rule pattern="\S"><token type="NameBuiltinPseudo"/></rule>
+    </state>
+    <state name="root">
+      <rule pattern="\b(import|unif_hint|renaming|inline|hiding|lemma|variable|theorem|axiom|inductive|structure|universe|alias|\#help|precedence|postfix|prefix|infix|infixl|infixr|notation|\#eval|\#check|\#reduce|\#exit|end|private|using|namespace|instance|section|protected|export|set_option|extends|open|example|\#print|opaque|def|macro|elab|syntax|macro_rules|\#reduce|where|abbrev|noncomputable|class|attribute|\#synth|mutual|scoped|local)\b"><token type="KeywordNamespace"/></rule>
+      <rule pattern="\b(forall|fun|obtain|from|have|show|assume|let|if|else|then|by|in|with|calc|match|nomatch|do|at)\b"><token type="Keyword"/></rule>
+      <rule pattern="@\["><token type="KeywordDeclaration"/><push state="attribute"/></rule>
+      <rule><include state="expression"/></rule>
+    </state>
+    <state name="attribute">
+      <rule pattern="\]"><token type="KeywordDeclaration"/><pop depth="1"/></rule>
+      <rule><include state="expression"/></rule>
+    </state>
+    <state name="comment">
+      <rule pattern="[^/-]+"><token type="CommentMultiline"/></rule>
+      <rule pattern="/-"><token type="CommentMultiline"/><push/></rule>
+      <rule pattern="-/"><token type="CommentMultiline"/><pop depth="1"/></rule>
+      <rule pattern="[/-]"><token type="CommentMultiline"/></rule>
+    </state>
+    <state name="docstring">
+      <rule pattern="[^/-]+"><token type="LiteralStringDoc"/></rule>
+      <rule pattern="-/"><token type="LiteralStringDoc"/><pop depth="1"/></rule>
+      <rule pattern="[/-]"><token type="LiteralStringDoc"/></rule>
+    </state>
+    <state name="string">
+      <rule pattern="[^\\&quot;]+"><token type="LiteralStringDouble"/></rule>
+      <rule pattern="\\[n&quot;\\\n]"><token type="LiteralStringEscape"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><pop depth="1"/></rule>
+    </state>
+  </rules>
+</lexer>

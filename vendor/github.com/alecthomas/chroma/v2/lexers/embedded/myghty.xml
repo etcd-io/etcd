@@ -1,0 +1,77 @@
+<lexer>
+  <config>
+    <name>Myghty</name>
+    <alias>myghty</alias>
+    <filename>*.myt</filename>
+    <filename>autodelegate</filename>
+    <mime_type>application/x-myghty</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(&lt;%(?:def|method))(\s*)(.*?)(&gt;)(.*?)(&lt;/%\2\s*&gt;)(?s)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+          <token type="NameTag"/>
+          <usingself state="root"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;%\w+)(.*?)(&gt;)(.*?)(&lt;/%\2\s*&gt;)(?s)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="NameFunction"/>
+          <token type="NameTag"/>
+          <using lexer="Python2"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;&amp;[^|])(.*?)(,.*?)?(&amp;&gt;)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="NameFunction"/>
+          <using lexer="Python2"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;&amp;\|)(.*?)(,.*?)?(&amp;&gt;)(?s)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="NameFunction"/>
+          <using lexer="Python2"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="&lt;/&amp;&gt;">
+        <token type="NameTag"/>
+      </rule>
+      <rule pattern="(&lt;%!?)(.*?)(%&gt;)(?s)">
+        <bygroups>
+          <token type="NameTag"/>
+          <using lexer="Python2"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?&lt;=^)#[^\n]*(\n|\Z)">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(?&lt;=^)(%)([^\n]*)(\n|\Z)">
+        <bygroups>
+          <token type="NameTag"/>
+          <using lexer="Python2"/>
+          <token type="Other"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?sx)&#xA;                 (.+?)               # anything, followed by:&#xA;                 (?:&#xA;                  (?&lt;=\n)(?=[%#]) |  # an eval or comment line&#xA;                  (?=&lt;/?[%&amp;]) |      # a substitution or block or&#xA;                                     # call start or end&#xA;                                     # - don&#39;t consume&#xA;                  (\\\n) |           # an escaped newline&#xA;                  \Z                 # end of string&#xA;                 )">
+        <bygroups>
+          <token type="Other"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,25 @@
+<lexer>
+  <config>
+    <name>Bash Session</name>
+    <alias>bash-session</alias>
+    <alias>console</alias>
+    <alias>shell-session</alias>
+    <filename>*.sh-session</filename>
+    <mime_type>text/x-sh</mime_type>
+    <ensure_nl>true</ensure_nl>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="^((?:\[[^]]+@[^]]+\]\s?)?[#$%&gt;])(\s*)(.*\n?)">
+        <bygroups>
+          <token type="GenericPrompt"/>
+          <token type="Text"/>
+          <using lexer="bash"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^.+\n?">
+        <token type="GenericOutput"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

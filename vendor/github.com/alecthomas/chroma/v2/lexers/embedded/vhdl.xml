@@ -1,0 +1,171 @@
+<lexer>
+  <config>
+    <name>VHDL</name>
+    <alias>vhdl</alias>
+    <filename>*.vhdl</filename>
+    <filename>*.vhd</filename>
+    <mime_type>text/x-vhdl</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="--.*?$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="&#39;(U|X|0|1|Z|W|L|H|-)&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="[~!%^&amp;*+=|?:&lt;&gt;/-]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="&#39;[a-z_]\w*">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="[()\[\],.;\&#39;]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="&#34;[^\n\\&#34;]*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="(library)(\s+)([a-z_]\w*)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameNamespace"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(use)(\s+)(entity)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(use)(\s+)([a-z_][\w.]*\.)(all)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameNamespace"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(use)(\s+)([a-z_][\w.]*)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameNamespace"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(std|ieee)(\.[a-z_]\w*)">
+        <bygroups>
+          <token type="NameNamespace"/>
+          <token type="NameNamespace"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(ieee|work|std)\b">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule pattern="(entity|component)(\s+)([a-z_]\w*)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(architecture|configuration)(\s+)([a-z_]\w*)(\s+)(of)(\s+)([a-z_]\w*)(\s+)(is)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="([a-z_]\w*)(:)(\s+)(process|for)">
+        <bygroups>
+          <token type="NameClass"/>
+          <token type="Operator"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(end)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="endblock"/>
+      </rule>
+      <rule>
+        <include state="types"/>
+      </rule>
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule>
+        <include state="numbers"/>
+      </rule>
+      <rule pattern="[a-z_]\w*">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="endblock">
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule pattern="[a-z_]\w*">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(\s+)">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=";">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="types">
+      <rule pattern="(std_ulogic_vector|file_open_status|std_logic_vector|severity_level|file_open_kind|delay_length|std_ulogic|bit_vector|character|std_logic|positive|unsigned|boolean|natural|integer|signed|string|time|bit)\b">
+        <token type="KeywordType"/>
+      </rule>
+    </state>
+    <state name="keywords">
+      <rule pattern="(configuration|architecture|disconnect|attribute|transport|postponed|procedure|component|function|variable|severity|constant|generate|register|inertial|package|library|guarded|linkage|generic|subtype|process|literal|record|entity|others|shared|signal|downto|access|assert|return|reject|buffer|impure|select|elsif|inout|until|label|range|group|units|begin|array|alias|after|block|while|null|next|file|when|wait|open|nand|exit|then|case|port|type|loop|else|pure|with|xnor|body|not|rem|bus|rol|ror|xor|abs|end|and|sla|sll|sra|srl|all|out|nor|mod|map|for|new|use|or|on|of|in|if|is|to)\b">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="numbers">
+      <rule pattern="\d{1,2}#[0-9a-f_]+#?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="(\d+\.\d*|\.\d+|\d+)E[+-]?\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="X&#34;[0-9a-f_]+&#34;">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="O&#34;[0-7_]+&#34;">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="B&#34;[01_]+&#34;">
+        <token type="LiteralNumberBin"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

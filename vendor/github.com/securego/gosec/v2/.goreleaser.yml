@@ -1,0 +1,38 @@
+---
+version: 2
+project_name: gosec
+
+release:
+  extra_files:
+    - glob: ./bom.json
+  github:
+    owner: securego
+    name: gosec
+
+builds:
+  - main: ./cmd/gosec/
+    binary: gosec
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - s390x
+      - ppc64le
+    ldflags: -X main.Version={{.Version}} -X main.GitTag={{.Tag}} -X main.BuildDate={{.Date}}
+    env:
+      - CGO_ENABLED=0
+
+signs:
+- cmd: cosign
+  signature: "${artifact}.sigstore.json"
+  stdin: '{{ .Env.COSIGN_PASSWORD}}'
+  args:
+  - "sign-blob"
+  - "--key=/tmp/cosign.key"
+  - "--bundle=${signature}"
+  - "${artifact}"
+  - "--yes"
+  artifacts: all

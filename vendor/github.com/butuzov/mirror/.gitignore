@@ -1,0 +1,11 @@
+# artifacts
+coverage.cov
+bin/*
+dist/*
+tmp/*
+out*
+sandbox*
+demo*
+.task*
+.ipynb*
+.jupyter*

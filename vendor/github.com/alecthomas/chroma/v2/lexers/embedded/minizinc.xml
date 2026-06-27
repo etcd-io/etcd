@@ -1,0 +1,82 @@
+<lexer>
+  <config>
+    <name>MiniZinc</name>
+    <alias>minizinc</alias>
+    <alias>MZN</alias>
+    <alias>mzn</alias>
+    <filename>*.mzn</filename>
+    <filename>*.dzn</filename>
+    <filename>*.fzn</filename>
+    <mime_type>text/minizinc</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\%(.*?)\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/(\\\n)?[*](.|\n)*?[*](\\\n)?/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\b(annotation|constraint|predicate|minimize|function|maximize|satisfy|include|record|output|solve|test|list|type|ann|par|any|var|op|of)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(string|tuple|float|array|bool|enum|int|set)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="\b(forall|where|endif|then|else|for|if)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(array_intersect|index_set_2of3|index_set_1of3|index_set_3of3|index_set_1of2|index_set_2of2|array_union|show_float|dom_array|int2float|set2array|index_set|dom_size|lb_array|is_fixed|ub_array|bool2int|show_int|array4d|array2d|array1d|array5d|array6d|array3d|product|length|assert|concat|trace|acosh|round|abort|log10|floor|sinh|tanh|atan|sqrt|asin|show|log2|card|ceil|cosh|join|pow|cos|max|log|exp|dom|sin|abs|fix|sum|tan|min|lb|ln|ub)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(not|&lt;-&gt;|-&gt;|&lt;-|\\/|xor|/\\)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(&lt;|&gt;|&lt;=|&gt;=|==|=|!=)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(\+|-|\*|/|div|mod)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b(intersect|superset|symdiff|subset|union|diff|in)\b">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(\\|\.\.|\+\+)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[|()\[\]{},:;]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(true|false)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="([+-]?)\d+(\.(?!\.)\d*)?([eE][-+]?\d+)?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="::\s*([^\W\d]\w*)(\s*\([^\)]*\))?">
+        <token type="NameDecorator"/>
+      </rule>
+      <rule pattern="\b([^\W\d]\w*)\b(\()">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[^\W\d]\w*">
+        <token type="NameOther"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

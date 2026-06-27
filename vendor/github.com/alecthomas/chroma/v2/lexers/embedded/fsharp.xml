@@ -1,0 +1,245 @@
+<lexer>
+  <config>
+    <name>FSharp</name>
+    <alias>fsharp</alias>
+    <filename>*.fs</filename>
+    <filename>*.fsi</filename>
+    <mime_type>text/x-fsharp</mime_type>
+  </config>
+  <rules>
+    <state name="comment">
+      <rule pattern="[^(*)@&#34;]+">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="\(\*">
+        <token type="Comment"/>
+        <push/>
+      </rule>
+      <rule pattern="\*\)">
+        <token type="Comment"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="@&#34;">
+        <token type="LiteralString"/>
+        <push state="lstring"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="LiteralString"/>
+        <push state="tqs"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="[(*)@]">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="[^\\&#34;]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule>
+        <include state="escape-sequence"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;B?">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="lstring">
+      <rule pattern="[^&#34;]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;B?">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="tqs">
+      <rule pattern="[^&#34;]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;B?">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="escape-sequence">
+      <rule pattern="\\[\\&#34;\&#39;ntbrafv]">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\[0-9]{3}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\u[0-9a-fA-F]{4}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\U[0-9a-fA-F]{8}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\(\)|\[\]">
+        <token type="NameBuiltinPseudo"/>
+      </rule>
+      <rule pattern="\b(?&lt;!\.)([A-Z][\w\&#39;]*)(?=\s*\.)">
+        <token type="NameNamespace"/>
+        <push state="dotted"/>
+      </rule>
+      <rule pattern="\b([A-Z][\w\&#39;]*)">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="///.*?\n">
+        <token type="LiteralStringDoc"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="\(\*(?!\))">
+        <token type="Comment"/>
+        <push state="comment"/>
+      </rule>
+      <rule pattern="@&#34;">
+        <token type="LiteralString"/>
+        <push state="lstring"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="LiteralString"/>
+        <push state="tqs"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="\b(open type|open|module)(\s+)([\w.]+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameNamespace"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\b(let!?)(\s+)(\w+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameVariable"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\b(type)(\s+)(\w+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\b(member|override)(\s+)(\w+)(\.)(\w+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Name"/>
+          <token type="Punctuation"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\b(abstract|as|assert|base|begin|class|default|delegate|do!|do|done|downcast|downto|elif|else|end|exception|extern|false|finally|for|function|fun|global|if|inherit|inline|interface|internal|in|lazy|let!|let|match|member|module|mutable|namespace|new|null|of|open|override|private|public|rec|return!|return|select|static|struct|then|to|true|try|type|upcast|use!|use|val|void|when|while|with|yield!|yield|atomic|break|checked|component|const|constraint|constructor|continue|eager|event|external|fixed|functor|include|method|mixin|object|parallel|process|protected|pure|sealed|tailcall|trait|virtual|volatile)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="``([^`\n\r\t]|`[^`\n\r\t])+``">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="#[ \t]*(if|endif|else|line|nowarn|light|r|\d+)\b">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="(!=|#|&amp;&amp;|&amp;|\(|\)|\*|\+|,|-\.|-&gt;|-|\.\.|\.|::|:=|:&gt;|:|;;|;|&lt;-|&lt;\]|&lt;|&gt;\]|&gt;|\?\?|\?|\[&lt;|\[\||\[|\]|_|`|\{|\|\]|\||\}|~|&lt;@@|&lt;@|=|@&gt;|@@&gt;)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="([=&lt;&gt;@^|&amp;+\*/$%-]|[!?~])?[!$%&amp;*+\./:&lt;=&gt;?@^|~-]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b(and|or|not)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="\b(sbyte|byte|char|nativeint|unativeint|float32|single|float|double|int8|uint8|int16|uint16|int32|uint32|int64|uint64|decimal|unit|bool|string|list|exn|obj|enum)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="[^\W\d][\w&#39;]*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\d[\d_]*[uU]?[yslLnQRZINGmM]?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="0[xX][\da-fA-F][\da-fA-F_]*[uU]?[yslLn]?[fF]?">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="0[oO][0-7][0-7_]*[uU]?[yslLn]?">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0[bB][01][01_]*[uU]?[yslLn]?">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="-?\d[\d_]*(.[\d_]*)?([eE][+\-]?\d[\d_]*)[fFmM]?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="&#39;(?:(\\[\\\&#34;&#39;ntbr ])|(\\[0-9]{3})|(\\x[0-9a-fA-F]{2}))&#39;B?">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="&#39;.&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="@?&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="[~?][a-z][\w\&#39;]*:">
+        <token type="NameVariable"/>
+      </rule>
+    </state>
+    <state name="dotted">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\.">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[A-Z][\w\&#39;]*(?=\s*\.)">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule pattern="[A-Z][\w\&#39;]*">
+        <token type="Name"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[a-z_][\w\&#39;]*">
+        <token type="Name"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

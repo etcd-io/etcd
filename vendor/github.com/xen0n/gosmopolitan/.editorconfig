@@ -1,0 +1,23 @@
+# EditorConfig is awesome: http://EditorConfig.org
+
+root = true
+
+[*]
+indent_style = space
+trim_trailing_whitespace = true
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+
+[{*.sh,*.md}]
+indent_size = 4
+
+[{*.yaml,*.yml}]
+indent_size = 2
+
+# hard tabs for Go and Makefile per best practice of file format
+[*.go]
+indent_style = tab
+
+[Makefile]
+indent_style = tab

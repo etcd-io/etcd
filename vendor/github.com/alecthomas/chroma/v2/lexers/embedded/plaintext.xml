@@ -1,0 +1,21 @@
+<lexer>
+  <config>
+    <name>plaintext</name>
+    <alias>text</alias>
+    <alias>plain</alias>
+    <alias>no-highlight</alias>
+    <filename>*.txt</filename>
+    <mime_type>text/plain</mime_type>
+    <priority>-1</priority>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern=".+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

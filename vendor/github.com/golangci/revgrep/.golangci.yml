@@ -1,0 +1,71 @@
+linters:
+  enable-all: true
+  disable:
+    - exportloopref # deprecated
+    - cyclop # duplicate of gocyclo
+    - sqlclosecheck # not relevant (SQL)
+    - rowserrcheck # not relevant (SQL)
+    - dupl
+    - lll
+    - nestif
+    - mnd
+    - err113
+    - nlreturn
+    - wsl
+    - exhaustive
+    - exhaustruct
+    - tparallel
+    - testpackage
+    - paralleltest
+    - forcetypeassert
+    - varnamelen
+    - prealloc # false-positives
+    - nonamedreturns
+    - nilerr
+    - depguard
+
+linters-settings:
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+  gocyclo:
+    min-complexity: 30 # 30 by default (but we recommend 10-20)
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  misspell:
+    locale: US
+  funlen:
+    lines: -1
+    statements: 80 # default 40
+  gocognit:
+    min-complexity: 65 # default 30
+  gofumpt:
+    extra-rules: true
+  godox:
+    keywords:
+      - FIXME
+  gosec:
+    excludes:
+      - G115 # integer overflow conversion
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude:
+    - 'ST1000: at least one file in a package should have a package comment'
+  exclude-rules:
+    - path: (.+)_test.go
+      linters:
+        - funlen
+        - goconst
+        - gosec
+        - maintidx
+    - path: cmd/revgrep/main.go
+      linters:
+        - forbidigo
+
+run:
+  timeout: 2m

@@ -1,0 +1,266 @@
+// Backing state for a test results table of a TestGrid dashboard tab.
+// Grid is the top-level message; updated and stored by the updater and
+// tabulator.
+syntax = "proto3";
+
+package testgrid.state;
+
+option go_package = "github.com/GoogleCloudPlatform/testgrid/pb/state";
+
+import "google/protobuf/timestamp.proto";
+import "pb/config/config.proto";
+
+message Property { map<string, string> property = 1; }
+
+// A metric and its values for each test cycle.
+message Metric {
+  string name = 1; // Name of metric, such as duration
+  // Sparse encoding of values. Indices is a list of pairs of <index, count>
+  // that details columns with metric values. So given:
+  //   Indices: [0, 2, 6, 4]
+  //   Values: [0.1,0.2,6.1,6.2,6.3,6.4]
+  // Decoded 12-value equivalent is:
+  // [0.1, 0.2, nil, nil, nil, nil, 6.1, 6.2, 6.3, 6.4, nil, nil, ...]
+  repeated int32 indices =
+      2; // n=index of first value, n+1=count of filled values
+  repeated double values = 3; // only present for columns with a metric value
+}
+
+message UpdatePhaseData {
+  // The name for a part of the update cycle.
+  string phase_name = 1;
+
+  // Time taken for a part of the update cycle, in seconds.
+  double phase_seconds = 2;
+}
+
+// Info on time taken to update test results during the last update cycle.
+message UpdateInfo {
+  // Metrics for how long parts of the update cycle take.
+  repeated UpdatePhaseData update_phase_data = 1;
+}
+
+// Info on a failing test row about the failure.
+message AlertInfo {
+  // Number of results that have failed.
+  int32 fail_count = 1;
+
+  // The build ID the test first failed at.
+  string fail_build_id = 2;
+
+  // The time the test first failed at.
+  google.protobuf.Timestamp fail_time = 3;
+
+  // The test ID for the first test failure.
+  string fail_test_id = 4;
+
+  // The build ID the test last passed at.
+  string pass_build_id = 5;
+
+  // The time the test last passed at.
+  google.protobuf.Timestamp pass_time = 6;
+
+  // A snippet explaining the failure.
+  string failure_message = 7;
+
+  // Link to search for build changes, internally a code-search link.
+  string build_link = 8;
+
+  // Text for option to search for build changes.
+  string build_link_text = 9;
+
+  // Text to display for link to search for build changes.
+  string build_url_text = 10;
+
+  // The build ID for the latest test failure. (Does not indicate the failure is
+  // 'over', just the latest test failure we found.)
+  string latest_fail_build_id = 11;
+
+  // The test ID for the latest test failure.
+  string latest_fail_test_id = 14;
+
+  // Maps (property name):(property value) for arbitrary alert properties.
+  map<string, string> properties = 12;
+
+  // A list of IDs for issue hotlists related to this failure.
+  repeated string hotlist_ids = 13;
+
+  // Dynamic email list, route email alerts to these instead of the configured
+  // defaults.
+  repeated string email_addresses = 15;
+
+  // Maps (custom column headers name):(custom column headers value) for arbitrary alert properties.
+  map<string,string> custom_column_headers = 16;
+}
+
+// Info on default test metadata for a dashboard tab.
+message TestMetadata {
+  // Name of the test with associated test metadata.
+  string test_name = 1;
+
+  // Default bug component.
+  int32 bug_component = 2;
+
+  // Default owner.
+  string owner = 3;
+
+  // Default list of cc's.
+  repeated string cc = 4;
+
+  // When present, only file a bug for failed tests with same error type.
+  // Otherwise, always file a bug.
+  string error_type = 5;
+
+  reserved 6;
+}
+
+// TestGrid column headers. Does not contain the individual cells.
+message Column {
+  // Unique instance of the job, typically BUILD_NUMBER from prow or a guid
+  string build = 1;
+
+  // Name associated with the column (such as the run/invocation ID).No two
+  // columns should have the same build_id and name. The name field allows the
+  // display of multiple columns with the same build_id.
+  string name = 2;
+
+  // Milliseconds since start of epoch (python time.time() * 1000)
+  // TODO(#683): Use a timestamp, not this double
+  double started = 3;
+
+  // Additional custom headers like commit, image used, etc.
+  repeated string extra = 4;
+
+  // Custom hotlist ids.
+  string hotlist_ids = 5;
+
+  // An optional hint for the updater.
+  string hint = 6;
+
+  // Dynamic email list, route email alerts to these instead of the configured
+  // defaults.
+  repeated string email_addresses = 7;
+
+  // Status totals for the column.
+  // Only written in tab state, if a broken threshold is defined for columns.
+  Stats stats = 8;
+}
+
+message Stats {
+  int32 fail_count = 1;
+  int32 pass_count = 2;
+  int32 total_count = 3;
+  // True if this column has any in-progress runs.
+  bool pending = 4;
+  // True if a broken threshold is defined, and this column's fail/total ratio
+  // exceeds it.
+  bool broken = 5;
+}
+
+// TestGrid rows
+message Row {
+  // Display name, which might process id to append/filter info.
+  string name = 1;
+
+  // raw id for the row, such as the bazel target or golang package.
+  string id = 2;
+
+  // Results for this row, run-length encoded to reduce size/improve
+  // performance. Thus (encoded -> decoded equivalent):
+  //   [0, 3, 5, 4] -> [0, 0, 0, 5, 5, 5, 5]
+  //   [5, 1] -> [5]
+  //   [1, 5] -> [1, 1, 1, 1, 1]
+  // The decoded values are Result enums
+  repeated int32 results = 3;
+
+  // Test IDs for each test result in this test case.
+  // Must be present on every column, regardless of status.
+  repeated string cell_ids = 4;
+
+  // Short description of the result, displayed on mouseover.
+  // Present for any column with a non-empty status (not NO_RESULT).
+  repeated string messages = 5;
+
+  reserved 6;
+
+  // Names of metrics associated with this test case. Stored separate from
+  // metric info (which may be omitted).
+  repeated string metric = 7;
+
+  repeated Metric metrics = 8; // Numerical performance/timing data, etc.
+
+  // Short string to place inside the cell (F for fail, etc)
+  // Present for any column with a non-empty status (not NO_RESULT).
+  repeated string icons = 9;
+
+  // IDs for issues associated with this row.
+  repeated string issues = 10;
+
+  // An alert for the failure if there's a recent failure for this row.
+  AlertInfo alert_info = 11;
+
+  // Values of a user-defined property found in cells for this row.
+  // TODO: Fold this into `properties` field.
+  repeated string user_property = 12;
+
+  // General key-value pairs associated with cells in this row.
+  // Present for any column with a non-empty status (not NO_RESULT).
+  repeated Property properties = 13;
+}
+
+// A single table of test results backing a dashboard tab.
+message Grid {
+  // A cycle of test results, not including the results. In the TestGrid client,
+  // the cycles define the columns.
+  repeated Column columns = 1;
+
+  // A test case with test results. In the TestGrid client, the cases define the
+  // rows (and the results define the individual cells).
+  repeated Row rows = 2;
+
+  reserved 3;
+
+  // The latest configuration used to generate this test group.
+  testgrid.config.TestGroup config = 4;
+
+  reserved 5;
+
+  // Seconds since epoch for last time this cycle was updated.
+  double last_time_updated = 6;
+
+  reserved 7;
+
+  // Stored info on previous timing for parts of the update cycle.
+  repeated UpdateInfo update_info = 8;
+
+  // Stored info on default test metadata.
+  repeated TestMetadata test_metadata = 9;
+
+  // Clusters of failures for a TestResultTable instance.
+  repeated Cluster cluster = 10;
+
+  // Most recent timestamp that clusters have processed.
+  double most_recent_cluster_timestamp = 11;
+}
+
+// A cluster of failures grouped by test status and message for a test results
+// table.
+message Cluster {
+  // Test status cluster grouped by.
+  int32 test_status = 1;
+
+  // Error message or testFailureClassification string cluster grouped by.
+  string message = 2;
+
+  // ClusterRows that belong to this cluster.
+  repeated ClusterRow cluster_row = 3;
+}
+
+// Cells in a TestRow that belong to a specific Cluster.
+message ClusterRow {
+  // Name of TestRow.
+  string display_name = 1;
+
+  // Index within row that belongs to Cluster (refer to columns of the row).
+  repeated int32 index = 2;
+}

@@ -1,0 +1,59 @@
+<lexer>
+  <config>
+    <name>NSIS</name>
+    <alias>nsis</alias>
+    <alias>nsi</alias>
+    <alias>nsh</alias>
+    <filename>*.nsi</filename>
+    <filename>*.nsh</filename>
+    <mime_type>text/x-nsis</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="([;#].*)(\n)"><bygroups><token type="Comment"/><token type="TextWhitespace"/></bygroups></rule>
+      <rule pattern="&#x27;.*?&#x27;"><token type="LiteralStringSingle"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><push state="str_double"/></rule>
+      <rule pattern="`"><token type="LiteralStringBacktick"/><push state="str_backtick"/></rule>
+      <rule><include state="macro"/></rule>
+      <rule><include state="interpol"/></rule>
+      <rule><include state="basic"/></rule>
+      <rule pattern="\$\{[a-z_|][\w|]*\}"><token type="KeywordPseudo"/></rule>
+      <rule pattern="/[a-z_]\w*"><token type="NameAttribute"/></rule>
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+      <rule pattern="[\w.]+"><token type="Text"/></rule>
+    </state>
+    <state name="basic">
+      <rule pattern="(\n)(Function)(\s+)([._a-z][.\w]*)\b"><bygroups><token type="TextWhitespace"/><token type="Keyword"/><token type="TextWhitespace"/><token type="NameFunction"/></bygroups></rule>
+      <rule pattern="\b([_a-z]\w*)(::)([a-z][a-z0-9]*)\b"><bygroups><token type="KeywordNamespace"/><token type="Punctuation"/><token type="NameFunction"/></bygroups></rule>
+      <rule pattern="\b([_a-z]\w*)(:)"><bygroups><token type="NameLabel"/><token type="Punctuation"/></bygroups></rule>
+      <rule pattern="(\b[ULS]|\B)([!&lt;&gt;=]?=|\&lt;\&gt;?|\&gt;)\B"><token type="Operator"/></rule>
+      <rule pattern="[|+-]"><token type="Operator"/></rule>
+      <rule pattern="\\"><token type="Punctuation"/></rule>
+      <rule pattern="\b(Abort|Add(?:BrandingImage|Size)|Allow(?:RootDirInstall|SkipFiles)|AutoCloseWindow|BG(?:Font|Gradient)|BrandingText|BringToFront|Call(?:InstDLL)?|(?:Sub)?Caption|ChangeUI|CheckBitmap|ClearErrors|CompletedText|ComponentText|CopyFiles|CRCCheck|Create(?:Directory|Font|Shortcut)|Delete(?:INI(?:Sec|Str)|Reg(?:Key|Value))?|DetailPrint|DetailsButtonText|Dir(?:Show|Text|Var|Verify)|(?:Disabled|Enabled)Bitmap|EnableWindow|EnumReg(?:Key|Value)|Exch|Exec(?:Shell|Wait)?|ExpandEnvStrings|File(?:BufSize|Close|ErrorText|Open|Read(?:Byte)?|Seek|Write(?:Byte)?)?|Find(?:Close|First|Next|Window)|FlushINI|Function(?:End)?|Get(?:CurInstType|CurrentAddress|DlgItem|DLLVersion(?:Local)?|ErrorLevel|FileTime(?:Local)?|FullPathName|FunctionAddress|InstDirError|LabelAddress|TempFileName)|Goto|HideWindow|Icon|If(?:Abort|Errors|FileExists|RebootFlag|Silent)|InitPluginsDir|Install(?:ButtonText|Colors|Dir(?:RegKey)?)|Inst(?:ProgressFlags|Type(?:[GS]etText)?)|Int(?:CmpU?|Fmt|Op)|IsWindow|LangString(?:UP)?|License(?:BkColor|Data|ForceSelection|LangString|Text)|LoadLanguageFile|LockWindow|Log(?:Set|Text)|MessageBox|MiscButtonText|Name|Nop|OutFile|(?:Uninst)?Page(?:Ex(?:End)?)?|PluginDir|Pop|Push|Quit|Read(?:(?:Env|INI|Reg)Str|RegDWORD)|Reboot|(?:Un)?RegDLL|Rename|RequestExecutionLevel|ReserveFile|Return|RMDir|SearchPath|Section(?:Divider|End|(?:(?:Get|Set)(?:Flags|InstTypes|Size|Text))|Group(?:End)?|In)?|SendMessage|Set(?:AutoClose|BrandingImage|Compress(?:ionLevel|or(?:DictSize)?)?|CtlColors|CurInstType|DatablockOptimize|DateSave|Details(?:Print|View)|Error(?:s|Level)|FileAttributes|Font|OutPath|Overwrite|PluginUnload|RebootFlag|ShellVarContext|Silent|StaticBkColor)|Show(?:(?:I|Uni)nstDetails|Window)|Silent(?:Un)?Install|Sleep|SpaceTexts|Str(?:CmpS?|Cpy|Len)|SubSection(?:End)?|Uninstall(?:ButtonText|(?:Sub)?Caption|EXEName|Icon|Text)|UninstPage|Var|VI(?:AddVersionKey|ProductVersion)|WindowIcon|Write(?:INIStr|Reg(:?Bin|DWORD|(?:Expand)?Str)|Uninstaller)|XPStyle)\b"><token type="Keyword"/></rule>
+      <rule pattern="\b(CUR|END|(?:FILE_ATTRIBUTE_)?(?:ARCHIVE|HIDDEN|NORMAL|OFFLINE|READONLY|SYSTEM|TEMPORARY)|HK(CC|CR|CU|DD|LM|PD|U)|HKEY_(?:CLASSES_ROOT|CURRENT_(?:CONFIG|USER)|DYN_DATA|LOCAL_MACHINE|PERFORMANCE_DATA|USERS)|ID(?:ABORT|CANCEL|IGNORE|NO|OK|RETRY|YES)|MB_(?:ABORTRETRYIGNORE|DEFBUTTON[1-4]|ICON(?:EXCLAMATION|INFORMATION|QUESTION|STOP)|OK(?:CANCEL)?|RETRYCANCEL|RIGHT|SETFOREGROUND|TOPMOST|USERICON|YESNO(?:CANCEL)?)|SET|SHCTX|SW_(?:HIDE|SHOW(?:MAXIMIZED|MINIMIZED|NORMAL))|admin|all|auto|both|bottom|bzip2|checkbox|colored|current|false|force|hide|highest|if(?:diff|newer)|lastused|leave|left|listonly|lzma|nevershow|none|normal|off|on|pop|push|radiobuttons|right|show|silent|silentlog|smooth|textonly|top|true|try|user|zlib)\b"><token type="NameConstant"/></rule>
+    </state>
+    <state name="macro">
+      <rule pattern="\!(addincludedir(?:dir)?|addplugindir|appendfile|cd|define|delfilefile|echo(?:message)?|else|endif|error|execute|if(?:macro)?n?(?:def)?|include|insertmacro|macro(?:end)?|packhdr|search(?:parse|replace)|system|tempfilesymbol|undef|verbose|warning)\b"><token type="CommentPreproc"/></rule>
+    </state>
+    <state name="interpol">
+      <rule pattern="\$(R?[0-9])"><token type="NameBuiltinPseudo"/></rule>
+      <rule pattern="\$(ADMINTOOLS|APPDATA|CDBURN_AREA|COOKIES|COMMONFILES(?:32|64)|DESKTOP|DOCUMENTS|EXE(?:DIR|FILE|PATH)|FAVORITES|FONTS|HISTORY|HWNDPARENT|INTERNET_CACHE|LOCALAPPDATA|MUSIC|NETHOOD|PICTURES|PLUGINSDIR|PRINTHOOD|PROFILE|PROGRAMFILES(?:32|64)|QUICKLAUNCH|RECENT|RESOURCES(?:_LOCALIZED)?|SENDTO|SM(?:PROGRAMS|STARTUP)|STARTMENU|SYSDIR|TEMP(?:LATES)?|VIDEOS|WINDIR|\{NSISDIR\})"><token type="NameBuiltin"/></rule>
+      <rule pattern="\$(CMDLINE|INSTDIR|OUTDIR|LANGUAGE)"><token type="NameVariableGlobal"/></rule>
+      <rule pattern="\$[a-z_]\w*"><token type="NameVariable"/></rule>
+    </state>
+    <state name="str_double">
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><pop depth="1"/></rule>
+      <rule pattern="\$(\\[nrt&quot;]|\$)"><token type="LiteralStringEscape"/></rule>
+      <rule><include state="interpol"/></rule>
+      <rule pattern="[^&quot;]+"><token type="LiteralStringDouble"/></rule>
+    </state>
+    <state name="str_backtick">
+      <rule pattern="`"><token type="LiteralStringDouble"/><pop depth="1"/></rule>
+      <rule pattern="\$(\\[nrt&quot;]|\$)"><token type="LiteralStringEscape"/></rule>
+      <rule><include state="interpol"/></rule>
+      <rule pattern="[^`]+"><token type="LiteralStringDouble"/></rule>
+    </state>
+  </rules>
+</lexer>

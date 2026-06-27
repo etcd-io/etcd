@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Configuration",
+  "$defs": {
+    "Configuration": {
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "golangci-lint version."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the binary."
+        },
+        "destination": {
+          "type": "string",
+          "description": "Destination is the path to a directory to store the binary."
+        },
+        "plugins": {
+          "items": {
+            "$ref": "#/$defs/Plugin"
+          },
+          "type": "array",
+          "description": "Plugins information."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "description": "Configuration represents the configuration file."
+    },
+    "Plugin": {
+      "oneOf": [
+        {
+          "required": [
+            "version"
+          ],
+          "title": "version"
+        },
+        {
+          "required": [
+            "path"
+          ],
+          "title": "path"
+        }
+      ],
+      "properties": {
+        "module": {
+          "type": "string",
+          "description": "Module name."
+        },
+        "import": {
+          "type": "string",
+          "description": "Import to use."
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the module.\nOnly for module available through a Go proxy."
+        },
+        "path": {
+          "type": "string",
+          "description": "Path to the local module.\nOnly for local module."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "module"
+      ],
+      "description": "Plugin represents information about a plugin."
+    }
+  },
+  "description": "mygcl configuration definition file"
+}

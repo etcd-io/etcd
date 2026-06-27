@@ -1,0 +1,234 @@
+// Summary info for TestGrid tests, dashboard tabs, and dashboards.
+// Stored in GCS as "dashboard-<normalized dashboard name>".
+
+syntax = "proto3";
+
+package testgrid.summary;
+
+option go_package = "github.com/GoogleCloudPlatform/testgrid/pb/summary";
+
+import "google/protobuf/timestamp.proto";
+
+// Summary of a failing test.
+message FailingTestSummary {
+  // Display name of the test.
+  string display_name = 1;
+
+  // Name of the test. E.g., the target for tests in Sponge.
+  string test_name = 2;
+
+  // First build ID at which the test failed.
+  string fail_build_id = 3;
+
+  // Timestamp for the first cycle in which the test failed.
+  double fail_timestamp = 4;
+
+  // Last build ID at which the test passed.
+  string pass_build_id = 5;
+
+  // Timestamp for the last cycle in which the test passed.
+  double pass_timestamp = 6;
+
+  // Number of times the test has failed.
+  int32 fail_count = 7;
+
+  // Link to search for build changes.
+  string build_link = 8;
+
+  // Text for option to search for build changes.
+  string build_link_text = 9;
+
+  // Text to display for link to search for build changes.
+  string build_url_text = 10;
+
+  // Text for failure statuses associated with this test.
+  string failure_message = 11;
+
+  // List of bug IDs for bugs associated with this test.
+  repeated string linked_bugs = 12;
+
+  // A link to the first build in which the test failed.
+  string fail_test_link = 13;
+
+  // A link to the latest build in which the test failed.
+  string latest_fail_test_link = 17;
+
+  // The test ID for the latest test failure. (Does not indicate the failure is
+  // 'over', just the latest test failure we found.)
+  string latest_fail_build_id = 14;
+
+  // Maps (property name):(property value) for arbitrary alert properties.
+  map<string, string> properties = 15;
+
+  // A list of IDs for issue hotlists related to this failure.
+  repeated string hotlist_ids = 16;
+
+  // Dynamic email list, route email alerts to these instead of the configured
+  // defaults.
+  repeated string email_addresses = 18;
+
+  // map of custom column headers
+  map<string,string> custom_column_headers = 19;
+}
+
+// Metrics about a specific test, i.e. passes, fails, total runs, etc.
+// Next ID: 12
+message TestInfo {
+  // The display name of the test, typically what is shown for each row in
+  // TestGrid
+  string display_name = 1;
+
+  // The total number of test runs not including runs failed due to
+  // infrastructure failures.
+  int32 total_non_infra_runs = 2;
+
+  // The number of passed test runs not including runs failed due to
+  // infrastructure failures.
+  int32 passed_non_infra_runs = 3;
+
+  // The number of failed test runs not including runs failed due to
+  // infrastructure failures.
+  int32 failed_non_infra_runs = 4;
+
+  // The number of failed test runs specifically due to infrastructure
+  // failures.
+  int32 failed_infra_runs = 5;
+
+  // The total number of all runs, including failures due to infrastructure
+  int32 total_runs_with_infra = 6;
+
+  // Any other type of runs not included above.
+  int32 other_runs = 7;
+
+  // The flakiness of the test, measured out of 100
+  float flakiness = 8;
+
+  // The flakiness of the test from previous intervals
+  repeated float previous_flakiness = 10;
+
+  enum Trend {
+    UNKNOWN = 0;
+    NO_CHANGE = 1;
+    UP = 2;
+    DOWN = 3;
+  }
+
+  // The change of flakiness based on the last interval's flakiness
+  // e.g. if last interval the flakiness was 50, and now it's 75, the
+  // trend is UP. A trend of NO_CHANGE means last week and this week were
+  // exactly the same. The interval is set by each tab's config, with
+  // a default of 7 days.
+  Trend change_from_last_interval = 9;
+
+  // A map of infra failure name to the count of that failure for the interval.
+  map<string, int32> infra_failures = 11;
+}
+
+// Summary of the flakiness and overall healthiness of a dashboard tab
+message HealthinessInfo {
+
+  // The start of the time frame that the analysis was run for.
+  // Represents the lower bound but does not guarantee that the earliest
+  // test occurred at start
+  google.protobuf.Timestamp start = 1;
+
+  // The end of the time frame that the analysis was run for.
+  // Same caveat as above but for upper bound.
+  google.protobuf.Timestamp end = 2;
+
+  // A list of test entries associated with this tab + timeframe.
+  repeated TestInfo tests = 3;
+
+  // The flakiness out of 100 (think percentage but drop the sign)
+  float average_flakiness = 4;
+
+  // The average flakiness for previous intervals
+  repeated float previous_flakiness = 5;
+}
+
+// Information about alerts that have been sent
+message AlertingData {
+  // Seconds since epoch at which an email was last sent
+  google.protobuf.Timestamp last_email_time = 1;
+}
+
+// Summary of a dashboard tab.
+message DashboardTabSummary {
+  // The name of the dashboard.
+  string dashboard_name = 1;
+
+  // The name of the dashboard tab.
+  string dashboard_tab_name = 2;
+
+  // Any top-level alert on this dashboard tab.
+  string alert = 3;
+
+  // List of failing test summary information.
+  repeated FailingTestSummary failing_test_summaries = 4;
+
+  // Seconds since epoch at which the test group was last updated.
+  double last_update_timestamp = 5;
+
+  // A summary of the status of this dashboard tab.
+  string status = 6;
+
+  enum TabStatus {
+    NOT_SET = 0;
+    UNKNOWN = 1;
+    PASS = 2;
+    FAIL = 3;
+    FLAKY = 4;
+    STALE = 5;
+    BROKEN = 6;
+    PENDING = 7;
+    ACCEPTABLE = 8;
+  }
+
+  // The overall status for this dashboard tab.
+  TabStatus overall_status = 7;
+
+  // The ID for the latest passing build.
+  string latest_green = 8;
+
+  // Seconds since epoch at which tests last ran.
+  double last_run_timestamp = 9;
+
+  // String indicating the URL for linking to a bug.
+  string bug_url = 10;
+
+  reserved 11;
+
+  // Metrics for the recent healthiness of a tab
+  HealthinessInfo healthiness = 12;
+
+  // All the issue IDs linked to this tab.
+  repeated string linked_issues = 13;
+
+  // Metrics about alerts sent with respect to this summary
+  // Maintained by alerter; does not need to be populated by summarizer
+  AlertingData alerting_data = 14;
+
+  // DEPRECATED: now part of the TabStatus.
+  bool acceptably_flaky = 15 [deprecated = true];
+
+  // Additional metrics provided for the dashboard tab
+  DashboardTabSummaryMetrics summary_metrics = 16;
+}
+
+// Most recent summary metrics for the tab calculated over columns (not individual tests)
+message DashboardTabSummaryMetrics {
+  // Number of total columns analyzed by summarizer
+  int32 completed_columns = 1;
+
+  // Number of columns with all tests passing
+  int32 passing_columns = 2;
+
+  // Number of ignored columns
+  int32 ignored_columns = 3;
+}
+
+// Summary state of a dashboard.
+message DashboardSummary {
+  // Summary of a dashboard tab; see config.proto.
+  repeated DashboardTabSummary tab_summaries = 1;
+}

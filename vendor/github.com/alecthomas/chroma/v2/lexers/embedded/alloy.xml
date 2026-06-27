@@ -1,0 +1,58 @@
+
+<lexer>
+  <config>
+    <name>Alloy</name>
+    <alias>alloy</alias>
+    <filename>*.als</filename>
+    <mime_type>text/x-alloy</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="sig">
+      <rule pattern="(extends)\b"><token type="Keyword"/><pop depth="1"/></rule>
+      <rule pattern="[a-zA-Z_][\w]*&quot;*"><token type="Name"/></rule>
+      <rule pattern="[^\S\n]+"><token type="TextWhitespace"/></rule>
+      <rule pattern=","><token type="Punctuation"/></rule>
+      <rule pattern="\{"><token type="Operator"/><pop depth="1"/></rule>
+    </state>
+    <state name="module">
+      <rule pattern="[^\S\n]+"><token type="TextWhitespace"/></rule>
+      <rule pattern="[a-zA-Z_][\w]*&quot;*"><token type="Name"/><pop depth="1"/></rule>
+    </state>
+    <state name="fun">
+      <rule pattern="[^\S\n]+"><token type="TextWhitespace"/></rule>
+      <rule pattern="\{"><token type="Operator"/><pop depth="1"/></rule>
+      <rule pattern="[a-zA-Z_][\w]*&quot;*"><token type="Name"/><pop depth="1"/></rule>
+    </state>
+    <state name="fact">
+      <rule><include state="fun"/></rule>
+      <rule pattern="&quot;\b(\\\\|\\[^\\]|[^&quot;\\])*&quot;"><token type="LiteralString"/><pop depth="1"/></rule>
+    </state>
+    <state name="root">
+      <rule pattern="--.*?$"><token type="CommentSingle"/></rule>
+      <rule pattern="//.*?$"><token type="CommentSingle"/></rule>
+      <rule pattern="/\*.*?\*/"><token type="CommentMultiline"/></rule>
+      <rule pattern="[^\S\n]+"><token type="TextWhitespace"/></rule>
+      <rule pattern="(module|open)(\s+)"><bygroups><token type="KeywordNamespace"/><token type="TextWhitespace"/></bygroups><push state="module"/></rule>
+      <rule pattern="(sig|enum)(\s+)"><bygroups><token type="KeywordDeclaration"/><token type="TextWhitespace"/></bygroups><push state="sig"/></rule>
+      <rule pattern="(iden|univ|none)\b"><token type="KeywordConstant"/></rule>
+      <rule pattern="(int|Int)\b"><token type="KeywordType"/></rule>
+      <rule pattern="(var|this|abstract|extends|set|seq|one|lone|let)\b"><token type="Keyword"/></rule>
+      <rule pattern="(all|some|no|sum|disj|when|else)\b"><token type="Keyword"/></rule>
+      <rule pattern="(run|check|for|but|exactly|expect|as|steps)\b"><token type="Keyword"/></rule>
+      <rule pattern="(always|after|eventually|until|release)\b"><token type="Keyword"/></rule>
+      <rule pattern="(historically|before|once|since|triggered)\b"><token type="Keyword"/></rule>
+      <rule pattern="(and|or|implies|iff|in)\b"><token type="OperatorWord"/></rule>
+      <rule pattern="(fun|pred|assert)(\s+)"><bygroups><token type="Keyword"/><token type="TextWhitespace"/></bygroups><push state="fun"/></rule>
+      <rule pattern="(fact)(\s+)"><bygroups><token type="Keyword"/><token type="TextWhitespace"/></bygroups><push state="fact"/></rule>
+      <rule pattern="!|#|&amp;&amp;|\+\+|&lt;&lt;|&gt;&gt;|&gt;=|&lt;=&gt;|&lt;=|\.\.|\.|-&gt;"><token type="Operator"/></rule>
+      <rule pattern="[-+/*%=&lt;&gt;&amp;!^|~{}\[\]().\&#x27;;]"><token type="Operator"/></rule>
+      <rule pattern="[a-zA-Z_][\w]*&quot;*"><token type="Name"/></rule>
+      <rule pattern="[:,]"><token type="Punctuation"/></rule>
+      <rule pattern="[0-9]+"><token type="LiteralNumberInteger"/></rule>
+      <rule pattern="&quot;\b(\\\\|\\[^\\]|[^&quot;\\])*&quot;"><token type="LiteralString"/></rule>
+      <rule pattern="\n"><token type="TextWhitespace"/></rule>
+    </state>
+  </rules>
+</lexer>
+

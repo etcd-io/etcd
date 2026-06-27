@@ -1,0 +1,28 @@
+# top-most EditorConfig file
+root = true
+
+
+[*]
+end_of_line = lf                           # Unix-style newlines
+charset = utf-8
+
+indent_style = space                       # default identation - spaces
+indent_size = 4                            # default identation - size
+
+insert_final_newline = true                # new line at the end of file
+trim_trailing_whitespace = true            # no extra sapces at the end of lines
+
+[*.{go,gohtml,gotpl}]                      # Go
+indent_style = tab
+indent_size = 2
+
+[{Makefile,makefile}]                      # CMake
+indent_style = tab
+
+[*.md]                                     # Markdown
+trim_trailing_whitespace = true
+max_line_length = 100
+insert_final_newline = true
+indent_size = 2
+
+

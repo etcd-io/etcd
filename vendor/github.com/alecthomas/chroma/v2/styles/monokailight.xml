@@ -1,0 +1,26 @@
+<style name="monokailight">
+  <entry type="Error" style="#960050 bg:#1e0010"/>
+  <entry type="Background" style="bg:#fafafa"/>
+  <entry type="Keyword" style="#00a8c8"/>
+  <entry type="KeywordNamespace" style="#f92672"/>
+  <entry type="Name" style="#111111"/>
+  <entry type="NameAttribute" style="#75af00"/>
+  <entry type="NameClass" style="#75af00"/>
+  <entry type="NameConstant" style="#00a8c8"/>
+  <entry type="NameDecorator" style="#75af00"/>
+  <entry type="NameException" style="#75af00"/>
+  <entry type="NameFunction" style="#75af00"/>
+  <entry type="NameOther" style="#75af00"/>
+  <entry type="NameTag" style="#f92672"/>
+  <entry type="Literal" style="#ae81ff"/>
+  <entry type="LiteralDate" style="#d88200"/>
+  <entry type="LiteralString" style="#d88200"/>
+  <entry type="LiteralStringEscape" style="#8045ff"/>
+  <entry type="LiteralNumber" style="#ae81ff"/>
+  <entry type="Operator" style="#f92672"/>
+  <entry type="Punctuation" style="#111111"/>
+  <entry type="Comment" style="#75715e"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="Text" style="#272822"/>
+</style>

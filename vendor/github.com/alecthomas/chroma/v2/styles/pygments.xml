@@ -1,0 +1,42 @@
+<style name="pygments">
+  <entry type="Error" style="border:#ff0000"/>
+  <entry type="Keyword" style="bold #008000"/>
+  <entry type="KeywordPseudo" style="nobold"/>
+  <entry type="KeywordType" style="nobold #b00040"/>
+  <entry type="NameAttribute" style="#7d9029"/>
+  <entry type="NameBuiltin" style="#008000"/>
+  <entry type="NameClass" style="bold #0000ff"/>
+  <entry type="NameConstant" style="#880000"/>
+  <entry type="NameDecorator" style="#aa22ff"/>
+  <entry type="NameEntity" style="bold #999999"/>
+  <entry type="NameException" style="bold #d2413a"/>
+  <entry type="NameFunction" style="#0000ff"/>
+  <entry type="NameLabel" style="#a0a000"/>
+  <entry type="NameNamespace" style="bold #0000ff"/>
+  <entry type="NameTag" style="bold #008000"/>
+  <entry type="NameVariable" style="#19177c"/>
+  <entry type="LiteralString" style="#ba2121"/>
+  <entry type="LiteralStringDoc" style="italic"/>
+  <entry type="LiteralStringEscape" style="bold #bb6622"/>
+  <entry type="LiteralStringInterpol" style="bold #bb6688"/>
+  <entry type="LiteralStringOther" style="#008000"/>
+  <entry type="LiteralStringRegex" style="#bb6688"/>
+  <entry type="LiteralStringSymbol" style="#19177c"/>
+  <entry type="LiteralNumber" style="#666666"/>
+  <entry type="Operator" style="#666666"/>
+  <entry type="OperatorWord" style="bold #aa22ff"/>
+  <entry type="Comment" style="italic #408080"/>
+  <entry type="CommentPreproc" style="noitalic #bc7a00"/>
+  <entry type="GenericDeleted" style="#a00000"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericError" style="#ff0000"/>
+  <entry type="GenericHeading" style="bold #000080"/>
+  <entry type="GenericInserted" style="#00a000"/>
+  <entry type="GenericOutput" style="#888888"/>
+  <entry type="GenericPrompt" style="bold #000080"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="bold #800080"/>
+  <entry type="GenericTraceback" style="#0044dd"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="TextWhitespace" style="#bbbbbb"/>
+</style>

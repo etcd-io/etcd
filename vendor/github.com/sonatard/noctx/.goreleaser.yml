@@ -1,0 +1,39 @@
+version: 2
+project_name: noctx
+
+builds:
+  - binary: noctx
+
+    main: ./cmd/noctx/main.go
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - 386
+      - arm
+      - arm64
+    goarm:
+      - 7
+      - 6
+      - 5
+    ignore:
+      - goos: darwin
+        goarch: 386
+      - goos: windows
+        goarch: arm
+
+archives:
+  - id: noctx
+    name_template: '{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}'
+    formats: [ 'tar.gz' ]
+    format_overrides:
+      - goos: windows
+        formats: [ 'zip' ]
+    files:
+      - LICENSE

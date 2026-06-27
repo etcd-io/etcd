@@ -1,0 +1,21 @@
+run:
+  timeout: 30s 
+
+linters:
+  enable-all: true
+  disable:
+    - cyclop
+    - depguard
+    - exhaustruct
+    - forcetypeassert
+    - gochecknoglobals
+    - gocognit
+    - nilnil
+    - paralleltest
+
+linters-settings:
+  gci:
+    sections:
+      - standard
+      - default
+      - localmodule

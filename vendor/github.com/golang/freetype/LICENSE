@@ -1,0 +1,12 @@
+Use of the Freetype-Go software is subject to your choice of exactly one of
+the following two licenses:
+  * The FreeType License, which is similar to the original BSD license with
+    an advertising clause, or
+  * The GNU General Public License (GPL), version 2 or later.
+
+The text of these licenses are available in the licenses/ftl.txt and the
+licenses/gpl.txt files respectively. They are also available at
+http://freetype.sourceforge.net/license.html
+
+The Luxi fonts in the testdata directory are licensed separately. See the
+testdata/COPYING file for details.

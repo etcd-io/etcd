@@ -1,0 +1,120 @@
+<lexer>
+  <config>
+    <name>Beef</name>
+    <alias>beef</alias>
+    <filename>*.bf</filename>
+    <mime_type>text/x-beef</mime_type>
+    <dot_all>true</dot_all>
+    <ensure_nl>true</ensure_nl>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="^\s*\[.*?\]">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="///[^\n\r]*">
+        <token type="CommentSpecial"/>
+      </rule>
+      <rule pattern="//[^\n\r]*">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/[*].*?[*]/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[~!%^&amp;*()+=|\[\]:;,.&lt;&gt;/?-]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[{}]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="@&#34;(&#34;&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\$@?&#34;(&#34;&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;\n])*[&#34;\n]">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;\\.&#39;|&#39;[^\\]&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="0[xX][0-9a-fA-F]+[Ll]?|\d[_\d]*(\.\d*)?([eE][+-]?\d+)?[flFLdD]?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="#[ \t]*(if|endif|else|elif|define|undef|line|error|warning|region|endregion|pragma|nullable)\b">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="\b(extern)(\s+)(alias)\b">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(as|await|base|break|by|case|catch|checked|continue|default|delegate|else|event|finally|fixed|for|repeat|goto|if|in|init|is|let|lock|new|scope|on|out|params|readonly|ref|return|sizeof|stackalloc|switch|this|throw|try|typeof|unchecked|virtual|void|while|get|set|new|yield|add|remove|value|alias|ascending|descending|from|group|into|orderby|select|thenby|where|join|equals)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(global)(::)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(abstract|async|const|enum|explicit|extern|implicit|internal|operator|override|partial|extension|private|protected|public|static|sealed|unsafe|volatile)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(bool|byte|char8|char16|char32|decimal|double|float|int|int8|int16|int32|int64|long|object|sbyte|short|string|uint|uint8|uint16|uint32|uint64|uint|let|var)\b\??">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(true|false|null)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(class|struct|record|interface)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="class"/>
+      </rule>
+      <rule pattern="(namespace|using)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="namespace"/>
+      </rule>
+      <rule pattern="@?[_a-zA-Z]\w*">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="class">
+      <rule pattern="@?[_a-zA-Z]\w*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="namespace">
+      <rule pattern="(?=\()">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(@?[_a-zA-Z]\w*|\.)+">
+        <token type="NameNamespace"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

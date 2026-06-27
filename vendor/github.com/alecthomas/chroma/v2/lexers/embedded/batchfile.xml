@@ -1,0 +1,660 @@
+<lexer>
+  <config>
+    <name>Batchfile</name>
+    <alias>bat</alias>
+    <alias>batch</alias>
+    <alias>dosbatch</alias>
+    <alias>winbatch</alias>
+    <filename>*.bat</filename>
+    <filename>*.cmd</filename>
+    <mime_type>application/x-dos-batch</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="arithmetic">
+      <rule pattern="0[0-7]+">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0x[\da-f]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[(),]+">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="([=+\-*/!~]|%|\^\^)+">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="((?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|(\^[\n\x1a]?)?[^()=+\-*/!~%^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0]|\^[\n\x1a\t\v\f\r ,;=\xa0]?[\w\W])+">
+        <usingself state="variable"/>
+      </rule>
+      <rule pattern="(?=[\x00|&amp;])">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="follow"/>
+      </rule>
+    </state>
+    <state name="else?">
+      <rule pattern="(?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)">
+        <usingself state="text"/>
+      </rule>
+      <rule pattern="else(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="sqstring">
+      <rule>
+        <include state="variable-or-escape"/>
+      </rule>
+      <rule pattern="[^%]+|%">
+        <token type="LiteralStringSingle"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\)((?=\()|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))(?:(?:[^\n\x1a^]|\^[\n\x1a]?[\w\W])*)">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="(?=((?:(?&lt;=^[^:])|^[^:]?)[\t\v\f\r ,;=\xa0]*)(:))">
+        <token type="Text"/>
+        <push state="follow"/>
+      </rule>
+      <rule pattern="(?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)">
+        <usingself state="text"/>
+      </rule>
+      <rule>
+        <include state="redirect"/>
+      </rule>
+      <rule pattern="[\n\x1a]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <push state="root/compound"/>
+      </rule>
+      <rule pattern="@+">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="((?:for|if|rem)(?:(?=(?:\^[\n\x1a]?)?/)|(?:(?!\^)|(?&lt;=m))(?:(?=\()|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?(?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0])+)?(?:\^[\n\x1a]?)?/(?:\^[\n\x1a]?)?\?)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+        </bygroups>
+        <push state="follow"/>
+      </rule>
+      <rule pattern="(goto(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(]))((?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|[^&#34;%\n\x1a&amp;&lt;&gt;|])*(?:\^[\n\x1a]?)?/(?:\^[\n\x1a]?)?\?(?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|[^&#34;%\n\x1a&amp;&lt;&gt;|])*)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+        </bygroups>
+        <push state="follow"/>
+      </rule>
+      <rule pattern="(setlocal|endlocal|prompt|verify|rename|mklink|rmdir|shift|start|color|dpath|title|chdir|erase|pushd|ftype|break|pause|mkdir|assoc|date|path|time|popd|keys|exit|type|copy|echo|move|dir|del|ren|ver|cls|vol|rd|md|cd)(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(])">
+        <token type="Keyword"/>
+        <push state="follow"/>
+      </rule>
+      <rule pattern="(call)((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?)(:)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="call"/>
+      </rule>
+      <rule pattern="call(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(])">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(for(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])(?!\^))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+))(/f(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+        </bygroups>
+        <push state="for/f" state="for"/>
+      </rule>
+      <rule pattern="(for(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])(?!\^))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+))(/l(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+        </bygroups>
+        <push state="for/l" state="for"/>
+      </rule>
+      <rule pattern="for(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])(?!\^)">
+        <token type="Keyword"/>
+        <push state="for2" state="for"/>
+      </rule>
+      <rule pattern="(goto(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(]))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?)(:?)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="label"/>
+      </rule>
+      <rule pattern="(if(?:(?=\()|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))(?!\^))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?)((?:/i(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))?)((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?)((?:not(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))?)((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+        </bygroups>
+        <push state="(?" state="if"/>
+      </rule>
+      <rule pattern="rem(((?=\()|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))(?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?(?:[&amp;&lt;&gt;|]+|(?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|(?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0])+))+)?.*|(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(])(?:(?:[^\n\x1a^]|\^[\n\x1a]?[\w\W])*))">
+        <token type="CommentSingle"/>
+        <push state="follow"/>
+      </rule>
+      <rule pattern="(set(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(]))((?:(?:\^[\n\x1a]?)?[^\S\n])*)(/a)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+        </bygroups>
+        <push state="arithmetic"/>
+      </rule>
+      <rule pattern="(set(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(]))((?:(?:\^[\n\x1a]?)?[^\S\n])*)((?:/p)?)((?:(?:\^[\n\x1a]?)?[^\S\n])*)((?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|^=]|\^[\n\x1a]?[^&#34;=])+)?)((?:(?:\^[\n\x1a]?)?=)?)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <usingself state="variable"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="follow"/>
+      </rule>
+      <rule>
+        <push state="follow"/>
+      </rule>
+    </state>
+    <state name="follow">
+      <rule pattern="((?:(?&lt;=^[^:])|^[^:]?)[\t\v\f\r ,;=\xa0]*)(:)([\t\v\f\r ,;=\xa0]*)((?:(?:[^\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0+:^]|\^[\n\x1a]?[\w\W])*))(.*)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="NameLabel"/>
+          <token type="CommentSingle"/>
+        </bygroups>
+      </rule>
+      <rule>
+        <include state="redirect"/>
+      </rule>
+      <rule pattern="(?=[\n\x1a])">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\|\|?|&amp;&amp;?">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="text"/>
+      </rule>
+    </state>
+    <state name="bqstring">
+      <rule>
+        <include state="variable-or-escape"/>
+      </rule>
+      <rule pattern="[^%]+|%">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+    </state>
+    <state name="for2">
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+))(do(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))">
+        <bygroups>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[\n\x1a]+">
+        <token type="Text"/>
+      </rule>
+      <rule>
+        <include state="follow"/>
+      </rule>
+    </state>
+    <state name="label/compound">
+      <rule pattern="(?=\))">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="((?:(?:[^\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0+:^)]|\^[\n\x1a]?[^)])*)?)((?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|\^[\n\x1a]?[^)]|[^&#34;%^\n\x1a&amp;&lt;&gt;|)])*)">
+        <bygroups>
+          <token type="NameLabel"/>
+          <token type="CommentSingle"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="for">
+      <rule pattern="((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+))(in)((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+))(\()">
+        <bygroups>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="follow"/>
+      </rule>
+    </state>
+    <state name="redirect/compound">
+      <rule pattern="((?:(?&lt;=[\n\x1a\t\v\f\r ,;=\xa0])\d)?)(&gt;&gt;?&amp;|&lt;&amp;)([\n\x1a\t\v\f\r ,;=\xa0]*)(\d)">
+        <bygroups>
+          <token type="LiteralNumberInteger"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="LiteralNumberInteger"/>
+        </bygroups>
+      </rule>
+      <rule pattern="((?:(?&lt;=[\n\x1a\t\v\f\r ,;=\xa0])(?&lt;!\^[\n\x1a])\d)?)(&gt;&gt;?|&lt;)((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?(?:[&amp;&lt;&gt;|]+|(?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|(?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0)])+))+))">
+        <bygroups>
+          <token type="LiteralNumberInteger"/>
+          <token type="Punctuation"/>
+          <usingself state="text"/>
+        </bygroups>
+      </rule>
+    </state>
+    <state name="if">
+      <rule pattern="((?:cmdextversion|errorlevel)(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+))(\d+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="LiteralNumberInteger"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(defined(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+))((?:[&amp;&lt;&gt;|]+|(?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|(?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0])+))+))">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <usingself state="variable"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(exist(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)(?:[&amp;&lt;&gt;|]+|(?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|(?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0])+))+))">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="((?:-?(?:0[0-7]+|0x[\da-f]+|\d+)(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))(?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+))((?:equ|geq|gtr|leq|lss|neq))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)(?:-?(?:0[0-7]+|0x[\da-f]+|\d+)(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])))">
+        <bygroups>
+          <usingself state="arithmetic"/>
+          <token type="OperatorWord"/>
+          <usingself state="arithmetic"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?:[&amp;&lt;&gt;|]+|(?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|(?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0])+))+)">
+        <usingself state="text"/>
+        <push state="#pop" state="if2"/>
+      </rule>
+    </state>
+    <state name="root/compound">
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?=((?:(?&lt;=^[^:])|^[^:]?)[\t\v\f\r ,;=\xa0]*)(:))">
+        <token type="Text"/>
+        <push state="follow/compound"/>
+      </rule>
+      <rule pattern="(?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)">
+        <usingself state="text"/>
+      </rule>
+      <rule>
+        <include state="redirect/compound"/>
+      </rule>
+      <rule pattern="[\n\x1a]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <push state="root/compound"/>
+      </rule>
+      <rule pattern="@+">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="((?:for|if|rem)(?:(?=(?:\^[\n\x1a]?)?/)|(?:(?!\^)|(?&lt;=m))(?:(?=\()|(?:(?=\))|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])))))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?(?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0)])+)?(?:\^[\n\x1a]?)?/(?:\^[\n\x1a]?)?\?)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+        </bygroups>
+        <push state="follow/compound"/>
+      </rule>
+      <rule pattern="(goto(?:(?=\))|(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(])))((?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|[^&#34;%\n\x1a&amp;&lt;&gt;|)])*(?:\^[\n\x1a]?)?/(?:\^[\n\x1a]?)?\?(?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|[^&#34;%\n\x1a&amp;&lt;&gt;|)])*)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+        </bygroups>
+        <push state="follow/compound"/>
+      </rule>
+      <rule pattern="(setlocal|endlocal|prompt|verify|rename|mklink|rmdir|shift|start|color|dpath|title|chdir|erase|pushd|ftype|break|pause|mkdir|assoc|date|path|time|popd|keys|exit|type|copy|echo|move|dir|del|ren|ver|cls|vol|rd|md|cd)(?:(?=\))|(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(]))">
+        <token type="Keyword"/>
+        <push state="follow/compound"/>
+      </rule>
+      <rule pattern="(call)((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?)(:)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="call/compound"/>
+      </rule>
+      <rule pattern="call(?:(?=\))|(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(]))">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(for(?:(?=\))|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))(?!\^))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+))(/f(?:(?=\))|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])))">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+        </bygroups>
+        <push state="for/f" state="for"/>
+      </rule>
+      <rule pattern="(for(?:(?=\))|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))(?!\^))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+))(/l(?:(?=\))|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])))">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+        </bygroups>
+        <push state="for/l" state="for"/>
+      </rule>
+      <rule pattern="for(?:(?=\))|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a]))(?!\^)">
+        <token type="Keyword"/>
+        <push state="for2" state="for"/>
+      </rule>
+      <rule pattern="(goto(?:(?=\))|(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(])))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?)(:?)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="label/compound"/>
+      </rule>
+      <rule pattern="(if(?:(?=\()|(?:(?=\))|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])))(?!\^))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?)((?:/i(?:(?=\))|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])))?)((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?)((?:not(?:(?=\))|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])))?)((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+        </bygroups>
+        <push state="(?" state="if"/>
+      </rule>
+      <rule pattern="rem(((?=\()|(?:(?=\))|(?=\^?[\t\v\f\r ,;=\xa0]|[&amp;&lt;&gt;|\n\x1a])))(?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?(?:[&amp;&lt;&gt;|]+|(?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|(?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0])+))+)?.*|(?:(?=\))|(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(]))(?:(?:[^\n\x1a^)]|\^[\n\x1a]?[^)])*))">
+        <token type="CommentSingle"/>
+        <push state="follow/compound"/>
+      </rule>
+      <rule pattern="(set(?:(?=\))|(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(])))((?:(?:\^[\n\x1a]?)?[^\S\n])*)(/a)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+        </bygroups>
+        <push state="arithmetic/compound"/>
+      </rule>
+      <rule pattern="(set(?:(?=\))|(?=(?:\^[\n\x1a]?)?[\t\v\f\r ,;=\xa0+./:[\\\]]|[\n\x1a&amp;&lt;&gt;|(])))((?:(?:\^[\n\x1a]?)?[^\S\n])*)((?:/p)?)((?:(?:\^[\n\x1a]?)?[^\S\n])*)((?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|^=)]|\^[\n\x1a]?[^&#34;=])+)?)((?:(?:\^[\n\x1a]?)?=)?)">
+        <bygroups>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <token type="Keyword"/>
+          <usingself state="text"/>
+          <usingself state="variable"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="follow/compound"/>
+      </rule>
+      <rule>
+        <push state="follow/compound"/>
+      </rule>
+    </state>
+    <state name="follow/compound">
+      <rule pattern="(?=\))">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="((?:(?&lt;=^[^:])|^[^:]?)[\t\v\f\r ,;=\xa0]*)(:)([\t\v\f\r ,;=\xa0]*)((?:(?:[^\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0+:^)]|\^[\n\x1a]?[^)])*))(.*)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="NameLabel"/>
+          <token type="CommentSingle"/>
+        </bygroups>
+      </rule>
+      <rule>
+        <include state="redirect/compound"/>
+      </rule>
+      <rule pattern="(?=[\n\x1a])">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\|\|?|&amp;&amp;?">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="text"/>
+      </rule>
+    </state>
+    <state name="text">
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+      <rule>
+        <include state="variable-or-escape"/>
+      </rule>
+      <rule pattern="[^&#34;%^\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0\d)]+|.">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="redirect">
+      <rule pattern="((?:(?&lt;=[\n\x1a\t\v\f\r ,;=\xa0])\d)?)(&gt;&gt;?&amp;|&lt;&amp;)([\n\x1a\t\v\f\r ,;=\xa0]*)(\d)">
+        <bygroups>
+          <token type="LiteralNumberInteger"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="LiteralNumberInteger"/>
+        </bygroups>
+      </rule>
+      <rule pattern="((?:(?&lt;=[\n\x1a\t\v\f\r ,;=\xa0])(?&lt;!\^[\n\x1a])\d)?)(&gt;&gt;?|&lt;)((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?(?:[&amp;&lt;&gt;|]+|(?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|(?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0])+))+))">
+        <bygroups>
+          <token type="LiteralNumberInteger"/>
+          <token type="Punctuation"/>
+          <usingself state="text"/>
+        </bygroups>
+      </rule>
+    </state>
+    <state name="label">
+      <rule pattern="((?:(?:[^\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0+:^]|\^[\n\x1a]?[\w\W])*)?)((?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|\^[\n\x1a]?[\w\W]|[^&#34;%^\n\x1a&amp;&lt;&gt;|])*)">
+        <bygroups>
+          <token type="NameLabel"/>
+          <token type="CommentSingle"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="arithmetic/compound">
+      <rule pattern="(?=\))">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="0[0-7]+">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0x[\da-f]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[(),]+">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="([=+\-*/!~]|%|\^\^)+">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="((?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|(\^[\n\x1a]?)?[^()=+\-*/!~%^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0]|\^[\n\x1a\t\v\f\r ,;=\xa0]?[^)])+">
+        <usingself state="variable"/>
+      </rule>
+      <rule pattern="(?=[\x00|&amp;])">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="follow"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\^!|%%">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^&#34;%^\n\x1a]+|[%^]">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="variable">
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+      <rule>
+        <include state="variable-or-escape"/>
+      </rule>
+      <rule pattern="[^&#34;%^\n\x1a]+|.">
+        <token type="NameVariable"/>
+      </rule>
+    </state>
+    <state name="call/compound">
+      <rule pattern="(?=\))">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(:?)((?:(?:[^\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0+:^)]|\^[\n\x1a]?[^)])*))">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="NameLabel"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="for/f">
+      <rule pattern="(&#34;)((?:(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|[^&#34;])*?&#34;)([\n\x1a\t\v\f\r ,;=\xa0]*)(\))">
+        <bygroups>
+          <token type="LiteralStringDouble"/>
+          <usingself state="string"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="#pop" state="for2" state="string"/>
+      </rule>
+      <rule pattern="(&#39;(?:%%|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|[\w\W])*?&#39;)([\n\x1a\t\v\f\r ,;=\xa0]*)(\))">
+        <bygroups>
+          <usingself state="sqstring"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(`(?:%%|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|[\w\W])*?`)([\n\x1a\t\v\f\r ,;=\xa0]*)(\))">
+        <bygroups>
+          <usingself state="bqstring"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule>
+        <include state="for2"/>
+      </rule>
+    </state>
+    <state name="for/l">
+      <rule pattern="-?\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule>
+        <include state="for2"/>
+      </rule>
+    </state>
+    <state name="if2">
+      <rule pattern="((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?)(==)((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)?(?:[&amp;&lt;&gt;|]+|(?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|(?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0])+))+))">
+        <bygroups>
+          <usingself state="text"/>
+          <token type="Operator"/>
+          <usingself state="text"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+))((?:equ|geq|gtr|leq|lss|neq))((?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)(?:[&amp;&lt;&gt;|]+|(?:(?:&#34;[^\n\x1a&#34;]*(?:&#34;|(?=[\n\x1a])))|(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))|(?:(?:(?:\^[\n\x1a]?)?[^&#34;\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0])+))+))">
+        <bygroups>
+          <usingself state="text"/>
+          <token type="OperatorWord"/>
+          <usingself state="text"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="(?">
+      <rule pattern="(?:(?:(?:\^[\n\x1a])?[\t\v\f\r ,;=\xa0])+)">
+        <usingself state="text"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <push state="#pop" state="else?" state="root/compound"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="call">
+      <rule pattern="(:?)((?:(?:[^\n\x1a&amp;&lt;&gt;|\t\v\f\r ,;=\xa0+:^]|\^[\n\x1a]?[\w\W])*))">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="NameLabel"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="variable-or-escape">
+      <rule pattern="(?:(?:%(?:\*|(?:~[a-z]*(?:\$[^:]+:)?)?\d|[^%:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^%\n\x1a^]|\^[^%\n\x1a])[^=\n\x1a]*=(?:[^%\n\x1a^]|\^[^%\n\x1a])*)?)?%))|(?:\^?![^!:\n\x1a]+(?::(?:~(?:-?\d+)?(?:,(?:-?\d+)?)?|(?:[^!\n\x1a^]|\^[^!\n\x1a])[^=\n\x1a]*=(?:[^!\n\x1a^]|\^[^!\n\x1a])*)?)?\^?!))">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="%%|\^[\n\x1a]?(\^!|[\w\W])">
+        <token type="LiteralStringEscape"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

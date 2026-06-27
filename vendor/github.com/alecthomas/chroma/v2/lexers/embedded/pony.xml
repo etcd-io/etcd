@@ -1,0 +1,135 @@
+<lexer>
+  <config>
+    <name>Pony</name>
+    <alias>pony</alias>
+    <filename>*.pony</filename>
+  </config>
+  <rules>
+    <state name="string">
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="[^\\&#34;]+">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//.*\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="nested_comment"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;(?:.|\n)*?&#34;&#34;&#34;">
+        <token type="LiteralStringDoc"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="\&#39;.*\&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="=&gt;|[]{}:().~;,|&amp;!^?[]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(addressof|digestof|consume|isnt|and|not|as|is|or)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="!=|==|&lt;&lt;|&gt;&gt;|[-+/*%=&lt;&gt;]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(compile_intrinsic|compile_error|continue|recover|return|repeat|lambda|elseif|object|#share|match|#send|#read|ifdef|until|embed|while|where|error|break|with|else|#any|this|then|tag|for|trn|try|ref|use|var|val|let|end|iso|box|in|if|do)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(actor|class|struct|primitive|interface|trait|type)((?:\s)+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="typename"/>
+      </rule>
+      <rule pattern="(new|fun|be)((?:\s)+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="methodname"/>
+      </rule>
+      <rule pattern="(DisposableActor|NullablePointer|AsioEventNotify|UnsignedInteger|RuntimeOptions|DoNotOptimise|FloatingPoint|SignedInteger|ReadElement|ArrayValues|StringBytes|StringRunes|InputNotify|InputStream|AsioEventID|ByteSeqIter|AmbientAuth|Comparable|ArrayPairs|Stringable|OutStream|SourceLoc|ArrayKeys|StdStream|Equatable|AsioEvent|Iterator|Platform|Unsigned|Greater|Compare|Integer|Pointer|ReadSeq|ByteSeq|String|Number|Signed|Float|USize|Stdin|ILong|ISize|HasEq|Array|ULong|Equal|I128|U128|Bool|Less|Real|None|Seq|I64|Any|F32|F64|U64|U32|I32|Int|I16|U16|Env|I8|U8)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="_?[A-Z]\w*">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="string\(\)">
+        <token type="NameOther"/>
+      </rule>
+      <rule pattern="(\d+\.\d*|\.\d+|\d+)[eE][+-]?\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="0x[0-9a-fA-F]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="(true|false)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="_\d*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="_?[a-z][\w\&#39;_]*">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="typename">
+      <rule pattern="(iso|trn|ref|val|box|tag)?((?:\s)*)(_?[A-Z]\w*)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="methodname">
+      <rule pattern="(iso|trn|ref|val|box|tag)?((?:\s)*)(_?[a-z]\w*)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="nested_comment">
+      <rule pattern="[^*/]+">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push/>
+      </rule>
+      <rule pattern="\*/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[*/]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

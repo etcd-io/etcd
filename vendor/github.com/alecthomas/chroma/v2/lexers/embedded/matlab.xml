@@ -1,0 +1,114 @@
+<lexer>
+  <config>
+    <name>Matlab</name>
+    <alias>matlab</alias>
+    <filename>*.m</filename>
+    <mime_type>text/matlab</mime_type>
+  </config>
+  <rules>
+    <state name="blockcomment">
+      <rule pattern="^\s*%\}">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="^.*\n">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern=".">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="deffunc">
+      <rule pattern="(\s*)(?:(.+)(\s*)(=)(\s*))?(.+)(\()(.*)(\))(\s*)">
+        <bygroups>
+          <token type="TextWhitespace"/>
+          <token type="Text"/>
+          <token type="TextWhitespace"/>
+          <token type="Punctuation"/>
+          <token type="TextWhitespace"/>
+          <token type="NameFunction"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="TextWhitespace"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(\s*)([a-zA-Z_]\w*)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="^!.*">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="%\{\s*\n">
+        <token type="CommentMultiline"/>
+        <push state="blockcomment"/>
+      </rule>
+      <rule pattern="%.*$">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="^\s*function">
+        <token type="Keyword"/>
+        <push state="deffunc"/>
+      </rule>
+      <rule pattern="(properties|persistent|enumerated|otherwise|continue|function|classdef|methods|elseif|events|switch|return|global|parfor|catch|break|while|else|spmd|case|try|end|for|if)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(sin|sind|sinh|asin|asind|asinh|cos|cosd|cosh|acos|acosd|acosh|tan|tand|tanh|atan|atand|atan2|atanh|sec|secd|sech|asec|asecd|asech|csc|cscd|csch|acsc|acscd|acsch|cot|cotd|coth|acot|acotd|acoth|hypot|exp|expm1|log|log1p|log10|log2|pow2|realpow|reallog|realsqrt|sqrt|nthroot|nextpow2|abs|angle|complex|conj|imag|real|unwrap|isreal|cplxpair|fix|floor|ceil|round|mod|rem|sign|airy|besselj|bessely|besselh|besseli|besselk|beta|betainc|betaln|ellipj|ellipke|erf|erfc|erfcx|erfinv|expint|gamma|gammainc|gammaln|psi|legendre|cross|dot|factor|isprime|primes|gcd|lcm|rat|rats|perms|nchoosek|factorial|cart2sph|cart2pol|pol2cart|sph2cart|hsv2rgb|rgb2hsv|zeros|ones|eye|repmat|rand|randn|linspace|logspace|freqspace|meshgrid|accumarray|size|length|ndims|numel|disp|isempty|isequal|isequalwithequalnans|cat|reshape|diag|blkdiag|tril|triu|fliplr|flipud|flipdim|rot90|find|end|sub2ind|ind2sub|bsxfun|ndgrid|permute|ipermute|shiftdim|circshift|squeeze|isscalar|isvector|ans|eps|realmax|realmin|pi|i|inf|nan|isnan|isinf|isfinite|j|why|compan|gallery|hadamard|hankel|hilb|invhilb|magic|pascal|rosser|toeplitz|vander|wilkinson)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="\.\.\..*$">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="-|==|~=|&lt;|&gt;|&lt;=|&gt;=|&amp;&amp;|&amp;|~|\|\|?">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\.\*|\*|\+|\.\^|\.\\|\.\/|\/|\\">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\[|\]|\(|\)|\{|\}|:|@|\.|,">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="=|:|;">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(?&lt;=[\w)\].])\&#39;+">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(\d+\.\d*|\d*\.\d+)([eEf][+-]?[0-9]+)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d+[eEf][+-]?[0-9]+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="(?&lt;![\w)\].])\&#39;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="[^\&#39;]*\&#39;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

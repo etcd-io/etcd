@@ -1,0 +1,90 @@
+<lexer>
+  <config>
+    <name>CMake</name>
+    <alias>cmake</alias>
+    <filename>*.cmake</filename>
+    <filename>CMakeLists.txt</filename>
+    <mime_type>text/x-cmake</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\b(\w+)([ \t]*)(\()">
+        <bygroups>
+          <token type="NameBuiltin"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="args"/>
+      </rule>
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule>
+        <include state="ws"/>
+      </rule>
+    </state>
+    <state name="args">
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <push/>
+      </rule>
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(\$\{)(.+?)(\})">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="NameVariable"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\$ENV\{)(.+?)(\})">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="NameVariable"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\$&lt;)(.+?)(&gt;)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="NameVariable"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?s)&#34;.*?&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="\\\S+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="[^)$&#34;# \t\n]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule>
+        <include state="ws"/>
+      </rule>
+    </state>
+    <state name="string"/>
+    <state name="keywords">
+      <rule pattern="\b(WIN32|UNIX|APPLE|CYGWIN|BORLAND|MINGW|MSVC|MSVC_IDE|MSVC60|MSVC70|MSVC71|MSVC80|MSVC90)\b">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="ws">
+      <rule pattern="[ \t]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="#.*\n">
+        <token type="Comment"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

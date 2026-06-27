@@ -1,0 +1,274 @@
+<lexer>
+  <config>
+    <name>Scala</name>
+    <alias>scala</alias>
+    <filename>*.scala</filename>
+    <mime_type>text/x-scala</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="import">
+      <rule pattern="([\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?|\.)+">
+        <token type="NameNamespace"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="interpstringcommon">
+      <rule pattern="[^&#34;$\\]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\$\$">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\$[\\$_\p{L}](?:[\\$_\p{L}]|\d)*">
+        <token type="LiteralStringInterpol"/>
+      </rule>
+      <rule pattern="\$\{">
+        <token type="LiteralStringInterpol"/>
+        <push state="interpbrace"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="interptriplestring">
+      <rule pattern="&#34;&#34;&#34;(?!&#34;)">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule>
+        <include state="interpstringcommon"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="(class|trait|object)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="class"/>
+      </rule>
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="comment"/>
+      </rule>
+      <rule pattern="@[\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?">
+        <token type="NameDecorator"/>
+      </rule>
+      <rule pattern="(abstract|ca(?:se|tch)|d(?:ef|o)|e(?:lse|xtends)|f(?:inal(?:ly)?|or(?:Some)?)|i(?:f|mplicit)|lazy|match|new|override|pr(?:ivate|otected)|re(?:quires|turn)|s(?:ealed|uper)|t(?:h(?:is|row)|ry)|va[lr]|w(?:hile|ith)|yield)\b|(&lt;[%:-]|=&gt;|&gt;:|[#=@_⇒←])(\b|(?=\s)|$)">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern=":(?![-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+%s)">
+        <token type="Keyword"/>
+        <push state="type"/>
+      </rule>
+      <rule pattern="[\\$_\p{Lu}][\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?\b">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(true|false|null)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(import|package)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="import"/>
+      </rule>
+      <rule pattern="(type)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="type"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;.*?&#34;&#34;&#34;(?!&#34;)">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;\\.&#39;|&#39;[^\\]&#39;|&#39;\\u[0-9a-fA-F]{4}&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="&#39;[\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?">
+        <token type="TextSymbol"/>
+      </rule>
+      <rule pattern="[fs]&#34;&#34;&#34;">
+        <token type="LiteralString"/>
+        <push state="interptriplestring"/>
+      </rule>
+      <rule pattern="[fs]&#34;">
+        <token type="LiteralString"/>
+        <push state="interpstring"/>
+      </rule>
+      <rule pattern="raw&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="[\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="`[^`]+`">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\[">
+        <token type="Operator"/>
+        <push state="typeparam"/>
+      </rule>
+      <rule pattern="[(){};,.#]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="([0-9][0-9]*\.[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?[fFdD]?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="0x[0-9a-fA-F]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9]+L?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="type">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&lt;[%:]|&gt;:|[#_]|forSome|type">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="([,);}]|=&gt;|=|⇒)(\s*)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="Text"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[({]">
+        <token type="Operator"/>
+        <push/>
+      </rule>
+      <rule pattern="((?:[\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?|[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+|`[^`]+`)(?:\.(?:[\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?|[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+|`[^`]+`))*)(\s*)(\[)">
+        <bygroups>
+          <token type="KeywordType"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+        </bygroups>
+        <push state="#pop" state="typeparam"/>
+      </rule>
+      <rule pattern="((?:[\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?|[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+|`[^`]+`)(?:\.(?:[\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?|[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+|`[^`]+`))*)(\s*)$">
+        <bygroups>
+          <token type="KeywordType"/>
+          <token type="Text"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\.|[\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?|[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+|`[^`]+`">
+        <token type="KeywordType"/>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern="[^/*]+">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push/>
+      </rule>
+      <rule pattern="\*/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[*/]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="interpstring">
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpstringcommon"/>
+      </rule>
+    </state>
+    <state name="interpbrace">
+      <rule pattern="\}">
+        <token type="LiteralStringInterpol"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="LiteralStringInterpol"/>
+        <push/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="class">
+      <rule pattern="([\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?|[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+|`[^`]+`)(\s*)(\[)">
+        <bygroups>
+          <token type="NameClass"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+        </bygroups>
+        <push state="typeparam"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="Operator"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Operator"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?|[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+|`[^`]+`">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="typeparam">
+      <rule pattern="[\s,]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&lt;[%:]|=&gt;|&gt;:|[#_⇒]|forSome|type">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="([\])}])">
+        <token type="Operator"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[(\[{]">
+        <token type="Operator"/>
+        <push/>
+      </rule>
+      <rule pattern="\.|[\\$_\p{L}](?:[\\$_\p{L}]|[0-9])*(?:(?&lt;=_)[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+)?|[-~\^\*!%&amp;\\&lt;&gt;\|+=:/?@�-�����-����϶҂؆-؈؎-؏۩۽-۾߶৺୰௳-௸௺౿ೱ-ೲ൹༁-༃༓-༗༚-༟༴༶༸྾-࿅࿇-࿏႞-႟፠᎐-᎙᥀᧠-᧿᭡-᭪᭴-᭼⁄⁒⁺-⁼₊-₌℀-℁℃-℆℈-℉℔№-℘℞-℣℥℧℩℮℺-℻⅀-⅄⅊-⅍⅏←-⌨⌫-⑊⒜-ⓩ─-❧➔-⟄⟇-⟥⟰-⦂⦙-⧗⧜-⧻⧾-⭔⳥-⳪⺀-⿻〄〒-〓〠〶-〷〾-〿㆐-㆑㆖-㆟㇀-㇣㈀-㈞㈪-㉐㉠-㉿㊊-㊰㋀-㏿䷀-䷿꒐-꓆꠨-꠫﬩﷽﹢﹤-﹦＋＜-＞｜～￢￤￨-￮￼-�]+|`[^`]+`">
+        <token type="KeywordType"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,14 @@
+arch:
+  - amd64
+  - ppc64le
+language: go
+
+go:
+  - 1.2
+  - tip
+jobs:
+ exclude:
+  - go: 1.2
+    arch: ppc64le
+  - go: 1.2
+    arch: amd64

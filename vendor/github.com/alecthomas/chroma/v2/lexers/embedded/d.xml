@@ -1,0 +1,133 @@
+<lexer>
+  <config>
+    <name>D</name>
+    <alias>d</alias>
+    <filename>*.d</filename>
+    <filename>*.di</filename>
+    <mime_type>text/x-d</mime_type>
+    <ensure_nl>true</ensure_nl>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*[\s\S]*?\*/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="/\+[\s\S]*?\+/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="(asm|assert|body|break|case|cast|catch|continue|default|debug|delete|do|else|finally|for|foreach|foreach_reverse|goto|if|in|invariant|is|macro|mixin|new|out|pragma|return|super|switch|this|throw|try|typeid|typeof|version|while|with)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="__(FILE|FILE_FULL_PATH|MODULE|LINE|FUNCTION|PRETTY_FUNCTION|DATE|EOF|TIME|TIMESTAMP|VENDOR|VERSION)__\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="__(traits|vector|parameters)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="((?:(?:[^\W\d]|\$)[\w.\[\]$&lt;&gt;]*\s+)+?)((?:[^\W\d]|\$)[\w$]*)(\s*)(\()">
+        <bygroups>
+          <usingself state="root"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="@[\w.]*">
+        <token type="NameDecorator"/>
+      </rule>
+      <rule pattern="(abstract|auto|alias|align|const|delegate|deprecated|enum|export|extern|final|function|immutable|inout|lazy|nothrow|override|package|private|protected|public|pure|ref|scope|shared|static|synchronized|template|unittest|__gshared)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(void|bool|byte|ubyte|short|ushort|int|uint|long|ulong|cent|ucent|float|double|real|ifloat|idouble|ireal|cfloat|cdouble|creal|char|wchar|dchar)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(size_t|ptrdiff_t|noreturn|string|wstring|dstring|Object|Throwable|Exception|Error|imported)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(module)(\s+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="import"/>
+      </rule>
+      <rule pattern="(true|false|null)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(class|interface|struct|template|union)(\s+)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="class"/>
+      </rule>
+      <rule pattern="(import)(\s+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="import"/>
+      </rule>
+      <rule pattern="[qr]?&#34;(\\\\|\\&#34;|[^&#34;])*&#34;[cwd]?">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="(`)([^`]*)(`)[cwd]?">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;\\.&#39;|&#39;[^\\]&#39;|&#39;\\u[0-9a-fA-F]{4}&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="(\.)((?:[^\W\d]|\$)[\w$]*)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="NameAttribute"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^\s*([^\W\d]|\$)[\w$]*:">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="([0-9][0-9_]*\.([0-9][0-9_]*)?|\.[0-9][0-9_]*)([eE][+\-]?[0-9][0-9_]*)?[fFL]?i?|[0-9][eE][+\-]?[0-9][0-9_]*[fFL]?|[0-9]([eE][+\-]?[0-9][0-9_]*)?[fFL]|0[xX]([0-9a-fA-F][0-9a-fA-F_]*\.?|([0-9a-fA-F][0-9a-fA-F_]*)?\.[0-9a-fA-F][0-9a-fA-F_]*)[pP][+\-]?[0-9][0-9_]*[fFL]?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="0[xX][0-9a-fA-F][0-9a-fA-F_]*[lL]?">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="0[bB][01][01_]*[lL]?">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="0[0-7_]+[lL]?">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0|[1-9][0-9_]*[lL]?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="([~^*!%&amp;\[\](){}&lt;&gt;|+=:;,./?-]|q{)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="([^\W\d]|\$)[\w$]*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="class">
+      <rule pattern="([^\W\d]|\$)[\w$]*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="import">
+      <rule pattern="[\w.]+\*?">
+        <token type="NameNamespace"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

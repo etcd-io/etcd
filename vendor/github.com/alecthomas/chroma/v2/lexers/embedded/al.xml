@@ -1,0 +1,75 @@
+<lexer>
+  <config>
+    <name>AL</name>
+    <alias>al</alias>
+    <filename>*.al</filename>
+    <filename>*.dal</filename>
+    <mime_type>text/x-al</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="(?s)\/\*.*?\\*\*\/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="(?s)//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="\&#34;([^\&#34;])*\&#34;">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&#39;([^&#39;])*&#39;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\b(?i:(ARRAY|ASSERTERROR|BEGIN|BREAK|CASE|DO|DOWNTO|ELSE|END|EVENT|EXIT|FOR|FOREACH|FUNCTION|IF|IMPLEMENTS|IN|INDATASET|INTERFACE|INTERNAL|LOCAL|OF|PROCEDURE|PROGRAM|PROTECTED|REPEAT|RUNONCLIENT|SECURITYFILTERING|SUPPRESSDISPOSE|TEMPORARY|THEN|TO|TRIGGER|UNTIL|VAR|WHILE|WITH|WITHEVENTS))\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(?i:(AND|DIV|MOD|NOT|OR|XOR))\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="\b(?i:(AVERAGE|CONST|COUNT|EXIST|FIELD|FILTER|LOOKUP|MAX|MIN|ORDER|SORTING|SUM|TABLEDATA|UPPERLIMIT|WHERE|ASCENDING|DESCENDING))\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(?i:(CODEUNIT|PAGE|PAGEEXTENSION|PAGECUSTOMIZATION|DOTNET|ENUM|ENUMEXTENSION|VALUE|QUERY|REPORT|TABLE|TABLEEXTENSION|XMLPORT|PROFILE|CONTROLADDIN|REPORTEXTENSION|INTERFACE|PERMISSIONSET|PERMISSIONSETEXTENSION|ENTITLEMENT))\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(?i:(Action|Array|Automation|BigInteger|BigText|Blob|Boolean|Byte|Char|ClientType|Code|Codeunit|CompletionTriggerErrorLevel|ConnectionType|Database|DataClassification|DataScope|Date|DateFormula|DateTime|Decimal|DefaultLayout|Dialog|Dictionary|DotNet|DotNetAssembly|DotNetTypeDeclaration|Duration|Enum|ErrorInfo|ErrorType|ExecutionContext|ExecutionMode|FieldClass|FieldRef|FieldType|File|FilterPageBuilder|Guid|InStream|Integer|Joker|KeyRef|List|ModuleDependencyInfo|ModuleInfo|None|Notification|NotificationScope|ObjectType|Option|OutStream|Page|PageResult|Query|Record|RecordId|RecordRef|Report|ReportFormat|SecurityFilter|SecurityFiltering|Table|TableConnectionType|TableFilter|TestAction|TestField|TestFilterField|TestPage|TestPermissions|TestRequestPage|Text|TextBuilder|TextConst|TextEncoding|Time|TransactionModel|TransactionType|Variant|Verbosity|Version|XmlPort|HttpContent|HttpHeaders|HttpClient|HttpRequestMessage|HttpResponseMessage|JsonToken|JsonValue|JsonArray|JsonObject|View|Views|XmlAttribute|XmlAttributeCollection|XmlComment|XmlCData|XmlDeclaration|XmlDocument|XmlDocumentType|XmlElement|XmlNamespaceManager|XmlNameTable|XmlNode|XmlNodeList|XmlProcessingInstruction|XmlReadOptions|XmlText|XmlWriteOptions|WebServiceActionContext|WebServiceActionResultCode|SessionSettings))\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b([&lt;&gt;]=|&lt;&gt;|&lt;|&gt;)\b?">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b(\-|\+|\/|\*)\b">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\s*(\:=|\+=|-=|\/=|\*=)\s*?">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b(?i:(ADD|ADDFIRST|ADDLAST|ADDAFTER|ADDBEFORE|ACTION|ACTIONS|AREA|ASSEMBLY|CHARTPART|CUEGROUP|CUSTOMIZES|COLUMN|DATAITEM|DATASET|ELEMENTS|EXTENDS|FIELD|FIELDGROUP|FIELDATTRIBUTE|FIELDELEMENT|FIELDGROUPS|FIELDS|FILTER|FIXED|GRID|GROUP|MOVEAFTER|MOVEBEFORE|KEY|KEYS|LABEL|LABELS|LAYOUT|MODIFY|MOVEFIRST|MOVELAST|MOVEBEFORE|MOVEAFTER|PART|REPEATER|USERCONTROL|REQUESTPAGE|SCHEMA|SEPARATOR|SYSTEMPART|TABLEELEMENT|TEXTATTRIBUTE|TEXTELEMENT|TYPE))\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\s*[(\.\.)&amp;\|]\s*">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)(L|l|UL|ul|u|U|F|f|ll|LL|ull|ULL)?\b">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[;:,]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="#[ \t]*(if|else|elif|endif|define|undef|region|endregion|pragma)\b.*?\n">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="\w+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,173 @@
+<lexer>
+  <config>
+    <name>QBasic</name>
+    <alias>qbasic</alias>
+    <alias>basic</alias>
+    <filename>*.BAS</filename>
+    <filename>*.bas</filename>
+    <mime_type>text/basic</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\n+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="^(\s*)(\d*)(\s*)(REM .*)$">
+        <bygroups>
+          <token type="TextWhitespace"/>
+          <token type="NameLabel"/>
+          <token type="TextWhitespace"/>
+          <token type="CommentSingle"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(\s*)(\d+)(\s*)">
+        <bygroups>
+          <token type="TextWhitespace"/>
+          <token type="NameLabel"/>
+          <token type="TextWhitespace"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?=[\s]*)(\w+)(?=[\s]*=)">
+        <token type="NameVariableGlobal"/>
+      </rule>
+      <rule pattern="(?=[^&#34;]*)\&#39;.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="&#34;[^\n&#34;]*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="(END)(\s+)(FUNCTION|IF|SELECT|SUB)">
+        <bygroups>
+          <token type="KeywordReserved"/>
+          <token type="TextWhitespace"/>
+          <token type="KeywordReserved"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(DECLARE)(\s+)([A-Z]+)(\s+)(\S+)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="TextWhitespace"/>
+          <token type="NameVariable"/>
+          <token type="TextWhitespace"/>
+          <token type="Name"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(DIM)(\s+)(SHARED)(\s+)([^\s(]+)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="TextWhitespace"/>
+          <token type="NameVariable"/>
+          <token type="TextWhitespace"/>
+          <token type="NameVariableGlobal"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(DIM)(\s+)([^\s(]+)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="TextWhitespace"/>
+          <token type="NameVariableGlobal"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(\s*)([a-zA-Z_]+)(\s*)(\=)">
+        <bygroups>
+          <token type="TextWhitespace"/>
+          <token type="NameVariableGlobal"/>
+          <token type="TextWhitespace"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(GOTO|GOSUB)(\s+)(\w+\:?)">
+        <bygroups>
+          <token type="KeywordReserved"/>
+          <token type="TextWhitespace"/>
+          <token type="NameLabel"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(SUB)(\s+)(\w+\:?)">
+        <bygroups>
+          <token type="KeywordReserved"/>
+          <token type="TextWhitespace"/>
+          <token type="NameLabel"/>
+        </bygroups>
+      </rule>
+      <rule>
+        <include state="declarations"/>
+      </rule>
+      <rule>
+        <include state="functions"/>
+      </rule>
+      <rule>
+        <include state="metacommands"/>
+      </rule>
+      <rule>
+        <include state="operators"/>
+      </rule>
+      <rule>
+        <include state="statements"/>
+      </rule>
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*[$@#&amp;!]">
+        <token type="NameVariableGlobal"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*\:">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="\-?\d*\.\d+[@|#]?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\-?\d+[@|#]">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\-?\d+#?">
+        <token type="LiteralNumberIntegerLong"/>
+      </rule>
+      <rule pattern="\-?\d+#?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="!=|==|:=|\.=|&lt;&lt;|&gt;&gt;|[-~+/\\*%=&lt;&gt;&amp;^|?:!.]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[\[\]{}(),;]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[\w]+">
+        <token type="NameVariableGlobal"/>
+      </rule>
+    </state>
+    <state name="declarations">
+      <rule pattern="\b(DATA|LET)(?=\(|\b)">
+        <token type="KeywordDeclaration"/>
+      </rule>
+    </state>
+    <state name="functions">
+      <rule pattern="\b(ABS|ASC|ATN|CDBL|CHR\$|CINT|CLNG|COMMAND\$|COS|CSNG|CSRLIN|CVD|CVDMBF|CVI|CVL|CVS|CVSMBF|DATE\$|ENVIRON\$|EOF|ERDEV|ERDEV\$|ERL|ERR|EXP|FILEATTR|FIX|FRE|FREEFILE|HEX\$|INKEY\$|INP|INPUT\$|INSTR|INT|IOCTL\$|LBOUND|LCASE\$|LEFT\$|LEN|LOC|LOF|LOG|LPOS|LTRIM\$|MID\$|MKD\$|MKDMBF\$|MKI\$|MKL\$|MKS\$|MKSMBF\$|OCT\$|PEEK|PEN|PLAY|PMAP|POINT|POS|RIGHT\$|RND|RTRIM\$|SADD|SCREEN|SEEK|SETMEM|SGN|SIN|SPACE\$|SPC|SQR|STICK|STR\$|STRIG|STRING\$|TAB|TAN|TIME\$|TIMER|UBOUND|UCASE\$|VAL|VARPTR|VARPTR\$|VARSEG)(?=\(|\b)">
+        <token type="KeywordReserved"/>
+      </rule>
+    </state>
+    <state name="metacommands">
+      <rule pattern="\b(\$DYNAMIC|\$INCLUDE|\$STATIC)(?=\(|\b)">
+        <token type="KeywordConstant"/>
+      </rule>
+    </state>
+    <state name="operators">
+      <rule pattern="\b(AND|EQV|IMP|NOT|OR|XOR)(?=\(|\b)">
+        <token type="OperatorWord"/>
+      </rule>
+    </state>
+    <state name="statements">
+      <rule pattern="\b(BEEP|BLOAD|BSAVE|CALL|CALL\ ABSOLUTE|CALL\ INTERRUPT|CALLS|CHAIN|CHDIR|CIRCLE|CLEAR|CLOSE|CLS|COLOR|COM|COMMON|CONST|DATA|DATE\$|DECLARE|DEF\ FN|DEF\ SEG|DEFDBL|DEFINT|DEFLNG|DEFSNG|DEFSTR|DEF|DIM|DO|LOOP|DRAW|END|ENVIRON|ERASE|ERROR|EXIT|FIELD|FILES|FOR|NEXT|FUNCTION|GET|GOSUB|GOTO|IF|THEN|INPUT|INPUT\ \#|IOCTL|KEY|KEY|KILL|LET|LINE|LINE\ INPUT|LINE\ INPUT\ \#|LOCATE|LOCK|UNLOCK|LPRINT|LSET|MID\$|MKDIR|NAME|ON\ COM|ON\ ERROR|ON\ KEY|ON\ PEN|ON\ PLAY|ON\ STRIG|ON\ TIMER|ON\ UEVENT|ON|OPEN|OPEN\ COM|OPTION\ BASE|OUT|PAINT|PALETTE|PCOPY|PEN|PLAY|POKE|PRESET|PRINT|PRINT\ \#|PRINT\ USING|PSET|PUT|PUT|RANDOMIZE|READ|REDIM|REM|RESET|RESTORE|RESUME|RETURN|RMDIR|RSET|RUN|SCREEN|SEEK|SELECT\ CASE|SHARED|SHELL|SLEEP|SOUND|STATIC|STOP|STRIG|SUB|SWAP|SYSTEM|TIME\$|TIMER|TROFF|TRON|TYPE|UEVENT|UNLOCK|VIEW|WAIT|WHILE|WEND|WIDTH|WINDOW|WRITE)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+    </state>
+    <state name="keywords">
+      <rule pattern="\b(ACCESS|ALIAS|ANY|APPEND|AS|BASE|BINARY|BYVAL|CASE|CDECL|DOUBLE|ELSE|ELSEIF|ENDIF|INTEGER|IS|LIST|LOCAL|LONG|LOOP|MOD|NEXT|OFF|ON|OUTPUT|RANDOM|SIGNAL|SINGLE|STEP|STRING|THEN|TO|UNTIL|USING|WEND)\b">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

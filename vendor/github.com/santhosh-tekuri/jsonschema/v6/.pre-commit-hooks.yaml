@@ -1,0 +1,7 @@
+- id: jsonschema-validate
+  name: Validate JSON against JSON Schema
+  description: ensure json files follow specified JSON Schema
+  entry: jv
+  language: golang
+  additional_dependencies:
+  - ./cmd/jv

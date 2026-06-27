@@ -1,0 +1,147 @@
+<lexer>
+  <config>
+    <name>ucode</name>
+    <filename>*.uc</filename>
+    <mime_type>application/x.ucode</mime_type>
+    <mime_type>text/x.ucode</mime_type>
+    <dot_all>true</dot_all>
+    <ensure_nl>true</ensure_nl>
+  </config>
+  <rules>
+    <state name="interp">
+      <rule pattern="`">
+        <token type="LiteralStringBacktick"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\\\">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+      <rule pattern="\\`">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+      <rule pattern="\\[^`\\]">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+      <rule pattern="\$\{">
+        <token type="LiteralStringInterpol"/>
+        <push state="interp-inside"/>
+      </rule>
+      <rule pattern="\$">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+      <rule pattern="[^`\\$]+">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+    </state>
+    <state name="interp-inside">
+      <rule pattern="\}">
+        <token type="LiteralStringInterpol"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="commentsandwhitespace">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&lt;!--">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*.*?\*/">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="slashstartsregex">
+      <rule>
+        <include state="commentsandwhitespace"/>
+      </rule>
+      <rule pattern="/(\\.|[^[/\\\n]|\[(\\.|[^\]\\\n])*])+/([gimuy]+\b|\B)">
+        <token type="LiteralStringRegex"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?=/)">
+        <token type="Text"/>
+        <push state="#pop" state="badregex"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="badregex">
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\A#! ?/.*?\n">
+        <token type="CommentHashbang"/>
+      </rule>
+      <rule pattern="^(?=\s|/|&lt;!--)">
+        <token type="Text"/>
+        <push state="slashstartsregex"/>
+      </rule>
+      <rule>
+        <include state="commentsandwhitespace"/>
+      </rule>
+      <rule pattern="\d+(\.\d*|[eE][+\-]?\d+)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="0[bB][01]+">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="0[oO][0-7]+">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0[xX][0-9a-fA-F]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9][0-9_]*">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="\.\.\.|=&gt;">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\+\+|--|~|&amp;&amp;|\?|:|\|\||\\(?=\n)|(&lt;&lt;|&gt;&gt;&gt;?|==?|!=?|[-&lt;&gt;+*%&amp;|^/])=?">
+        <token type="Operator"/>
+        <push state="slashstartsregex"/>
+      </rule>
+      <rule pattern="[{(\[;,]">
+        <token type="Punctuation"/>
+        <push state="slashstartsregex"/>
+      </rule>
+      <rule pattern="[})\].]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(import|export|from|as|for|in|while|break|return|continue|switch|case|default|if|else|try|catch|delete|this)\b">
+        <token type="Keyword"/>
+        <push state="slashstartsregex"/>
+      </rule>
+      <rule pattern="(const|let|function)\b">
+        <token type="KeywordDeclaration"/>
+        <push state="slashstartsregex"/>
+      </rule>
+      <rule pattern="(true|false|null|NaN|Infinity)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(?:[$_\p{L}\p{N}]|\\u[a-fA-F0-9]{4})(?:(?:[$\p{L}\p{N}]|\\u[a-fA-F0-9]{4}))*">
+        <token type="NameOther"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#39;(\\\\|\\&#39;|[^&#39;])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="`">
+        <token type="LiteralStringBacktick"/>
+        <push state="interp"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

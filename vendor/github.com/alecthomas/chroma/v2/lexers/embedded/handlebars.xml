@@ -1,0 +1,147 @@
+<lexer>
+  <config>
+    <name>Handlebars</name>
+    <alias>handlebars</alias>
+    <alias>hbs</alias>
+    <filename>*.handlebars</filename>
+    <filename>*.hbs</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="[^{]+">
+        <token type="Other"/>
+      </rule>
+      <rule pattern="\{\{!.*\}\}">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(\{\{\{)(\s*)">
+        <bygroups>
+          <token type="CommentSpecial"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="tag"/>
+      </rule>
+      <rule pattern="(\{\{)(\s*)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="tag"/>
+      </rule>
+    </state>
+    <state name="tag">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\}\}\}">
+        <token type="CommentSpecial"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\}\}">
+        <token type="CommentPreproc"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="([#/]*)(each|if|unless|else|with|log|in(?:line)?)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="#\*inline">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="([#/])([\w-]+)">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="([\w-]+)(=)">
+        <bygroups>
+          <token type="NameAttribute"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&gt;)(\s*)(@partial-block)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(#?&gt;)(\s*)([\w-]+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameVariable"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&gt;)(\s*)(\()">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="dynamic-partial"/>
+      </rule>
+      <rule>
+        <include state="generic"/>
+      </rule>
+    </state>
+    <state name="dynamic-partial">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(lookup)(\s+)(\.|this)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameVariable"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(lookup)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <usingself state="variable"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[\w-]+">
+        <token type="NameFunction"/>
+      </rule>
+      <rule>
+        <include state="generic"/>
+      </rule>
+    </state>
+    <state name="variable">
+      <rule pattern="[a-zA-Z][\w-]*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\.[\w-]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(this\/|\.\/|(\.\.\/)+)[\w-]+">
+        <token type="NameVariable"/>
+      </rule>
+    </state>
+    <state name="generic">
+      <rule>
+        <include state="variable"/>
+      </rule>
+      <rule pattern=":?&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern=":?&#39;(\\\\|\\&#39;|[^&#39;])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="[0-9](\.[0-9]*)?(eE[+-][0-9])?[flFLdD]?|0[xX][0-9a-fA-F]+[Ll]?">
+        <token type="LiteralNumber"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

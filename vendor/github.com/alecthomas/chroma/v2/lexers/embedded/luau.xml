@@ -1,0 +1,173 @@
+<lexer>
+  <config>
+    <name>Luau</name>
+    <alias>luau</alias>
+    <filename>*.luau</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="#!.*"><token type="CommentHashbang"/><push state="base"/></rule>
+      <rule><push state="base"/></rule>
+    </state>
+    <state name="ws">
+      <rule pattern="(?:--\[(?&lt;level&gt;=*)\[[\w\W]*?\](?=level)\])"><token type="CommentMultiline"/></rule>
+      <rule pattern="(?:--.*$)"><token type="CommentSingle"/></rule>
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+    </state>
+    <state name="base">
+      <rule><include state="ws"/></rule>
+      <rule pattern="\{"><token type="Punctuation"/><push state="closing_brace_base" state="expression"/></rule>
+      <rule pattern="\("><token type="Punctuation"/><push state="closing_parenthesis_base" state="expression"/></rule>
+      <rule pattern="::?"><token type="Punctuation"/><push state="type_end" state="type_start"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringSingle"/><push state="string_single"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><push state="string_double"/></rule>
+      <rule pattern="`"><token type="LiteralStringBacktick"/><push state="string_interpolated"/></rule>
+      <rule pattern="\.\.\."><token type="Punctuation"/></rule>
+      <rule pattern="type\b(?=(?:(?:--\[(?&lt;level&gt;=*)\[[\w\W]*?\](?=level)\])|(?:--.*$)|\s+)+[a-zA-Z_])"><token type="KeywordReserved"/><push state="type_declaration"/></rule>
+      <rule pattern="export\b(?=(?:(?:--\[(?&lt;level&gt;=*)\[[\w\W]*?\](?=level)\])|(?:--.*$)|\s+)+[a-zA-Z_])"><token type="KeywordReserved"/></rule>
+      <rule pattern="(?:\.\.|//|[+\-*\/%^&lt;&gt;=])=?"><token type="Operator"/><push state="expression"/></rule>
+      <rule pattern="~="><token type="Operator"/><push state="expression"/></rule>
+      <rule pattern="(and|or|not)\b"><token type="OperatorWord"/><push state="expression"/></rule>
+      <rule pattern="(elseif|for|if|in|repeat|return|until|while)\b"><token type="KeywordReserved"/><push state="expression"/></rule>
+      <rule pattern="local\b"><token type="KeywordDeclaration"/><push state="expression"/></rule>
+      <rule pattern="function\b"><token type="KeywordReserved"/><push state="expression" state="func_name"/></rule>
+      <rule pattern="[\])};]+"><token type="Punctuation"/></rule>
+      <rule><include state="expression_static"/></rule>
+      <rule pattern="0[xX][\da-fA-F_]*"><token type="LiteralNumberHex"/></rule>
+      <rule pattern="0[bB][\d_]*"><token type="LiteralNumberBin"/></rule>
+      <rule pattern="\.?\d[\d_]*(?:\.[\d_]*)?(?:[eE][+-]?[\d_]+)?"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="(true|false|nil)\b"><token type="KeywordConstant"/></rule>
+      <rule pattern="\[(=*)\[[.\n]*?\]\1\]"><token type="LiteralString"/></rule>
+      <rule pattern="(\.)([a-zA-Z_]\w*)(?=%s*[({&quot;\&#x27;])"><bygroups><token type="Punctuation"/><token type="NameFunction"/></bygroups></rule>
+      <rule pattern="(\.)([a-zA-Z_]\w*)"><bygroups><token type="Punctuation"/><token type="NameVariable"/></bygroups></rule>
+      <rule pattern="[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*(?=(?:(?:--\[(?&lt;level&gt;=*)\[[\w\W]*?\](?=level)\])|(?:--.*$)|\s+)*[({&quot;\&#x27;])"><token type="NameOther"/></rule>
+      <rule pattern="[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*"><token type="Name"/></rule>
+      <rule pattern="[\[.,]"><token type="Punctuation"/><push state="expression"/></rule>
+    </state>
+    <state name="expression_static">
+      <rule pattern="(break|continue|do|else|elseif|end|for|if|in|repeat|return|then|until|while)\b"><token type="KeywordReserved"/></rule>
+    </state>
+    <state name="expression">
+      <rule><include state="ws"/></rule>
+      <rule pattern="if\b"><token type="KeywordReserved"/><push state="ternary" state="expression"/></rule>
+      <rule pattern="local\b"><token type="KeywordDeclaration"/></rule>
+      <rule pattern="\{"><token type="Punctuation"/><push state="#pop" state="closing_brace_base" state="expression"/></rule>
+      <rule pattern="\("><token type="Punctuation"/><push state="#pop" state="closing_parenthesis_base" state="expression"/></rule>
+      <rule pattern="::?"><token type="Punctuation"/><push state="#pop" state="type_end" state="type_start"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringSingle"/><push state="#pop" state="string_single"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><push state="#pop" state="string_double"/></rule>
+      <rule pattern="`"><token type="LiteralStringBacktick"/><push state="#pop" state="string_interpolated"/></rule>
+      <rule pattern="\.\.\."><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule pattern="function\b"><token type="KeywordReserved"/><push state="func_name"/></rule>
+      <rule><include state="expression_static"/></rule>
+      <rule pattern="0[xX][\da-fA-F_]*"><token type="LiteralNumberHex"/><pop depth="1"/></rule>
+      <rule pattern="0[bB][\d_]*"><token type="LiteralNumberBin"/><pop depth="1"/></rule>
+      <rule pattern="\.?\d[\d_]*(?:\.[\d_]*)?(?:[eE][+-]?[\d_]+)?"><token type="LiteralNumberFloat"/><pop depth="1"/></rule>
+      <rule pattern="(true|false|nil)\b"><token type="KeywordConstant"/><pop depth="1"/></rule>
+      <rule pattern="\[(=*)\[[.\n]*?\]\1\]"><token type="LiteralString"/><pop depth="1"/></rule>
+      <rule pattern="(\.)([a-zA-Z_]\w*)(?=%s*[({&quot;\&#x27;])"><bygroups><token type="Punctuation"/><token type="NameFunction"/></bygroups><pop depth="1"/></rule>
+      <rule pattern="(\.)([a-zA-Z_]\w*)"><bygroups><token type="Punctuation"/><token type="NameVariable"/></bygroups><pop depth="1"/></rule>
+      <rule pattern="[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*(?=(?:(?:--\[(?&lt;level&gt;=*)\[[\w\W]*?\](?=level)\])|(?:--.*$)|\s+)*[({&quot;\&#x27;])"><token type="NameOther"/><pop depth="1"/></rule>
+      <rule pattern="[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*"><token type="Name"/><pop depth="1"/></rule>
+      <rule><pop depth="1"/></rule>
+    </state>
+    <state name="ternary">
+      <rule><include state="ws"/></rule>
+      <rule pattern="else\b"><token type="KeywordReserved"/><pop depth="1"/></rule>
+      <rule pattern="(then|elseif)\b"><token type="OperatorReserved"/><push state="expression"/></rule>
+      <rule><pop depth="1"/></rule>
+    </state>
+    <state name="closing_brace_pop">
+      <rule pattern="\}"><token type="Punctuation"/><pop depth="1"/></rule>
+    </state>
+    <state name="closing_parenthesis_pop">
+      <rule pattern="\)"><token type="Punctuation"/><pop depth="1"/></rule>
+    </state>
+    <state name="closing_gt_pop">
+      <rule pattern="&gt;"><token type="Punctuation"/><pop depth="1"/></rule>
+    </state>
+    <state name="closing_parenthesis_base">
+      <rule><include state="closing_parenthesis_pop"/></rule>
+      <rule><include state="base"/></rule>
+    </state>
+    <state name="closing_parenthesis_type">
+      <rule><include state="closing_parenthesis_pop"/></rule>
+      <rule><include state="type"/></rule>
+    </state>
+    <state name="closing_brace_base">
+      <rule><include state="closing_brace_pop"/></rule>
+      <rule><include state="base"/></rule>
+    </state>
+    <state name="closing_brace_type">
+      <rule><include state="closing_brace_pop"/></rule>
+      <rule><include state="type"/></rule>
+    </state>
+    <state name="closing_gt_type">
+      <rule><include state="closing_gt_pop"/></rule>
+      <rule><include state="type"/></rule>
+    </state>
+    <state name="string_escape">
+      <rule pattern="\\z\s*"><token type="LiteralStringEscape"/></rule>
+      <rule pattern="\\(?:[abfnrtvz\\&quot;\&#x27;`\{\n])|[\r\n]{1,2}|x[\da-fA-F]{2}|\d{1,3}|u\{\}[\da-fA-F]*\}"><token type="LiteralStringEscape"/></rule>
+    </state>
+    <state name="string_single">
+      <rule><include state="string_escape"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringSingle"/><pop depth="1"/></rule>
+      <rule pattern="[^\\&#x27;]+"><token type="LiteralStringSingle"/></rule>
+    </state>
+    <state name="string_double">
+      <rule><include state="string_escape"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><pop depth="1"/></rule>
+      <rule pattern="[^\\&quot;]+"><token type="LiteralStringDouble"/></rule>
+    </state>
+    <state name="string_interpolated">
+      <rule><include state="string_escape"/></rule>
+      <rule pattern="\{"><token type="Punctuation"/><push state="closing_brace_base" state="expression"/></rule>
+      <rule pattern="`"><token type="LiteralStringBacktick"/><pop depth="1"/></rule>
+      <rule pattern="[^\\`\{]+"><token type="LiteralStringBacktick"/></rule>
+    </state>
+    <state name="func_name">
+      <rule><include state="ws"/></rule>
+      <rule pattern="[.:]"><token type="Punctuation"/></rule>
+      <rule pattern="[a-zA-Z_]\w*(?=(?:(?:--\[(?&lt;level&gt;=*)\[[\w\W]*?\](?=level)\])|(?:--.*$)|\s+)*[.:])"><token type="NameClass"/></rule>
+      <rule pattern="[a-zA-Z_]\w*"><token type="NameFunction"/></rule>
+      <rule pattern="&lt;"><token type="Punctuation"/><push state="closing_gt_type"/></rule>
+      <rule pattern="\("><token type="Punctuation"/><pop depth="1"/></rule>
+    </state>
+    <state name="type">
+      <rule><include state="ws"/></rule>
+      <rule pattern="\("><token type="Punctuation"/><push state="closing_parenthesis_type"/></rule>
+      <rule pattern="\{"><token type="Punctuation"/><push state="closing_brace_type"/></rule>
+      <rule pattern="&lt;"><token type="Punctuation"/><push state="closing_gt_type"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringSingle"/><push state="string_single"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><push state="string_double"/></rule>
+      <rule pattern="[|&amp;\.,\[\]:=]+"><token type="Punctuation"/></rule>
+      <rule pattern="-&gt;"><token type="Punctuation"/></rule>
+      <rule pattern="typeof\("><token type="NameBuiltin"/><push state="closing_parenthesis_base" state="expression"/></rule>
+      <rule pattern="[a-zA-Z_]\w*"><token type="NameClass"/></rule>
+    </state>
+    <state name="type_start">
+      <rule><include state="ws"/></rule>
+      <rule pattern="\("><token type="Punctuation"/><push state="#pop" state="closing_parenthesis_type"/></rule>
+      <rule pattern="\{"><token type="Punctuation"/><push state="#pop" state="closing_brace_type"/></rule>
+      <rule pattern="&lt;"><token type="Punctuation"/><push state="#pop" state="closing_gt_type"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringSingle"/><push state="#pop" state="string_single"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><push state="#pop" state="string_double"/></rule>
+      <rule pattern="typeof\("><token type="NameBuiltin"/><push state="#pop" state="closing_parenthesis_base" state="expression"/></rule>
+      <rule pattern="[a-zA-Z_]\w*"><token type="NameClass"/><pop depth="1"/></rule>
+    </state>
+    <state name="type_end">
+      <rule><include state="ws"/></rule>
+      <rule pattern="[|&amp;\.]"><token type="Punctuation"/><push state="type_start"/></rule>
+      <rule pattern="-&gt;"><token type="Punctuation"/><push state="type_start"/></rule>
+      <rule pattern="&lt;"><token type="Punctuation"/><push state="closing_gt_type"/></rule>
+      <rule><pop depth="1"/></rule>
+    </state>
+    <state name="type_declaration">
+      <rule><include state="ws"/></rule>
+      <rule pattern="[a-zA-Z_]\w*"><token type="NameClass"/></rule>
+      <rule pattern="&lt;"><token type="Punctuation"/><push state="closing_gt_type"/></rule>
+      <rule pattern="="><token type="Punctuation"/><push state="#pop" state="type_end" state="type_start"/></rule>
+    </state>
+  </rules>
+</lexer>

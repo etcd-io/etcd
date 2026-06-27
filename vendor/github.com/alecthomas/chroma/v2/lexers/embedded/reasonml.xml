@@ -1,0 +1,147 @@
+<lexer>
+  <config>
+    <name>ReasonML</name>
+    <alias>reason</alias>
+    <alias>reasonml</alias>
+    <filename>*.re</filename>
+    <filename>*.rei</filename>
+    <mime_type>text/x-reasonml</mime_type>
+  </config>
+  <rules>
+    <state name="escape-sequence">
+      <rule pattern="\\[\\&#34;\&#39;ntbr]">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\[0-9]{3}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\x[0-9a-fA-F]{2}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="false|true|\(\)|\[\]">
+        <token type="NameBuiltinPseudo"/>
+      </rule>
+      <rule pattern="\b([A-Z][\w\&#39;]*)(?=\s*\.)">
+        <token type="NameNamespace"/>
+        <push state="dotted"/>
+      </rule>
+      <rule pattern="\b([A-Z][\w\&#39;]*)">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="\/\*(?![\/])">
+        <token type="CommentMultiline"/>
+        <push state="comment"/>
+      </rule>
+      <rule pattern="\b(as|assert|begin|class|constraint|do|done|downto|else|end|exception|external|false|for|fun|esfun|function|functor|if|in|include|inherit|initializer|lazy|let|switch|module|pub|mutable|new|nonrec|object|of|open|pri|rec|sig|struct|then|to|true|try|type|val|virtual|when|while|with)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(~|\}|\|]|\||\|\||\{&lt;|\{|`|_|]|\[\||\[&gt;|\[&lt;|\[|\?\?|\?|&gt;\}|&gt;]|&gt;|=|&lt;-|&lt;|;;|;|:&gt;|:=|::|:|\.\.\.|\.\.|\.|=&gt;|-\.|-|,|\+|\*|\)|\(|&amp;&amp;|&amp;|#|!=)">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="([=&lt;&gt;@^|&amp;+\*/$%-]|[!?~])?[!$%&amp;*+\./:&lt;=&gt;?@^|~-]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b(and|asr|land|lor|lsl|lsr|lxor|mod|or)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="\b(unit|int|float|bool|string|char|list|array)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="[^\W\d][\w&#39;]*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="-?\d[\d_]*(.[\d_]*)?([eE][+\-]?\d[\d_]*)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="0[xX][\da-fA-F][\da-fA-F_]*">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="0[oO][0-7][0-7_]*">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0[bB][01][01_]*">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="\d[\d_]*">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&#39;(?:(\\[\\\&#34;&#39;ntbr ])|(\\[0-9]{3})|(\\x[0-9a-fA-F]{2}))&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="&#39;.&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="[~?][a-z][\w\&#39;]*:">
+        <token type="NameVariable"/>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern="[^\/*]+">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="\/\*">
+        <token type="CommentMultiline"/>
+        <push/>
+      </rule>
+      <rule pattern="\*\/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[\*]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="[^\\&#34;]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule>
+        <include state="escape-sequence"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="dotted">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\.">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[A-Z][\w\&#39;]*(?=\s*\.)">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule pattern="[A-Z][\w\&#39;]*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[a-z_][\w\&#39;]*">
+        <token type="Name"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

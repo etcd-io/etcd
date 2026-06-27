@@ -1,0 +1,75 @@
+linters:
+  enable-all: true
+  disable:
+    - wsl
+    - varnamelen
+    - nilnil
+    - ireturn
+    - gochecknoglobals
+    - nolintlint
+
+linters-settings:
+  depguard:
+    rules:
+      main:
+        list-mode: lax
+        files:
+          - $all
+        allow:
+          - $gostd
+          - github.com/alingse/nilnesserr
+  cyclop:
+    max-complexity: 12
+  lll:
+    line-length: 200
+
+issues:
+  exclude-rules:
+    - path: internal/typeparams
+      linters:
+        - nonamedreturns
+        - nlreturn
+        - intrange
+        - mnd
+        - forcetypeassert
+        - exhaustruct
+        - exhaustive
+        - err113
+        - gofumpt
+        - prealloc
+        - funclen
+        - gocritic
+        - funlen
+        - cyclop
+        - gocognit
+
+    - path: nilness.go
+      linters:
+        - nonamedreturns
+        - nlreturn
+        - nilnil
+        - mnd
+        - forcetypeassert
+        - gochecknoglobals
+        - nestif
+        - funlen
+        - godox
+        - gocognit
+        - gofumpt
+        - exhaustive
+        - cyclop
+        - unparam
+        - gocyclo
+
+    - text: "analysis."
+      linters:
+        - exhaustruct
+
+    - text: "newAnalyzer"
+      linters:
+        - unparam
+
+    - text: "indent-error-flow"
+      path: nilness.go
+      linters:
+        - revive

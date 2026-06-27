@@ -1,0 +1,187 @@
+<lexer>
+  <config>
+    <name>Zig</name>
+    <alias>zig</alias>
+    <filename>*.zig</filename>
+    <filename>*.zon</filename>
+    <mime_type>text/zig</mime_type>
+  </config>
+  <rules>
+    <state name="string">
+      <rule pattern="\\x[0-9a-fA-F]{2}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\u\{[0-9a-fA-F]+\}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\[nrt&#39;&#34;\\]">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^\\&#34;\n]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="quoted_ident">
+      <rule pattern="\\x[0-9a-fA-F]{2}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\u\{[0-9a-fA-F]+\}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\[nrt&#39;&#34;\\]">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^\\&#34;\n]+">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="Name"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="root">
+      <!-- Whitespace -->
+      <rule pattern="\n">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <!-- Comments -->
+      <rule pattern="//!.*$">
+        <token type="CommentSpecial"/>
+      </rule>
+      <rule pattern="///.*$">
+        <token type="CommentSpecial"/>
+      </rule>
+      <rule pattern="//.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <!-- Statement keywords -->
+      <rule pattern="(break|return|continue|asm|defer|errdefer|unreachable|try|catch|suspend|resume|nosuspend)\b">
+        <token type="Keyword"/>
+      </rule>
+      <!-- Storage/reserved keywords -->
+      <rule pattern="(const|var|extern|packed|export|pub|noalias|inline|noinline|comptime|volatile|allowzero|align|addrspace|linksection|threadlocal|callconv)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+      <!-- Structure keywords -->
+      <rule pattern="(struct|enum|union|error|opaque)\b">
+        <token type="Keyword"/>
+      </rule>
+      <!-- Repeat keywords -->
+      <rule pattern="(while|for)\b">
+        <token type="Keyword"/>
+      </rule>
+      <!-- Type keywords -->
+      <rule pattern="(bool|void|noreturn|type|anyerror|anyopaque|f16|f32|f64|f80|f128|i8|u8|i16|u16|i32|u32|i64|u64|i128|u128|isize|usize|comptime_int|comptime_float|c_char|c_short|c_ushort|c_int|c_uint|c_long|c_ulong|c_longlong|c_ulonglong|c_longdouble)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <!-- Constant keywords -->
+      <rule pattern="(true|false|null|undefined)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <!-- Conditional keywords -->
+      <rule pattern="(if|else|switch|and|or|orelse)\b">
+        <token type="Keyword"/>
+      </rule>
+      <!-- Other keywords -->
+      <rule pattern="(fn|test|anyframe|anytype)\b">
+        <token type="Keyword"/>
+      </rule>
+      <!-- Hex float -->
+      <rule pattern="0x[0-9a-fA-F][0-9a-fA-F_]*(?:\.[0-9a-fA-F][0-9a-fA-F_]*(?:[pP][-+]?[0-9][0-9_]*)?|[pP][-+]?[0-9][0-9_]*)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <!-- Decimal float -->
+      <rule pattern="[0-9][0-9_]*(?:\.[0-9][0-9_]*(?:[eE][-+]?[0-9][0-9_]*)?|[eE][-+]?[0-9][0-9_]*)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <!-- Binary -->
+      <rule pattern="0b[01][01_]*">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <!-- Octal -->
+      <rule pattern="0o[0-7][0-7_]*">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <!-- Hex integer -->
+      <rule pattern="0x[0-9a-fA-F][0-9a-fA-F_]*">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <!-- Decimal integer -->
+      <rule pattern="[0-9][0-9_]*">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <!-- Quoted identifier -->
+      <rule pattern="@&#34;">
+        <token type="Name"/>
+        <push state="quoted_ident"/>
+      </rule>
+      <!-- Builtin -->
+      <rule pattern="@[a-zA-Z_][a-zA-Z0-9_]*">
+        <token type="NameBuiltin"/>
+      </rule>
+      <!-- Function call -->
+      <rule pattern="[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\()">
+        <token type="NameFunction"/>
+      </rule>
+      <!-- Identifier -->
+      <rule pattern="[a-zA-Z_][a-zA-Z0-9_]*">
+        <token type="Name"/>
+      </rule>
+      <!-- Character literal -->
+      <rule pattern="&#39;(?:\\x[0-9a-fA-F]{2}|\\u\{[0-9a-fA-F]+\}|\\[nrt&#39;&#34;\\]|[^\\&#39;\n])&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <!-- Multiline string -->
+      <rule pattern="\\\\[^\n]*">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+      <!-- String start -->
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <!-- 4-char operators -->
+      <rule pattern="&lt;&lt;\|=">
+        <token type="Operator"/>
+      </rule>
+      <!-- 3-char operators -->
+      <rule pattern="(?:\+%=|-%=|\*%=|\+\|=|-\|=|\*\|=|&lt;&lt;=|&gt;&gt;=|&lt;&lt;\|)">
+        <token type="Operator"/>
+      </rule>
+      <!-- 2-char operators -->
+      <rule pattern="(?:\+\+|\*\*|\|\||&lt;&lt;|&gt;&gt;|\+%|-%|\*%|\+\||-\||\*\||==|!=|&lt;=|&gt;=|\+=|-=|\*=|/=|%=|&amp;=|\|=|\^=|\.\*|\.\?|\.\.)">
+        <token type="Operator"/>
+      </rule>
+      <!-- 1-char operators -->
+      <rule pattern="[+\-*/%&amp;|^~!&lt;&gt;=]">
+        <token type="Operator"/>
+      </rule>
+      <!-- Punctuation -->
+      <rule pattern="\.\.\.">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="=&gt;">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="-&gt;">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[{}()\[\],.;:?]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

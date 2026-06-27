@@ -1,0 +1,155 @@
+<lexer>
+  <config>
+    <name>Twig</name>
+    <alias>twig</alias>
+    <filename>*.twig</filename>
+    <mime_type>application/x-twig</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="var">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(-?)(\}\})">
+        <bygroups>
+          <token type="Text"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="varnames"/>
+      </rule>
+    </state>
+    <state name="tag">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(-?)(%\})">
+        <bygroups>
+          <token type="Text"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="varnames"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="[^{]+">
+        <token type="Other"/>
+      </rule>
+      <rule pattern="\{\{">
+        <token type="CommentPreproc"/>
+        <push state="var"/>
+      </rule>
+      <rule pattern="\{\#.*?\#\}">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(\{%)(-?\s*)(raw)(\s*-?)(%\})(.*?)(\{%)(-?\s*)(endraw)(\s*-?)(%\})">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="CommentPreproc"/>
+          <token type="Other"/>
+          <token type="CommentPreproc"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\{%)(-?\s*)(verbatim)(\s*-?)(%\})(.*?)(\{%)(-?\s*)(endverbatim)(\s*-?)(%\})">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="CommentPreproc"/>
+          <token type="Other"/>
+          <token type="CommentPreproc"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\{%)(-?\s*)(filter)(\s+)((?:[\\_a-z]|[^\x00-\x7f])(?:[\\\w-]|[^\x00-\x7f])*)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+        <push state="tag"/>
+      </rule>
+      <rule pattern="(\{%)(-?\s*)([a-zA-Z_]\w*)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+        <push state="tag"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="Other"/>
+      </rule>
+    </state>
+    <state name="varnames">
+      <rule pattern="(\|)(\s*)((?:[\\_a-z]|[^\x00-\x7f])(?:[\\\w-]|[^\x00-\x7f])*)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(is)(\s+)(not)?(\s*)((?:[\\_a-z]|[^\x00-\x7f])(?:[\\\w-]|[^\x00-\x7f])*)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?i)(true|false|none|null)\b">
+        <token type="KeywordPseudo"/>
+      </rule>
+      <rule pattern="(in|not|and|b-and|or|b-or|b-xor|isif|elseif|else|importconstant|defined|divisibleby|empty|even|iterable|odd|sameasmatches|starts\s+with|ends\s+with)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(loop|block|parent)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(?:[\\_a-z]|[^\x00-\x7f])(?:[\\\w-]|[^\x00-\x7f])*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\.(?:[\\_a-z]|[^\x00-\x7f])(?:[\\\w-]|[^\x00-\x7f])*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\.[0-9]+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern=":?&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern=":?&#39;(\\\\|\\&#39;|[^&#39;])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="([{}()\[\]+\-*/,:~%]|\.\.|\?|:|\*\*|\/\/|!=|[&gt;&lt;=]=?)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[0-9](\.[0-9]*)?(eE[+-][0-9])?[flFLdD]?|0[xX][0-9a-fA-F]+[Ll]?">
+        <token type="LiteralNumber"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

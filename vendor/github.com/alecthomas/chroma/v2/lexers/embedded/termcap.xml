@@ -1,0 +1,75 @@
+<lexer>
+  <config>
+    <name>Termcap</name>
+    <alias>termcap</alias>
+    <filename>termcap</filename>
+    <filename>termcap.src</filename>
+  </config>
+  <rules>
+    <state name="defs">
+      <rule pattern="\\\n[ \t]*">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\n[ \t]*">
+        <token type="Text"/>
+        <pop depth="2"/>
+      </rule>
+      <rule pattern="(#)([0-9]+)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="LiteralNumber"/>
+        </bygroups>
+      </rule>
+      <rule pattern="=">
+        <token type="Operator"/>
+        <push state="data"/>
+      </rule>
+      <rule pattern=":">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[^\s:=#]+">
+        <token type="NameClass"/>
+      </rule>
+    </state>
+    <state name="data">
+      <rule pattern="\\072">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern=":">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^:\\]+">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Literal"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="^#.*$">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="^[^\s#:|]+">
+        <token type="NameTag"/>
+        <push state="names"/>
+      </rule>
+    </state>
+    <state name="names">
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=":">
+        <token type="Punctuation"/>
+        <push state="defs"/>
+      </rule>
+      <rule pattern="\|">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[^:|]+">
+        <token type="NameAttribute"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

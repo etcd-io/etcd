@@ -1,0 +1,74 @@
+<lexer>
+  <config>
+    <name>Z80 Assembly</name>
+    <alias>z80</alias>
+    <filename>*.z80</filename>
+    <filename>*.asm</filename>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="string">
+      <rule pattern="[^&#34;\\]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern=";.*?$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="^[.\w]+:">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="((0x)|\$)[0-9a-fA-F]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9][0-9a-fA-F]+h">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="((0b)|%)[01]+">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="-?[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="&#39;\\?.&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="[,=()\\]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="^\s*#\w+">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="\.(db|dw|end|org|byte|word|fill|block|addinstr|echo|error|list|nolist|equ|show|option|seek)">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(ex|exx|ld|ldd|lddr|ldi|ldir|pop|push|adc|add|cp|cpd|cpdr|cpi|cpir|cpl|daa|dec|inc|neg|sbc|sub|and|bit|ccf|or|res|scf|set|xor|rl|rla|rlc|rlca|rld|rr|rra|rrc|rrca|rrd|sla|sra|srl|call|djnz|jp|jr|ret|rst|nop|reti|retn|di|ei|halt|im|in|ind|indr|ini|inir|out|outd|otdr|outi|otir)">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(z|nz|c|nc|po|pe|p|m)">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="[+-/*~\^&amp;|]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\w+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

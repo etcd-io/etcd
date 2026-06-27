@@ -1,0 +1,18 @@
+# https://golangci-lint.run/usage/configuration
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - gocritic
+  settings:
+    gocritic:
+      enable-all: true
+  exclusions:
+    presets:
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports

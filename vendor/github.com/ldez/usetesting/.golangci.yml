@@ -1,0 +1,78 @@
+version: "2"
+
+formatters:
+  enable:
+    - gci
+    - gofumpt
+  settings:
+    gofumpt:
+      extra-rules: true
+
+linters:
+  default: all
+  disable:
+    - cyclop # duplicate of gocyclo
+    - dupl
+    - errchkjson
+    - exhaustive
+    - exhaustruct
+    - lll
+    - nilnil
+    - nlreturn
+    - nonamedreturns
+    - paralleltest
+    - prealloc
+    - rowserrcheck # not relevant (SQL)
+    - sqlclosecheck # not relevant (SQL)
+    - testpackage
+    - tparallel
+    - varnamelen
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/instana/testify
+              desc: not allowed
+            - pkg: github.com/pkg/errors
+              desc: Should be replaced by standard lib errors package
+    funlen:
+      lines: -1
+      statements: 40
+    goconst:
+      min-len: 5
+      min-occurrences: 3
+    gocritic:
+      disabled-checks:
+        - sloppyReassign
+        - rangeValCopy
+        - octalLiteral
+        - paramTypeCombine # already handle by gofumpt.extra-rules
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      settings:
+        hugeParam:
+          sizeThreshold: 100
+    gocyclo:
+      min-complexity: 20
+    godox:
+      keywords:
+        - FIXME
+    govet:
+      disable:
+        - fieldalignment
+      enable-all: true
+    misspell:
+      locale: US
+    mnd:
+      ignored-numbers:
+        - "124"
+    wsl:
+      force-case-trailing-whitespace: 1
+      allow-trailing-comment: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

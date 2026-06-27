@@ -1,0 +1,10 @@
+<style name="onesenterprise">
+  <entry type="Keyword" style="#ff0000"/>
+  <entry type="Name" style="#0000ff"/>
+  <entry type="LiteralString" style="#000000"/>
+  <entry type="Operator" style="#ff0000"/>
+  <entry type="Punctuation" style="#ff0000"/>
+  <entry type="Comment" style="#008000"/>
+  <entry type="CommentPreproc" style="#963200"/>
+  <entry type="Text" style="#000000"/>
+</style>

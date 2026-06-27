@@ -1,0 +1,43 @@
+version: "2"
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+
+
+linters:
+  default: all
+  disable:
+    - exhaustruct
+    - gochecknoglobals
+    - gocognit
+    - lll
+    - mnd
+    - nestif
+    - nilnil
+    - paralleltest
+    - varnamelen
+
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/instana/testify
+              desc: not allowed
+            - pkg: github.com/pkg/errors
+              desc: Should be replaced by standard lib errors package
+    govet:
+      enable-all: true
+    perfsprint:
+      err-error: true
+      errorf: true
+      sprintf1: true
+      strconcat: false
+
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - std-error-handling

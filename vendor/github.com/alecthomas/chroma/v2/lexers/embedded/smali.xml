@@ -1,0 +1,73 @@
+<!--
+  Generated from https://github.com/pygments/pygments/blob/15f222adefd2bf7835bfd74a12d720028ae68d29/pygments/lexers/dalvik.py.
+-->
+<lexer>
+  <config>
+    <name>Smali</name>
+    <alias>smali</alias>
+    <filename>*.smali</filename>
+    <mime_type>text/smali</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule><include state="comment"/></rule>
+      <rule><include state="label"/></rule>
+      <rule><include state="field"/></rule>
+      <rule><include state="method"/></rule>
+      <rule><include state="class"/></rule>
+      <rule><include state="directive"/></rule>
+      <rule><include state="access-modifier"/></rule>
+      <rule><include state="instruction"/></rule>
+      <rule><include state="literal"/></rule>
+      <rule><include state="punctuation"/></rule>
+      <rule><include state="type"/></rule>
+      <rule><include state="whitespace"/></rule>
+    </state>
+    <state name="directive">
+      <rule pattern="^([ \t]*)(\.(?:class|super|implements|field|subannotation|annotation|enum|method|registers|locals|array-data|packed-switch|sparse-switch|catchall|catch|line|parameter|local|prologue|epilogue|source))"><bygroups><token type="TextWhitespace"/><token type="Keyword"/></bygroups></rule>
+      <rule pattern="^([ \t]*)(\.end)( )(field|subannotation|annotation|method|array-data|packed-switch|sparse-switch|parameter|local)"><bygroups><token type="TextWhitespace"/><token type="Keyword"/><token type="TextWhitespace"/><token type="Keyword"/></bygroups></rule>
+      <rule pattern="^([ \t]*)(\.restart)( )(local)"><bygroups><token type="TextWhitespace"/><token type="Keyword"/><token type="TextWhitespace"/><token type="Keyword"/></bygroups></rule>
+    </state>
+    <state name="access-modifier">
+      <rule pattern="(public|private|protected|static|final|synchronized|bridge|varargs|native|abstract|strictfp|synthetic|constructor|declared-synchronized|interface|enum|annotation|volatile|transient)"><token type="Keyword"/></rule>
+    </state>
+    <state name="whitespace">
+      <rule pattern="\n"><token type="TextWhitespace"/></rule>
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+    </state>
+    <state name="instruction">
+      <rule pattern="\b[vp]\d+\b"><token type="NameBuiltin"/></rule>
+      <rule pattern="(\b[a-z][A-Za-z0-9/-]+)(\s+)"><bygroups><token type="Text"/><token type="TextWhitespace"/></bygroups></rule>
+    </state>
+    <state name="literal">
+      <rule pattern="&quot;.*&quot;"><token type="LiteralString"/></rule>
+      <rule pattern="0x[0-9A-Fa-f]+t?"><token type="LiteralNumberHex"/></rule>
+      <rule pattern="[0-9]*\.[0-9]+([eE][0-9]+)?[fd]?"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="[0-9]+L?"><token type="LiteralNumberInteger"/></rule>
+    </state>
+    <state name="field">
+      <rule pattern="(\$?\b)([\w$]*)(:)"><bygroups><token type="Punctuation"/><token type="NameVariable"/><token type="Punctuation"/></bygroups></rule>
+    </state>
+    <state name="method">
+      <rule pattern="&lt;(?:cl)?init&gt;"><token type="NameFunction"/></rule>
+      <rule pattern="(\$?\b)([\w$]*)(\()"><bygroups><token type="Punctuation"/><token type="NameFunction"/><token type="Punctuation"/></bygroups></rule>
+    </state>
+    <state name="label">
+      <rule pattern=":\w+"><token type="NameLabel"/></rule>
+    </state>
+    <state name="class">
+      <rule pattern="(L)((?:[\w$]+/)*)([\w$]+)(;)"><bygroups><token type="KeywordType"/><token type="Text"/><token type="NameClass"/><token type="Text"/></bygroups></rule>
+    </state>
+    <state name="punctuation">
+      <rule pattern="-&gt;"><token type="Punctuation"/></rule>
+      <rule pattern="[{},():=.-]"><token type="Punctuation"/></rule>
+    </state>
+    <state name="type">
+      <rule pattern="[ZBSCIJFDV\[]+"><token type="KeywordType"/></rule>
+    </state>
+    <state name="comment">
+      <rule pattern="#.*?\n"><token type="Comment"/></rule>
+    </state>
+  </rules>
+</lexer>
+

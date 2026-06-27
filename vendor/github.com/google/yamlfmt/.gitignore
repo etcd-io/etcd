@@ -1,0 +1,14 @@
+# Sometimes use these for testing
+.yamlfmt
+!integrationtest/**/.yamlfmt
+tmp
+
+# Goreleaser build folder
+dist/
+
+# build file with `make build`
+yamlfmt
+yamlfmt.exe
+
+# vscode settings
+.vscode

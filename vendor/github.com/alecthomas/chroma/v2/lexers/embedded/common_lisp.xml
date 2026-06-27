@@ -1,0 +1,184 @@
+<lexer>
+  <config>
+    <name>Common Lisp</name>
+    <alias>common-lisp</alias>
+    <alias>cl</alias>
+    <alias>lisp</alias>
+    <filename>*.cl</filename>
+    <filename>*.lisp</filename>
+    <mime_type>text/x-common-lisp</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="body">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=";.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="#\|">
+        <token type="CommentMultiline"/>
+        <push state="multiline-comment"/>
+      </rule>
+      <rule pattern="#\d*Y.*$">
+        <token type="CommentSpecial"/>
+      </rule>
+      <rule pattern="&#34;(\\.|\\\n|[^&#34;\\])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern=":(\|[^|]+\||(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~]|[#.:])*)">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="::(\|[^|]+\||(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~]|[#.:])*)">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern=":#(\|[^|]+\||(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~]|[#.:])*)">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="&#39;(\|[^|]+\||(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~]|[#.:])*)">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="`">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[-+]?\d+\.?(?=[ &#34;()\&#39;\n,;`])">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[-+]?\d+/\d+(?=[ &#34;()\&#39;\n,;`])">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[-+]?(\d*\.\d+([defls][-+]?\d+)?|\d+(\.\d*)?[defls][-+]?\d+)(?=[ &#34;()\&#39;\n,;`])">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="#\\.(?=[ &#34;()\&#39;\n,;`])">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="#\\(\|[^|]+\||(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~]|[#.:])*)">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="#\(">
+        <token type="Operator"/>
+        <push state="body"/>
+      </rule>
+      <rule pattern="#\d*\*[01]*">
+        <token type="LiteralOther"/>
+      </rule>
+      <rule pattern="#:(\|[^|]+\||(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~]|[#.:])*)">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="#[.,]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="#\&#39;">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="#b[+-]?[01]+(/[01]+)?">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="#o[+-]?[0-7]+(/[0-7]+)?">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="#x[+-]?[0-9a-f]+(/[0-9a-f]+)?">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="#\d+r[+-]?[0-9a-z]+(/[0-9a-z]+)?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="(#c)(\()">
+        <bygroups>
+          <token type="LiteralNumber"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="body"/>
+      </rule>
+      <rule pattern="(#\d+a)(\()">
+        <bygroups>
+          <token type="LiteralOther"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="body"/>
+      </rule>
+      <rule pattern="(#s)(\()">
+        <bygroups>
+          <token type="LiteralOther"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="body"/>
+      </rule>
+      <rule pattern="#p?&#34;(\\.|[^&#34;])*&#34;">
+        <token type="LiteralOther"/>
+      </rule>
+      <rule pattern="#\d+=">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="#\d+#">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="#+nil(?=[ &#34;()\&#39;\n,;`])\s*\(">
+        <token type="CommentPreproc"/>
+        <push state="commented-form"/>
+      </rule>
+      <rule pattern="#[+-]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(,@|,|\.)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(t|nil)(?=[ &#34;()\&#39;\n,;`])">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="\*(\|[^|]+\||(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~]|[#.:])*)\*">
+        <token type="NameVariableGlobal"/>
+      </rule>
+      <rule pattern="(\|[^|]+\||(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@\[\]^{}~]|[#.:])*)">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <push state="body"/>
+      </rule>
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <push state="body"/>
+      </rule>
+    </state>
+    <state name="multiline-comment">
+      <rule pattern="#\|">
+        <token type="CommentMultiline"/>
+        <push/>
+      </rule>
+      <rule pattern="\|#">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^|#]+">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="[|#]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="commented-form">
+      <rule pattern="\(">
+        <token type="CommentPreproc"/>
+        <push/>
+      </rule>
+      <rule pattern="\)">
+        <token type="CommentPreproc"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^()]+">
+        <token type="CommentPreproc"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

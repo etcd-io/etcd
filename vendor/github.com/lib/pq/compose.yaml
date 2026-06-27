@@ -1,0 +1,89 @@
+name: 'pqgo'
+
+services:
+  pgbouncer:
+    profiles: ['pgbouncer']
+    image:    'cleanstart/pgbouncer:latest'
+    ports:    ['127.0.0.1:6432:6432']
+    command:  ['/init/pgbouncer.ini']
+    volumes:  ['./testdata/pgbouncer:/init', './testdata/ssl:/ssl']
+    environment:
+      'PGBOUNCER_DATABASE': 'pqgo'
+
+  pgpool:
+    profiles:   ['pgpool']
+    image:      'pgpool/pgpool:4.4.3'
+    ports:      ['127.0.0.1:7432:7432']
+    volumes:    ['./testdata/pgpool:/init', './testdata/ssl:/ssl']
+    entrypoint: '/init/entry.sh'
+    environment:
+      'PGPOOL_PARAMS_PORT':              '7432'
+      'PGPOOL_PARAMS_BACKEND_HOSTNAME0': 'pg18'
+
+  cockroach:
+    profiles:    ['cockroach']
+    image:       'cockroachdb/cockroach:latest-v26.1'
+    ports:       ['127.0.0.1:26257:26257']
+    volumes:     ['./testdata/cockroach:/docker-entrypoint-initdb.d', './testdata/ssl:/ssl']
+    command:     ['start-single-node', '--accept-sql-without-tls', '--certs-dir=/ssl2']
+    healthcheck: {test: ['CMD-SHELL', '/cockroach/cockroach node status --insecure --user=pqgo'], start_period: '30s', start_interval: '1s'}
+
+  pg18:
+    image:       'postgres:18'
+    ports:       ['127.0.0.1:5432:5432']
+    entrypoint:  '/init/entry.sh'
+    volumes:     ['./testdata/postgres:/init', './testdata/ssl:/ssl']
+    shm_size:    '128mb'
+    healthcheck: {test: ['CMD-SHELL', 'pg_isready -U pqgo -d pqgo'], start_period: '30s', start_interval: '1s'}
+    environment:
+      'POSTGRES_DATABASE': 'pqgo'
+      'POSTGRES_USER':     'pqgo'
+      'POSTGRES_PASSWORD': 'unused'
+  pg17:
+    profiles:    ['pg17']
+    image:       'postgres:17'
+    ports:       ['127.0.0.1:5432:5432']
+    entrypoint:  '/init/entry.sh'
+    volumes:     ['./testdata/postgres:/init', './testdata/ssl:/ssl']
+    shm_size:    '128mb'
+    healthcheck: {test: ['CMD-SHELL', 'pg_isready -U pqgo -d pqgo'], start_period: '30s', start_interval: '1s'}
+    environment:
+      'POSTGRES_DATABASE': 'pqgo'
+      'POSTGRES_USER':     'pqgo'
+      'POSTGRES_PASSWORD': 'unused'
+  pg16:
+    profiles:    ['pg16']
+    image:       'postgres:16'
+    ports:       ['127.0.0.1:5432:5432']
+    entrypoint:  '/init/entry.sh'
+    volumes:     ['./testdata/postgres:/init', './testdata/ssl:/ssl']
+    shm_size:    '128mb'
+    healthcheck: {test: ['CMD-SHELL', 'pg_isready -U pqgo -d pqgo'], start_period: '30s', start_interval: '1s'}
+    environment:
+      'POSTGRES_DATABASE': 'pqgo'
+      'POSTGRES_USER':     'pqgo'
+      'POSTGRES_PASSWORD': 'unused'
+  pg15:
+    profiles:    ['pg15']
+    image:       'postgres:15'
+    ports:       ['127.0.0.1:5432:5432']
+    entrypoint:  '/init/entry.sh'
+    volumes:     ['./testdata/postgres:/init', './testdata/ssl:/ssl']
+    shm_size:    '128mb'
+    healthcheck: {test: ['CMD-SHELL', 'pg_isready -U pqgo -d pqgo'], start_period: '30s', start_interval: '1s'}
+    environment:
+      'POSTGRES_DATABASE': 'pqgo'
+      'POSTGRES_USER':     'pqgo'
+      'POSTGRES_PASSWORD': 'unused'
+  pg14:
+    profiles:    ['pg14']
+    image:       'postgres:14'
+    ports:       ['127.0.0.1:5432:5432']
+    entrypoint:  '/init/entry.sh'
+    volumes:     ['./testdata/postgres:/init', './testdata/ssl:/ssl']
+    shm_size:    '128mb'
+    healthcheck: {test: ['CMD-SHELL', 'pg_isready -U pqgo -d pqgo'], start_period: '30s', start_interval: '1s'}
+    environment:
+      'POSTGRES_DATABASE': 'pqgo'
+      'POSTGRES_USER':     'pqgo'
+      'POSTGRES_PASSWORD': 'unused'

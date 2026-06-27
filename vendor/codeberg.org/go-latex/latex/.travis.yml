@@ -1,0 +1,41 @@
+sudo: false
+go_import_path: github.com/go-latex/latex
+
+language: go
+
+go:
+ - 1.14.x
+ - 1.13.x
+ - master
+
+os:
+ - linux
+
+arch:
+ - amd64
+
+env:
+ global:
+  - GO111MODULE=on
+  - GOFLAGS="-mod=readonly"
+
+cache:
+ directories:
+  - $HOME/.cache/go-build
+  - $HOME/gopath/pkg/mod
+
+git:
+ depth: 1
+ autocrlf: input
+
+matrix:
+ fast_finish: true
+ allow_failures:
+  - go: master
+
+script:
+ - go install -v ./...
+ - go run ./ci/run-tests.go -coverpkg=github.com/go-latex/latex/... -race
+
+after_success:
+ - bash <(curl -s https://codecov.io/bash)

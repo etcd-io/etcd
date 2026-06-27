@@ -1,0 +1,59 @@
+<lexer>
+  <config>
+    <name>APL</name>
+    <alias>apl</alias>
+    <filename>*.apl</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[⍝#].*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="\&#39;((\&#39;\&#39;)|[^\&#39;])*\&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="&#34;((&#34;&#34;)|[^&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="[⋄◇()]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[\[\];]">
+        <token type="LiteralStringRegex"/>
+      </rule>
+      <rule pattern="⎕[A-Za-zΔ∆⍙][A-Za-zΔ∆⍙_¯0-9]*">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="[A-Za-zΔ∆⍙_][A-Za-zΔ∆⍙_¯0-9]*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="¯?(0[Xx][0-9A-Fa-f]+|[0-9]*\.?[0-9]+([Ee][+¯]?[0-9]+)?|¯|∞)([Jj]¯?(0[Xx][0-9A-Fa-f]+|[0-9]*\.?[0-9]+([Ee][+¯]?[0-9]+)?|¯|∞))?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[\.\\/⌿⍀¨⍣⍨⍠⍤∘⍥@⌺⌶⍢]">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="[+\-×÷⌈⌊∣|⍳?*⍟○!⌹&lt;≤=&gt;≥≠≡≢∊⍷∪∩~∨∧⍱⍲⍴,⍪⌽⊖⍉↑↓⊂⊃⌷⍋⍒⊤⊥⍕⍎⊣⊢⍁⍂≈⌸⍯↗⊆⍸]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="⍬">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="[⎕⍞]">
+        <token type="NameVariableGlobal"/>
+      </rule>
+      <rule pattern="[←→]">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="[⍺⍵⍶⍹∇:]">
+        <token type="NameBuiltinPseudo"/>
+      </rule>
+      <rule pattern="[{}]">
+        <token type="KeywordType"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

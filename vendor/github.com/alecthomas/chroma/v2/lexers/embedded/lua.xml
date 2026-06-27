@@ -1,0 +1,158 @@
+<lexer>
+  <config>
+    <name>Lua</name>
+    <alias>lua</alias>
+    <filename>*.lua</filename>
+    <filename>*.wlua</filename>
+    <mime_type>text/x-lua</mime_type>
+    <mime_type>application/x-lua</mime_type>
+  </config>
+  <rules>
+    <state name="funcname">
+      <rule>
+        <include state="ws"/>
+      </rule>
+      <rule pattern="[.:]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(?:[^\W\d]\w*)(?=(?:(?:--\[(=*)\[[\w\W]*?\](\2)\])|(?:--.*$)|(?:\s+))*[.:])">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(?:[^\W\d]\w*)">
+        <token type="NameFunction"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="label">
+      <rule>
+        <include state="ws"/>
+      </rule>
+      <rule pattern="::">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?:[^\W\d]\w*)">
+        <token type="NameLabel"/>
+      </rule>
+    </state>
+    <state name="dqs">
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^\\&#34;]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="#!.*">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule>
+        <push state="base"/>
+      </rule>
+    </state>
+    <state name="ws">
+      <rule pattern="(?:--\[(=*)\[[\w\W]*?\](\1)\])">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="(?:--.*$)">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="(?:\s+)">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="goto">
+      <rule>
+        <include state="ws"/>
+      </rule>
+      <rule pattern="(?:[^\W\d]\w*)">
+        <token type="NameLabel"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="sqs">
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^\\&#39;]+">
+        <token type="LiteralStringSingle"/>
+      </rule>
+    </state>
+    <state name="base">
+      <rule>
+        <include state="ws"/>
+      </rule>
+      <rule pattern="(?i)0x[\da-f]*(\.[\da-f]*)?(p[+-]?\d+)?">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="(?i)(\d*\.\d+|\d+\.\d*)(e[+-]?\d+)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="(?i)\d+e[+-]?\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="(?s)\[(=*)\[.*?\]\1\]">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="::">
+        <token type="Punctuation"/>
+        <push state="label"/>
+      </rule>
+      <rule pattern="\.{3}">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[=&lt;&gt;|~&amp;+\-*/%#^]+|\.\.">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[\[\]{}().,:;]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(and|or|not)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="(break|do|else|elseif|end|for|if|in|repeat|return|then|until|while)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="goto\b">
+        <token type="KeywordReserved"/>
+        <push state="goto"/>
+      </rule>
+      <rule pattern="(local)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(true|false|nil)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(function)\b">
+        <token type="KeywordReserved"/>
+        <push state="funcname"/>
+      </rule>
+      <rule pattern="[A-Za-z_]\w*(\.[A-Za-z_]\w*)?">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <combined state="stringescape" state="sqs"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <combined state="stringescape" state="dqs"/>
+      </rule>
+    </state>
+    <state name="stringescape">
+      <rule pattern="\\([abfnrtv\\&#34;\&#39;]|[\r\n]{1,2}|z\s*|x[0-9a-fA-F]{2}|\d{1,3}|u\{[0-9a-fA-F]+\})">
+        <token type="LiteralStringEscape"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,149 @@
+<lexer>
+ <config>
+  <name>WebAssembly Text Format</name>
+  <alias>wast</alias>
+  <alias>wat</alias>
+  <filename>*.wat</filename>
+  <filename>*.wast</filename>
+ </config>
+ <rules>
+  <state name="root">
+   <rule pattern="(module|import|func|funcref|start|param|local|type|result|export|memory|global|mut|data|table|elem|if|then|else|end|block|loop)(?=[^a-z_\.])">
+    <token type="Keyword"/>
+   </rule>
+   <rule pattern="(unreachable|nop|block|loop|if|else|end|br(?:_if|_table)?|return|call(?:_indirect)?|drop|select|local\.get|local\.set|local\.tee|global\.get|global\.set|i32\.load(?:(?:8|16)_(?:u|s))?|i64\.load(?:(?:8|16|32)_(?:u|s))?|f32\.load|f64\.load|i32\.store(?:8|16)?|i64\.store(:?8|16|32)?|f32\.store|f64\.store|memory\.size|memory\.grow|memory\.fill|memory\.copy|memory\.init|i32\.const|i64\.const|f32\.const|f64\.const|i32\.eqz|i32\.eq|i32\.ne|i32\.lt_s|i32\.lt_u|i32\.gt_s|i32\.gt_u|i32\.le_s|i32\.le_u|i32\.ge_s|i32\.ge_u|i64\.eqz|i64\.eq|i64\.ne|i64\.lt_s|i64\.lt_u|i64\.gt_s|i64\.gt_u|i64\.le_s|i64\.le_u|i64\.ge_s|i64\.ge_u|f32\.eq|f32\.neg?|f32\.lt|f32\.gt|f32\.le|f32\.ge|f64\.eq|f64\.neg?|f64\.lt|f64\.gt|f64\.le|f64\.ge|i32\.clz|i32\.ctz|i32\.popcnt|i32\.add|i32\.sub|i32\.mul|i32\.div_s|i32\.div_u|i32\.rem_s|i32\.rem_u|i32\.and|i32\.or|i32\.xor|i32\.shl|i32\.shr_s|i32\.shr_u|i32\.rotl|i32\.rotr|i64\.clz|i64\.ctz|i64\.popcnt|i64\.add|i64\.sub|i64\.mul|i64\.div_s|i64\.div_u|i64\.rem_s|i64\.rem_u|i64\.and|i64\.or|i64\.xor|i64\.shl|i64\.shr_s|i64\.shr_u|i64\.rotl|i64\.rotr|f32\.abs|f32\.ceil|f32\.floor|f32\.trunc|f32\.nearest|f32\.sqrt|f32\.add|f32\.sub|f32\.mul|f32\.div|f32\.min|f32\.max|f32\.copysign|f64\.abs|f64\.ceil|f64\.floor|f64\.trunc|f64\.nearest|f64\.sqrt|f64\.add|f64\.sub|f64\.mul|f64\.div|f64\.min|f64\.max|f64\.copysign|i32\.wrap_i64|i32\.trunc_f32_s|i32\.trunc_f32_u|i32\.trunc_f64_s|i32\.trunc_f64_u|i64\.extend(?:(?:8|16|32)_s|_i(?:32|64)_(?:u|s))|i32\.extend(?:8|16)_s|(?:i32|i64)\.trunc(?:_sat)?_f(?:32|64)_(?:s|u)|f32\.convert_i32_s|f32\.convert_i32_u|f32\.convert_i64_s|f32\.convert_i64_u|f32\.demote_f64|f64\.convert_i32_s|f64\.convert_i32_u|f64\.convert_i64_s|f64\.convert_i64_u|f64\.promote_f32|i32\.reinterpret_f32|i64\.reinterpret_f64|f32\.reinterpret_i32|f64\.reinterpret_i64)">
+    <token type="NameBuiltin"/>
+    <push state="arguments"/>
+   </rule>
+   <rule pattern="(i32|i64|f32|f64)">
+    <token type="KeywordType"/>
+   </rule>
+   <rule pattern="\$[A-Za-z0-9!#$%&amp;\&#x27;*+./:&lt;=&gt;?@\\^_`|~-]+">
+    <token type="NameVariable"/>
+   </rule>
+   <rule pattern=";;.*?$">
+    <token type="CommentSingle"/>
+   </rule>
+   <rule pattern="\(;">
+    <token type="CommentMultiline"/>
+    <push state="nesting_comment"/>
+   </rule>
+   <rule pattern="[+-]?0x[\dA-Fa-f](_?[\dA-Fa-f])*(.([\dA-Fa-f](_?[\dA-Fa-f])*)?)?([pP][+-]?[\dA-Fa-f](_?[\dA-Fa-f])*)?">
+    <token type="LiteralNumberFloat"/>
+   </rule>
+   <rule pattern="[+-]?\d.\d(_?\d)*[eE][+-]?\d(_?\d)*">
+    <token type="LiteralNumberFloat"/>
+   </rule>
+   <rule pattern="[+-]?\d.\d(_?\d)*">
+    <token type="LiteralNumberFloat"/>
+   </rule>
+   <rule pattern="[+-]?\d.[eE][+-]?\d(_?\d)*">
+    <token type="LiteralNumberFloat"/>
+   </rule>
+   <rule pattern="[+-]?(inf|nan:0x[\dA-Fa-f](_?[\dA-Fa-f])*|nan)">
+    <token type="LiteralNumberFloat"/>
+   </rule>
+   <rule pattern="[+-]?0x[\dA-Fa-f](_?[\dA-Fa-f])*">
+    <token type="LiteralNumberHex"/>
+   </rule>
+   <rule pattern="[+-]?\d(_?\d)*">
+    <token type="LiteralNumberInteger"/>
+   </rule>
+   <rule pattern="[\(\)]">
+    <token type="Punctuation"/>
+   </rule>
+   <rule pattern="&quot;">
+    <token type="LiteralStringDouble"/>
+    <push state="string"/>
+   </rule>
+   <rule pattern="\s+">
+    <token type="Text"/>
+   </rule>
+  </state>
+  <state name="nesting_comment">
+   <rule pattern="\(;">
+    <token type="CommentMultiline"/>
+    <push/>
+   </rule>
+   <rule pattern=";\)">
+    <token type="CommentMultiline"/>
+    <pop depth="1"/>
+   </rule>
+   <rule pattern="[^;(]+">
+    <token type="CommentMultiline"/>
+   </rule>
+   <rule pattern="[;(]">
+    <token type="CommentMultiline"/>
+   </rule>
+  </state>
+  <state name="string">
+   <rule pattern="\\[\dA-Fa-f][\dA-Fa-f]">
+    <token type="LiteralStringEscape"/>
+   </rule>
+   <rule pattern="\\t">
+    <token type="LiteralStringEscape"/>
+   </rule>
+   <rule pattern="\\n">
+    <token type="LiteralStringEscape"/>
+   </rule>
+   <rule pattern="\\r">
+    <token type="LiteralStringEscape"/>
+   </rule>
+   <rule pattern="\\&quot;">
+    <token type="LiteralStringEscape"/>
+   </rule>
+   <rule pattern="\\&#x27;">
+    <token type="LiteralStringEscape"/>
+   </rule>
+   <rule pattern="\\u\{[\dA-Fa-f](_?[\dA-Fa-f])*\}">
+    <token type="LiteralStringEscape"/>
+   </rule>
+   <rule pattern="\\\\">
+    <token type="LiteralStringEscape"/>
+   </rule>
+   <rule pattern="&quot;">
+    <token type="LiteralStringDouble"/>
+    <pop depth="1"/>
+   </rule>
+   <rule pattern="[^&quot;\\]+">
+    <token type="LiteralStringDouble"/>
+   </rule>
+  </state>
+  <state name="arguments">
+   <rule pattern="\s+">
+    <token type="Text"/>
+   </rule>
+   <rule pattern="(offset)(=)(0x[\dA-Fa-f](?:_?[\dA-Fa-f])*)">
+    <bygroups>
+     <token type="Keyword"/>
+     <token type="Operator"/>
+     <token type="LiteralNumberHex"/>
+    </bygroups>
+   </rule>
+   <rule pattern="(offset)(=)(\d(?:_?\d)*)">
+    <bygroups>
+     <token type="Keyword"/>
+     <token type="Operator"/>
+     <token type="LiteralNumberInteger"/>
+    </bygroups>
+   </rule>
+   <rule pattern="(align)(=)(0x[\dA-Fa-f](?:_?[\dA-Fa-f])*)">
+    <bygroups>
+     <token type="Keyword"/>
+     <token type="Operator"/>
+     <token type="LiteralNumberHex"/>
+    </bygroups>
+   </rule>
+   <rule pattern="(align)(=)(\d(?:_?\d)*)">
+    <bygroups>
+     <token type="Keyword"/>
+     <token type="Operator"/>
+     <token type="LiteralNumberInteger"/>
+    </bygroups>
+   </rule>
+   <rule>
+    <pop depth="1"/>
+   </rule>
+  </state>
+ </rules>
+</lexer>

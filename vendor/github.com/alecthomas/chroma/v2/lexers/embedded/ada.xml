@@ -1,0 +1,321 @@
+<lexer>
+  <config>
+    <name>Ada</name>
+    <alias>ada</alias>
+    <alias>ada95</alias>
+    <alias>ada2005</alias>
+    <filename>*.adb</filename>
+    <filename>*.ads</filename>
+    <filename>*.ada</filename>
+    <mime_type>text/x-ada</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="end">
+      <rule pattern="(if|case|record|loop|select)">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="&#34;[^&#34;]+&#34;|[\w.]+">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=";">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="array_def">
+      <rule pattern=";">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(\w+)(\s+)(range)">
+        <bygroups>
+          <token type="KeywordType"/>
+          <token type="Text"/>
+          <token type="KeywordReserved"/>
+        </bygroups>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="package_instantiation">
+      <rule pattern="(&#34;[^&#34;]+&#34;|\w+)(\s+)(=&gt;)">
+        <bygroups>
+          <token type="NameVariable"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[\w.\&#39;&#34;]">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="subprogram">
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <push state="#pop" state="formal_part"/>
+      </rule>
+      <rule pattern=";">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="is\b">
+        <token type="KeywordReserved"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="&#34;[^&#34;]+&#34;|\w+">
+        <token type="NameFunction"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="type_def">
+      <rule pattern=";">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <push state="formal_part"/>
+      </rule>
+      <rule pattern="with|and|use">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="array\b">
+        <token type="KeywordReserved"/>
+        <push state="#pop" state="array_def"/>
+      </rule>
+      <rule pattern="record\b">
+        <token type="KeywordReserved"/>
+        <push state="record_def"/>
+      </rule>
+      <rule pattern="(null record)(;)">
+        <bygroups>
+          <token type="KeywordReserved"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="import">
+      <rule pattern="[\w.]+">
+        <token type="NameNamespace"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="formal_part">
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\w+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern=",|:[^=]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(in|not|null|out|access)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="package">
+      <rule pattern="body">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="is\s+new|renames">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="is">
+        <token type="KeywordReserved"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=";">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <push state="package_instantiation"/>
+      </rule>
+      <rule pattern="([\w.]+)">
+        <token type="NameClass"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="attribute">
+      <rule pattern="(&#39;)(\w+)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="NameAttribute"/>
+        </bygroups>
+      </rule>
+    </state>
+    <state name="record_def">
+      <rule pattern="end record">
+        <token type="KeywordReserved"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="--.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="function|procedure|entry">
+        <token type="KeywordDeclaration"/>
+        <push state="subprogram"/>
+      </rule>
+      <rule pattern="(subtype|type)(\s+)(\w+)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+          <token type="KeywordType"/>
+        </bygroups>
+        <push state="type_def"/>
+      </rule>
+      <rule pattern="task|protected">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(subtype)(\s+)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(end)(\s+)">
+        <bygroups>
+          <token type="KeywordReserved"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="end"/>
+      </rule>
+      <rule pattern="(pragma)(\s+)(\w+)">
+        <bygroups>
+          <token type="KeywordReserved"/>
+          <token type="Text"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(true|false|null)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(Short_Short_Integer|Short_Short_Float|Long_Long_Integer|Long_Long_Float|Wide_Character|Reference_Type|Short_Integer|Long_Integer|Wide_String|Short_Float|Controlled|Long_Float|Character|Generator|File_Type|File_Mode|Positive|Duration|Boolean|Natural|Integer|Address|Cursor|String|Count|Float|Byte)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(and(\s+then)?|in|mod|not|or(\s+else)|rem)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="generic|private">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="package">
+        <token type="KeywordDeclaration"/>
+        <push state="package"/>
+      </rule>
+      <rule pattern="array\b">
+        <token type="KeywordReserved"/>
+        <push state="array_def"/>
+      </rule>
+      <rule pattern="(with|use)(\s+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="import"/>
+      </rule>
+      <rule pattern="(\w+)(\s*)(:)(\s*)(constant)">
+        <bygroups>
+          <token type="NameConstant"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="KeywordReserved"/>
+        </bygroups>
+      </rule>
+      <rule pattern="&lt;&lt;\w+&gt;&gt;">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="(\w+)(\s*)(:)(\s*)(declare|begin|loop|for|while)">
+        <bygroups>
+          <token type="NameLabel"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="KeywordReserved"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\b(synchronized|overriding|terminate|interface|exception|protected|separate|constant|abstract|renames|reverse|subtype|aliased|declare|requeue|limited|return|tagged|access|record|select|accept|digits|others|pragma|entry|elsif|delta|delay|array|until|range|raise|while|begin|abort|else|loop|when|type|null|then|body|task|goto|case|exit|end|for|abs|xor|all|new|out|is|of|if|or|do|at)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="&#34;[^&#34;]*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule>
+        <include state="attribute"/>
+      </rule>
+      <rule>
+        <include state="numbers"/>
+      </rule>
+      <rule pattern="&#39;[^&#39;]&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="(\w+)(\s*|[(,])">
+        <bygroups>
+          <token type="Name"/>
+          <usingself state="root"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;&gt;|=&gt;|:=|[()|:;,.&#39;])">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[*&lt;&gt;+=/&amp;-]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\n+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="numbers">
+      <rule pattern="[0-9_]+#[0-9a-f]+#">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9_]+\.[0-9_]*">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[0-9_]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

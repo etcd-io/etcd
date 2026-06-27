@@ -1,0 +1,32 @@
+version: 2
+project_name: tagalign
+
+release:
+  github:
+    owner: 4meepo
+    name: tagalign
+
+builds:
+  - binary: tagalign
+    goos:
+      - darwin
+      - windows
+      - linux
+      - freebsd
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - 6
+      - 7
+    gomips:
+      - hardfloat
+    env:
+      - CGO_ENABLED=0
+    ignore:
+      - goos: darwin
+        goarch: 386
+      - goos: freebsd
+        goarch: arm64
+    main: ./cmd/tagalign/

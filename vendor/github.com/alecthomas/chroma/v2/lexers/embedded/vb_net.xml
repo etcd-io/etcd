@@ -1,0 +1,162 @@
+<lexer>
+  <config>
+    <name>VB.net</name>
+    <alias>vb.net</alias>
+    <alias>vbnet</alias>
+    <filename>*.vb</filename>
+    <filename>*.bas</filename>
+    <mime_type>text/x-vbnet</mime_type>
+    <mime_type>text/x-vba</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="dim">
+      <rule pattern="[_\w][\w]*">
+        <token type="NameVariable"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="funcname">
+      <rule pattern="[_\w][\w]*">
+        <token type="NameFunction"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="classname">
+      <rule pattern="[_\w][\w]*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="namespace">
+      <rule pattern="[_\w][\w]*">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule pattern="\.">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="end">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(Function|Sub|Property|Class|Structure|Enum|Module|Namespace)\b">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="^\s*&lt;.*?&gt;">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="rem\b.*?\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="&#39;.*?\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="#If\s.*?\sThen|#ElseIf\s.*?\sThen|#Else|#End\s+If|#Const|#ExternalSource.*?\n|#End\s+ExternalSource|#Region.*?\n|#End\s+Region|#ExternalChecksum">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="[(){}!#,.:]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="Option\s+(Strict|Explicit|Compare)\s+(On|Off|Binary|Text)">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)(NotOverridable|NotInheritable|RemoveHandler|MustOverride|Overridable|MustInherit|Implements|RaiseEvent|AddHandler|ParamArray|WithEvents|DirectCast|Overrides|Overloads|Protected|WriteOnly|Interface|Narrowing|Inherits|Widening|SyncLock|ReadOnly|Operator|Continue|Delegate|Optional|MyClass|Declare|CUShort|Handles|Default|Shadows|TryCast|Finally|Private|Nothing|Partial|CSByte|Select|Option|Return|Friend|Resume|ElseIf|MyBase|Shared|Single|Public|CShort|Static|Global|Catch|CType|Error|CUInt|Using|While|GoSub|False|CDate|Throw|Event|CChar|CULng|CBool|Erase|ByVal|ByRef|Alias|EndIf|CByte|ReDim|Stop|Call|Wend|Next|CLng|Loop|True|CDec|With|Then|GoTo|CObj|CSng|Exit|CStr|Else|Each|Case|CInt|Step|When|CDbl|Set|For|Let|Lib|Try|New|Not|Get|On|To|Do|If|Of|Me)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)End\b">
+        <token type="Keyword"/>
+        <push state="end"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)(Dim|Const)\b">
+        <token type="Keyword"/>
+        <push state="dim"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)(Function|Sub|Property)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="funcname"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)(Class|Structure|Enum)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="classname"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)(Module|Namespace|Imports)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="namespace"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)(Boolean|Byte|Char|Date|Decimal|Double|Integer|Long|Object|SByte|Short|Single|String|Variant|UInteger|ULong|UShort)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)(AddressOf|And|AndAlso|As|GetType|In|Is|IsNot|Like|Mod|Or|OrElse|TypeOf|Xor)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="&amp;=|[*]=|/=|\\=|\^=|\+=|-=|&lt;&lt;=|&gt;&gt;=|&lt;&lt;|&gt;&gt;|:=|&lt;=|&gt;=|&lt;&gt;|[-&amp;*/\\^+=&lt;&gt;\[\]]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="_\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[_\w][\w]*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="#.*?#">
+        <token type="LiteralDate"/>
+      </rule>
+      <rule pattern="(\d+\.\d*|\d*\.\d+)(F[+-]?[0-9]+)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d+([SILDFR]|US|UI|UL)?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&amp;H[0-9a-f]+([SILDFR]|US|UI|UL)?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&amp;O[0-7]+([SILDFR]|US|UI|UL)?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="&#34;&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;C?">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^&#34;]+">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

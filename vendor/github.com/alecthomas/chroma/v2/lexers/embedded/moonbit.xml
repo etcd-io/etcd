@@ -1,0 +1,75 @@
+<lexer>
+  <config>
+    <name>MoonBit</name>
+    <alias>moonbit</alias>
+    <alias>mbt</alias>
+    <filename>*.mbt</filename>
+    <ensure_nl>true</ensure_nl>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="#.*$"><token type="CommentPreproc"/></rule>
+      <rule pattern="//.*$"><token type="CommentSingle"/></rule>
+      <rule pattern="b?\&#x27;.*\&#x27;"><token type="Literal"/></rule>
+      <rule pattern="#\|.*$"><token type="LiteralString"/></rule>
+      <rule pattern="(b)(\&quot;)"><bygroups><token type="LiteralStringAffix"/><token type="LiteralString"/></bygroups><push state="string.inline"/></rule>
+      <rule pattern="&quot;"><token type="LiteralString"/><push state="string.inline"/></rule>
+      <rule pattern="\$\|"><token type="LiteralString"/><push state="string.multiline"/></rule>
+      <rule pattern="0(b|B)[01]+"><token type="LiteralNumberBin"/></rule>
+      <rule pattern="0(o|O)[0-7]+"><token type="LiteralNumberOct"/></rule>
+      <rule pattern="0(x|X)[0-9a-fA-F][0-9a-fA-F_]*\.[0-9a-fA-F][0-9a-fA-F_]*(P|p)(\+|\-)?[0-9][0-9]*"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="0(x|X)[0-9a-fA-F][0-9a-fA-F_]*\.?(P|p)(\+|\-)?[0-9][0-9]*"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="0(x|X)[0-9a-fA-F][0-9a-fA-F_]*\.[0-9a-fA-F][0-9a-fA-F_]*"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="0(x|X)[0-9a-fA-F][0-9a-fA-F_]*\."><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="0(x|X)[0-9a-fA-F][0-9a-fA-F_]*"><token type="LiteralNumberHex"/></rule>
+      <rule pattern="\d(_|\d)*U?L"><token type="LiteralNumberIntegerLong"/></rule>
+      <rule pattern="\d(_|\d)*U?"><token type="LiteralNumberInteger"/></rule>
+      <rule pattern="\d+(.\d+)?"><token type="LiteralNumber"/></rule>
+      <rule pattern="(type|type!|enum|struct|trait|typealias|traitalias)\b"><token type="KeywordDeclaration"/></rule>
+      <rule pattern="(async|fn|const|let|mut|impl|with|derive|fnalias)\b"><token type="KeywordDeclaration"/></rule>
+      <rule pattern="(self|Self)\b"><token type="Keyword"/></rule>
+      <rule pattern="(guard|if|while|match|else|loop|for|in|is)\b"><token type="Keyword"/></rule>
+      <rule pattern="(return|break|continue)\b"><token type="Keyword"/></rule>
+      <rule pattern="(try|catch|raise|noraise)\b"><token type="Keyword"/></rule>
+      <rule pattern="\bas\b"><token type="Keyword"/></rule>
+      <rule pattern="(extern|pub|priv|pub\(all\)|pub\(readonly\)|pub\(open\)|test)\b"><token type="Keyword"/></rule>
+      <rule pattern="(true|false)\b"><token type="KeywordConstant"/></rule>
+      <rule pattern="(Eq|Compare|Hash|Show|Default|ToJson|FromJson)\b"><token type="NameBuiltin"/></rule>
+      <rule pattern="(Array|FixedArray|Int|Int64|UInt|UInt64|Option|Result|Byte|Bool|Unit|String|Float|Double)\b"><token type="NameBuiltin"/></rule>
+      <rule pattern="(\+|\-|\*|/|%|\|&gt;|&gt;&gt;|&lt;&lt;|\&amp;\&amp;|\|\||\&amp;|\||&lt;|&gt;|==)"><token type="Operator"/></rule>
+      <rule pattern="(not|lsl|lsr|asr|op_add|op_sub|op_div|op_mul|op_mod|\.\.\.)"><token type="OperatorWord"/></rule>
+      <rule pattern="@[A-Za-z][A-Za-z0-9_/]*\."><token type="NameNamespace"/></rule>
+      <rule pattern="([a-z][A-Za-z0-9_]*)(\s+)(as)(\s+)([a-z][A-Za-z0-9_]*)"><bygroups><token type="NameFunction"/><token type="TextWhitespace"/><token type="Keyword"/><token type="TextWhitespace"/><token type="NameFunction"/></bygroups></rule>
+      <rule pattern="([A-Za-z][A-Za-z0-9_]*)(::)([A-Za-z][A-Za-z0-9_]*)(\s+)(as)(\s+)([a-z][A-Za-z0-9_]*)"><bygroups><token type="NameClass"/><token type="Punctuation"/><token type="NameFunction"/><token type="TextWhitespace"/><token type="Keyword"/><token type="TextWhitespace"/><token type="NameFunction"/></bygroups></rule>
+      <rule pattern="([A-Za-z][A-Za-z0-9_]*)(::)([A-Za-z][A-Za-z0-9_]*)"><bygroups><token type="NameClass"/><token type="Punctuation"/><token type="NameFunction"/></bygroups></rule>
+      <rule pattern="([a-z][A-Za-z0-9_]*)(?=!?\()"><token type="NameFunction"/></rule>
+      <rule pattern="Error"><token type="NameException"/></rule>
+      <rule pattern="(=&gt;)|(-&gt;)|[\(\)\{\}\[\]:,\.=!?~;]"><token type="Punctuation"/></rule>
+      <rule pattern="[a-z][a-zA-Z0-9_]*"><token type="NameVariable"/></rule>
+      <rule pattern="[A-Z_][a-zA-Z0-9_]*"><token type="NameClass"/></rule>
+      <rule pattern="[\s]"><token type="TextWhitespace"/></rule>
+    </state>
+    <state name="string.inline">
+      <rule><include state="escape"/></rule>
+      <rule pattern="\\{"><token type="LiteralStringEscape"/><push state="interpolation"/></rule>
+      <rule pattern="&quot;"><token type="LiteralString"/><pop depth="1"/></rule>
+      <rule pattern="."><token type="LiteralStringDouble"/></rule>
+    </state>
+    <state name="string.multiline">
+      <rule><include state="escape"/></rule>
+      <rule pattern="\\{"><token type="LiteralStringEscape"/><push state="interpolation"/></rule>
+      <rule pattern="\Z"><token type="LiteralString"/><pop depth="1"/></rule>
+      <rule pattern="."><token type="LiteralString"/></rule>
+    </state>
+    <state name="interpolation">
+      <rule pattern="}"><token type="LiteralStringEscape"/><pop depth="1"/></rule>
+      <rule><include state="root"/></rule>
+    </state>
+    <state name="escape">
+      <rule pattern="\\[0\\tnrb\&quot;&#x27;]"><token type="LiteralStringEscape"/></rule>
+      <rule pattern="\\x[0-9a-fA-f]{2}"><token type="LiteralStringEscape"/></rule>
+      <rule pattern="\\u[0-9a-fA-f]{4}"><token type="LiteralStringEscape"/></rule>
+      <rule pattern="\\u[0-9a-fA-f]*"><token type="LiteralStringEscape"/></rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,75 @@
+<lexer>
+  <config>
+    <name>KDL</name>
+    <alias>kdl</alias>
+    <filename>*.kdl</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="((?&lt;={|;)|^)\s*(?![/\\\{\}#;\[\]\=])[&lt;&gt;:\w\-_~,\&#x27;`!\?@\$%^&amp;*+|\.\(\)\x{0080}-\x{0001f645}]+\d*?[&lt;&gt;:\w\-_~,\&#x27;`!\?@\$%^&amp;*+|\.\(\)\x{0080}-\x{0001f645}]*?"><token type="NameLabel"/></rule>
+      <rule pattern="(#true|#false|#null|#nan|#inf|#-inf)\b"><token type="KeywordConstant"/></rule>
+      <rule pattern="[{}=;\\]"><token type="Operator"/></rule>
+      <rule pattern="(\b([0-9-\+]|-|\+)[0-9_]*?\.[0-9][0-9_]*?([eE][+-]?[0-9_]+)?\b|\b[0-9][0-9_]*?(\.[0-9][0-9_]*?)?[eE][+-]?[0-9_]+\b)"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="\b[0-9\-\+][0-9_]*\b"><token type="LiteralNumber"/></rule>
+      <rule pattern="\b0x[a-fA-F0-9][a-fA-F0-9_]*?\b"><token type="LiteralNumberHex"/></rule>
+      <rule pattern="\b0o[0-7][0-7_]*\b"><token type="LiteralNumberOct"/></rule>
+      <rule pattern="\b0b[01][01_]*?\b"><token type="LiteralNumberBin"/></rule>
+      <rule pattern="#+(\&quot;&quot;&quot;|&quot;).*?(&quot;&quot;&quot;|&quot;)#+"><token type="LiteralString"/></rule>
+      <rule pattern="#?&quot;&quot;&quot;"><token type="LiteralString"/><push state="multiline_string"/></rule>
+      <rule pattern="#?&quot;"><token type="LiteralString"/><push state="string"/></rule>
+      <rule pattern="/\*"><token type="CommentMultiline"/><push state="comment"/></rule>
+      <rule pattern="/\*!"><token type="LiteralStringDoc"/><push state="doccomment"/></rule>
+      <rule pattern="/-\s*{"><token type="CommentMultiline"/><push state="slashdash_block_comment"/></rule>
+      <rule pattern="\s*/-\s?[^\s=]*?\s?{"><token type="CommentMultiline"/><push state="slashdash_node_comment"/></rule>
+      <rule pattern="(?&lt;!^)\s*/-\s*(&quot;.*&quot;|.*?)?\s"><token type="CommentSingle"/></rule>
+      <rule pattern="(?&lt;=^)\s*/-[^{]+{"><token type="CommentMultiline"/><push state="slashdash_node_with_children_comment"/></rule>
+      <rule pattern="(\/\/(.*?)\n|(?&lt;!^)\s*/-\s*?\s)"><token type="CommentSingle"/></rule>
+      <rule pattern="(?![/\\\{\}#;\[\]\=])[&lt;&gt;:\w\-_~,\&#x27;`!\?@\$%^&amp;*+|.\(\)\x{0080}-\x{0001f645}]+\d*?[&lt;&gt;:\w\-_~,\&#x27;`!\?@\$%^&amp;*+|.\(\)\x{0080}-\x{0001f645}]*(=)"><token type="NameAttribute"/></rule>
+      <rule pattern="(?![/\\{\}#;\[\]\=])[&lt;&gt;:\w\-_~,\&#x27;`!\?@\$%^&amp;*+|.\(\)\x{0080}-\x{0001f645}]+\d*[&lt;&gt;:\w\-_~,\&#x27;`!\?@\$%^&amp;*+|.\(\)\x{0080}-\x{0001f645}]*?"><token type="LiteralString"/></rule>
+      <rule pattern="\s"><token type="TextWhitespace"/></rule>
+    </state>
+    <state name="string">
+      <rule pattern="&quot;#?"><token type="LiteralString"/><pop depth="1"/></rule>
+      <rule pattern="\\[&#x27;&quot;\\nrt]|\\x[0-7][0-9a-fA-F]|\\0|\\u\{[0-9a-fA-F]{1,6}\}"><token type="LiteralStringEscape"/></rule>
+      <rule pattern="[^\\&quot;]+"><token type="LiteralString"/></rule>
+      <rule pattern="\\"><token type="LiteralString"/></rule>
+    </state>
+    <state name="multiline_string">
+      <rule pattern="&quot;&quot;&quot;#?"><token type="LiteralString"/><pop depth="1"/></rule>
+      <rule pattern="\\[&#x27;&quot;\\nrt]|\\x[0-7][0-9a-fA-F]|\\0|\\u\{[0-9a-fA-F]{1,6}\}"><token type="LiteralStringEscape"/></rule>
+      <rule pattern="&quot;"><token type="LiteralString"/></rule>
+      <rule pattern="[^\\&quot;]+"><token type="LiteralString"/></rule>
+      <rule pattern="\\"><token type="LiteralString"/></rule>
+    </state>
+    <state name="slashdash_block_comment">
+      <rule pattern="[^}]+"><token type="CommentMultiline"/></rule>
+      <rule pattern="/-\s*{"><token type="CommentMultiline"/><push/></rule>
+      <rule pattern="\}"><token type="CommentMultiline"/><pop depth="1"/></rule>
+      <rule pattern="[\}]"><token type="CommentMultiline"/></rule>
+    </state>
+    <state name="slashdash_node_comment">
+      <rule pattern="[^\}]+"><token type="CommentMultiline"/></rule>
+      <rule pattern="^\s*?/-.*?\s?{"><token type="CommentMultiline"/><push/></rule>
+      <rule pattern="\}"><token type="CommentMultiline"/><pop depth="1"/></rule>
+      <rule pattern="[\}]"><token type="CommentMultiline"/></rule>
+    </state>
+    <state name="slashdash_node_with_children_comment">
+      <rule pattern="[^\}]+"><token type="CommentMultiline"/></rule>
+      <rule pattern="(?&lt;=^)\s*/-[^{]+{"><token type="CommentMultiline"/><push/></rule>
+      <rule pattern="\}"><token type="CommentMultiline"/><pop depth="1"/></rule>
+      <rule pattern="[\}]"><token type="CommentMultiline"/></rule>
+    </state>
+    <state name="comment">
+      <rule pattern="[^*/]+"><token type="CommentMultiline"/></rule>
+      <rule pattern="/\*"><token type="CommentMultiline"/><push/></rule>
+      <rule pattern="\*/"><token type="CommentMultiline"/><pop depth="1"/></rule>
+      <rule pattern="[*/]"><token type="CommentMultiline"/></rule>
+    </state>
+    <state name="doccomment">
+      <rule pattern="[^*/]+"><token type="LiteralStringDoc"/></rule>
+      <rule pattern="/\*"><token type="LiteralStringDoc"/><push/></rule>
+      <rule pattern="\*/"><token type="LiteralStringDoc"/><pop depth="1"/></rule>
+      <rule pattern="[*/]"><token type="LiteralStringDoc"/></rule>
+    </state>
+  </rules>
+</lexer>

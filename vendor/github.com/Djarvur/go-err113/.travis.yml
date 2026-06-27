@@ -1,0 +1,20 @@
+language: go
+
+go:
+  - "1.23"
+  - "1.24"
+  - "1.25"
+  - tip
+
+before_install:
+  - go install github.com/mattn/goveralls@v0.0.12
+  - go install golang.org/x/tools/cmd/goimports@v0.36.0
+  - wget -O - -q https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh
+
+script:
+  - test -z "$(goimports -d ./ 2>&1)"
+  - ./bin/golangci-lint run
+  - go test -v -race ./...
+
+after_success:
+  - test "$TRAVIS_GO_VERSION" = "1.25" && goveralls -service=travis-ci

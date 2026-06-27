@@ -1,0 +1,92 @@
+run:
+  tests: true
+
+output:
+  print-issued-lines: false
+
+linters:
+  enable-all: true
+  disable:
+    - cyclop
+    - depguard
+    - dupl
+    - dupword
+    - err113
+    - errorlint
+    - exhaustive
+    - exhaustruct
+    - exportloopref
+    - forcetypeassert
+    - funlen
+    - gci
+    - gochecknoglobals
+    - gocognit
+    - goconst
+    - gocyclo
+    - godot
+    - godox
+    - gofumpt
+    - govet
+    - ireturn
+    - lll
+    - maintidx
+    - mnd
+    - mnd
+    - musttag
+    - nestif
+    - nilnil
+    - nlreturn
+    - nolintlint
+    - nonamedreturns
+    - paralleltest
+    - perfsprint
+    - predeclared
+    - revive
+    - stylecheck
+    - testableexamples
+    - testpackage
+    - thelper
+    - varnamelen
+    - wrapcheck
+    - wsl
+
+linters-settings:
+  govet:
+    enable:
+      - shadow
+  gocyclo:
+    min-complexity: 10
+  dupl:
+    threshold: 100
+  goconst:
+    min-len: 8
+    min-occurrences: 3
+  forbidigo:
+    exclude-godoc-examples: false
+    #forbid:
+    #  - (Must)?NewLexer$
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-use-default: false
+  exclude-dirs:
+    - _examples
+  exclude:
+    # Captured by errcheck.
+    - "^(G104|G204):"
+    # Very commonly not checked.
+    - 'Error return value of .(.*\.Help|.*\.MarkFlagRequired|(os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv). is not checked'
+    - 'exported method (.*\.MarshalJSON|.*\.UnmarshalJSON|.*\.EntityURN|.*\.GoString|.*\.Pos) should have comment or be unexported'
+    - "composite literal uses unkeyed fields"
+    - 'declaration of "err" shadows declaration'
+    - "should not use dot imports"
+    - "Potential file inclusion via variable"
+    - "should have comment or be unexported"
+    - "comment on exported var .* should be of the form"
+    - "at least one file in a package should have a package comment"
+    - "string literal contains the Unicode"
+    - "methods on the same type should have the same receiver name"
+    - "_TokenType_name should be _TokenTypeName"
+    - "`_TokenType_map` should be `_TokenTypeMap`"
+    - "rewrite if-else to switch statement"

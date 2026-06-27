@@ -1,0 +1,222 @@
+<lexer>
+  <config>
+    <name>Bash</name>
+    <alias>bash</alias>
+    <alias>sh</alias>
+    <alias>ksh</alias>
+    <alias>zsh</alias>
+    <alias>shell</alias>
+    <filename>*.sh</filename>
+    <filename>*.ksh</filename>
+    <filename>*.bash</filename>
+    <filename>*.ebuild</filename>
+    <filename>*.eclass</filename>
+    <filename>.env</filename>
+    <filename>.env.*</filename>
+    <filename>*.env</filename>
+    <filename>*.exheres-0</filename>
+    <filename>*.exlib</filename>
+    <filename>*.zsh</filename>
+    <filename>*.zshrc</filename>
+    <filename>.bashrc</filename>
+    <filename>bashrc</filename>
+    <filename>.bash_*</filename>
+    <filename>bash_*</filename>
+    <filename>zshrc</filename>
+    <filename>.zshrc</filename>
+    <filename>APKBUILD</filename>
+    <filename>PKGBUILD</filename>
+    <mime_type>application/x-sh</mime_type>
+    <mime_type>application/x-shellscript</mime_type>
+    <analyse first="true" >
+      <regex pattern="(?m)^#!.*/bin/(?:env |)(?:bash|zsh|sh|ksh)" score="1.0" />
+    </analyse>
+  </config>
+  <rules>
+    <state name="data">
+      <rule pattern="(?s)\$?&#34;(\\\\|\\[0-7]+|\\.|[^&#34;\\$])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="(?s)\$&#39;(\\\\|\\[0-7]+|\\.|[^&#39;\\])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="(?s)&#39;.*?&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern=";">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="&amp;">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\|">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\d+(?= |$)">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[^=\s\[\]{}()$&#34;\&#39;`\\&lt;&amp;|;]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&lt;">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?s)(\\\\|\\[0-7]+|\\.|[^&#34;\\$])+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule>
+        <include state="interp"/>
+      </rule>
+    </state>
+    <state name="interp">
+      <rule pattern="\$\(\(">
+        <token type="Keyword"/>
+        <push state="math"/>
+      </rule>
+      <rule pattern="\$\(">
+        <token type="Keyword"/>
+        <push state="paren"/>
+      </rule>
+      <rule pattern="\$\{#?">
+        <token type="LiteralStringInterpol"/>
+        <push state="curly"/>
+      </rule>
+      <rule pattern="\$[a-zA-Z_]\w*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\$(?:\d+|[#$?!_*@-])">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\$">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="paren">
+      <rule pattern="\)">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="math">
+      <rule pattern="\)\)">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[-+*/%^|&amp;]|\*\*|\|\|">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\d+#\d+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="\d+#(?! )">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="backticks">
+      <rule pattern="`">
+        <token type="LiteralStringBacktick"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="basic"/>
+      </rule>
+      <rule pattern="`">
+        <token type="LiteralStringBacktick"/>
+        <push state="backticks"/>
+      </rule>
+      <rule>
+        <include state="data"/>
+      </rule>
+      <rule>
+        <include state="interp"/>
+      </rule>
+    </state>
+    <state name="basic">
+      <rule pattern="\b(if|fi|else|while|do|done|for|then|return|function|case|select|continue|until|esac|elif)(\s*)\b">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\b(alias|bg|bind|break|builtin|caller|cd|command|compgen|complete|declare|dirs|disown|echo|enable|eval|exec|exit|export|false|fc|fg|getopts|hash|help|history|jobs|kill|let|local|logout|popd|printf|pushd|pwd|read|readonly|set|shift|shopt|source|suspend|test|time|times|trap|true|type|typeset|ulimit|umask|unalias|unset|wait)(?=[\s)`])">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="\A#!.+\n">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="#.*(\S|$)">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="\\[\w\W]">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="(\b\w+)(\s*)(\+?=)">
+        <bygroups>
+          <token type="NameVariable"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[\[\]{}()=]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="&lt;&lt;&lt;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="&lt;&lt;-?\s*(\&#39;?)\\?(\w+)[\w\W]+?\2">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&amp;&amp;|\|\|">
+        <token type="Operator"/>
+      </rule>
+    </state>
+    <state name="curly">
+      <rule pattern="\}">
+        <token type="LiteralStringInterpol"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=":-">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\w+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[^}:&#34;\&#39;`$\\]+">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern=":">
+        <token type="Punctuation"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

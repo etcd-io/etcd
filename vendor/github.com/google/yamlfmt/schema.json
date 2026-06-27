@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/google/yamlfmt/main/schema.json",
+  "title": "yamlfmt config file",
+  "description": "The yamlfmt config file. For details, see https://github.com/google/yamlfmt/blob/main/docs/config-file.md.",
+  "type": "object",
+  "properties": {
+    "line_ending": {
+      "type": "string",
+      "enum": [
+        "lf",
+        "crlf"
+      ],
+      "default": "lf",
+      "description": "Parse and write the file with 'lf' or 'crlf' line endings. This global setting will override any formatter line_ending options."
+    },
+    "doublestar": {
+      "type": "boolean",
+      "default": false,
+      "description": "Use doublestar for include and exclude paths. (This was the default before 0.7.0)"
+    },
+    "continue_on_error": {
+      "type": "boolean",
+      "default": false,
+      "description": "Continue formatting and don't exit with code 1 when there is an invalid yaml file found."
+    },
+    "include": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "The paths for the command to include for formatting. See Specifying Paths for more details."
+    },
+    "exclude": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "The paths for the command to exclude from formatting. See Specifying Paths for more details."
+    },
+    "gitignore_excludes": {
+      "type": "boolean",
+      "default": false,
+      "description": "Use gitignore files for exclude paths. This is in addition to the patterns from the exclude option."
+    },
+    "gitignore_path": {
+      "type": "string",
+      "default": ".gitignore",
+      "description": "The path to the gitignore file to use."
+    },
+    "regex_exclude": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Regex patterns to match file contents for, if the file content matches the regex the file will be excluded. Use Go regexes."
+    },
+    "extensions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "The extensions to use for standard mode path collection. See Specifying Paths for more details."
+    },
+    "formatter": {
+      "type": "object",
+      "default": {
+        "type": "basic"
+      },
+      "description": "Formatter settings. See Formatter for more details.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "basic"
+        }
+      }
+    },
+    "output_format": {
+      "type": "string",
+      "enum": [
+        "default",
+        "line"
+      ],
+      "default": "default",
+      "description": "The output format to use. See Output docs for more details."
+    }
+  },
+  "additionalProperties": false
+}

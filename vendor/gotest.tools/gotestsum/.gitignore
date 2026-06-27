@@ -1,0 +1,4 @@
+vendor/
+dist/
+junit.xml
+.plsdo/

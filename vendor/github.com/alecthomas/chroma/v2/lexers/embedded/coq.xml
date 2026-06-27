@@ -1,0 +1,136 @@
+<lexer>
+  <config>
+    <name>Coq</name>
+    <alias>coq</alias>
+    <filename>*.v</filename>
+    <mime_type>text/x-coq</mime_type>
+  </config>
+  <rules>
+    <state name="string">
+      <rule pattern="[^&#34;]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#34;&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="dotted">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\.">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[A-Z][\w\&#39;]*(?=\s*\.)">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule pattern="[A-Z][\w\&#39;]*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[a-z][a-z0-9_\&#39;]*">
+        <token type="Name"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="false|true|\(\)|\[\]">
+        <token type="NameBuiltinPseudo"/>
+      </rule>
+      <rule pattern="\(\*">
+        <token type="Comment"/>
+        <push state="comment"/>
+      </rule>
+      <rule pattern="\b(Projections|Monomorphic|Polymorphic|Proposition|CoInductive|Hypothesis|CoFixpoint|Contextual|Definition|Parameters|Hypotheses|Structure|Inductive|Corollary|Implicits|Parameter|Variables|Arguments|Canonical|Printing|Coercion|Reserved|Universe|Notation|Instance|Fixpoint|Variable|Morphism|Relation|Existing|Implicit|Example|Theorem|Delimit|Defined|Rewrite|outside|Require|Resolve|Section|Context|Prenex|Strict|Module|Import|Export|Global|inside|Remark|Tactic|Search|Record|Scope|Unset|Check|Local|Close|Class|Graph|Proof|Lemma|Print|Axiom|Show|Goal|Open|Fact|Hint|Bind|Ltac|Save|View|Let|Set|All|End|Qed)\b">
+        <token type="KeywordNamespace"/>
+      </rule>
+      <rule pattern="\b(exists2|nosimpl|struct|exists|return|forall|match|cofix|then|with|else|for|fix|let|fun|end|is|of|if|in|as)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(Type|Prop)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="\b(native_compute|setoid_rewrite|etransitivity|econstructor|transitivity|autorewrite|constructor|cutrewrite|vm_compute|bool_congr|generalize|inversion|induction|injection|nat_congr|intuition|destruct|suffices|erewrite|symmetry|nat_norm|replace|rewrite|compute|pattern|trivial|without|assert|unfold|change|eapply|intros|unlock|revert|rename|refine|eauto|tauto|after|right|congr|split|field|simpl|intro|clear|apply|using|subst|case|left|suff|loss|wlog|have|fold|ring|move|lazy|elim|pose|auto|red|cbv|hnf|cut|set)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(contradiction|discriminate|reflexivity|assumption|congruence|romega|omega|exact|solve|tauto|done|by)\b">
+        <token type="KeywordPseudo"/>
+      </rule>
+      <rule pattern="\b(repeat|first|idtac|last|try|do)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="\b([A-Z][\w\&#39;]*)">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="(λ|Π|\|\}|\{\||\\/|/\\|=&gt;|~|\}|\|]|\||\{&lt;|\{|`|_|]|\[\||\[&gt;|\[&lt;|\[|\?\?|\?|&gt;\}|&gt;]|&gt;|=|&lt;-&gt;|&lt;-|&lt;|;;|;|:&gt;|:=|::|:|\.\.|\.|-&gt;|-\.|-|,|\+|\*|\)|\(|&amp;&amp;|&amp;|#|!=)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="([=&lt;&gt;@^|&amp;+\*/$%-]|[!?~])?[!$%&amp;*+\./:&lt;=&gt;?@^|~-]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b(unit|nat|bool|string|ascii|list)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="[^\W\d][\w&#39;]*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\d[\d_]*">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="0[xX][\da-fA-F][\da-fA-F_]*">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="0[oO][0-7][0-7_]*">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0[bB][01][01_]*">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="-?\d[\d_]*(.[\d_]*)?([eE][+\-]?\d[\d_]*)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="&#39;(?:(\\[\\\&#34;&#39;ntbr ])|(\\[0-9]{3})|(\\x[0-9a-fA-F]{2}))&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="&#39;.&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="[~?][a-z][\w\&#39;]*:">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern="[^(*)]+">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="\(\*">
+        <token type="Comment"/>
+        <push/>
+      </rule>
+      <rule pattern="\*\)">
+        <token type="Comment"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[(*)]">
+        <token type="Comment"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

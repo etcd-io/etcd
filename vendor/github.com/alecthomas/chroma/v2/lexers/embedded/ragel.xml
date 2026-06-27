@@ -1,0 +1,149 @@
+<lexer>
+  <config>
+    <name>Ragel</name>
+    <alias>ragel</alias>
+  </config>
+  <rules>
+    <state name="host">
+      <rule pattern="([^{}\&#39;&#34;/#]+|[^\\]\\[{}]|&#34;(\\\\|\\&#34;|[^&#34;])*&#34;|&#39;(\\\\|\\&#39;|[^&#39;])*&#39;|//.*$\n?|/\*(.|\n)*?\*/|\#.*$\n?|/(?!\*)(\\\\|\\/|[^/])*/|/)+">
+        <token type="Other"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="Punctuation"/>
+        <push/>
+      </rule>
+      <rule pattern="\}">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="whitespace">
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+    </state>
+    <state name="numbers">
+      <rule pattern="0x[0-9A-Fa-f]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[+-]?[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+    </state>
+    <state name="literals">
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;(\\\\|\\&#39;|[^&#39;])*&#39;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\[(\\\\|\\\]|[^\]])*\]">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="/(?!\*)(\\\\|\\/|[^/])*/">
+        <token type="LiteralStringRegex"/>
+      </rule>
+    </state>
+    <state name="keywords">
+      <rule pattern="(access|action|alphtype)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(getkey|write|machine|include)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(any|ascii|extend|alpha|digit|alnum|lower|upper)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(xdigit|cntrl|graph|print|punct|space|zlen|empty)\b">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="identifiers">
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="NameVariable"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="literals"/>
+      </rule>
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule>
+        <include state="comments"/>
+      </rule>
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule>
+        <include state="numbers"/>
+      </rule>
+      <rule>
+        <include state="identifiers"/>
+      </rule>
+      <rule>
+        <include state="operators"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="Punctuation"/>
+        <push state="host"/>
+      </rule>
+      <rule pattern="=">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern=";">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="comments">
+      <rule pattern="\#.*$">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="operators">
+      <rule pattern=",">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\||&amp;|--?">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\.|&lt;:|:&gt;&gt;?">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern=":">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="-&gt;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(&gt;|\$|%|&lt;|@|&lt;&gt;)(/|eof\b)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(&gt;|\$|%|&lt;|@|&lt;&gt;)(!|err\b)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(&gt;|\$|%|&lt;|@|&lt;&gt;)(\^|lerr\b)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(&gt;|\$|%|&lt;|@|&lt;&gt;)(~|to\b)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(&gt;|\$|%|&lt;|@|&lt;&gt;)(\*|from\b)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="&gt;|@|\$|%">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\*|\?|\+|\{[0-9]*,[0-9]*\}">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="!|\^">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\(|\)">
+        <token type="Operator"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,48 @@
+<lexer>
+  <config>
+    <name>VHS</name>
+	<alias>vhs</alias>
+	<alias>tape</alias>
+	<alias>cassette</alias>
+	<filename>*.tape</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="(Output)(\s+)(.*)(\s+)">
+	    <bygroups>
+	      <token type="Keyword"/>
+	      <token type="TextWhitespace"/>
+	      <token type="LiteralString"/>
+	      <token type="TextWhitespace"/>
+		</bygroups>
+      </rule>
+      <rule pattern="\b(Set|Type|Left|Right|Up|Down|Backspace|Enter|Tab|Space|Ctrl|Sleep|Hide|Show|Escape)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(FontFamily|FontSize|Framerate|Height|Width|Theme|Padding|TypingSpeed|PlaybackSpeed|LineHeight|Framerate|LetterSpacing)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="#.*(\S|$)">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(?s)&#34;.*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="(?s)&#39;.*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="(@|\+)">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="(ms|s)">
+        <token type="Text"/>
+      </rule>
+	</state>
+  </rules>
+</lexer>

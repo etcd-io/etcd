@@ -1,0 +1,104 @@
+<lexer>
+  <config>
+    <name>Hy</name>
+    <alias>hylang</alias>
+    <filename>*.hy</filename>
+    <mime_type>text/x-hy</mime_type>
+    <mime_type>application/x-hy</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern=";.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="[,\s]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="-?\d+\.\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="-?\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="0[0-7]+j?">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0[xX][a-fA-F0-9]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="\\(.|[a-z]+)">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="^(\s*)([rRuU]{,2}&#34;&#34;&#34;(?:.|\n)*?&#34;&#34;&#34;)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="LiteralStringDoc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(\s*)([rRuU]{,2}&#39;&#39;&#39;(?:.|\n)*?&#39;&#39;&#39;)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="LiteralStringDoc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="::?(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="~@|[`\&#39;#^~&amp;@]">
+        <token type="Operator"/>
+      </rule>
+      <rule>
+        <include state="py-keywords"/>
+      </rule>
+      <rule>
+        <include state="py-builtins"/>
+      </rule>
+      <rule pattern="(eval-when-compile|eval-and-compile|with-decorator|unquote-splice|quasiquote|list_comp|unquote|foreach|kwapply|import|not-in|unless|is-not|quote|progn|slice|assoc|first|while|when|rest|cond|&lt;&lt;=|-&gt;&gt;|for|get|&gt;&gt;=|let|cdr|car|is|-&gt;|do|in|\||~|,) ">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(defmacro|defclass|lambda|defun|defn|setv|def|fn) ">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(repeatedly|take_while|iterator\?|iterable\?|instance\?|distinct|take_nth|numeric\?|iterate|filter|repeat|remove|even\?|none\?|cycle|zero\?|odd\?|pos\?|neg\?|take|drop|inc|dec|nth) ">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(?&lt;=\()(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(\[|\])">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(\{|\})">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(\(|\))">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="py-keywords">
+      <rule pattern="(yield from|continue|finally|lambda|assert|global|except|return|print|yield|while|break|raise|elif|pass|exec|else|with|try|for|del|as|if)\b">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="py-builtins">
+      <rule pattern="(?&lt;!\.)(staticmethod|classmethod|__import__|isinstance|basestring|issubclass|frozenset|raw_input|bytearray|enumerate|property|callable|reversed|execfile|hasattr|setattr|compile|complex|delattr|unicode|globals|getattr|unichr|reduce|xrange|buffer|intern|filter|locals|divmod|coerce|sorted|reload|object|slice|round|float|super|input|bytes|apply|tuple|range|iter|dict|long|type|hash|vars|next|file|exit|open|repr|eval|bool|list|bin|pow|zip|ord|oct|min|set|any|max|map|all|len|sum|int|dir|hex|chr|abs|cmp|str|id)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)(self|None|Ellipsis|NotImplemented|False|True|cls)\b">
+        <token type="NameBuiltinPseudo"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)(PendingDeprecationWarning|UnicodeTranslateError|NotImplementedError|UnicodeEncodeError|UnicodeDecodeError|DeprecationWarning|FloatingPointError|UnboundLocalError|KeyboardInterrupt|ZeroDivisionError|EnvironmentError|IndentationError|ArithmeticError|OverflowWarning|ReferenceError|RuntimeWarning|AttributeError|AssertionError|NotImplemented|UnicodeWarning|FutureWarning|BaseException|StopIteration|SyntaxWarning|OverflowError|StandardError|ImportWarning|GeneratorExit|RuntimeError|WindowsError|UnicodeError|LookupError|SyntaxError|SystemError|ImportError|MemoryError|UserWarning|ValueError|IndexError|SystemExit|Exception|TypeError|NameError|EOFError|VMSError|KeyError|TabError|IOError|OSError|Warning)\b">
+        <token type="NameException"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

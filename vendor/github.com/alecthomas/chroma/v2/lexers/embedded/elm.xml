@@ -1,0 +1,119 @@
+<lexer>
+  <config>
+    <name>Elm</name>
+    <alias>elm</alias>
+    <filename>*.elm</filename>
+    <mime_type>text/x-elm</mime_type>
+  </config>
+  <rules>
+    <state name="shader">
+      <rule pattern="\|(?!\])">
+        <token type="NameEntity"/>
+      </rule>
+      <rule pattern="\|\]">
+        <token type="NameEntity"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=".*\n">
+        <token type="NameEntity"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\{-">
+        <token type="CommentMultiline"/>
+        <push state="comment"/>
+      </rule>
+      <rule pattern="--.*">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="doublequote"/>
+      </rule>
+      <rule pattern="^\s*module\s*">
+        <token type="KeywordNamespace"/>
+        <push state="imports"/>
+      </rule>
+      <rule pattern="^\s*import\s*">
+        <token type="KeywordNamespace"/>
+        <push state="imports"/>
+      </rule>
+      <rule pattern="\[glsl\|.*">
+        <token type="NameEntity"/>
+        <push state="shader"/>
+      </rule>
+      <rule pattern="(import|module|alias|where|port|else|type|case|then|let|as|of|if|in)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="[A-Z]\w*">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="^main ">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="\((&lt;-|\|\||\|&gt;|&amp;&amp;|\+\+|-&gt;|\.\.|//|&gt;&gt;|&gt;=|/=|==|::|&lt;~|&lt;\||&lt;=|&lt;&lt;|~|&lt;|=|:|&gt;|&#39;|/|\\|\.|\^|-|`|\+|\*|\||%)\)">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="(&lt;-|\|\||\|&gt;|&amp;&amp;|\+\+|-&gt;|\.\.|//|&gt;&gt;|&gt;=|/=|==|::|&lt;~|&lt;\||&lt;=|&lt;&lt;|~|&lt;|=|:|&gt;|&#39;|/|\\|\.|\^|-|`|\+|\*|\||%)">
+        <token type="NameFunction"/>
+      </rule>
+      <rule>
+        <include state="numbers"/>
+      </rule>
+      <rule pattern="[a-z_][a-zA-Z_\&#39;]*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[,()\[\]{}]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern="-(?!\})">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="\{-">
+        <token type="CommentMultiline"/>
+        <push state="comment"/>
+      </rule>
+      <rule pattern="[^-}]">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="-\}">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="doublequote">
+      <rule pattern="\\u[0-9a-fA-F]{4}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\[nrfvb\\&#34;]">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^&#34;]">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="imports">
+      <rule pattern="\w+(\.\w+)*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="numbers">
+      <rule pattern="_?\d+\.(?=\d+)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="_?\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

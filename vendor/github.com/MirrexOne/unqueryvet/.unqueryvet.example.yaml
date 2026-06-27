@@ -1,0 +1,165 @@
+# Unqueryvet Configuration File
+# This is an example configuration showing all available options
+#
+# JSON Schema validation is automatically provided by SchemaStore.org
+# for editors that support it (VS Code, GoLand, Neovim, etc.)
+
+# ==============================================================================
+# LEVEL 1: Simple Configuration (quick setup)
+# ==============================================================================
+
+# Built-in rules severity configuration
+# Available rules: select-star, n1-queries, sql-injection, tx-leak
+# Severity values: error, warning, info, ignore
+rules:
+  select-star: warning
+  n1-queries: warning
+  sql-injection: error
+  tx-leak: warning
+
+# Files to ignore (glob patterns)
+ignore:
+  - "*_test.go"
+  - "testdata/**"
+  - "vendor/**"
+
+# SQL patterns to whitelist (won't trigger warnings)
+allow:
+  - "COUNT(*)"
+  - "information_schema.*"
+
+# ==============================================================================
+# LEVEL 2: Detailed Configuration (existing options)
+# ==============================================================================
+
+# Enable/disable SQL builder checking (default: true)
+check-sql-builders: true
+
+# Enable/disable aliased wildcard detection like SELECT t.* (default: true)
+check-aliased-wildcard: true
+
+# Enable/disable string concatenation analysis (default: true)
+check-string-concat: true
+
+# Enable/disable format string analysis like fmt.Sprintf (default: true)
+check-format-strings: true
+
+# Enable/disable strings.Builder analysis (default: true)
+check-string-builder: true
+
+# Enable/disable subquery analysis (default: true)
+check-subqueries: true
+
+# Diagnostic severity: "error" or "warning" (default: "warning")
+severity: warning
+
+# SQL builder libraries to check (all enabled by default)
+sql-builders:
+  squirrel: true
+  gorm: true
+  sqlx: true
+  ent: true
+  pgx: true
+  bun: true
+  sqlboiler: true
+  jet: true
+  sqlc: true
+  goqu: true
+  rel: true
+  reform: true
+
+# Legacy: Patterns for files to ignore (use 'ignore' instead)
+# ignored-files:
+#   - "*_test.go"
+
+# Legacy: Functions to ignore (regex patterns)
+# ignored-functions:
+#   - "debug\\..*"
+#   - "test.*"
+
+# Legacy: Regex patterns to allow (use 'allow' instead)
+# allowed-patterns:
+#   - "SELECT \\* FROM temp_.*"
+
+# ==============================================================================
+# LEVEL 3: Custom Rules with DSL (advanced)
+# ==============================================================================
+
+# Define your own analysis rules using patterns and conditions
+custom-rules:
+  # Example 1: Allow SELECT * for temporary tables
+  - id: allow-temp-tables
+    pattern: SELECT * FROM $TABLE
+    when: isTempTable(table)
+    action: allow
+
+  # Example 2: Detect N+1 queries in loops
+  - id: n1-in-loop
+    pattern: $DB.Query($QUERY)
+    when: in_loop && !contains(function, "batch")
+    message: "Potential N+1 query detected in loop"
+    severity: warning
+    fix: "Consider using batch query or preloading"
+
+  # Example 3: Require WHERE clause for DELETE/UPDATE
+  - id: require-where
+    patterns:
+      - DELETE FROM $TABLE
+      - UPDATE $TABLE SET $COLS
+    when: "!has_where"
+    message: "Dangerous query without WHERE clause"
+    severity: error
+
+  # Example 4: Context-aware rules (strict in prod code, relaxed in tests)
+  - id: strict-select-star
+    pattern: SELECT * FROM $TABLE
+    when: |
+      !matches(file, "_test.go$") &&
+      !matches(file, "testdata/") &&
+      !isSystemTable(table) &&
+      !isTempTable(table)
+    message: "Avoid SELECT * in production code - specify columns explicitly"
+    severity: error
+
+# ==============================================================================
+# DSL Reference
+# ==============================================================================
+#
+# Pattern Metavariables:
+#   $TABLE   - matches table name (with optional schema)
+#   $VAR     - matches identifier/variable
+#   $QUERY   - matches string literal
+#   $COLS    - matches column list
+#   $EXPR    - matches any expression
+#   $DB      - matches database object
+#
+# Condition Variables:
+#   file       - current file path
+#   package    - current package name
+#   function   - current function name
+#   query      - SQL query text
+#   query_type - SELECT, INSERT, UPDATE, DELETE
+#   table      - primary table name
+#   tables     - list of all tables
+#   columns    - list of columns
+#   has_join   - true if query has JOIN
+#   has_where  - true if query has WHERE
+#   in_loop    - true if inside a loop
+#   loop_depth - nesting depth of loops
+#   builder    - SQL builder type (gorm, squirrel, etc.)
+#
+# Built-in Functions:
+#   contains(str, substr)     - check if string contains substring
+#   matches(str, regex)       - check if string matches regex
+#   startsWith(str, prefix)   - check if string starts with prefix
+#   endsWith(str, suffix)     - check if string ends with suffix
+#   isSystemTable(table)      - check if table is system/catalog table
+#   isTempTable(table)        - check if table looks like temp table
+#   isAggregate(query)        - check if query has aggregate functions
+#
+# Operators:
+#   =~   - regex match (e.g., file =~ "_test.go$")
+#   !~   - regex not match
+#   &&   - logical AND
+#   ||   - logical OR
+#   !    - logical NOT

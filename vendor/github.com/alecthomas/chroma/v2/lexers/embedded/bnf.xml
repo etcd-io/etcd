@@ -1,0 +1,28 @@
+<lexer>
+  <config>
+    <name>BNF</name>
+    <alias>bnf</alias>
+    <filename>*.bnf</filename>
+    <mime_type>text/x-bnf</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="(&lt;)([ -;=?-~]+)(&gt;)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="NameClass"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="::=">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[^&lt;&gt;:]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

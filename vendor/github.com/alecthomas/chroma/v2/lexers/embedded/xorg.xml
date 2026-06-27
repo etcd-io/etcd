@@ -1,0 +1,35 @@
+<lexer>
+  <config>
+    <name>Xorg</name>
+    <alias>xorg.conf</alias>
+    <filename>xorg.conf</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="#.*$">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="((|Sub)Section)(\s+)(&#34;\w+&#34;)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="LiteralStringEscape"/>
+          <token type="TextWhitespace"/>
+          <token type="LiteralStringEscape"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(End(|Sub)Section)">
+        <token type="KeywordNamespace"/>
+      </rule>
+      <rule pattern="(\w+)(\s+)([^\n#]+)">
+        <bygroups>
+          <token type="NameKeyword"/>
+          <token type="TextWhitespace"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+    </state>
+  </rules>
+</lexer>

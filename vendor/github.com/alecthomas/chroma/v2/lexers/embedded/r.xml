@@ -1,0 +1,128 @@
+<lexer>
+  <config>
+    <name>R</name>
+    <alias>splus</alias>
+    <alias>s</alias>
+    <alias>r</alias>
+    <filename>*.S</filename>
+    <filename>*.R</filename>
+    <filename>*.r</filename>
+    <filename>.Rhistory</filename>
+    <filename>.Rprofile</filename>
+    <filename>.Renviron</filename>
+    <mime_type>text/S-plus</mime_type>
+    <mime_type>text/S</mime_type>
+    <mime_type>text/x-r-source</mime_type>
+    <mime_type>text/x-r</mime_type>
+    <mime_type>text/x-R</mime_type>
+    <mime_type>text/x-r-history</mime_type>
+    <mime_type>text/x-r-profile</mime_type>
+    <priority>0.1</priority> <!-- higher priority than Rebol -->
+  </config>
+  <rules>
+    <state name="numbers">
+      <rule pattern="0[xX][a-fA-F0-9]+([pP][0-9]+)?[Li]?">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[+-]?([0-9]+(\.[0-9]+)?|\.[0-9]+|\.)([eE][+-]?[0-9]+)?[Li]?">
+        <token type="LiteralNumber"/>
+      </rule>
+    </state>
+    <state name="operators">
+      <rule pattern="&lt;&lt;?-|-&gt;&gt;?|-|==|&lt;=|&gt;=|&lt;|&gt;|&amp;&amp;?|!=|\|\|?|\?">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\*|\+|\^|/|!|%[^%]*%|=|~|\$|@|:{1,3}">
+        <token type="Operator"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule pattern="((?:`[^`\\]*(?:\\.[^`\\]*)*`)|(?:(?:[a-zA-z]|[_.][^0-9])[\w_.]*))\s*(?=\()">
+        <token type="NameFunction"/>
+      </rule>
+      <rule>
+        <include state="statements"/>
+      </rule>
+      <rule pattern="\{|\}">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="valid_name">
+      <rule pattern="(?:`[^`\\]*(?:\\.[^`\\]*)*`)|(?:(?:[a-zA-z]|[_.][^0-9])[\w_.]*)">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="keywords">
+      <rule pattern="(if|else|for|while|repeat|in|next|break|return|switch|function)(?![\w.])">
+        <token type="KeywordReserved"/>
+      </rule>
+    </state>
+    <state name="builtin_symbols">
+      <rule pattern="(NULL|NA(_(integer|real|complex|character)_)?|letters|LETTERS|Inf|TRUE|FALSE|NaN|pi|\.\.(\.|[0-9]+))(?![\w.])">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(T|F)\b">
+        <token type="NameBuiltinPseudo"/>
+      </rule>
+    </state>
+    <state name="string_squote">
+      <rule pattern="([^\&#39;\\]|\\.)*\&#39;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="comments">
+      <rule pattern="#.*$">
+        <token type="CommentSingle"/>
+      </rule>
+    </state>
+    <state name="punctuation">
+      <rule pattern="\[{1,2}|\]{1,2}|\(|\)|;|,">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="statements">
+      <rule>
+        <include state="comments"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\&#39;">
+        <token type="LiteralString"/>
+        <push state="string_squote"/>
+      </rule>
+      <rule pattern="\&#34;">
+        <token type="LiteralString"/>
+        <push state="string_dquote"/>
+      </rule>
+      <rule>
+        <include state="builtin_symbols"/>
+      </rule>
+      <rule>
+        <include state="valid_name"/>
+      </rule>
+      <rule>
+        <include state="numbers"/>
+      </rule>
+      <rule>
+        <include state="punctuation"/>
+      </rule>
+      <rule>
+        <include state="operators"/>
+      </rule>
+    </state>
+    <state name="string_dquote">
+      <rule pattern="([^&#34;\\]|\\.)*&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

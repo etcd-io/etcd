@@ -1,0 +1,74 @@
+<lexer>
+  <config>
+    <name>ApacheConf</name>
+    <alias>apacheconf</alias>
+    <alias>aconf</alias>
+    <alias>apache</alias>
+    <filename>.htaccess</filename>
+    <filename>apache.conf</filename>
+    <filename>apache2.conf</filename>
+    <mime_type>text/x-apacheconf</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(#.*?)$">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(&lt;[^\s&gt;]+)(?:(\s+)(.*?))?(&gt;)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="Text"/>
+          <token type="LiteralString"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="([a-z]\w*)(\s+)">
+        <bygroups>
+          <token type="NameBuiltin"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="value"/>
+      </rule>
+      <rule pattern="\.+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="value">
+      <rule pattern="\\\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="$">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\d+\.\d+\.\d+\.\d+(?:/\d+)?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="/([a-z0-9][\w./-]+)">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="(on|off|none|any|all|double|email|dns|min|minimal|os|productonly|full|emerg|alert|crit|error|warn|notice|info|debug|registry|script|inetd|standalone|user|group)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="&#34;([^&#34;\\]*(?:\\.[^&#34;\\]*)*)&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="[^\s&#34;\\]+">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

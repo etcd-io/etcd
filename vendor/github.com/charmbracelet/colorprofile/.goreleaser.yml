@@ -1,0 +1,6 @@
+includes:
+  - from_url:
+      url: charmbracelet/meta/main/goreleaser-lib.yaml
+
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+

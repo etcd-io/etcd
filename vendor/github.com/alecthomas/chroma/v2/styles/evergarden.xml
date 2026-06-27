@@ -1,0 +1,33 @@
+<style name="evergarden">
+  <entry type="Background" style="noinherit #D6CBB4 bg:#252B2E"/>
+  <entry type="Keyword" style="noinherit #E67E80"/>
+  <entry type="KeywordType" style="noinherit #DBBC7F"/>
+  <entry type="Name" style="#D6CBB4"/>
+  <entry type="NameAttribute" style="bold #D699B6"/>
+  <entry type="NameBuiltin" style="#D699B6"/>
+  <entry type="NameConstant" style="noinherit #D699B6"/>
+  <entry type="NameEntity" style="noinherit #DBBC7F"/>
+  <entry type="NameException" style="noinherit #E67E80"/>
+  <entry type="NameFunction" style="#B2C98F"/>
+  <entry type="NameLabel" style="noinherit #E67E80"/>
+  <entry type="NameTag" style="noinherit #7a8478"/>
+  <entry type="NameVariable" style="noinherit #D6CBB4"/>
+  <entry type="LiteralString" style="noinherit #B2C98F"/>
+  <entry type="LiteralStringSymbol" style="#E69875"/>
+  <entry type="LiteralNumber" style="noinherit #D699B6"/>
+  <entry type="LiteralNumberFloat" style="noinherit #D699B6"/>
+  <entry type="Operator" style="#7a8478"/>
+  <entry type="Comment" style="italic #859289"/>
+  <entry type="CommentPreproc" style="noinherit #E67E80"/>
+  <entry type="Generic" style="#D6CBB4"/>
+  <entry type="GenericDeleted" style="noinherit #252B2E bg:#E67E80"/>
+  <entry type="GenericEmph" style="#6E8585"/>
+  <entry type="GenericError" style="bold bg:#E67E80"/>
+  <entry type="GenericHeading" style="bold #D699B6"/>
+  <entry type="GenericInserted" style="noinherit #252B2E bg:#B2C98F"/>
+  <entry type="GenericOutput" style="noinherit #6E8585"/>
+  <entry type="GenericPrompt" style="#D6CBB4"/>
+  <entry type="GenericStrong" style="#D6CBB4"/>
+  <entry type="GenericSubheading" style="bold #B2C98F"/>
+  <entry type="GenericTraceback" style="bold bg:#E67E80"/>
+</style>

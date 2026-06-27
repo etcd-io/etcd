@@ -1,0 +1,35 @@
+linters:
+  enable:
+    - asasalint
+    - bidichk
+    - bodyclose
+    - decorder
+    - durationcheck
+    - err113
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - gocritic
+    - gofmt
+    - goimports
+    - goprintffuncname
+    - gosec
+    - importas
+    - misspell
+    - nolintlint
+    - prealloc
+    - predeclared
+    - promlinter
+    - revive
+    - stylecheck
+    - tagliatelle
+    - tenv
+    - thelper
+    - unconvert
+    - usestdlibvars
+issues:
+  exclude-rules:
+    - path: magefile\.go
+      linters:
+        - deadcode

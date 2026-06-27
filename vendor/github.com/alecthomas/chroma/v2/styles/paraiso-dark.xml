@@ -1,0 +1,37 @@
+<style name="paraiso-dark">
+  <entry type="Error" style="#ef6155"/>
+  <entry type="Background" style="bg:#2f1e2e"/>
+  <entry type="Keyword" style="#815ba4"/>
+  <entry type="KeywordNamespace" style="#5bc4bf"/>
+  <entry type="KeywordType" style="#fec418"/>
+  <entry type="Name" style="#e7e9db"/>
+  <entry type="NameAttribute" style="#06b6ef"/>
+  <entry type="NameClass" style="#fec418"/>
+  <entry type="NameConstant" style="#ef6155"/>
+  <entry type="NameDecorator" style="#5bc4bf"/>
+  <entry type="NameException" style="#ef6155"/>
+  <entry type="NameFunction" style="#06b6ef"/>
+  <entry type="NameNamespace" style="#fec418"/>
+  <entry type="NameOther" style="#06b6ef"/>
+  <entry type="NameTag" style="#5bc4bf"/>
+  <entry type="NameVariable" style="#ef6155"/>
+  <entry type="Literal" style="#f99b15"/>
+  <entry type="LiteralDate" style="#48b685"/>
+  <entry type="LiteralString" style="#48b685"/>
+  <entry type="LiteralStringChar" style="#e7e9db"/>
+  <entry type="LiteralStringDoc" style="#776e71"/>
+  <entry type="LiteralStringEscape" style="#f99b15"/>
+  <entry type="LiteralStringInterpol" style="#f99b15"/>
+  <entry type="LiteralNumber" style="#f99b15"/>
+  <entry type="Operator" style="#5bc4bf"/>
+  <entry type="Punctuation" style="#e7e9db"/>
+  <entry type="Comment" style="#776e71"/>
+  <entry type="GenericDeleted" style="#ef6155"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericHeading" style="bold #e7e9db"/>
+  <entry type="GenericInserted" style="#48b685"/>
+  <entry type="GenericPrompt" style="bold #776e71"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="bold #5bc4bf"/>
+  <entry type="Text" style="#e7e9db"/>
+</style>

@@ -1,0 +1,46 @@
+<style name="github-dark">
+  <entry type="Error" style="#f85149"/>
+  <entry type="LineHighlight" style="bg:#6e7681"/>
+  <entry type="LineNumbers" style="#6e7681"/>
+  <entry type="Background" style="#e6edf3 bg:#0d1117"/>
+  <entry type="Keyword" style="#ff7b72"/>
+  <entry type="KeywordConstant" style="#79c0ff"/>
+  <entry type="KeywordPseudo" style="#79c0ff"/>
+  <entry type="Name" style="#e6edf3"/>
+  <entry type="NameClass" style="bold #f0883e"/>
+  <entry type="NameConstant" style="bold #79c0ff"/>
+  <entry type="NameDecorator" style="bold #d2a8ff"/>
+  <entry type="NameEntity" style="#ffa657"/>
+  <entry type="NameException" style="bold #f0883e"/>
+  <entry type="NameFunction" style="bold #d2a8ff"/>
+  <entry type="NameLabel" style="bold #79c0ff"/>
+  <entry type="NameNamespace" style="#ff7b72"/>
+  <entry type="NameOther" style="#e6edf3"/>
+  <entry type="NameProperty" style="#79c0ff"/>
+  <entry type="NameTag" style="#7ee787"/>
+  <entry type="NameVariable" style="#79c0ff"/>
+  <entry type="Literal" style="#a5d6ff"/>
+  <entry type="LiteralDate" style="#79c0ff"/>
+  <entry type="LiteralStringAffix" style="#79c0ff"/>
+  <entry type="LiteralStringDelimiter" style="#79c0ff"/>
+  <entry type="LiteralStringEscape" style="#79c0ff"/>
+  <entry type="LiteralStringHeredoc" style="#79c0ff"/>
+  <entry type="LiteralStringRegex" style="#79c0ff"/>
+  <entry type="Operator" style="bold #ff7b72"/>
+  <entry type="Comment" style="italic #8b949e"/>
+  <entry type="CommentSpecial" style="bold italic #8b949e"/>
+  <entry type="CommentPreproc" style="bold #8b949e"/>
+  <entry type="Generic" style="#e6edf3"/>
+  <entry type="GenericDeleted" style="#ffa198 bg:#490202"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericError" style="#ffa198"/>
+  <entry type="GenericHeading" style="bold #79c0ff"/>
+  <entry type="GenericInserted" style="#56d364 bg:#0f5323"/>
+  <entry type="GenericOutput" style="#8b949e"/>
+  <entry type="GenericPrompt" style="#8b949e"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="#79c0ff"/>
+  <entry type="GenericTraceback" style="#ff7b72"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="TextWhitespace" style="#6e7681"/>
+</style>

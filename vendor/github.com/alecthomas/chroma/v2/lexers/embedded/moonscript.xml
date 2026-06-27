@@ -1,0 +1,83 @@
+
+<lexer>
+  <config>
+    <name>MoonScript</name>
+    <alias>moonscript</alias>
+    <alias>moon</alias>
+    <filename>*.moon</filename>
+    <mime_type>text/x-moonscript</mime_type>
+    <mime_type>application/x-moonscript</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="#!(.*?)$"><token type="CommentPreproc"/></rule>
+      <rule><push state="base"/></rule>
+    </state>
+    <state name="base">
+      <rule pattern="--.*$"><token type="CommentSingle"/></rule>
+      <rule pattern="(?i)(\d*\.\d+|\d+\.\d*)(e[+-]?\d+)?"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="(?i)\d+e[+-]?\d+"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="(?i)0x[0-9a-f]*"><token type="LiteralNumberHex"/></rule>
+      <rule pattern="\d+"><token type="LiteralNumberInteger"/></rule>
+      <rule pattern="\n"><token type="TextWhitespace"/></rule>
+      <rule pattern="[^\S\n]+"><token type="Text"/></rule>
+      <rule pattern="(?s)\[(=*)\[.*?\]\1\]"><token type="LiteralString"/></rule>
+      <rule pattern="(-&gt;|=&gt;)"><token type="NameFunction"/></rule>
+      <rule pattern=":[a-zA-Z_]\w*"><token type="NameVariable"/></rule>
+      <rule pattern="(==|!=|~=|&lt;=|&gt;=|\.\.\.|\.\.|[=+\-*/%^&lt;&gt;#!.\\:])"><token type="Operator"/></rule>
+      <rule pattern="[;,]"><token type="Punctuation"/></rule>
+      <rule pattern="[\[\]{}()]"><token type="KeywordType"/></rule>
+      <rule pattern="[a-zA-Z_]\w*:"><token type="NameVariable"/></rule>
+      <rule pattern="(class|extends|if|then|super|do|with|import|export|while|elseif|return|for|in|from|when|using|else|switch|break)\b"><token type="Keyword"/></rule>
+      <rule pattern="(true|false|nil)\b"><token type="KeywordConstant"/></rule>
+      <rule pattern="(and|or|not)\b"><token type="OperatorWord"/></rule>
+      <rule pattern="(self)\b"><token type="NameBuiltinPseudo"/></rule>
+      <rule pattern="@@?([a-zA-Z_]\w*)?"><token type="NameVariableClass"/></rule>
+      <rule pattern="[A-Z]\w*"><token type="NameClass"/></rule>
+      <rule pattern="(_G|_VERSION|assert|collectgarbage|dofile|error|getmetatable|ipairs|load|loadfile|next|pairs|pcall|print|rawequal|rawget|rawlen|rawset|select|setmetatable|tonumber|tostring|type|warn|xpcall|bit32\.arshift|bit32\.band|bit32\.bnot|bit32\.bor|bit32\.btest|bit32\.bxor|bit32\.extract|bit32\.lrotate|bit32\.lshift|bit32\.replace|bit32\.rrotate|bit32\.rshift|coroutine\.close|coroutine\.create|coroutine\.isyieldable|coroutine\.resume|coroutine\.running|coroutine\.status|coroutine\.wrap|coroutine\.yield|debug\.debug|debug\.gethook|debug\.getinfo|debug\.getlocal|debug\.getmetatable|debug\.getregistry|debug\.getupvalue|debug\.getuservalue|debug\.sethook|debug\.setlocal|debug\.setmetatable|debug\.setupvalue|debug\.setuservalue|debug\.traceback|debug\.upvalueid|debug\.upvaluejoin|io\.close|io\.flush|io\.input|io\.lines|io\.open|io\.output|io\.popen|io\.read|io\.stderr|io\.stdin|io\.stdout|io\.tmpfile|io\.type|io\.write|math\.abs|math\.acos|math\.asin|math\.atan|math\.atan2|math\.ceil|math\.cos|math\.cosh|math\.deg|math\.exp|math\.floor|math\.fmod|math\.frexp|math\.huge|math\.ldexp|math\.log|math\.max|math\.maxinteger|math\.min|math\.mininteger|math\.modf|math\.pi|math\.pow|math\.rad|math\.random|math\.randomseed|math\.sin|math\.sinh|math\.sqrt|math\.tan|math\.tanh|math\.tointeger|math\.type|math\.ult|package\.config|package\.cpath|package\.loaded|package\.loadlib|package\.path|package\.preload|package\.searchers|package\.searchpath|require|os\.clock|os\.date|os\.difftime|os\.execute|os\.exit|os\.getenv|os\.remove|os\.rename|os\.setlocale|os\.time|os\.tmpname|string\.byte|string\.char|string\.dump|string\.find|string\.format|string\.gmatch|string\.gsub|string\.len|string\.lower|string\.match|string\.pack|string\.packsize|string\.rep|string\.reverse|string\.sub|string\.unpack|string\.upper|table\.concat|table\.insert|table\.move|table\.pack|table\.remove|table\.sort|table\.unpack|utf8\.char|utf8\.charpattern|utf8\.codepoint|utf8\.codes|utf8\.len|utf8\.offset)\b"><token type="NameBuiltin"/></rule>
+      <rule pattern="[A-Za-z_]\w*"><token type="Name"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringSingle"/><combined state="stringescape" state="sqs"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><combined state="stringescape" state="dqs"/></rule>
+    </state>
+    <state name="stringescape">
+      <rule pattern="\\([abfnrtv\\&quot;\&#x27;]|\d{1,3})"><token type="LiteralStringEscape"/></rule>
+    </state>
+    <state name="sqs">
+      <rule pattern="&#x27;"><token type="LiteralStringSingle"/><pop depth="1"/></rule>
+      <rule pattern="[^\\&#x27;]+"><token type="LiteralString"/></rule>
+    </state>
+    <state name="dqs">
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><pop depth="1"/></rule>
+      <rule pattern="[^\\&quot;]+"><token type="LiteralString"/></rule>
+    </state>
+    <state name="ws">
+      <rule pattern="(?:--\[(?&lt;level&gt;=*)\[[\w\W]*?\](\k&lt;level&gt;)\])"><token type="CommentMultiline"/></rule>
+      <rule pattern="(?:--.*$)"><token type="CommentSingle"/></rule>
+      <rule pattern="(?:\s+)"><token type="TextWhitespace"/></rule>
+    </state>
+    <state name="varname">
+      <rule><include state="ws"/></rule>
+      <rule pattern="\.\."><token type="Operator"/><pop depth="1"/></rule>
+      <rule pattern="[.:]"><token type="Punctuation"/></rule>
+      <rule pattern="(?:[^\W\d]\w*)(?=(?:(?:--\[(?&lt;level&gt;=*)\[[\w\W]*?\](\k&lt;level&gt;)\])|(?:--.*$)|(?:\s+))*[.:])"><token type="NameProperty"/></rule>
+      <rule pattern="(?:[^\W\d]\w*)(?=(?:(?:--\[(?&lt;level&gt;=*)\[[\w\W]*?\](\k&lt;level&gt;)\])|(?:--.*$)|(?:\s+))*\()"><token type="NameFunction"/><pop depth="1"/></rule>
+      <rule pattern="(?:[^\W\d]\w*)"><token type="NameProperty"/><pop depth="1"/></rule>
+    </state>
+    <state name="funcname">
+      <rule><include state="ws"/></rule>
+      <rule pattern="[.:]"><token type="Punctuation"/></rule>
+      <rule pattern="(?:[^\W\d]\w*)(?=(?:(?:--\[(?&lt;level&gt;=*)\[[\w\W]*?\](\k&lt;level&gt;)\])|(?:--.*$)|(?:\s+))*[.:])"><token type="NameClass"/></rule>
+      <rule pattern="(?:[^\W\d]\w*)"><token type="NameFunction"/><pop depth="1"/></rule>
+      <rule pattern="\("><token type="Punctuation"/><pop depth="1"/></rule>
+    </state>
+    <state name="goto">
+      <rule><include state="ws"/></rule>
+      <rule pattern="(?:[^\W\d]\w*)"><token type="NameLabel"/><pop depth="1"/></rule>
+    </state>
+    <state name="label">
+      <rule><include state="ws"/></rule>
+      <rule pattern="::"><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule pattern="(?:[^\W\d]\w*)"><token type="NameLabel"/></rule>
+    </state>
+  </rules>
+</lexer>

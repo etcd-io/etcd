@@ -1,0 +1,35 @@
+<style name="native">
+  <entry type="Error" style="#a61717 bg:#e3d2d2"/>
+  <entry type="Background" style="#d0d0d0 bg:#202020"/>
+  <entry type="Keyword" style="bold #6ab825"/>
+  <entry type="KeywordPseudo" style="nobold"/>
+  <entry type="NameAttribute" style="#bbbbbb"/>
+  <entry type="NameBuiltin" style="#24909d"/>
+  <entry type="NameClass" style="underline #447fcf"/>
+  <entry type="NameConstant" style="#40ffff"/>
+  <entry type="NameDecorator" style="#ffa500"/>
+  <entry type="NameException" style="#bbbbbb"/>
+  <entry type="NameFunction" style="#447fcf"/>
+  <entry type="NameNamespace" style="underline #447fcf"/>
+  <entry type="NameTag" style="bold #6ab825"/>
+  <entry type="NameVariable" style="#40ffff"/>
+  <entry type="LiteralString" style="#ed9d13"/>
+  <entry type="LiteralStringOther" style="#ffa500"/>
+  <entry type="LiteralNumber" style="#3677a9"/>
+  <entry type="OperatorWord" style="bold #6ab825"/>
+  <entry type="Comment" style="italic #999999"/>
+  <entry type="CommentSpecial" style="bold noitalic #e50808 bg:#520000"/>
+  <entry type="CommentPreproc" style="bold noitalic #cd2828"/>
+  <entry type="GenericDeleted" style="#d22323"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericError" style="#d22323"/>
+  <entry type="GenericHeading" style="bold #ffffff"/>
+  <entry type="GenericInserted" style="#589819"/>
+  <entry type="GenericOutput" style="#cccccc"/>
+  <entry type="GenericPrompt" style="#aaaaaa"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="underline #ffffff"/>
+  <entry type="GenericTraceback" style="#d22323"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="TextWhitespace" style="#666666"/>
+</style>

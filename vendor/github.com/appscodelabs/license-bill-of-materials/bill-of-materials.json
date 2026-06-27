@@ -1,0 +1,20 @@
+[
+	{
+		"project": "github.com/appscodelabs/license-bill-of-materials",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
+			}
+		]
+	},
+	{
+		"project": "github.com/appscodelabs/license-bill-of-materials/assets",
+		"licenses": [
+			{
+				"type": "The Unlicense",
+				"confidence": 0.8473282442748091
+			}
+		]
+	}
+]

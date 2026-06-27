@@ -1,0 +1,71 @@
+<lexer>
+  <config>
+    <name>Clojure</name>
+    <alias>clojure</alias>
+    <alias>clj</alias>
+    <alias>edn</alias>
+    <filename>*.clj</filename>
+    <filename>*.edn</filename>
+    <mime_type>text/x-clojure</mime_type>
+    <mime_type>application/x-clojure</mime_type>
+    <mime_type>application/edn</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern=";.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="[,\s]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="-?\d+\.\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="-?\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="0x-?[abcdef\d]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="\\(.|[a-z]+)">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="::?#?(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="~@|[`\&#39;#^~&amp;@]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(quote|loop|new|var|let|def|if|do|fn|\.) ">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(definterface|defprotocol|defproject|defstruct|definline|defmethod|defrecord|defmulti|defmacro|defonce|declare|deftype|defn-|def-|defn|ns) ">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(clear-agent-errors|construct-proxy|bit-shift-right|get-proxy-class|special-symbol\?|with-local-vars|proxy-mappings|bit-shift-left|sorted-map-by|macroexpand-1|remove-method|create-struct|resultset-seq|inspect-table|inspect-tree|update-proxy|aset-boolean|agent-errors|with-out-str|insert-child|append-child|intersection|insert-right|to-array-2d|rename-keys|println-str|macroexpand|aset-double|select-keys|insert-left|aset-float|aset-short|interleave|re-pattern|make-array|identical\?|take-while|into-array|re-matches|re-matcher|complement|vector-zip|drop-while|when-first|map-invert|sorted-map|ns-resolve|difference|sorted-set|merge-with|ns-publics|split-with|ns-interns|ns-imports|constantly|struct-map|comparator|not-every\?|aset-long|print-str|re-groups|lazy-cons|remove-ns|namespace|await-for|contains\?|array-map|create-ns|make-node|with-meta|with-open|instance\?|ns-refers|aset-byte|aset-char|load-file|read-line|replicate|send-off|aset-int|distinct|not-any\?|take-nth|tree-seq|split-at|to-array|ns-unmap|identity|find-doc|find-var|hash-set|when-not|children|when-let|lazy-cat|hash-map|line-seq|rand-int|keyword\?|file-seq|accessor|replace|bit-not|find-ns|resolve|bit-and|println|binding|locking|vector\?|partial|nthrest|max-key|bit-xor|dotimes|ref-set|xml-seq|boolean|var-get|seq-zip|sort-by|branch\?|butlast|symbol\?|project|min-key|ns-name|comment|string\?|iterate|commute|alength|xml-zip|keyword|newline|re-find|reverse|var-set|prn-str|bit-or|import|re-seq|rights|assert|reduce|remove|gensym|rename|filter|ffirst|if-let|false\?|pr-str|every\?|vector|mapcat|ensure|rfirst|concat|second|double|select|dosync|symbol|subvec|if-not|ns-map|struct|zipper|zipmap|all-ns|dissoc|repeat|assoc|cycle|class|deref|zero\?|slurp|short|dorun|doseq|merge|memfn|agent|rrest|count|parse|right|float|flush|alter|fnseq|frest|doall|print|refer|in-ns|apply|union|await|list\*|proxy|lefts|true\?|index|first|range|left|keys|aset|join|into|last|read|rand|list|load|long|loop|conj|test|vals|pos\?|bean|peek|subs|path|time|find|rest|eval|end\?|edit|map\?|drop|root|aget|rseq|down|doto|meta|send|when|byte|take|seq\?|sync|name|neg\?|some|sort|cast|char|disj|next|not=|nil\?|node|comp|cond|cons|quot|var\?|max|new|rem|set|doc|seq|for|get|ref|inc|int|key|not|prn|min|map|val|nth|dec|pop|and|str|pr|\.\.|up|&gt;=|-&gt;|==|&lt;=|or|=|/|&gt;|-|\*|\+|&lt;) ">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(?&lt;=\()(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(\[|\])">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(\{|\})">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(\(|\))">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

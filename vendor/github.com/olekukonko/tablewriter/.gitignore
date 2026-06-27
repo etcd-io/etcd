@@ -1,0 +1,11 @@
+
+
+# folders
+.idea
+.vscode
+/tmp
+/lab
+dev.sh
+*csv2table
+_test/
+*.test

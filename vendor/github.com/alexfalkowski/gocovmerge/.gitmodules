@@ -1,0 +1,3 @@
+[submodule "bin"]
+	path = bin
+	url = git@github.com:alexfalkowski/bin.git

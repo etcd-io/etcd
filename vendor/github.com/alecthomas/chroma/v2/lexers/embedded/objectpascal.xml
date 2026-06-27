@@ -1,0 +1,142 @@
+<lexer>
+  <config>
+    <name>ObjectPascal</name>
+    <alias>objectpascal</alias>
+    <filename>*.pas</filename>
+    <filename>*.pp</filename>
+    <filename>*.inc</filename>
+    <filename>*.dpr</filename>
+    <filename>*.dpk</filename>
+    <filename>*.lpr</filename>
+    <filename>*.lpk</filename>
+    <mime_type>text/x-pascal</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <!-- TextWhitespace -->
+      <rule pattern="[^\S\n]+">
+        <token type="TextWhitespace" />
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <!-- Magic Number (BOM) -->
+      <rule pattern="[^\u0000-\u007F]+">
+        <token type="Text"/>
+      </rule>
+      <!-- Compiler Directive -->
+      <rule pattern="\{[$].*?\}|\{[-](NOD|EXT|OBJ).*?\}|\([*][$].*?[*]\)">
+        <token type="CommentPreproc" />
+      </rule>
+      <!-- Comment -->
+      <rule pattern="//.*">
+        <token type="CommentSingle" />
+      </rule>
+      <!-- Comment Multiline Block -->
+      <rule pattern="\([*](.|\n)*?[*]\)">
+        <token type="CommentMultiline"/>
+      </rule>
+      <!-- Comment Multiline Source Documentation -->
+      <rule pattern="[{](.|\n)*?[}]">
+        <token type="CommentMultiline"/>
+      </rule>
+      <!-- Range Indicator -->
+      <rule pattern="(?i:(\.\.))">
+        <token type="Operator" />
+      </rule>
+      <!-- Control Character -->
+      <rule pattern="[\#][0-9a-fA-F]*|[0-9]+[xX][0-9a-fA-F]*">
+        <token type="LiteralStringEscape" />
+      </rule>
+      <!-- Numbers -->
+      <rule pattern="[\$][0-9a-fA-F]*[xX][0-9a-fA-F]*|[\$][0-9a-fA-F]*|([0-9]+[0-9a-fA-F]+(?=[hH]))">
+        <token type="LiteralNumberHex" />
+      </rule>
+      <rule pattern="[0-9]+(\&#39;[0-9]+)*\.[0-9]+(\&#39;[0-9]+)*[eE][+-]?[0-9]+(\&#39;[0-9]+)*|[0-9]+(\&#39;[0-9]+)*\.[0-9]+(\&#39;[0-9]+)*|\d+[eE][+-]?[0-9]+">
+        <token type="LiteralNumberFloat" />
+      </rule>
+      <rule pattern="0|[1-9][0-9_]*?">
+        <token type="LiteralNumberInteger" />
+      </rule>
+      <!-- Multiline string Literal -->
+      <rule pattern="(&#39;&#39;&#39;\s*\n)(.|\n)*?(&#39;&#39;&#39;)(?=\s*&#59;)">
+        <token type="LiteralString" />
+      </rule>
+      <!-- string -->
+      <rule pattern="(?i:(\')).*?(?i:(\'))">
+        <token type="LiteralString" />
+      </rule>
+      <!-- string (Special case for Delphi Assembler)-->
+      <rule pattern="(?i:(&#34;)).*?(?i:(&#34;))">
+        <token type="LiteralString" />
+      </rule>
+      <!-- Simple Types -->
+      <rule pattern="\b(?!=\.)(?i:(NativeInt|NativeUInt|LongInt|LongWord|Integer|Int64|Cardinal|UInt64|ShortInt|SmallInt|FixedInt|Byte|Word|FixedUInt|Int8|Int16|Int32|UInt8|UInt16|UInt32|Real48|Single|Double|Real|Extended|Comp|Currency|Char|AnsiChar|WideChar|UCS2Char|UCS4Char|string|ShortString|AnsiString|UnicodeString|WideString|RawByteString|UTF8String|File|TextFile|Text|Boolean|ByteBool|WordBool|LongBool|Pointer|Variant|OleVariant))\b(?![&#60;\/(])">
+        <token type="KeywordType" />
+      </rule>
+      <!-- T Types -->
+      <rule pattern="\b(?!=\.)(?i:(TSingleRec|TDoubleRec|TExtended80Rec|TByteArray|TTextBuf|TVarRec|TWordArray))\b(?![&#60;\/(])">
+        <token type="KeywordType" />
+      </rule>
+      <!-- Pointer Types -->
+      <rule pattern="\b(?!=\.)(?i:(PChar|PAnsiChar|PWideChar|PRawByteString|PUnicodeString|PString|PAnsiString|PShortString|PTextBuf|PWideString|PByte|PShortInt|PWord|PSmallInt|PCardinal|PLongWord|PFixedUInt|PLongint|PFixedInt|PUInt64|PInt64|PNativeUInt|PNativeInt|PByteArray|PCurrency|PDouble|PExtended|PSingle|PInteger|POleVariant|PVarRec|PVariant|PWordArray|PBoolean|PWordBool|PLongBool|PPointer))\b(?![&#60;\/(])">
+        <token type="KeywordType" />
+      </rule>
+      <!-- More Types -->
+      <rule pattern="\b(?!=\.)(?i:(IntPtr|UIntPtr|Float32|Float64|_ShortStr|_ShortString|_AnsiStr|_AnsiString|_AnsiChr|_AnsiChar|_WideStr|_WideString|_PAnsiChr|_PAnsiChar|UTF8Char|_AnsiChar|PUTF8Char|_PAnsiChar|MarshaledString|MarshaledAString))\b(?![&#60;\/(])">
+        <token type="KeywordType" />
+      </rule>
+      <!-- Result -->
+      <rule pattern="\b(?!=\.)(?i:(Result))\b(?![&#60;\/(])">
+        <token type="GenericEmph" />
+      </rule>      
+      <!-- Result Constants -->
+      <rule pattern="\b(?!=\.)(?i:(True|False))\b(?![&#60;\/(])">
+        <token type="NameConstant" />
+      </rule>
+      <!-- Operator (Assign) -->
+      <rule pattern="[(\:\=)]">
+        <token type="Operator" />
+      </rule>      
+      <!-- Operators (Arithmetic, Unary Arithmetic, String, Pointer, Set, Relational, Address) -->
+      <rule pattern="[\+\-\*\/\^&#60;&#62;\=\@]">
+        <token type="Operator" />
+      </rule>
+      <!-- Operators (Arithmetic, Boolean, Logical (Bitwise), Set) -->
+      <rule pattern="\b(?i:([div][mod][not][and][or][xor][shl][shr][in]))\b">
+        <token type="OperatorWord" />
+      </rule>
+      <!-- Special Symbols (Escape, Literal Chr, Hex Value, Binary Numeral Expression Indicator) -->
+      <rule pattern="[&#38;\#\$\%]">
+        <token type="Operator" />
+      </rule>
+      <!-- Special Symbols (Punctuation) -->
+      <rule pattern="[\(\)\,\.\:\;\[\]]">
+        <token type="Punctuation" />
+      </rule>
+      <!-- Reserved Words -->
+      <rule pattern="\b(?!=\.)(?i:(and|end|interface|record|var|array|except|is|repeat|while|as|exports|label|resourcestring|with|asm|file|library|set|xor|begin|finalization|mod|shl|case|finally|nil|shr|class|for|not|string|const|function|object|then|constructor|goto|of|threadvar|destructor|if|or|to|dispinterface|implementation|packed|try|div|in|procedure|type|do|inherited|program|unit|downto|initialization|property|until|else|inline|raise|uses))\b(?![&#60;\/(])">
+        <token type="KeywordReserved" />
+      </rule>
+      <!-- Directives -->
+      <rule pattern="\b(?!=\.)(?i:(absolute|export|name|public|stdcall|abstract|external|published|strict|assembler|nodefault|read|stored|automated|final|operator|readonly|unsafe|cdecl|forward|out|reference|varargs|contains|helper|overload|register|virtual|default|implements|override|reintroduce|winapi|delayed|index|package|requires|write|deprecated|inline|pascal|writeonly|dispid|library|platform|safecall|dynamic|local|private|sealed|experimental|message|protected|static))\b(?![&#60;\/(])">
+        <token type="Keyword" />
+      </rule>
+      <!-- Directives obsolete -->
+      <rule pattern="\b(?!=\.)(?i:(near|far|resident))\b(?![&#60;\/(])">
+        <token type="Keyword" />
+      </rule>
+      <!-- Constant Expressions -->
+      <rule pattern="\b(?!=\.)(?i:(Abs|High|Low|Pred|Succ|Chr|Length|Odd|Round|Swap|Hi|Lo|Ord|SizeOf|Trunc))\b(?![&#60;\/(])">
+        <token type="KeywordConstant" />
+      </rule>
+      <!-- everything else -->
+      <rule pattern="([^\W\d]|\$)[\w$]*">
+        <token type="Text" />
+      </rule>
+    </state>
+  </rules>
+</lexer>

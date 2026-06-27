@@ -1,0 +1,18 @@
+<style name="swapoff">
+  <entry type="Error" style="#ff0000"/>
+  <entry type="Background" style="#e5e5e5 bg:#000000"/>
+  <entry type="Keyword" style="bold #ffffff"/>
+  <entry type="NameAttribute" style="#007f7f"/>
+  <entry type="NameBuiltin" style="bold #ffffff"/>
+  <entry type="NameKeyword" style="bold #ffffff"/>
+  <entry type="NameTag" style="bold"/>
+  <entry type="LiteralDate" style="bold #ffff00"/>
+  <entry type="LiteralString" style="bold #00ffff"/>
+  <entry type="LiteralNumber" style="bold #ffff00"/>
+  <entry type="Comment" style="#007f7f"/>
+  <entry type="CommentPreproc" style="bold #00ff00"/>
+  <entry type="GenericHeading" style="bold"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="bold"/>
+  <entry type="GenericUnderline" style="underline"/>
+</style>

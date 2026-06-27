@@ -1,0 +1,166 @@
+<lexer>
+  <config>
+    <name>Erlang</name>
+    <alias>erlang</alias>
+    <filename>*.erl</filename>
+    <filename>*.hrl</filename>
+    <filename>*.es</filename>
+    <filename>*.escript</filename>
+    <mime_type>text/x-erlang</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="%.*\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(receive|after|begin|catch|query|case|cond|when|let|fun|end|try|of|if)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(localtime_to_universaltime|universaltime_to_localtime|list_to_existing_atom|check_process_code|bitstring_to_list|list_to_bitstring|function_exported|is_process_alive|iolist_to_binary|bump_reductions|garbage_collect|process_display|suspend_process|list_to_integer|disconnect_node|integer_to_list|trace_delivered|send_nosuspend|list_to_binary|system_profile|binary_to_term|binary_to_list|resume_process|append_element|term_to_binary|system_monitor|list_to_tuple|spawn_monitor|delete_module|trace_pattern|tuple_to_list|list_to_float|float_to_list|module_loaded|port_connect|is_bitstring|port_to_list|monitor_node|process_info|port_control|split_binary|cancel_timer|purge_module|group_leader|list_to_atom|atom_to_list|port_command|is_reference|process_flag|pid_to_list|system_info|start_timer|iolist_size|fun_to_list|load_module|is_function|ref_to_list|list_to_pid|system_flag|make_tuple|is_builtin|unregister|is_boolean|set_cookie|md5_update|spawn_link|setelement|trace_info|read_timer|statistics|send_after|port_close|is_integer|tuple_size|spawn_opt|open_port|is_record|is_binary|md5_final|port_call|port_info|is_number|byte_size|demonitor|register|is_float|bit_size|fun_info|get_keys|is_tuple|is_atom|element|is_list|is_port|monitor|display|whereis|is_pid|memory|unlink|phash2|length|spawn|nodes|trace|round|apply|erase|phash|trunc|float|size|link|node|exit|hash|send|get|md5|put|abs|hd|tl)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(andalso|orelse|bxor|band|bnot|and|bsr|bsl|div|not|rem|bor|xor|or)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="^-">
+        <token type="Punctuation"/>
+        <push state="directive"/>
+      </rule>
+      <rule pattern="(\+\+?|--?|\*|/|&lt;|&gt;|/=|=:=|=/=|=&lt;|&gt;=|==?|&lt;-|!|\?)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="&lt;&lt;">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="&gt;&gt;">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="((?:[a-z]\w*|&#39;[^\n&#39;]*[^\\]&#39;))(:)">
+        <bygroups>
+          <token type="NameNamespace"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?:^|(?&lt;=:))((?:[a-z]\w*|&#39;[^\n&#39;]*[^\\]&#39;))(\s*)(\()">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[+-]?(?:[2-9]|[12][0-9]|3[0-6])#[0-9a-zA-Z]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[+-]?\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[+-]?\d+.\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[]\[:_@\&#34;.{}()|;,]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(?:[A-Z_]\w*)">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(?:[a-z]\w*|&#39;[^\n&#39;]*[^\\]&#39;)">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\?(?:(?:[A-Z_]\w*)|(?:[a-z]\w*|&#39;[^\n&#39;]*[^\\]&#39;))">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="\$(?:(?:\\(?:[bdefnrstv\&#39;&#34;\\]|[0-7][0-7]?[0-7]?|(?:x[0-9a-fA-F]{2}|x\{[0-9a-fA-F]+\})|\^[a-zA-Z]))|\\[ %]|[^\\])">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="#(?:[a-z]\w*|&#39;[^\n&#39;]*[^\\]&#39;)(:?\.(?:[a-z]\w*|&#39;[^\n&#39;]*[^\\]&#39;))?">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="\A#!.+\n">
+        <token type="CommentHashbang"/>
+      </rule>
+      <rule pattern="#\{">
+        <token type="Punctuation"/>
+        <push state="map_key"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="(?:\\(?:[bdefnrstv\&#39;&#34;\\]|[0-7][0-7]?[0-7]?|(?:x[0-9a-fA-F]{2}|x\{[0-9a-fA-F]+\})|\^[a-zA-Z]))">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="~[0-9.*]*[~#+BPWXb-ginpswx]">
+        <token type="LiteralStringInterpol"/>
+      </rule>
+      <rule pattern="[^&#34;\\~]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="~">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="directive">
+      <rule pattern="(define)(\s*)(\()((?:(?:[A-Z_]\w*)|(?:[a-z]\w*|&#39;[^\n&#39;]*[^\\]&#39;)))">
+        <bygroups>
+          <token type="NameEntity"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="NameConstant"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(record)(\s*)(\()((?:(?:[A-Z_]\w*)|(?:[a-z]\w*|&#39;[^\n&#39;]*[^\\]&#39;)))">
+        <bygroups>
+          <token type="NameEntity"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="NameLabel"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?:[a-z]\w*|&#39;[^\n&#39;]*[^\\]&#39;)">
+        <token type="NameEntity"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="map_key">
+      <rule>
+        <include state="root"/>
+      </rule>
+      <rule pattern="=&gt;">
+        <token type="Punctuation"/>
+        <push state="map_val"/>
+      </rule>
+      <rule pattern=":=">
+        <token type="Punctuation"/>
+        <push state="map_val"/>
+      </rule>
+      <rule pattern="\}">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="map_val">
+      <rule>
+        <include state="root"/>
+      </rule>
+      <rule pattern=",">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?=\})">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

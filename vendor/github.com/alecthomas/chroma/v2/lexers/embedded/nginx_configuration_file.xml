@@ -1,0 +1,101 @@
+<lexer>
+  <config>
+    <name>Nginx configuration file</name>
+    <alias>nginx</alias>
+    <filename>nginx.conf</filename>
+    <mime_type>text/x-nginx-conf</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="(include)(\s+)([^\s;]+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Name"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[^\s;#]+">
+        <token type="Keyword"/>
+        <push state="stmt"/>
+      </rule>
+      <rule>
+        <include state="base"/>
+      </rule>
+    </state>
+    <state name="block">
+      <rule pattern="\}">
+        <token type="Punctuation"/>
+        <pop depth="2"/>
+      </rule>
+      <rule pattern="[^\s;#]+">
+        <token type="KeywordNamespace"/>
+        <push state="stmt"/>
+      </rule>
+      <rule>
+        <include state="base"/>
+      </rule>
+    </state>
+    <state name="stmt">
+      <rule pattern="\{">
+        <token type="Punctuation"/>
+        <push state="block"/>
+      </rule>
+      <rule pattern=";">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="base"/>
+      </rule>
+    </state>
+    <state name="base">
+      <rule pattern="#.*\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="on|off">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="\$[^\s;#()]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="([a-z0-9.-]+)(:)([0-9]+)">
+        <bygroups>
+          <token type="Name"/>
+          <token type="Punctuation"/>
+          <token type="LiteralNumberInteger"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[a-z-]+/[a-z-+]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="[0-9]+[km]?\b">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="(~)(\s*)([^\s{]+)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="LiteralStringRegex"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[:=~]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[^\s;#{}$]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="/[^\s;#]*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[$;]">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,68 @@
+<lexer>
+  <config>
+    <name>Fennel</name>
+    <alias>fennel</alias>
+    <alias>fnl</alias>
+    <filename>*.fennel</filename>
+    <mime_type>text/x-fennel</mime_type>
+    <mime_type>application/x-fennel</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern=";.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="-?\d+\.\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="-?\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="0x-?[abcdef\d]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="\\(.|[a-z]+)">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="::?#?(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="~@|[`\&#39;#^~&amp;@]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(require-macros|set-forcibly!|import-macros|eval-compiler|pick-values|accumulate|macrodebug|pick-args|with-open|icollect|partial|comment|include|collect|hashfn|rshift|values|length|lshift|quote|match|while|doto|band|when|bnot|bxor|not=|tset|-\?&gt;&gt;|each|-&gt;&gt;|let|doc|for|and|set|not|-\?&gt;|bor|lua|\?\.|do|&gt;=|&lt;=|//|\.\.|-&gt;|or|if|~=|\^|&gt;|=|&lt;|:|/|\.|-|\+|\*|%|#) ">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(global|lambda|macros|local|macro|var|fn|λ) ">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(debug\.setuservalue|debug\.getmetatable|debug\.getuservalue|package\.searchpath|debug\.setmetatable|debug\.upvaluejoin|debug\.getregistry|coroutine\.running|coroutine\.create|debug\.setupvalue|debug\.getupvalue|coroutine\.status|coroutine\.resume|debug\.upvalueid|package\.loadlib|debug\.traceback|math\.randomseed|coroutine\.yield|collectgarbage|debug\.getlocal|package\.seeall|string\.reverse|coroutine\.wrap|debug\.setlocal|bit32\.replace|bit32\.lrotate|debug\.gethook|debug\.getinfo|bit32\.extract|string\.gmatch|string\.format|bit32\.arshift|bit32\.rrotate|debug\.sethook|table\.concat|os\.setlocale|table\.remove|string\.lower|bit32\.rshift|bit32\.lshift|string\.match|table\.unpack|setmetatable|getmetatable|table\.insert|string\.upper|string\.byte|debug\.debug|string\.gsub|bit32\.btest|math\.random|string\.find|string\.dump|os\.difftime|string\.char|table\.sort|loadstring|io\.tmpfile|bit32\.band|bit32\.bnot|string\.sub|os\.execute|os\.tmpname|table\.maxn|math\.log10|math\.atan2|table\.pack|math\.frexp|math\.ldexp|bit32\.bxor|string\.len|math\.floor|string\.rep|coroutine|math\.cosh|math\.ceil|math\.atan|math\.asin|math\.acos|math\.modf|os\.rename|os\.remove|io\.output|os\.getenv|bit32\.bor|math\.sinh|math\.fmod|math\.tanh|math\.sqrt|math\.cos|math\.tan|io\.lines|os\.clock|tostring|io\.input|math\.sin|tonumber|loadfile|math\.rad|math\.pow|io\.flush|math\.abs|math\.min|rawequal|math\.max|math\.log|io\.close|io\.popen|math\.exp|math\.deg|io\.write|os\.time|io\.read|io\.open|require|os\.exit|os\.date|package|io\.type|module|select|rawset|rawlen|rawget|unpack|assert|dofile|ipairs|string|xpcall|table|pcall|bit32|print|debug|error|pairs|math|type|next|load|arg|io|os|_G) ">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(?&lt;=\()(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="(?!#)[\w!$%*+&lt;=&gt;?/.#-]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(\[|\])">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(\{|\})">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(\(|\))">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

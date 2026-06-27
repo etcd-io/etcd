@@ -1,0 +1,10 @@
+<style name="hrdark">
+  <entry type="Other" style="#ffffff"/>
+  <entry type="Background" style="#1d2432"/>
+  <entry type="Keyword" style="#ff636f"/>
+  <entry type="Name" style="#58a1dd"/>
+  <entry type="Literal" style="#a6be9d"/>
+  <entry type="Operator" style="#ff636f"/>
+  <entry type="OperatorWord" style="#ff636f"/>
+  <entry type="Comment" style="italic #828b96"/>
+</style>

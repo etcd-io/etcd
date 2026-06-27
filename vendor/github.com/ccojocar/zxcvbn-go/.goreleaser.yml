@@ -1,0 +1,27 @@
+version: 2
+project_name: zxcvbn-go
+
+release:
+  extra_files:
+    - glob: ./bom.json
+  github:
+    owner: ccojocar
+    name: zxcvbn-go
+
+builds:
+  - main: ./testapp/
+    binary: zxcvbn-go
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - s390x
+    ldflags: -X main.Version={{.Version}} -X main.GitTag={{.Tag}} -X main.BuildDate={{.Date}}
+    env:
+      - CGO_ENABLED=0
+
+gomod:
+  proxy: true

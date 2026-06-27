@@ -1,0 +1,70 @@
+
+<lexer>
+  <config>
+    <name>AutoIt</name>
+    <alias>autoit</alias>
+    <filename>*.au3</filename>
+    <mime_type>text/x-autoit</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern=";.*\n"><token type="CommentSingle"/></rule>
+      <rule pattern="(#comments-start|#cs)(.|\n)*?(#comments-end|#ce)"><token type="CommentMultiline"/></rule>
+      <rule pattern="[\[\]{}(),;]"><token type="Punctuation"/></rule>
+      <rule pattern="(and|or|not)\b"><token type="OperatorWord"/></rule>
+      <rule pattern="[$|@][a-zA-Z_]\w*"><token type="NameVariable"/></rule>
+      <rule pattern="!=|==|:=|\.=|&lt;&lt;|&gt;&gt;|[-~+/*%=&lt;&gt;&amp;^|?:!.]"><token type="Operator"/></rule>
+      <rule><include state="commands"/></rule>
+      <rule><include state="labels"/></rule>
+      <rule><include state="builtInFunctions"/></rule>
+      <rule><include state="builtInMarcros"/></rule>
+      <rule pattern="&quot;"><token type="LiteralString"/><combined state="stringescape" state="dqs"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralString"/><push state="sqs"/></rule>
+      <rule><include state="numbers"/></rule>
+      <rule pattern="[a-zA-Z_#@$][\w#@$]*"><token type="Name"/></rule>
+      <rule pattern="\\|\&#x27;"><token type="Text"/></rule>
+      <rule pattern="\`([,%`abfnrtv\-+;])"><token type="LiteralStringEscape"/></rule>
+      <rule pattern="_\n"><token type="Text"/></rule>
+      <rule><include state="garbage"/></rule>
+    </state>
+    <state name="commands">
+      <rule pattern="(?i)(\s*)(#include-once|#include|#endregion|#forcedef|#forceref|#region|and|byref|case|continueloop|dim|do|else|elseif|endfunc|endif|endselect|exit|exitloop|for|func|global|if|local|next|not|or|return|select|step|then|to|until|wend|while|exit)\b"><bygroups><token type="Text"/><token type="NameBuiltin"/></bygroups></rule>
+    </state>
+    <state name="builtInFunctions">
+      <rule pattern="(?i)(abs|acos|adlibregister|adlibunregister|asc|ascw|asin|assign|atan|autoitsetoption|autoitwingettitle|autoitwinsettitle|beep|binary|binarylen|binarymid|binarytostring|bitand|bitnot|bitor|bitrotate|bitshift|bitxor|blockinput|break|call|cdtray|ceiling|chr|chrw|clipget|clipput|consoleread|consolewrite|consolewriteerror|controlclick|controlcommand|controldisable|controlenable|controlfocus|controlgetfocus|controlgethandle|controlgetpos|controlgettext|controlhide|controllistview|controlmove|controlsend|controlsettext|controlshow|controltreeview|cos|dec|dircopy|dircreate|dirgetsize|dirmove|dirremove|dllcall|dllcalladdress|dllcallbackfree|dllcallbackgetptr|dllcallbackregister|dllclose|dllopen|dllstructcreate|dllstructgetdata|dllstructgetptr|dllstructgetsize|dllstructsetdata|drivegetdrive|drivegetfilesystem|drivegetlabel|drivegetserial|drivegettype|drivemapadd|drivemapdel|drivemapget|drivesetlabel|drivespacefree|drivespacetotal|drivestatus|envget|envset|envupdate|eval|execute|exp|filechangedir|fileclose|filecopy|filecreatentfslink|filecreateshortcut|filedelete|fileexists|filefindfirstfile|filefindnextfile|fileflush|filegetattrib|filegetencoding|filegetlongname|filegetpos|filegetshortcut|filegetshortname|filegetsize|filegettime|filegetversion|fileinstall|filemove|fileopen|fileopendialog|fileread|filereadline|filerecycle|filerecycleempty|filesavedialog|fileselectfolder|filesetattrib|filesetpos|filesettime|filewrite|filewriteline|floor|ftpsetproxy|guicreate|guictrlcreateavi|guictrlcreatebutton|guictrlcreatecheckbox|guictrlcreatecombo|guictrlcreatecontextmenu|guictrlcreatedate|guictrlcreatedummy|guictrlcreateedit|guictrlcreategraphic|guictrlcreategroup|guictrlcreateicon|guictrlcreateinput|guictrlcreatelabel|guictrlcreatelist|guictrlcreatelistview|guictrlcreatelistviewitem|guictrlcreatemenu|guictrlcreatemenuitem|guictrlcreatemonthcal|guictrlcreateobj|guictrlcreatepic|guictrlcreateprogress|guictrlcreateradio|guictrlcreateslider|guictrlcreatetab|guictrlcreatetabitem|guictrlcreatetreeview|guictrlcreatetreeviewitem|guictrlcreateupdown|guictrldelete|guictrlgethandle|guictrlgetstate|guictrlread|guictrlrecvmsg|guictrlregisterlistviewsort|guictrlsendmsg|guictrlsendtodummy|guictrlsetbkcolor|guictrlsetcolor|guictrlsetcursor|guictrlsetdata|guictrlsetdefbkcolor|guictrlsetdefcolor|guictrlsetfont|guictrlsetgraphic|guictrlsetimage|guictrlsetlimit|guictrlsetonevent|guictrlsetpos|guictrlsetresizing|guictrlsetstate|guictrlsetstyle|guictrlsettip|guidelete|guigetcursorinfo|guigetmsg|guigetstyle|guiregistermsg|guisetaccelerators|guisetbkcolor|guisetcoord|guisetcursor|guisetfont|guisethelp|guiseticon|guisetonevent|guisetstate|guisetstyle|guistartgroup|guiswitch|hex|hotkeyset|httpsetproxy|httpsetuseragent|hwnd|inetclose|inetget|inetgetinfo|inetgetsize|inetread|inidelete|iniread|inireadsection|inireadsectionnames|inirenamesection|iniwrite|iniwritesection|inputbox|int|isadmin|isarray|isbinary|isbool|isdeclared|isdllstruct|isfloat|ishwnd|isint|iskeyword|isnumber|isobj|isptr|isstring|log|memgetstats|mod|mouseclick|mouseclickdrag|mousedown|mousegetcursor|mousegetpos|mousemove|mouseup|mousewheel|msgbox|number|objcreate|objcreateinterface|objevent|objevent|objget|objname|onautoitexitregister|onautoitexitunregister|opt|ping|pixelchecksum|pixelgetcolor|pixelsearch|pluginclose|pluginopen|processclose|processexists|processgetstats|processlist|processsetpriority|processwait|processwaitclose|progressoff|progresson|progressset|ptr|random|regdelete|regenumkey|regenumval|regread|regwrite|round|run|runas|runaswait|runwait|send|sendkeepactive|seterror|setextended|shellexecute|shellexecutewait|shutdown|sin|sleep|soundplay|soundsetwavevolume|splashimageon|splashoff|splashtexton|sqrt|srandom|statusbargettext|stderrread|stdinwrite|stdioclose|stdoutread|string|stringaddcr|stringcompare|stringformat|stringfromasciiarray|stringinstr|stringisalnum|stringisalpha|stringisascii|stringisdigit|stringisfloat|stringisint|stringislower|stringisspace|stringisupper|stringisxdigit|stringleft|stringlen|stringlower|stringmid|stringregexp|stringregexpreplace|stringreplace|stringright|stringsplit|stringstripcr|stringstripws|stringtoasciiarray|stringtobinary|stringtrimleft|stringtrimright|stringupper|tan|tcpaccept|tcpclosesocket|tcpconnect|tcplisten|tcpnametoip|tcprecv|tcpsend|tcpshutdown|tcpstartup|timerdiff|timerinit|tooltip|traycreateitem|traycreatemenu|traygetmsg|trayitemdelete|trayitemgethandle|trayitemgetstate|trayitemgettext|trayitemsetonevent|trayitemsetstate|trayitemsettext|traysetclick|trayseticon|traysetonevent|traysetpauseicon|traysetstate|traysettooltip|traytip|ubound|udpbind|udpclosesocket|udpopen|udprecv|udpsend|udpshutdown|udpstartup|vargettype|winactivate|winactive|winclose|winexists|winflash|wingetcaretpos|wingetclasslist|wingetclientsize|wingethandle|wingetpos|wingetprocess|wingetstate|wingettext|wingettitle|winkill|winlist|winmenuselectitem|winminimizeall|winminimizeallundo|winmove|winsetontop|winsetstate|winsettitle|winsettrans|winwait|winwaitactive|winwaitclose|winwaitnotactive)\b"><token type="NameFunction"/></rule>
+    </state>
+    <state name="builtInMarcros">
+      <rule pattern="(?i)(@appdatacommondir|@appdatadir|@autoitexe|@autoitpid|@autoitversion|@autoitx64|@com_eventobj|@commonfilesdir|@compiled|@computername|@comspec|@cpuarch|@cr|@crlf|@desktopcommondir|@desktopdepth|@desktopdir|@desktopheight|@desktoprefresh|@desktopwidth|@documentscommondir|@error|@exitcode|@exitmethod|@extended|@favoritescommondir|@favoritesdir|@gui_ctrlhandle|@gui_ctrlid|@gui_dragfile|@gui_dragid|@gui_dropid|@gui_winhandle|@homedrive|@homepath|@homeshare|@hotkeypressed|@hour|@ipaddress1|@ipaddress2|@ipaddress3|@ipaddress4|@kblayout|@lf|@logondnsdomain|@logondomain|@logonserver|@mday|@min|@mon|@msec|@muilang|@mydocumentsdir|@numparams|@osarch|@osbuild|@oslang|@osservicepack|@ostype|@osversion|@programfilesdir|@programscommondir|@programsdir|@scriptdir|@scriptfullpath|@scriptlinenumber|@scriptname|@sec|@startmenucommondir|@startmenudir|@startupcommondir|@startupdir|@sw_disable|@sw_enable|@sw_hide|@sw_lock|@sw_maximize|@sw_minimize|@sw_restore|@sw_show|@sw_showdefault|@sw_showmaximized|@sw_showminimized|@sw_showminnoactive|@sw_showna|@sw_shownoactivate|@sw_shownormal|@sw_unlock|@systemdir|@tab|@tempdir|@tray_id|@trayiconflashing|@trayiconvisible|@username|@userprofiledir|@wday|@windowsdir|@workingdir|@yday|@year)\b"><token type="NameVariableGlobal"/></rule>
+    </state>
+    <state name="labels">
+      <rule pattern="(^\s*)(\{\S+?\})"><bygroups><token type="Text"/><token type="NameLabel"/></bygroups></rule>
+    </state>
+    <state name="numbers">
+      <rule pattern="(\d+\.\d*|\d*\.\d+)([eE][+-]?[0-9]+)?"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="\d+[eE][+-]?[0-9]+"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="0\d+"><token type="LiteralNumberOct"/></rule>
+      <rule pattern="0[xX][a-fA-F0-9]+"><token type="LiteralNumberHex"/></rule>
+      <rule pattern="\d+L"><token type="LiteralNumberIntegerLong"/></rule>
+      <rule pattern="\d+"><token type="LiteralNumberInteger"/></rule>
+    </state>
+    <state name="stringescape">
+      <rule pattern="\&quot;\&quot;|\`([,%`abfnrtv])"><token type="LiteralStringEscape"/></rule>
+    </state>
+    <state name="strings">
+      <rule pattern="[^&quot;\n]+"><token type="LiteralString"/></rule>
+    </state>
+    <state name="dqs">
+      <rule pattern="&quot;"><token type="LiteralString"/><pop depth="1"/></rule>
+      <rule><include state="strings"/></rule>
+    </state>
+    <state name="sqs">
+      <rule pattern="\&#x27;\&#x27;|\`([,%`abfnrtv])"><token type="LiteralStringEscape"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralString"/><pop depth="1"/></rule>
+      <rule pattern="[^&#x27;\n]+"><token type="LiteralString"/></rule>
+    </state>
+    <state name="garbage">
+      <rule pattern="[^\S\n]"><token type="Text"/></rule>
+    </state>
+  </rules>
+</lexer>
+

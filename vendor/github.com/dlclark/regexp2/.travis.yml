@@ -1,0 +1,7 @@
+language: go
+arch:
+  - AMD64
+  - ppc64le
+go:
+  - 1.9
+  - tip

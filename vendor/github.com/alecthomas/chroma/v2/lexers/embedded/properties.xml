@@ -1,0 +1,45 @@
+<lexer>
+  <config>
+    <name>properties</name>
+    <alias>java-properties</alias>
+    <filename>*.properties</filename>
+    <mime_type>text/x-java-properties</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="^([ \t\f]*)([#!].*)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="CommentSingle"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^([ \t\f]*)(\S+?)([ \t\f]*)([=:])([ \t\f]*)(.*(?:(?&lt;=\\)\n.*)*)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="NameAttribute"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+          <token type="Text"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^([ \t\f]*)(\S+)([ \t\f]+)(.*(?:(?&lt;=\\)\n.*)*)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="NameAttribute"/>
+          <token type="Text"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^([ \t\f]*)(\w+)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="NameAttribute"/>
+        </bygroups>
+      </rule>
+       <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

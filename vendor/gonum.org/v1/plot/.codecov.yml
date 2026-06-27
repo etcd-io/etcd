@@ -1,0 +1,2 @@
+fixes:
+  - "src/gonum.org/v1/plot/::"

@@ -1,0 +1,3 @@
+The contents of this repository are Licensed under 
+the Creative Commons Attribution 4.0 International license as described in
+https://creativecommons.org/licenses/by/4.0/legalcode

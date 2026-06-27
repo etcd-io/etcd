@@ -1,0 +1,132 @@
+<lexer>
+  <config>
+    <name>Stylus</name>
+    <alias>stylus</alias>
+    <filename>*.styl</filename>
+    <mime_type>text/x-styl</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="values">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(\#[a-f0-9]{3,6})">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="\b(use-glyph-orientation|decimal-leading-zero|ruby-base-container|ruby-text-container|table-column-group|table-header-group|geometricPrecision|table-footer-group|optimizeLegibility|alternate-reverse|repeat no-repeat|table-row-group|all-petite-caps|ultra-condensed|extra-condensed|box-decoration|sideways-right|extra-expanded|no-close-quote|all-small-caps|semi-condensed|ultra-expanded|column-reverse|space-between|semi-expanded|table-caption|no-open-quote|sideways-left|double-circle|vertical-text|optimizeSpeed|weight style|currentColor|titling-caps|match-parent|table-column|line-through|inline-block|inline-table|wrap-reverse|avoid-column|manipulation|space-around|context-menu|lower-alpha|row-reverse|not-allowed|content-box|ease-in-out|close-quote|lower-latin|crisp-edges|lower-roman|lower-greek|upper-alpha|upper-latin|upper-roman|nwse-resize|nesw-resize|preserve-3d|inline-flex|petite-caps|color-dodge|descendants|padding-box|capitalize|small-caps|difference|inter-word|step-start|all-scroll|stroke-box|soft-light|margin-box|open-quote|table-cell|row-resize|border-box|hard-light|break-word|color-burn|luminosity|full-width|col-resize|from-image|avoid-page|scale-down|saturation|sans-serif|flex-start|distribute|horizontal|alternate|ruby-text|force-end|list-item|se-resize|mandatory|exclusion|ns-resize|underline|ruby-base|ew-resize|condensed|container|uppercase|no-repeat|nw-resize|table-row|backwards|crosshair|proximity|sw-resize|lowercase|allow-end|each-line|monospace|pixelated|ne-resize|luminance|pan-right|ellipsis|pan-down|pan-left|overline|multiply|progress|relative|infinite|repeat-x|repeat-y|georgian|forwards|flex-end|s-resize|fill-box|expanded|separate|ease-out|sideways|e-resize|step-end|n-resize|collapse|triangle|baseline|view-box|w-resize|armenian|absolute|xx-large|xx-small|vertical|zoom-out|contain|ease-in|running|no-drop|zoom-in|unicase|hanging|smaller|x-large|overlay|compact|lighter|lighten|objects|oblique|x-small|reverse|stretch|upright|cursive|inherit|initial|outside|pointer|decimal|default|justify|visible|balance|isolate|fantasy|paused|static|pan-up|invert|inside|italic|weight|inline|hidden|outset|larger|repeat|always|spaces|sticky|circle|digits|linear|column|smooth|nowrap|bolder|normal|sesame|dashed|groove|darken|bottom|run-in|manual|dotted|double|medium|filled|screen|scroll|center|strict|square|edges|serif|start|thick|first|clone|fixed|slice|small|under|unset|block|color|round|solid|space|right|ridge|blink|below|pan-y|avoid|large|cover|inset|alpha|local|alias|style|loose|table|mixed|pan-x|page|ruby|disc|none|snap|ease|text|show|thin|clip|left|open|wrap|fill|cell|flat|flex|flip|last|both|help|bold|over|hide|wait|icon|move|auto|copy|wavy|top|ltr|row|rtl|end|hue|dot|off|all|ink|to|on)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="\;?">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="([ \t]*\n|\s+)">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[!$][\w-]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="@[\w-]+">
+        <token type="KeywordPseudo"/>
+        <push state="atrule"/>
+      </rule>
+      <rule pattern="(\.)([\w-]+)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="for|if|else if|else|unless|return|\&amp;">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="([\w-]+)(\()">
+        <bygroups>
+          <token type="NameDecorator"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="function-start"/>
+      </rule>
+      <rule pattern="(\+)([\w-]+)(\(\))">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="NameDecorator"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(-webkit-|-khtml-|prince-|-atsc-|-moz-|-rim-|-wap-|-ms-|-xv-|mso-|-ah-|-hp-|-ro-|-tc-|-o-)">
+        <token type="NameProperty"/>
+      </rule>
+      <rule pattern="\b(align-content|align-items|align-self|alignment-baseline|all|animation|animation-delay|animation-direction|animation-duration|animation-fill-mode|animation-iteration-count|animation-name|animation-play-state|animation-timing-function|appearance|azimuth|backface-visibility|background|background-attachment|background-blend-mode|background-clip|background-color|background-image|background-origin|background-position|background-repeat|background-size|baseline-shift|bookmark-label|bookmark-level|bookmark-state|border|border-bottom|border-bottom-color|border-bottom-left-radius|border-bottom-right-radius|border-bottom-style|border-bottom-width|border-boundary|border-collapse|border-color|border-image|border-image-outset|border-image-repeat|border-image-slice|border-image-source|border-image-width|border-left|border-left-color|border-left-style|border-left-width|border-radius|border-right|border-right-color|border-right-style|border-right-width|border-spacing|border-style|border-top|border-top-color|border-top-left-radius|border-top-right-radius|border-top-style|border-top-width|border-width|bottom|box-decoration-break|box-shadow|box-sizing|box-snap|box-suppress|break-after|break-before|break-inside|caption-side|caret|caret-animation|caret-color|caret-shape|chains|clear|clip|clip-path|clip-rule|color|color-interpolation-filters|column-count|column-fill|column-gap|column-rule|column-rule-color|column-rule-style|column-rule-width|column-span|column-width|columns|content|counter-increment|counter-reset|counter-set|crop|cue|cue-after|cue-before|cursor|direction|display|dominant-baseline|elevation|empty-cells|filter|flex|flex-basis|flex-direction|flex-flow|flex-grow|flex-shrink|flex-wrap|float|float-defer|float-offset|float-reference|flood-color|flood-opacity|flow|flow-from|flow-into|font|font-family|font-feature-settings|font-kerning|font-language-override|font-size|font-size-adjust|font-stretch|font-style|font-synthesis|font-variant|font-variant-alternates|font-variant-caps|font-variant-east-asian|font-variant-ligatures|font-variant-numeric|font-variant-position|font-weight|footnote-display|footnote-policy|glyph-orientation-vertical|grid|grid-area|grid-auto-columns|grid-auto-flow|grid-auto-rows|grid-column|grid-column-end|grid-column-gap|grid-column-start|grid-gap|grid-row|grid-row-end|grid-row-gap|grid-row-start|grid-template|grid-template-areas|grid-template-columns|grid-template-rows|hanging-punctuation|height|hyphenate-character|hyphenate-limit-chars|hyphenate-limit-last|hyphenate-limit-lines|hyphenate-limit-zone|hyphens|image-orientation|image-resolution|initial-letter|initial-letter-align|initial-letter-wrap|isolation|justify-content|justify-items|justify-self|left|letter-spacing|lighting-color|line-break|line-grid|line-height|line-snap|list-style|list-style-image|list-style-position|list-style-type|margin|margin-bottom|margin-left|margin-right|margin-top|marker-side|marquee-direction|marquee-loop|marquee-speed|marquee-style|mask|mask-border|mask-border-mode|mask-border-outset|mask-border-repeat|mask-border-slice|mask-border-source|mask-border-width|mask-clip|mask-composite|mask-image|mask-mode|mask-origin|mask-position|mask-repeat|mask-size|mask-type|max-height|max-lines|max-width|min-height|min-width|mix-blend-mode|motion|motion-offset|motion-path|motion-rotation|move-to|nav-down|nav-left|nav-right|nav-up|object-fit|object-position|offset-after|offset-before|offset-end|offset-start|opacity|order|orphans|outline|outline-color|outline-offset|outline-style|outline-width|overflow|overflow-style|overflow-wrap|overflow-x|overflow-y|padding|padding-bottom|padding-left|padding-right|padding-top|page|page-break-after|page-break-before|page-break-inside|page-policy|pause|pause-after|pause-before|perspective|perspective-origin|pitch|pitch-range|play-during|polar-angle|polar-distance|position|presentation-level|quotes|region-fragment|resize|rest|rest-after|rest-before|richness|right|rotation|rotation-point|ruby-align|ruby-merge|ruby-position|running|scroll-snap-coordinate|scroll-snap-destination|scroll-snap-points-x|scroll-snap-points-y|scroll-snap-type|shape-image-threshold|shape-inside|shape-margin|shape-outside|size|speak|speak-as|speak-header|speak-numeral|speak-punctuation|speech-rate|stress|string-set|tab-size|table-layout|text-align|text-align-last|text-combine-upright|text-decoration|text-decoration-color|text-decoration-line|text-decoration-skip|text-decoration-style|text-emphasis|text-emphasis-color|text-emphasis-position|text-emphasis-style|text-indent|text-justify|text-orientation|text-overflow|text-shadow|text-space-collapse|text-space-trim|text-spacing|text-transform|text-underline-position|text-wrap|top|transform|transform-origin|transform-style|transition|transition-delay|transition-duration|transition-property|transition-timing-function|unicode-bidi|user-select|vertical-align|visibility|voice-balance|voice-duration|voice-family|voice-pitch|voice-range|voice-rate|voice-stress|voice-volume|volume|white-space|widows|width|will-change|word-break|word-spacing|word-wrap|wrap-after|wrap-before|wrap-flow|wrap-inside|wrap-through|writing-mode|z-index)\b(\:)?">
+        <bygroups>
+          <token type="NameProperty"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="values"/>
+      </rule>
+      <rule pattern="\b(a|abbr|acronym|address|applet|area|article|aside|audio|b|base(?:front)?|bd(?:i|o)|big|blockquote|body|br|button|canvas|caption|center|cite|code|col|colgroup|data|datalist|d(?:d|l|t)|del|details|dfn|dialog|dir|div|em(?:bed)?|fieldset|fig(?:caption|ure)|font|footer|form|frame(?:set)?|h[1-6]+|head(?:er)?|hr|html|i|iframe|img|input|ins|kbd|label|legend|li|link|main|map|mark|meta|meter|nav|noframes|noscript|object|ol|optgroup|option|output|p|param|picture|pre|progress|q|r(?:p|t|uby)|s|samp|script|section|select|small|source|span|strike|strong|style|sub|summary|sup|svg|table|tbody|td|template|textarea|tfoot|th|thead|time|title|tr|track|tt|u|ul|var|video|wbr)\b">
+        <token type="NameTag"/>
+      </rule>
+      <rule pattern="\b(cjk-ideographic|katakana-iroha|hiragana-iroha|small-caption|bidi-override|center-right|center-left|text-bottom|message-box|continuous|status-bar|right-side|rightwards|spell-out|left-side|landscape|far-right|leftwards|narrower|portrait|katakana|far-left|text-top|pre-wrap|hiragana|pre-line|silent|x-high|faster|higher|middle|x-soft|behind|x-fast|hebrew|slower|x-loud|super|above|lower|wider|level|aural|embed|x-low|cross|crop|fast|once|high|slow|soft|loud|yes|pre|low|mix)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="\b(lightgoldenrodyellow|mediumspringgreen|mediumaquamarine|mediumslateblue|mediumturquoise|mediumvioletred|lightsteelblue|cornflowerblue|lightslategray|blanchedalmond|mediumseagreen|lightslategrey|darkolivegreen|darkgoldenrod|darkslateblue|lightseagreen|rebeccapurple|darkslategrey|darkslategray|palegoldenrod|paleturquoise|palevioletred|darkturquoise|lavenderblush|antiquewhite|mediumorchid|lightskyblue|mediumpurple|midnightblue|darkseagreen|lemonchiffon|springgreen|yellowgreen|greenyellow|navajowhite|darkmagenta|lightyellow|transparent|lightsalmon|forestgreen|saddlebrown|deepskyblue|floralwhite|dodgerblue|ghostwhite|lightcoral|sandybrown|darkviolet|papayawhip|mediumblue|chartreuse|lightgreen|whitesmoke|aquamarine|darkorange|darksalmon|powderblue|darkorchid|blueviolet|indianred|mintcream|mistyrose|olivedrab|goldenrod|orangered|lawngreen|gainsboro|lightblue|firebrick|lightcyan|peachpuff|lightgray|darkkhaki|lightgrey|darkgreen|rosybrown|royalblue|slateblue|chocolate|cadetblue|burlywood|slategray|slategrey|limegreen|steelblue|turquoise|palegreen|lightpink|aliceblue|moccasin|darkgrey|darkblue|seagreen|lavender|cornsilk|deeppink|seashell|darkgray|honeydew|darkcyan|dimgrey|magenta|crimson|darkred|hotpink|skyblue|oldlace|dimgray|fuchsia|thistle|orchid|indigo|orange|tomato|violet|salmon|yellow|silver|purple|bisque|sienna|maroon|black|linen|azure|white|wheat|khaki|green|olive|ivory|coral|brown|beige|snow|blue|navy|aqua|teal|gray|gold|grey|lime|peru|cyan|pink|plum|tan|red)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(\{|\}|\(|\)|\[|\]|,|:|;)">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(\.|\!|\-|\+|\~|\*\*|\*|\/|\%|\.\.\.|\.\.|\&lt;\=|\&gt;\=|\&lt;|\&gt;|\=\=|\!\=|\&amp;\&amp;|\|\||\=|\:\=|\?\=|\+\=|\-\=|\*\=|\/\=|\%\=|\?|\:)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b(and|if unless|in|is|is a|is defined|is not|isnt|or|not)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="(\#[a-f0-9]{3,6})">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="inline-comment">
+      <rule pattern="\*/">
+        <token type="Comment"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="atrule">
+      <rule pattern="\{">
+        <token type="Punctuation"/>
+        <push state="atcontent"/>
+      </rule>
+      <rule pattern="$">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="atcontent">
+      <rule>
+        <include state="root"/>
+      </rule>
+      <rule pattern="\}">
+        <token type="Punctuation"/>
+        <pop depth="2"/>
+      </rule>
+    </state>
+    <state name="function-start">
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,114 @@
+<lexer>
+  <config>
+    <name>JSON</name>
+    <alias>json</alias>
+    <filename>*.json</filename>
+    <filename>*.jsonc</filename>
+    <filename>*.json5</filename>
+    <filename>*.avsc</filename>
+    <filename>.luaurc</filename>
+    <mime_type>application/json</mime_type>
+    <dot_all>true</dot_all>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="root">
+      <rule>
+        <include state="value"/>
+      </rule>
+    </state>
+    <state name="whitespace">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+    </state>
+    <state name="simplevalue">
+      <rule pattern="(true|false|null)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="-?(0|[1-9]\d*)(\.\d+[eE](\+|-)?\d+|[eE](\+|-)?\d+|\.\d+)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="-?(0|[1-9]\d*)">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+    </state>
+    <state name="objectattribute">
+      <rule>
+        <include state="value"/>
+      </rule>
+      <rule pattern=":">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern=",">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\}">
+        <token type="Punctuation"/>
+        <pop depth="2"/>
+      </rule>
+    </state>
+    <state name="objectvalue">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule>
+        <include state="comment"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="NameTag"/>
+        <push state="objectattribute"/>
+      </rule>
+      <rule pattern="\}">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="arrayvalue">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule>
+        <include state="value"/>
+      </rule>
+      <rule>
+        <include state="comment"/>
+      </rule>
+      <rule pattern=",">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\]">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="value">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule>
+        <include state="simplevalue"/>
+      </rule>
+      <rule>
+        <include state="comment"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="Punctuation"/>
+        <push state="objectvalue"/>
+      </rule>
+      <rule pattern="\[">
+        <token type="Punctuation"/>
+        <push state="arrayvalue"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

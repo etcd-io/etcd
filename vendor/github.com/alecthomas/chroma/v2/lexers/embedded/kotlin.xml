@@ -1,0 +1,234 @@
+<lexer>
+  <config>
+    <name>Kotlin</name>
+    <alias>kotlin</alias>
+    <filename>*.kt</filename>
+    <filename>*.kts</filename>
+    <mime_type>text/x-kotlin</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="string">
+      <rule pattern="\\[tbnr&#39;&#34;\\\$]">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="\\u[0-9a-fA-F]{4}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="string-interpol"/>
+      </rule>
+      <rule pattern="[^\n\\&#34;$]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="\$">
+        <token type="LiteralStringDouble"/>
+      </rule>
+    </state>
+    <state name="package">
+      <rule pattern="\S+">
+        <token type="NameNamespace"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="class">
+      <rule pattern="\x60[^\x60]+?\x60">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?:[_\p{L}][\p{L}\p{N}]*|`@?[_\p{L}][\p{L}\p{N}]+`)">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="property">
+      <rule pattern="\x60[^\x60]+?\x60">
+        <token type="NameProperty"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?:[_\p{L}][\p{L}\p{N}]*|`@?[_\p{L}][\p{L}\p{N}]+`)">
+        <token type="NameProperty"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="string-interpol">
+      <rule pattern="\$(?:[_\p{L}][\p{L}\p{N}]*|`@?[_\p{L}][\p{L}\p{N}]+`)">
+        <token type="LiteralStringInterpol"/>
+      </rule>
+      <rule pattern="\${[^}\n]*}">
+        <token type="LiteralStringInterpol"/>
+      </rule>
+    </state>
+    <state name="generics-specification">
+      <rule pattern="&lt;">
+        <token type="Punctuation"/>
+        <push state="generics-specification"/>
+      </rule>
+      <rule pattern="&gt;">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[,:*?]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(in|out|reified)">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\x60[^\x60]+?\x60">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(?:[_\p{L}][\p{L}\p{N}]*|`@?[_\p{L}][\p{L}\p{N}]+`)">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="^\s*\[.*?\]">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//[^\n]*\n?">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/[*].*?[*]/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="!==|!in|!is|===">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="%=|&amp;&amp;|\*=|\+\+|\+=|--|-=|-&gt;|\.\.|\/=|::|&lt;=|==|&gt;=|!!|!=|\|\||\?[:.]">
+        <token type="Operator"/>
+      </rule>
+
+      <rule pattern="[{}]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="LiteralString"/>
+        <push state="rawstring"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="(&#39;)(\\u[0-9a-fA-F]{4})(&#39;)">
+        <bygroups>
+          <token type="LiteralStringChar"/>
+          <token type="LiteralStringEscape"/>
+          <token type="LiteralStringChar"/>
+        </bygroups>
+      </rule>
+      <rule pattern="&#39;\\.&#39;|&#39;[^\\]&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="0[xX][0-9a-fA-F]+(_+[0-9a-fA-F]+)*[uU]?L?">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="0[bB][01]+(_+[01]+)*[uU]?L?">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="[0-9]+(_+[0-9]+)*\.[0-9]+(_+[0-9]+)*([eE][+-]?[0-9]+(_+[0-9]+)*)?[fF]?|\.[0-9]+(_+[0-9]+)*([eE][+-]?[0-9]+(_+[0-9]+)*)?[fF]?|[0-9]+(_+[0-9]+)*[eE][+-]?[0-9]+(_+[0-9]+)*[fF]?|[0-9]+(_+[0-9]+)*[fF]">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[0-9]+(_+[0-9]+)*[uU]?L?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[~!%^&amp;*()+=|\[\]:;,.&lt;&gt;\/?-]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(companion)(\s+)(object)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(class|interface|object)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="class"/>
+      </rule>
+      <rule pattern="(package|import)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="package"/>
+      </rule>
+      <rule pattern="(val|var)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="property"/>
+      </rule>
+      <rule pattern="(fun)(\s+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="function"/>
+      </rule>
+      <rule pattern="(abstract|actual|annotation|as|as\?|break|by|catch|class|companion|const|constructor|continue|crossinline|data|delegate|do|dynamic|else|enum|expect|external|false|field|file|final|finally|for|fun|get|if|import|in|infix|init|inline|inner|interface|internal|is|it|lateinit|noinline|null|object|open|operator|out|override|package|param|private|property|protected|public|receiver|reified|return|sealed|set|setparam|super|suspend|tailrec|this|throw|true|try|typealias|typeof|val|value|var|vararg|when|where|while)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="@(?:[_\p{L}][\p{L}\p{N}]*|`@?[_\p{L}][\p{L}\p{N}]+`)">
+        <token type="NameDecorator"/>
+      </rule>
+      <rule pattern="(?:\p{Lu}[_\p{L}]*)(?=\.)">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(?:[_\p{L}][\p{L}\p{N}]*|`@?[_\p{L}][\p{L}\p{N}]+`)">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="function">
+      <rule pattern="&lt;">
+        <token type="Punctuation"/>
+        <push state="generics-specification"/>
+      </rule>
+      <rule pattern="\x60[^\x60]+?\x60">
+        <token type="NameFunction"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?:[_\p{L}][\p{L}\p{N}]*|`@?[_\p{L}][\p{L}\p{N}]+`)">
+        <token type="NameFunction"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="rawstring">
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?:[^$&#34;]+|\&#34;{1,2}[^&#34;])+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule>
+        <include state="string-interpol"/>
+      </rule>
+      <rule pattern="\$">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

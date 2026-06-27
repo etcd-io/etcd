@@ -1,0 +1,92 @@
+name: "Unqueryvet"
+description: "Detect inconsistencies in Go SQL queries"
+author: "MirrexOne"
+
+branding:
+  icon: "search"
+  color: "blue"
+
+inputs:
+  version:
+    description: "Version of unqueryvet to use"
+    required: false
+    default: "latest"
+  working-directory:
+    description: "Working directory"
+    required: false
+    default: "."
+  args:
+    description: "Arguments to pass to unqueryvet"
+    required: false
+    default: "./..."
+  fail-on-issues:
+    description: "Fail the action if issues are found"
+    required: false
+    default: "true"
+  check-n1:
+    description: "Enable N+1 query detection"
+    required: false
+    default: "false"
+  check-sqli:
+    description: "Enable SQL injection detection"
+    required: false
+    default: "false"
+
+outputs:
+  issues-found:
+    description: "Number of issues found"
+    value: ${{ steps.run.outputs.issues }}
+  exit-code:
+    description: "Exit code from unqueryvet"
+    value: ${{ steps.run.outputs.exit_code }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install unqueryvet
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          go install github.com/MirrexOne/unqueryvet/cmd/unqueryvet@latest
+        else
+          go install github.com/MirrexOne/unqueryvet/cmd/unqueryvet@${{ inputs.version }}
+        fi
+
+    - name: Run unqueryvet
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set +e
+
+        ARGS="${{ inputs.args }}"
+
+        if [ "${{ inputs.check-n1 }}" = "true" ]; then
+          ARGS="-n1 $ARGS"
+        fi
+
+        if [ "${{ inputs.check-sqli }}" = "true" ]; then
+          ARGS="-sqli $ARGS"
+        fi
+
+        OUTPUT=$(unqueryvet $ARGS 2>&1)
+        EXIT_CODE=$?
+
+        echo "$OUTPUT"
+
+        # Count issues (lines with file:line:column pattern)
+        ISSUES=$(echo "$OUTPUT" | grep -c ":[0-9]*:[0-9]*:" || true)
+
+        echo "issues=$ISSUES" >> $GITHUB_OUTPUT
+        echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+
+        if [ "${{ inputs.fail-on-issues }}" = "true" ] && [ $EXIT_CODE -ne 0 ]; then
+          echo "::error::Unqueryvet found $ISSUES issues"
+          exit 1
+        fi
+
+        if [ $ISSUES -eq 0 ]; then
+          echo "::notice::No SELECT * issues found!"
+        else
+          echo "::warning::Found $ISSUES SELECT * issues"
+        fi

@@ -1,0 +1,9 @@
+<style name="igor">
+  <entry type="Background" style="bg:#ffffff"/>
+  <entry type="Keyword" style="#0000ff"/>
+  <entry type="NameClass" style="#007575"/>
+  <entry type="NameDecorator" style="#cc00a3"/>
+  <entry type="NameFunction" style="#c34e00"/>
+  <entry type="LiteralString" style="#009c00"/>
+  <entry type="Comment" style="italic #ff0000"/>
+</style>

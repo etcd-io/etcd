@@ -1,0 +1,178 @@
+<lexer>
+  <config>
+    <name>TypoScript</name>
+    <alias>typoscript</alias>
+    <filename>*.ts</filename>
+    <mime_type>text/x-typoscript</mime_type>
+    <dot_all>true</dot_all>
+    <priority>0.1</priority>
+  </config>
+  <rules>
+    <state name="whitespace">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="html">
+      <rule pattern="&lt;\S[^\n&gt;]*&gt;">
+        <using lexer="TypoScriptHTMLData"/>
+      </rule>
+      <rule pattern="&amp;[^;\n]*;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="(_CSS_DEFAULT_STYLE)(\s*)(\()(?s)(.*(?=\n\)))">
+        <bygroups>
+          <token type="NameClass"/>
+          <token type="Text"/>
+          <token type="LiteralStringSymbol"/>
+          <using lexer="TypoScriptCSSData"/>
+        </bygroups>
+      </rule>
+    </state>
+    <state name="operator">
+      <rule pattern="[&lt;&gt;,:=.*%+|]">
+        <token type="Operator"/>
+      </rule>
+    </state>
+    <state name="structure">
+      <rule pattern="[{}()\[\]\\]">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+    </state>
+    <state name="constant">
+      <rule pattern="(\{)(\$)((?:[\w\-]+\.)*)([\w\-]+)(\})">
+        <bygroups>
+          <token type="LiteralStringSymbol"/>
+          <token type="Operator"/>
+          <token type="NameConstant"/>
+          <token type="NameConstant"/>
+          <token type="LiteralStringSymbol"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\{)([\w\-]+)(\s*:\s*)([\w\-]+)(\})">
+        <bygroups>
+          <token type="LiteralStringSymbol"/>
+          <token type="NameConstant"/>
+          <token type="Operator"/>
+          <token type="NameConstant"/>
+          <token type="LiteralStringSymbol"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(#[a-fA-F0-9]{6}\b|#[a-fA-F0-9]{3}\b)">
+        <token type="LiteralStringChar"/>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern="(?&lt;!(#|\&#39;|&#34;))(?:#(?!(?:[a-fA-F0-9]{6}|[a-fA-F0-9]{3}))[^\n#]+|//[^\n]*)">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="/\*(?:(?!\*/).)*\*/">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(\s*#\s*\n)">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="comment"/>
+      </rule>
+      <rule>
+        <include state="constant"/>
+      </rule>
+      <rule>
+        <include state="html"/>
+      </rule>
+      <rule>
+        <include state="label"/>
+      </rule>
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule>
+        <include state="punctuation"/>
+      </rule>
+      <rule>
+        <include state="operator"/>
+      </rule>
+      <rule>
+        <include state="structure"/>
+      </rule>
+      <rule>
+        <include state="literal"/>
+      </rule>
+      <rule>
+        <include state="other"/>
+      </rule>
+    </state>
+    <state name="literal">
+      <rule pattern="0x[0-9A-Fa-f]+t?">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="(###\w+###)">
+        <token type="NameConstant"/>
+      </rule>
+    </state>
+    <state name="label">
+      <rule pattern="(EXT|FILE|LLL):[^}\n&#34;]*">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="(?![^\w\-])([\w\-]+(?:/[\w\-]+)+/?)(\S*\n)">
+        <bygroups>
+          <token type="LiteralString"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+    </state>
+    <state name="punctuation">
+      <rule pattern="[,.]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="other">
+      <rule pattern="[\w&#34;\-!/&amp;;]+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="keywords">
+      <rule pattern="(\[)(?i)(browser|compatVersion|dayofmonth|dayofweek|dayofyear|device|ELSE|END|GLOBAL|globalString|globalVar|hostname|hour|IP|language|loginUser|loginuser|minute|month|page|PIDinRootline|PIDupinRootline|system|treeLevel|useragent|userFunc|usergroup|version)([^\]]*)(\])">
+        <bygroups>
+          <token type="LiteralStringSymbol"/>
+          <token type="NameConstant"/>
+          <token type="Text"/>
+          <token type="LiteralStringSymbol"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?=[\w\-])(HTMLparser|HTMLparser_tags|addParams|cache|encapsLines|filelink|if|imageLinkWrap|imgResource|makelinks|numRows|numberFormat|parseFunc|replacement|round|select|split|stdWrap|strPad|tableStyle|tags|textStyle|typolink)(?![\w\-])">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="(?:(=?\s*&lt;?\s+|^\s*))(cObj|field|config|content|constants|FEData|file|frameset|includeLibs|lib|page|plugin|register|resources|sitemap|sitetitle|styles|temp|tt_[^:.\s]*|types|xmlnews|INCLUDE_TYPOSCRIPT|_CSS_DEFAULT_STYLE|_DEFAULT_PI_VARS|_LOCAL_LANG)(?![\w\-])">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="NameBuiltin"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?=[\w\-])(CASE|CLEARGIF|COA|COA_INT|COBJ_ARRAY|COLUMNS|CONTENT|CTABLE|EDITPANEL|FILE|FILES|FLUIDTEMPLATE|FORM|HMENU|HRULER|HTML|IMAGE|IMGTEXT|IMG_RESOURCE|LOAD_REGISTER|MEDIA|MULTIMEDIA|OTABLE|PAGE|QTOBJECT|RECORDS|RESTORE_REGISTER|SEARCHRESULT|SVG|SWFOBJECT|TEMPLATE|TEXT|USER|USER_INT)(?![\w\-])">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(?=[\w\-])(ACTIFSUBRO|ACTIFSUB|ACTRO|ACT|CURIFSUBRO|CURIFSUB|CURRO|CUR|IFSUBRO|IFSUB|NO|SPC|USERDEF1RO|USERDEF1|USERDEF2RO|USERDEF2|USRRO|USR)">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(?=[\w\-])(GMENU_FOLDOUT|GMENU_LAYERS|GMENU|IMGMENUITEM|IMGMENU|JSMENUITEM|JSMENU|TMENUITEM|TMENU_LAYERS|TMENU)">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(?=[\w\-])(PHP_SCRIPT(_EXT|_INT)?)">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(?=[\w\-])(userFunc)(?![\w\-])">
+        <token type="NameFunction"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

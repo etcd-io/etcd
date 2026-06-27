@@ -1,0 +1,5 @@
+zxcvbn
+debug.test
+
+# SBOMs generated during CI
+/bom.json

@@ -1,0 +1,137 @@
+<lexer>
+  <config>
+    <name>Cassandra CQL</name>
+    <alias>cassandra</alias>
+    <alias>cql</alias>
+    <filename>*.cql</filename>
+    <mime_type>text/x-cql</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="string">
+      <rule pattern="[^&#39;]+">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="&#39;&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="quoted-ident">
+      <rule pattern="[^&#34;]+">
+        <token type="LiteralStringName"/>
+      </rule>
+      <rule pattern="&#34;&#34;">
+        <token type="LiteralStringName"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringName"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="dollar-string">
+      <rule pattern="[^\$]+">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+      <rule pattern="\$\$">
+        <token type="LiteralStringHeredoc"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="(--|\/\/).*\n?">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="multiline-comments"/>
+      </rule>
+      <rule pattern="(ascii|bigint|blob|boolean|counter|date|decimal|double|float|frozen|inet|int|list|map|set|smallint|text|time|timestamp|timeuuid|tinyint|tuple|uuid|varchar|varint)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(DURABLE_WRITES|LOCAL_QUORUM|MATERIALIZED|COLUMNFAMILY|REPLICATION|NORECURSIVE|NOSUPERUSER|PERMISSIONS|EACH_QUORUM|CONSISTENCY|PERMISSION|CLUSTERING|WRITETIME|SUPERUSER|KEYSPACES|AUTHORIZE|LOCAL_ONE|AGGREGATE|FINALFUNC|PARTITION|FILTERING|UNLOGGED|CONTAINS|DISTINCT|FUNCTION|LANGUAGE|INFINITY|INITCOND|TRUNCATE|KEYSPACE|PASSWORD|REPLACE|OPTIONS|TRIGGER|STORAGE|ENTRIES|RETURNS|COMPACT|PRIMARY|EXISTS|STATIC|PAGING|UPDATE|CUSTOM|VALUES|INSERT|DELETE|MODIFY|CREATE|SELECT|SCHEMA|LOGGED|REVOKE|RENAME|QUORUM|CALLED|STYPE|ORDER|ALTER|BATCH|BEGIN|COUNT|ROLES|APPLY|WHERE|SFUNC|LEVEL|INPUT|LOGIN|INDEX|TABLE|THREE|ALLOW|TOKEN|LIMIT|USING|USERS|GRANT|FROM|KEYS|JSON|USER|INTO|ROLE|TYPE|VIEW|DESC|WITH|DROP|FULL|ASC|TTL|OFF|PER|KEY|USE|ADD|NAN|ONE|ALL|ANY|TWO|AND|NOT|AS|IN|IF|OF|IS|ON|TO|BY|OR)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="[+*/&lt;&gt;=~!@#%^&amp;|`?-]+">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(?s)(java|javascript)(\s+)(AS)(\s+)(&#39;|\$\$)(.*?)(\5)">
+        <usingbygroup>
+          <sublexer_name_group>1</sublexer_name_group>
+          <code_group>6</code_group>
+          <emitters>
+            <token type="NameBuiltin"/>
+            <token type="TextWhitespace"/>
+            <token type="Keyword"/>
+            <token type="TextWhitespace"/>
+            <token type="LiteralStringHeredoc"/>
+            <token type="LiteralStringHeredoc"/>
+            <token type="LiteralStringHeredoc"/>
+          </emitters>
+        </usingbygroup>
+      </rule>
+      <rule pattern="(true|false|null)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="0x[0-9a-f]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="\.[0-9]+(e[+-]?[0-9]+)?">
+        <token type="Error"/>
+      </rule>
+      <rule pattern="-?[0-9]+(\.[0-9])?(e[+-]?[0-9]+)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringName"/>
+        <push state="quoted-ident"/>
+      </rule>
+      <rule pattern="\$\$">
+        <token type="LiteralStringHeredoc"/>
+        <push state="dollar-string"/>
+      </rule>
+      <rule pattern="[a-z_]\w*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern=":([&#39;&#34;]?)[a-z]\w*\b\1">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[;:()\[\]\{\},.]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="multiline-comments">
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="multiline-comments"/>
+      </rule>
+      <rule pattern="\*/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^/*]+">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="[/*]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

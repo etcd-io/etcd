@@ -1,0 +1,24 @@
+# https://taskfile.dev
+
+version: "3"
+
+tasks:
+  lint:
+    desc: Run base linters
+    cmds:
+      - golangci-lint run
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./... {{.CLI_ARGS}}
+
+  test:table:
+    desc: Run table tests
+    cmds:
+      - go test ./table {{.CLI_ARGS}}
+
+  test:tree:
+    desc: Run tree tests
+    cmds:
+      - go test ./tree {{.CLI_ARGS}}

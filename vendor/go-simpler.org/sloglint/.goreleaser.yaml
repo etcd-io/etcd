@@ -1,0 +1,12 @@
+# https://goreleaser.com/customization/builds/go
+
+builds:
+  - main: ./cmd/{{.ProjectName}}
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    env:
+      - CGO_ENABLED=0
+    targets:
+      - go_first_class # https://go.dev/wiki/PortingPolicy#first-class-ports

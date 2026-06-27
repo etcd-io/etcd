@@ -1,0 +1,19 @@
+<style name="rrt">
+  <entry type="Background" style="#f8f8f2 bg:#000000"/>
+  <entry type="Keyword" style="#ff0000"/>
+  <entry type="KeywordType" style="#ee82ee"/>
+  <entry type="NameConstant" style="#7fffd4"/>
+  <entry type="NameFunction" style="#ffff00"/>
+  <entry type="NameVariable" style="#eedd82"/>
+  <entry type="LiteralString" style="#87ceeb"/>
+  <entry type="LiteralStringSymbol" style="#ff6600"/>
+  <entry type="LiteralNumber" style="#ff6600"/>
+  <entry type="Comment" style="#00ff00"/>
+  <entry type="CommentPreproc" style="#e5e5e5"/>
+  <entry type="GenericDeleted" style="#f00"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericHeading" style="bold #ff0"/>
+  <entry type="GenericInserted" style="#0f0"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="bold #87ceeb"/>
+</style>

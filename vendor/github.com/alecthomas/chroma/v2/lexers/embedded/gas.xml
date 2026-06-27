@@ -1,0 +1,150 @@
+<lexer>
+  <config>
+    <name>GAS</name>
+    <alias>gas</alias>
+    <alias>asm</alias>
+    <filename>*.s</filename>
+    <filename>*.S</filename>
+    <mime_type>text/x-gas</mime_type>
+    <priority>0.1</priority>
+  </config>
+  <rules>
+    <state name="punctuation">
+      <rule pattern="[-*,.()\[\]!:]+">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="(?:[a-zA-Z$_][\w$.@-]*|\.[\w$.@-]+):">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="\.(?:[a-zA-Z$_][\w$.@-]*|\.[\w$.@-]+)">
+        <token type="NameAttribute"/>
+        <push state="directive-args"/>
+      </rule>
+      <rule pattern="lock|rep(n?z)?|data\d+">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="(?:[a-zA-Z$_][\w$.@-]*|\.[\w$.@-]+)">
+        <token type="NameFunction"/>
+        <push state="instruction-args"/>
+      </rule>
+      <rule pattern="[\r\n]+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="directive-args">
+      <rule pattern="(?:[a-zA-Z$_][\w$.@-]*|\.[\w$.@-]+)">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="&#34;(\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="@(?:[a-zA-Z$_][\w$.@-]*|\.[\w$.@-]+)">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="(?:0[xX][a-zA-Z0-9]+|\d+)">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="%(?:[a-zA-Z$_][\w$.@-]*|\.[\w$.@-]+)">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[\r\n]+">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="([;#@|!]|//).*\n?">
+        <token type="CommentSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="/[*].*?[*]/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="/[*].*?\n[\w\W]*?[*]/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="punctuation"/>
+      </rule>
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+    </state>
+    <state name="instruction-args">
+      <rule pattern="([a-z0-9]+)( )(&lt;)((?:[a-zA-Z$_][\w$.@-]*|\.[\w$.@-]+))(&gt;)">
+        <bygroups>
+          <token type="LiteralNumberHex"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="NameConstant"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="([a-z0-9]+)( )(&lt;)((?:[a-zA-Z$_][\w$.@-]*|\.[\w$.@-]+))([-+])((?:0[xX][a-zA-Z0-9]+|\d+))(&gt;)">
+        <bygroups>
+          <token type="LiteralNumberHex"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="NameConstant"/>
+          <token type="Punctuation"/>
+          <token type="LiteralNumberInteger"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?:[a-zA-Z$_][\w$.@-]*|\.[\w$.@-]+)">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="(?:0[xX][a-zA-Z0-9]+|\d+)">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="%(?:[a-zA-Z$_][\w$.@-]*|\.[\w$.@-]+)">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="$(?:0[xX][a-zA-Z0-9]+|\d+)">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="$&#39;(.|\\&#39;)&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="[\r\n]+">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="([;#@|!]|//).*\n?">
+        <token type="CommentSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="/[*].*?[*]/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="/[*].*?\n[\w\W]*?[*]/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="punctuation"/>
+      </rule>
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+    </state>
+    <state name="whitespace">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="([;#@|!]|//).*\n?">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/[*][\w\W]*?[*]/">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

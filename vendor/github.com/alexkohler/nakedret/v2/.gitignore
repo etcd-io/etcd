@@ -1,0 +1,8 @@
+# editor specific
+.vscode
+
+# binary
+/nakedret
+
+# usage video for docs
+.github/images

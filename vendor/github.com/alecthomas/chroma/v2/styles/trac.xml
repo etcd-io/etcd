@@ -1,0 +1,35 @@
+<style name="trac">
+  <entry type="Error" style="#a61717 bg:#e3d2d2"/>
+  <entry type="Background" style="bg:#ffffff"/>
+  <entry type="Keyword" style="bold"/>
+  <entry type="KeywordType" style="#445588"/>
+  <entry type="NameAttribute" style="#008080"/>
+  <entry type="NameBuiltin" style="#999999"/>
+  <entry type="NameClass" style="bold #445588"/>
+  <entry type="NameConstant" style="#008080"/>
+  <entry type="NameEntity" style="#800080"/>
+  <entry type="NameException" style="bold #990000"/>
+  <entry type="NameFunction" style="bold #990000"/>
+  <entry type="NameNamespace" style="#555555"/>
+  <entry type="NameTag" style="#000080"/>
+  <entry type="NameVariable" style="#008080"/>
+  <entry type="LiteralString" style="#bb8844"/>
+  <entry type="LiteralStringRegex" style="#808000"/>
+  <entry type="LiteralNumber" style="#009999"/>
+  <entry type="Operator" style="bold"/>
+  <entry type="Comment" style="italic #999988"/>
+  <entry type="CommentSpecial" style="bold #999999"/>
+  <entry type="CommentPreproc" style="bold noitalic #999999"/>
+  <entry type="GenericDeleted" style="#000000 bg:#ffdddd"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericError" style="#aa0000"/>
+  <entry type="GenericHeading" style="#999999"/>
+  <entry type="GenericInserted" style="#000000 bg:#ddffdd"/>
+  <entry type="GenericOutput" style="#888888"/>
+  <entry type="GenericPrompt" style="#555555"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="#aaaaaa"/>
+  <entry type="GenericTraceback" style="#aa0000"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="TextWhitespace" style="#bbbbbb"/>
+</style>

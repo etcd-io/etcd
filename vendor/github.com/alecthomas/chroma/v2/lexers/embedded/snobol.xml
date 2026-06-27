@@ -1,0 +1,95 @@
+<lexer>
+  <config>
+    <name>Snobol</name>
+    <alias>snobol</alias>
+    <filename>*.snobol</filename>
+    <mime_type>text/x-snobol</mime_type>
+  </config>
+  <rules>
+    <state name="heredoc">
+      <rule pattern=".*\n">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\*.*\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="[+.] ">
+        <token type="Punctuation"/>
+        <push state="statement"/>
+      </rule>
+      <rule pattern="-.*\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="END\s*\n">
+        <token type="NameLabel"/>
+        <push state="heredoc"/>
+      </rule>
+      <rule pattern="[A-Za-z$][\w$]*">
+        <token type="NameLabel"/>
+        <push state="statement"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+        <push state="statement"/>
+      </rule>
+    </state>
+    <state name="statement">
+      <rule pattern="\s*\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(?&lt;=[^\w.])(LT|LE|EQ|NE|GE|GT|INTEGER|IDENT|DIFFER|LGT|SIZE|REPLACE|TRIM|DUPL|REMDR|DATE|TIME|EVAL|APPLY|OPSYN|LOAD|UNLOAD|LEN|SPAN|BREAK|ANY|NOTANY|TAB|RTAB|REM|POS|RPOS|FAIL|FENCE|ABORT|ARB|ARBNO|BAL|SUCCEED|INPUT|OUTPUT|TERMINAL)(?=[^\w.])">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="[A-Za-z][\w.]*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\*\*|[?$.!%*/#+\-@|&amp;\\=]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="&#34;[^&#34;]*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;[^&#39;]*&#39;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="[0-9]+(?=[^.EeDd])">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[0-9]+(\.[0-9]*)?([EDed][-+]?[0-9]+)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern=":">
+        <token type="Punctuation"/>
+        <push state="goto"/>
+      </rule>
+      <rule pattern="[()&lt;&gt;,;]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="goto">
+      <rule pattern="\s*\n">
+        <token type="Text"/>
+        <pop depth="2"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="F|S">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(\()([A-Za-z][\w.]*)(\))">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="NameLabel"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+    </state>
+  </rules>
+</lexer>

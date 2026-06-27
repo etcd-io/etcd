@@ -1,0 +1,135 @@
+<lexer>
+  <config>
+    <name>TASM</name>
+    <alias>tasm</alias>
+    <filename>*.asm</filename>
+    <filename>*.ASM</filename>
+    <filename>*.tasm</filename>
+    <mime_type>text/x-tasm</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="preproc">
+      <rule pattern="[^;\n]+">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern=";.*?\n">
+        <token type="CommentSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="CommentPreproc"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="whitespace">
+      <rule pattern="[\n\r]">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\\[\n\r]">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[ \t]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=";.*">
+        <token type="CommentSingle"/>
+      </rule>
+    </state>
+    <state name="punctuation">
+      <rule pattern="[,():\[\]]+">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[&amp;|^&lt;&gt;+*=/%~-]+">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[$]+">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="seg|wrt|strict">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="byte|[dq]?word">
+        <token type="KeywordType"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="^\s*%">
+        <token type="CommentPreproc"/>
+        <push state="preproc"/>
+      </rule>
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="[@a-z$._?][\w$.?#@~]*:">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="BITS|USE16|USE32|SECTION|SEGMENT|ABSOLUTE|EXTERN|GLOBAL|ORG|ALIGN|STRUC|ENDSTRUC|ENDS|COMMON|CPU|GROUP|UPPERCASE|INCLUDE|EXPORT|LIBRARY|MODULE|PROC|ENDP|USES|ARG|DATASEG|UDATASEG|END|IDEAL|P386|MODEL|ASSUME|CODESEG|SIZE">
+        <token type="Keyword"/>
+        <push state="instruction-args"/>
+      </rule>
+      <rule pattern="([@a-z$._?][\w$.?#@~]*)(\s+)(db|dd|dw|T[A-Z][a-z]+)">
+        <bygroups>
+          <token type="NameConstant"/>
+          <token type="KeywordDeclaration"/>
+          <token type="KeywordDeclaration"/>
+        </bygroups>
+        <push state="instruction-args"/>
+      </rule>
+      <rule pattern="(?:res|d)[bwdqt]|times">
+        <token type="KeywordDeclaration"/>
+        <push state="instruction-args"/>
+      </rule>
+      <rule pattern="[@a-z$._?][\w$.?#@~]*">
+        <token type="NameFunction"/>
+        <push state="instruction-args"/>
+      </rule>
+      <rule pattern="[\r\n]+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="instruction-args">
+      <rule pattern="&#34;(\\&#34;|[^&#34;\n])*&#34;|&#39;(\\&#39;|[^&#39;\n])*&#39;|`(\\`|[^`\n])*`">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="(?:0x[0-9a-f]+|$0[0-9a-f]*|[0-9]+[0-9a-f]*h)">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-7]+q">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="[01]+b">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="[0-9]+\.e?[0-9]+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule>
+        <include state="punctuation"/>
+      </rule>
+      <rule pattern="r[0-9][0-5]?[bwd]|[a-d][lh]|[er]?[a-d]x|[er]?[sb]p|[er]?[sd]i|[c-gs]s|st[0-7]|mm[0-7]|cr[0-4]|dr[0-367]|tr[3-7]">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="[@a-z$._?][\w$.?#@~]*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(\\\s*)(;.*)([\r\n])">
+        <bygroups>
+          <token type="Text"/>
+          <token type="CommentSingle"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[\r\n]+">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

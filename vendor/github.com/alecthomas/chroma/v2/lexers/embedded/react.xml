@@ -1,0 +1,236 @@
+<lexer>
+  <config>
+    <name>react</name>
+    <alias>jsx</alias>
+    <alias>react</alias>
+    <filename>*.jsx</filename>
+    <filename>*.react</filename>
+    <mime_type>text/jsx</mime_type>
+    <mime_type>text/typescript-jsx</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="commentsandwhitespace">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&lt;!--">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*.*?\*/">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="slashstartsregex">
+      <rule>
+        <include state="commentsandwhitespace"/>
+      </rule>
+      <rule pattern="/(\\.|[^[/\\\n]|\[(\\.|[^\]\\\n])*])+/([gimuy]+\b|\B)">
+        <token type="LiteralStringRegex"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?=/)">
+        <token type="Text"/>
+        <push state="#pop" state="badregex"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="tag">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="([\w]+\s*)(=)(\s*)">
+        <bygroups>
+          <token type="NameAttribute"/>
+          <token type="Operator"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="attr"/>
+      </rule>
+      <rule pattern="[{}]+">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[\w\.]+">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="(/?)(\s*)(&gt;)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="expression">
+      <rule pattern="{">
+        <token type="Punctuation"/>
+        <push/>
+      </rule>
+      <rule pattern="}">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="attr">
+      <rule pattern="{">
+        <token type="Punctuation"/>
+        <push state="expression"/>
+      </rule>
+      <rule pattern="&#34;.*?&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="&#39;.*?&#39;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="interp-inside">
+      <rule pattern="\}">
+        <token type="LiteralStringInterpol"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="badregex">
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="jsx">
+      <rule pattern="(&lt;)(/?)(&gt;)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="Punctuation"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;)([\w\.]+)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="NameTag"/>
+        </bygroups>
+        <push state="tag"/>
+      </rule>
+      <rule pattern="(&lt;)(/)([\w\.]+)(&gt;)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="Punctuation"/>
+          <token type="NameTag"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="jsx"/>
+      </rule>
+      <rule pattern="\A#! ?/.*?\n">
+        <token type="CommentHashbang"/>
+      </rule>
+      <rule pattern="^(?=\s|/|&lt;!--)">
+        <token type="Text"/>
+        <push state="slashstartsregex"/>
+      </rule>
+      <rule>
+        <include state="commentsandwhitespace"/>
+      </rule>
+      <rule pattern="(\.\d+|[0-9]+\.[0-9]*)([eE][-+]?[0-9]+)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="0[bB][01]+">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="0[oO][0-7]+">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0[xX][0-9a-fA-F]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="\.\.\.|=&gt;">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\+\+|--|~|&amp;&amp;|\?|:|\|\||\\(?=\n)|(&lt;&lt;|&gt;&gt;&gt;?|==?|!=?|[-&lt;&gt;+*%&amp;|^/])=?">
+        <token type="Operator"/>
+        <push state="slashstartsregex"/>
+      </rule>
+      <rule pattern="[{(\[;,]">
+        <token type="Punctuation"/>
+        <push state="slashstartsregex"/>
+      </rule>
+      <rule pattern="[})\].]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(for|in|while|do|break|return|continue|switch|case|default|if|else|throw|try|catch|finally|new|delete|typeof|instanceof|void|yield|this|of)\b">
+        <token type="Keyword"/>
+        <push state="slashstartsregex"/>
+      </rule>
+      <rule pattern="(var|let|with|function)\b">
+        <token type="KeywordDeclaration"/>
+        <push state="slashstartsregex"/>
+      </rule>
+      <rule pattern="(abstract|async|await|boolean|byte|char|class|const|debugger|double|enum|export|extends|final|float|goto|implements|import|int|interface|long|native|package|private|protected|public|short|static|super|synchronized|throws|transient|volatile)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="(true|false|null|NaN|Infinity|undefined)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(Array|Boolean|Date|Error|Function|Math|netscape|Number|Object|Packages|RegExp|String|Promise|Proxy|sun|decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|Error|eval|isFinite|isNaN|isSafeInteger|parseFloat|parseInt|document|this|window)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(?:[$_\p{L}\p{N}]|\\u[a-fA-F0-9]{4})(?:(?:[$\p{L}\p{N}]|\\u[a-fA-F0-9]{4}))*">
+        <token type="NameOther"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#39;(\\\\|\\&#39;|[^&#39;])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="`">
+        <token type="LiteralStringBacktick"/>
+        <push state="interp"/>
+      </rule>
+    </state>
+    <state name="interp">
+      <rule pattern="`">
+        <token type="LiteralStringBacktick"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\\\">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+      <rule pattern="\\`">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+      <rule pattern="\$\{">
+        <token type="LiteralStringInterpol"/>
+        <push state="interp-inside"/>
+      </rule>
+      <rule pattern="\$">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+      <rule pattern="[^`\\$]+">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

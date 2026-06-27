@@ -1,0 +1,39 @@
+<style name="github">
+  <entry type="Error" style="#f6f8fa bg:#82071e"/>
+  <entry type="Background" style="bg:#f7f7f7"/>
+  <entry type="Keyword" style="#cf222e"/>
+  <entry type="KeywordType" style="#cf222e"/>
+  <entry type="NameAttribute" style="#1f2328"/>
+  <entry type="NameBuiltin" style="#6639ba"/>
+  <entry type="NameBuiltinPseudo" style="#6a737d"/>
+  <entry type="NameClass" style="#1f2328"/>
+  <entry type="NameConstant" style="#0550ae"/>
+  <entry type="NameDecorator" style="#0550ae"/>
+  <entry type="NameEntity" style="#6639ba"/>
+  <entry type="NameFunction" style="#6639ba"/>
+  <entry type="NameLabel" style="bold #990000"/>
+  <entry type="NameNamespace" style="#24292e"/>
+  <entry type="NameOther" style="#1f2328"/>
+  <entry type="NameTag" style="#0550ae"/>
+  <entry type="NameVariable" style="#953800"/>
+  <entry type="NameVariableClass" style="#953800"/>
+  <entry type="NameVariableGlobal" style="#953800"/>
+  <entry type="NameVariableInstance" style="#953800"/>
+  <entry type="LiteralString" style="#0a3069"/>
+  <entry type="LiteralStringRegex" style="#0a3069"/>
+  <entry type="LiteralStringSymbol" style="#032f62"/>
+  <entry type="LiteralNumber" style="#0550ae"/>
+  <entry type="Operator" style="#0550ae"/>
+  <entry type="Comment" style="#57606a"/>
+  <entry type="CommentMultiline" style="#57606a"/>
+  <entry type="CommentSingle" style="#57606a"/>
+  <entry type="CommentSpecial" style="#57606a"/>
+  <entry type="CommentPreproc" style="#57606a"/>
+  <entry type="GenericDeleted" style="#82071e bg:#ffebe9"/>
+  <entry type="GenericEmph" style="#1f2328"/>
+  <entry type="GenericInserted" style="#116329 bg:#dafbe1"/>
+  <entry type="GenericOutput" style="#1f2328"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="Punctuation" style="#1f2328"/>
+  <entry type="TextWhitespace" style="#ffffff"/>
+</style>

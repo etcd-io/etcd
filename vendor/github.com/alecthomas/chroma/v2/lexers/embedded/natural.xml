@@ -1,0 +1,143 @@
+<lexer>
+  <config>
+    <name>Natural</name>
+    <alias>natural</alias>
+    <filename>*.NSN</filename>
+    <filename>*.NSP</filename>
+    <filename>*.NSS</filename>
+    <filename>*.NSH</filename>
+    <filename>*.NSG</filename>
+    <filename>*.NSL</filename>
+    <filename>*.NSA</filename>
+    <filename>*.NSM</filename>
+    <filename>*.NSC</filename>
+    <filename>*.NS7</filename>
+    <mime_type>text/x-natural</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="common">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="^\*.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*.*$">
+        <token type="CommentSingle"/>
+      </rule>
+    </state>
+    <state name="variable-names">
+      <rule pattern="[#+]?[\w\-\d]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\([a-zA-z]\d*\)">
+        <token type="Other"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="common"/>
+      </rule>
+      <rule pattern="(?:END-DEFINE|END-IF|END-FOR|END-SUBROUTINE|END-ERROR|END|IGNORE)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(?:INIT|CONST)\s*&lt;\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(FORM)(\s+)(\w+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(DEFINE)(\s+)(SUBROUTINE)(\s+)([#+]?[\w\-\d]+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(PERFORM)(\s+)([#+]?[\w\-\d]+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(METHOD)(\s+)([\w~]+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\s+)([\w\-]+)([=\-]&gt;)([\w\-~]+)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="NameVariable"/>
+          <token type="Operator"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?&lt;=(=|-)&gt;)([\w\-~]+)(?=\()">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="(TEXT)(-)(\d{3})">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Punctuation"/>
+          <token type="LiteralNumberInteger"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(TEXT)(-)(\w{3})">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Punctuation"/>
+          <token type="NameVariable"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?i)\b(?&lt;!-)(?&lt;!#)(ENTIRE|BY|NAME|ARRAY|SPECIFIED|VIEW|MODULE|FUNCTION|RETURNS|AND|NUMERIC|OPTIONAL|END-PARSE|TRUE|END-RESULT|LEAVING|NOT|CONDITION|NUMBER|NO|EXP|FULL|REPLACE|INSERT|DOEND|LOG|ABS|ANY|REPEAT|SET|DLOGOFF|DOWNLOAD|BREAK|VALUES|DIVIDE|COMPRESS|UPDATE|SORTKEY|OR|END-FIND|END-ENDPAGE|REDUCE|IGNORE|MIN|WASTE|END-DEFINE|SUBSTR|END|FIND|ADD|INVESTIGATE|DNATIVE|CONST|COS|ENDHOC|SGN|COPY|REDEFINE|DEFINE|MULTIPLY|ASSIGN|LE|VALUE|COMPOSE|FALSE|POS|CALL|TAN|ERROR|CLOSE|PARSE|LT|WITH_CTE|END-SORT|EJECT|RESET|SHOW|LOCAL|PERFORM|TERMINATE|VAL|BACKOUT|END-LOOP|REJECT|SUM|CREATE|SORT|RETURN|AT|SIN|SETTIME|INT|NE|GLOBAL|END-SELECT|ELSE|DELETE|TOP|INCLUDE|END-ENDDATA|LOOP|OLD|SUSPEND|SKIP|SQRT|RULEVAR|NMIN|AVER|PROCESS|SELECT|MAP|USING|END-HISTOGRAM|MAX|NEWPAGE|ON|OFF|KEY|NAMED|CONTROL|PF1|PF2|PF3|PF4|PF5|PF6|PF7|PF8|PF9|INITIAL|WRITE|STORE|FETCH|ATN|RET|END-WORK|RESTORE|GET|LIMIT|END-ERROR|SEND|OPEN|ESCAPE|COMPUTE|COUNT|TRANSFER|RELEASE|DO|DYNAMIC|ROLLBACK|END-READ|DISPLAY|UPLOAD|END-DATA|NULL-HANDLE|NCOUNT|RESIZE|END-PROCESS|REQUEST|READ|SEPARATE|EQ|INPUT|DATA|END-START|STACK|REINPUT|INCDIC|INCCONT|END-IF|WHEN|END-BEFORE|WHILE|END-ENDFILE|END-TOPPAGE|INCDIR|PARAMETER|OBTAIN|CALLDBPROC|END-BROWSE|MOVE|SUBTRACT|DLOGON|EXAMINE|SUBSTRING|BEFORE|STOP|RUN|END-BREAK|EXPORT|END-SUBROUTINE|FOR|GE|PRINT|BROWSE|IMPORT|EXPAND|ALL|PASSW|FORMAT|GT|END-NOREC|END-DECIDE|END-FOR|CALLNAT|END-ALL|OPTIONS|RETRY|NONE|INCMAC|END-FILE|DECIDE|INIT|HISTOGRAM|NAVER|START|ACCEPT|COMMIT|TOTAL|IF|FRAC|END-REPEAT|UNTIL|TO|INTO|WITH|DELIMITER|FIRST|OF|INTO|SUBROUTINE|GIVING|POSITION)\b(?!-)">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="(?&lt;=(\s|.))(AND|OR|NOT|EQUAL|NE|EQ|GT|GE|LT|LE)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule>
+        <include state="variable-names"/>
+      </rule>
+      <rule pattern="[?*&lt;&gt;=\-+&amp;]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(?:(ESCAPE)(\s+)(MODULE|ROUTINE|BOTTOM|TOP))">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="&#39;(&#39;&#39;|[^&#39;])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="`([^`])*`">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="([|}])([^{}|]*?)([|{])">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="LiteralStringSingle"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[/;:()\[\],.]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

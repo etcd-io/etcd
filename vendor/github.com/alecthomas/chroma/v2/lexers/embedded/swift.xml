@@ -1,0 +1,207 @@
+<lexer>
+  <config>
+    <name>Swift</name>
+    <alias>swift</alias>
+    <filename>*.swift</filename>
+    <mime_type>text/x-swift</mime_type>
+  </config>
+  <rules>
+    <state name="comment">
+      <rule pattern=":param: [a-zA-Z_]\w*|:returns?:|(FIXME|MARK|TODO):">
+        <token type="CommentSpecial"/>
+      </rule>
+    </state>
+    <state name="preproc">
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule pattern="[A-Za-z]\w*">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="comment-single">
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="comment"/>
+      </rule>
+      <rule pattern="[^\n]">
+        <token type="CommentSingle"/>
+      </rule>
+    </state>
+    <state name="module">
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="NameClass"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="\\\(">
+        <token type="LiteralStringInterpol"/>
+        <push state="string-intp"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\[&#39;&#34;\\nrt]|\\x[0-9a-fA-F]{2}|\\[0-7]{1,3}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^\\&#34;]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="string-intp">
+      <rule pattern="\(">
+        <token type="LiteralStringInterpol"/>
+        <push/>
+      </rule>
+      <rule pattern="\)">
+        <token type="LiteralStringInterpol"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//">
+        <token type="CommentSingle"/>
+        <push state="comment-single"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="comment-multi"/>
+      </rule>
+      <rule pattern="#(if|elseif|else|endif|available)\b">
+        <token type="CommentPreproc"/>
+        <push state="preproc"/>
+      </rule>
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule pattern="(ExtendedGraphemeClusterLiteralConvertible|_SwiftNSDictionaryRequiredOverridesType|_SwiftNSStringRequiredOverridesType|_SwiftNSArrayRequiredOverridesType|AutoreleasingUnsafeMutablePointer|UnicodeScalarLiteralConvertible|RangeReplaceableCollectionType|StringInterpolationConvertible|DictionaryLiteralConvertible|UnsafeBufferPointerGenerator|_SwiftNSFastEnumerationType|LazyBidirectionalCollection|ExtendedGraphemeClusterType|FloatingPointClassification|ImplicitlyUnwrappedOptional|UnsafeMutableBufferPointer|LazyRandomAccessCollection|FilterCollectionViewIndex|_ExtensibleCollectionType|IntegerLiteralConvertible|ReverseBidirectionalIndex|BooleanLiteralConvertible|StringLiteralConvertible|BidirectionalReverseView|ReverseRandomAccessIndex|ExtensibleCollectionType|FloatLiteralConvertible|RandomAccessReverseView|_BidirectionalIndexType|ArrayLiteralConvertible|_RandomAccessIndexType|_IntegerArithmeticType|BidirectionalIndexType|StrideThroughGenerator|_SwiftNSDictionaryType|_SwiftNSEnumeratorType|BitwiseOperationsType|RandomAccessIndexType|NilLiteralConvertible|_ObjectiveCBridgeable|UnicodeDecodingResult|LazyForwardCollection|IntegerArithmeticType|MutableCollectionType|PermutationGenerator|MapSequenceGenerator|_UnsignedIntegerType|FilterCollectionView|UnsafeMutablePointer|UnsafeBufferPointer|UnsignedIntegerType|_SwiftNSCopyingType|DictionaryGenerator|_SignedIntegerType|_SwiftNSStringType|IntegerLiteralType|FilterSequenceView|EnumerateGenerator|BooleanLiteralType|HeapBufferStorage|EnumerateSequence|MirrorDisposition|_SignedNumberType|UnicodeScalarType|StringLiteralType|GeneratorSequence|_ForwardIndexType|StrideToGenerator|_SwiftNSArrayType|IndexingGenerator|_RawOptionSetType|FloatingPointType|MapCollectionView|SignedIntegerType|OutputStreamType|UnicodeCodecType|HalfOpenInterval|NSObjectProtocol|SignedNumberType|ObjectIdentifier|RawOptionSetType|_CocoaStringType|ForwardIndexType|RawRepresentable|MutableSliceable|FloatLiteralType|_ArrayBufferType|AbsoluteValuable|CFunctionPointer|QuickLookObject|MapSequenceView|EmptyCollection|FilterGenerator|_CollectionType|CollectionOfOne|ContiguousArray|DictionaryIndex|GeneratorOfOne|DebugPrintable|CVaListPointer|CUnsignedShort|COpaquePointer|EmptyGenerator|_Incrementable|RangeGenerator|NSErrorPointer|_Sequence_Type|ClosedInterval|CollectionType|ZipGenerator2|UnsafePointer|GeneratorType|StrideThrough|CUnsignedLong|UnicodeScalar|_SequenceType|LazySequence|IntervalType|SequenceType|StaticString|CUnsignedInt|_IntegerType|BooleanType|CVarArgType|_Strideable|_Comparable|GeneratorOf|IntegerType|Reflectable|CSignedChar|Streamable|SequenceOf|Dictionary|Comparable|HeapBuffer|_Sliceable|MirrorType|Strideable|CLongLong|CWideChar|Printable|Equatable|Unmanaged|Sliceable|Character|AnyObject|Optional|StrideTo|SinkType|AnyClass|Hashable|Selector|Float32|CChar16|UIntMax|Float80|Float64|RawByte|Process|CDouble|CChar32|UInt16|UInt32|C_ARGC|C_ARGV|UInt64|CFloat|String|SinkOf|Repeat|OnHeap|Double|CShort|IntMax|UTF16|Slice|CLong|UTF32|UInt8|Range|UWord|Array|Float|Int64|Int32|Int16|CBool|CChar|UInt|Int8|Word|UTF8|Zip2|Void|Bool|CInt|Any|Int|Bit)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(withUnsafeMutablePointers|withUnsafeMutablePointer|lexicographicalCompare|withExtendedLifetime|preconditionFailure|withUnsafePointers|underestimateCount|withUnsafePointer|assertionFailure|unsafeAddressOf|unsafeDowncast|countElements|unsafeBitCast|toDebugString|strideofValue|removeAtIndex|alignofValue|debugPrintln|precondition|sizeofValue|removeRange|numericCast|removeLast|debugPrint|fatalError|minElement|maxElement|startsWith|withVaList|partition|removeAll|transcode|dropFirst|enumerate|getVaList|strideof|contains|overlaps|dropLast|distance|toString|advance|println|alignof|reflect|indices|reverse|isEmpty|prefix|stride|sizeof|insert|assert|sorted|splice|filter|extend|reduce|suffix|equal|print|count|split|first|swap|dump|sort|lazy|last|join|find|abs|min|max|map)\b">
+        <token type="NameBuiltinPseudo"/>
+      </rule>
+      <rule pattern="\$\d+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="0b[01_]+">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="0o[0-7_]+">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0x[0-9a-fA-F_]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9][0-9_]*(\.[0-9_]+[eE][+\-]?[0-9_]+|\.[0-9_]*|[eE][+\-]?[0-9_]+)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[0-9][0-9_]*">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="[(){}\[\].,:;=@#`?]|-&gt;|[&lt;&amp;?](?=\w)|(?&lt;=\w)[&gt;!?]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[/=\-+!*%&lt;&gt;&amp;|^?~]+">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="comment-multi">
+      <rule>
+        <include state="comment"/>
+      </rule>
+      <rule pattern="[^*/]">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push/>
+      </rule>
+      <rule pattern="\*/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[*/]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="keywords">
+      <rule pattern="(fallthrough|#selector|continue|default|repeat|switch|return|throw|catch|where|break|guard|defer|while|case|else|try|for|if|do|is|in|as)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="@availability\([^)]+\)">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="(@UIApplicationMain|@NSApplicationMain|@IBInspectable|@availability|@IBDesignable|associativity|@autoclosure|convenience|nonmutating|@NSManaged|@NSCopying|precedence|@IBAction|@noreturn|@IBOutlet|override|optional|mutating|indirect|Protocol|rethrows|required|willSet|dynamic|postfix|unowned|throws|prefix|didSet|final|inout|@objc|infix|right|lazy|none|weak|Type|left|get|set)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="(as|dynamicType|false|is|nil|self|Self|super|true|__COLUMN__|__FILE__|__FUNCTION__|__LINE__|_|#(?:file|line|column|function))\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="import\b">
+        <token type="KeywordDeclaration"/>
+        <push state="module"/>
+      </rule>
+      <rule pattern="(class|enum|extension|struct|protocol)(\s+)([a-zA-Z_]\w*)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(func)(\s+)([a-zA-Z_]\w*)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(var|let)(\s+)([a-zA-Z_]\w*)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+          <token type="NameVariable"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(typealias|extension|subscript|internal|protocol|operator|private|public|struct|deinit|static|import|class|init|func|enum|let|var)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

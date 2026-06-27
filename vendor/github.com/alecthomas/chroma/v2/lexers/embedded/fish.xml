@@ -1,0 +1,159 @@
+<lexer>
+  <config>
+    <name>Fish</name>
+    <alias>fish</alias>
+    <alias>fishshell</alias>
+    <filename>*.fish</filename>
+    <filename>*.load</filename>
+    <mime_type>application/x-fish</mime_type>
+  </config>
+  <rules>
+    <state name="paren">
+      <rule pattern="\)">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="math">
+      <rule pattern="\)\)">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[-+*/%^|&amp;]|\*\*|\|\|">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\d+#\d+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="\d+#(?! )">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="basic"/>
+      </rule>
+      <rule>
+        <include state="interp"/>
+      </rule>
+      <rule>
+        <include state="data"/>
+      </rule>
+    </state>
+    <state name="interp">
+      <rule pattern="\$\(\(">
+        <token type="Keyword"/>
+        <push state="math"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Keyword"/>
+        <push state="paren"/>
+      </rule>
+      <rule pattern="\$#?(\w+|.)">
+        <token type="NameVariable"/>
+      </rule>
+    </state>
+    <state name="basic">
+      <rule pattern="(?&lt;=(?:^|\A|;|&amp;&amp;|\|\||\||\b(continue|function|return|switch|begin|while|break|count|false|block|echo|case|true|else|exit|test|set|cdh|and|pwd|for|end|not|if|cd|or)\b)\s*)(continue|function|return|switch|begin|while|break|count|false|block|test|case|true|echo|exit|else|set|cdh|and|pwd|for|end|not|if|cd|or)(?=;?\b)">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(?&lt;=for\s+\S+\s+)in\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(fish_update_completions|fish_command_not_found|fish_breakpoint_prompt|fish_status_to_signal|fish_right_prompt|fish_is_root_user|fish_mode_prompt|fish_vcs_prompt|fish_key_reader|fish_svn_prompt|fish_git_prompt|fish_hg_prompt|fish_greeting|fish_add_path|commandline|fish_prompt|fish_indent|fish_config|fish_pager|breakpoint|fish_title|prompt_pwd|functions|set_color|realpath|funcsave|contains|complete|argparse|fish_opt|history|builtin|getopts|suspend|command|mimedb|printf|ulimit|disown|string|source|funced|status|random|isatty|fishd|prevd|vared|umask|nextd|alias|pushd|emit|jobs|popd|help|psub|wait|fish|read|time|exec|eval|math|trap|type|dirs|dirh|abbr|kill|bind|hash|open|fc|bg|fg)\s*\b(?!\.)">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="#!.*\n">
+        <token type="CommentHashbang"/>
+      </rule>
+      <rule pattern="#.*\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="\\[\w\W]">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="(\b\w+)(\s*)(=)">
+        <bygroups>
+          <token type="NameVariable"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[\[\]()={}]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(?&lt;=\[[^\]]+)\.\.|-(?=[^\[]+\])">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="&lt;&lt;-?\s*(\&#39;?)\\?(\w+)[\w\W]+?\2">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="(?&lt;=set\s+(?:--?[^\d\W][\w-]*\s+)?)\w+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(?&lt;=for\s+)\w[\w-]*(?=\s+in)">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(?&lt;=function\s+)\w(?:[^\n])*?(?= *[-\n])">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="(?&lt;=(?:^|\b(?:and|or|sudo)\b|;|\|\||&amp;&amp;|\||\(|(?:\b\w+\s*=\S+\s)) *)\w[\w-]*">
+        <token type="NameFunction"/>
+      </rule>
+    </state>
+    <state name="data">
+      <rule pattern="(?s)\$?&#34;(\\\\|\\[0-7]+|\\.|[^&#34;\\$])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="(?s)\$&#39;(\\\\|\\[0-7]+|\\.|[^&#39;\\])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="(?s)&#39;.*?&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern=";">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="&amp;&amp;|\|\||&amp;|\||\^|&lt;|&gt;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\b\d+\b">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="(?&lt;=\s+)--?[^\d][\w-]*">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern=".+?">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?s)(\\\\|\\[0-7]+|\\.|[^&#34;\\$])+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule>
+        <include state="interp"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

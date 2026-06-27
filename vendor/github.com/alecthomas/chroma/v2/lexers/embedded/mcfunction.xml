@@ -1,0 +1,138 @@
+
+<lexer>
+  <config>
+    <name>MCFunction</name>
+    <alias>mcfunction</alias>
+    <alias>mcf</alias>
+    <filename>*.mcfunction</filename>
+    <mime_type>text/mcfunction</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule><include state="names"/></rule>
+      <rule><include state="comments"/></rule>
+      <rule><include state="literals"/></rule>
+      <rule><include state="whitespace"/></rule>
+      <rule><include state="property"/></rule>
+      <rule><include state="operators"/></rule>
+      <rule><include state="selectors"/></rule>
+    </state>
+    <state name="names">
+      <rule pattern="^(\s*)([a-z_]+)"><bygroups><token type="TextWhitespace"/><token type="NameBuiltin"/></bygroups></rule>
+      <rule pattern="(?&lt;=run)\s+[a-z_]+"><token type="NameBuiltin"/></rule>
+      <rule pattern="\b[0-9a-fA-F]+(?:-[0-9a-fA-F]+){4}\b"><token type="NameVariable"/></rule>
+      <rule><include state="resource-name"/></rule>
+      <rule pattern="[A-Za-z_][\w.#%$]+"><token type="KeywordConstant"/></rule>
+      <rule pattern="[#%$][\w.#%$]+"><token type="NameVariableMagic"/></rule>
+    </state>
+    <state name="resource-name">
+      <rule pattern="#?[a-z_][a-z_.-]*:[a-z0-9_./-]+"><token type="NameFunction"/></rule>
+      <rule pattern="#?[a-z0-9_\.\-]+\/[a-z0-9_\.\-\/]+"><token type="NameFunction"/></rule>
+    </state>
+    <state name="whitespace">
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+    </state>
+    <state name="comments">
+      <rule pattern="^\s*(#[&gt;!])"><token type="CommentMultiline"/><push state="comments.block" state="comments.block.emphasized"/></rule>
+      <rule pattern="#.*$"><token type="CommentSingle"/></rule>
+    </state>
+    <state name="comments.block">
+      <rule pattern="^\s*#[&gt;!]"><token type="CommentMultiline"/><push state="comments.block.emphasized"/></rule>
+      <rule pattern="^\s*#"><token type="CommentMultiline"/><push state="comments.block.normal"/></rule>
+      <rule><pop depth="1"/></rule>
+    </state>
+    <state name="comments.block.normal">
+      <rule><include state="comments.block.special"/></rule>
+      <rule pattern="\S+"><token type="CommentMultiline"/></rule>
+      <rule pattern="\n"><token type="Text"/><pop depth="1"/></rule>
+      <rule><include state="whitespace"/></rule>
+    </state>
+    <state name="comments.block.emphasized">
+      <rule><include state="comments.block.special"/></rule>
+      <rule pattern="\S+"><token type="LiteralStringDoc"/></rule>
+      <rule pattern="\n"><token type="Text"/><pop depth="1"/></rule>
+      <rule><include state="whitespace"/></rule>
+    </state>
+    <state name="comments.block.special">
+      <rule pattern="@\S+"><token type="NameDecorator"/></rule>
+      <rule><include state="resource-name"/></rule>
+      <rule pattern="[#%$][\w.#%$]+"><token type="NameVariableMagic"/></rule>
+    </state>
+    <state name="operators">
+      <rule pattern="[\-~%^?!+*&lt;&gt;\\/|&amp;=.]"><token type="Operator"/></rule>
+    </state>
+    <state name="literals">
+      <rule pattern="\.\."><token type="Literal"/></rule>
+      <rule pattern="(true|false)"><token type="KeywordPseudo"/></rule>
+      <rule pattern="[A-Za-z_]+"><token type="NameVariableClass"/></rule>
+      <rule pattern="[0-7]b"><token type="LiteralNumberByte"/></rule>
+      <rule pattern="[+-]?\d*\.?\d+([eE]?[+-]?\d+)?[df]?\b"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="[+-]?\d+\b"><token type="LiteralNumberInteger"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><push state="literals.string-double"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringSingle"/><push state="literals.string-single"/></rule>
+    </state>
+    <state name="literals.string-double">
+      <rule pattern="\\."><token type="LiteralStringEscape"/></rule>
+      <rule pattern="[^\\&quot;\n]+"><token type="LiteralStringDouble"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><pop depth="1"/></rule>
+    </state>
+    <state name="literals.string-single">
+      <rule pattern="\\."><token type="LiteralStringEscape"/></rule>
+      <rule pattern="[^\\&#x27;\n]+"><token type="LiteralStringSingle"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringSingle"/><pop depth="1"/></rule>
+    </state>
+    <state name="selectors">
+      <rule pattern="@[a-z]"><token type="NameVariable"/></rule>
+    </state>
+    <state name="property">
+      <rule pattern="\{"><token type="Punctuation"/><push state="property.curly" state="property.key"/></rule>
+      <rule pattern="\["><token type="Punctuation"/><push state="property.square" state="property.key"/></rule>
+    </state>
+    <state name="property.curly">
+      <rule><include state="whitespace"/></rule>
+      <rule><include state="property"/></rule>
+      <rule pattern="\}"><token type="Punctuation"/><pop depth="1"/></rule>
+    </state>
+    <state name="property.square">
+      <rule><include state="whitespace"/></rule>
+      <rule><include state="property"/></rule>
+      <rule pattern="\]"><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule pattern=","><token type="Punctuation"/></rule>
+    </state>
+    <state name="property.key">
+      <rule><include state="whitespace"/></rule>
+      <rule pattern="#?[a-z_][a-z_\.\-]*\:[a-z0-9_\.\-/]+(?=\s*\=)"><token type="NameAttribute"/><push state="property.delimiter"/></rule>
+      <rule pattern="#?[a-z_][a-z0-9_\.\-/]+"><token type="NameAttribute"/><push state="property.delimiter"/></rule>
+      <rule pattern="[A-Za-z_\-\+]+"><token type="NameAttribute"/><push state="property.delimiter"/></rule>
+      <rule pattern="&quot;"><token type="NameAttribute"/><push state="property.delimiter"/></rule>
+      <rule pattern="&#x27;"><token type="NameAttribute"/><push state="property.delimiter"/></rule>
+      <rule pattern="-?\d+"><token type="LiteralNumberInteger"/><push state="property.delimiter"/></rule>
+      <rule><pop depth="1"/></rule>
+    </state>
+    <state name="property.key.string-double">
+      <rule pattern="\\."><token type="LiteralStringEscape"/></rule>
+      <rule pattern="[^\\&quot;\n]+"><token type="NameAttribute"/></rule>
+      <rule pattern="&quot;"><token type="NameAttribute"/><pop depth="1"/></rule>
+    </state>
+    <state name="property.key.string-single">
+      <rule pattern="\\."><token type="LiteralStringEscape"/></rule>
+      <rule pattern="[^\\&#x27;\n]+"><token type="NameAttribute"/></rule>
+      <rule pattern="&#x27;"><token type="NameAttribute"/><pop depth="1"/></rule>
+    </state>
+    <state name="property.delimiter">
+      <rule><include state="whitespace"/></rule>
+      <rule pattern="[:=]!?"><token type="Punctuation"/><push state="property.value"/></rule>
+      <rule pattern=","><token type="Punctuation"/></rule>
+      <rule><pop depth="1"/></rule>
+    </state>
+    <state name="property.value">
+      <rule><include state="whitespace"/></rule>
+      <rule pattern="#?[a-z_][a-z_\.\-]*\:[a-z0-9_\.\-/]+"><token type="NameTag"/></rule>
+      <rule pattern="#?[a-z_][a-z0-9_\.\-/]+"><token type="NameTag"/></rule>
+      <rule><include state="literals"/></rule>
+      <rule><include state="property"/></rule>
+      <rule><pop depth="1"/></rule>
+    </state>
+  </rules>
+</lexer>
+

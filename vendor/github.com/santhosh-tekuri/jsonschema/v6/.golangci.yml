@@ -1,0 +1,7 @@
+version: "2"
+linters:
+  enable:
+    - nakedret
+    - errname
+    - godot
+    - misspell

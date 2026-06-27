@@ -1,0 +1,25 @@
+---
+title: No License
+source: "http://choosealicense.com/no-license/"
+
+description: You retain all rights and do not permit distribution, reproduction, or derivative works. You may grant some rights in cases where you publish your source code to a site that requires accepting terms of service. For example, publishing code in a public repository on GitHub requires that you allow others to view and fork your code.
+
+how: Simply do nothing, though including a copyright notice is recommended.
+
+note: This option may be subject to the Terms Of Use of the site where you publish your source code.
+
+required:
+  - include-copyright
+
+permitted:
+  - commercial-use
+  - private-use
+
+forbidden:
+  - modifications
+  - distribution
+  - sublicense
+
+---
+
+Copyright [year] [fullname]

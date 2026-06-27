@@ -1,0 +1,52 @@
+<lexer>
+  <config>
+    <name>Diff</name>
+    <alias>diff</alias>
+    <alias>udiff</alias>
+    <filename>*.diff</filename>
+    <filename>*.patch</filename>
+    <mime_type>text/x-diff</mime_type>
+    <mime_type>text/x-patch</mime_type>
+    <ensure_nl>true</ensure_nl>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern=" .*\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\d+(,\d+)?(a|c|d)\d+(,\d+)?\n">
+        <token type="GenericSubheading"/>
+      </rule>
+      <rule pattern="---\n">
+        <token type="GenericStrong"/>
+      </rule>
+      <rule pattern="&lt; .*\n">
+        <token type="GenericDeleted"/>
+      </rule>
+      <rule pattern="&gt; .*\n">
+        <token type="GenericInserted"/>
+      </rule>
+      <rule pattern="\+.*\n">
+        <token type="GenericInserted"/>
+      </rule>
+      <rule pattern="-.*\n">
+        <token type="GenericDeleted"/>
+      </rule>
+      <rule pattern="!.*\n">
+        <token type="GenericStrong"/>
+      </rule>
+      <rule pattern="@.*\n">
+        <token type="GenericSubheading"/>
+      </rule>
+      <rule pattern="([Ii]ndex|diff).*\n">
+        <token type="GenericHeading"/>
+      </rule>
+      <rule pattern="=.*\n">
+        <token type="GenericHeading"/>
+      </rule>
+      <rule pattern=".*\n">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,100 @@
+version: "2"
+
+formatters:
+  enable:
+    - gci
+    - gofumpt
+  settings:
+    gofumpt:
+      extra-rules: true
+
+linters:
+  default: all
+  disable:
+    - bodyclose
+    - cyclop # duplicate of gocyclo
+    - dupl
+    - err113
+    - exhaustive
+    - exhaustruct
+    - lll
+    - mnd
+    - nlreturn
+    - paralleltest
+    - prealloc
+    - rowserrcheck # not relevant (SQL)
+    - sqlclosecheck # not relevant (SQL)
+    - testpackage
+    - tparallel
+    - varnamelen
+    - wrapcheck
+    - wsl # deprecated
+
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/instana/testify
+              desc: not allowed
+            - pkg: github.com/pkg/errors
+              desc: Should be replaced by standard lib errors package
+    forbidigo:
+      forbid:
+        - pattern: ^print(ln)?$
+        - pattern: ^fmt\.Print(f|ln)?$
+        - pattern: ^panic$
+        - pattern: ^spew\.Print(f|ln)?$
+        - pattern: ^spew\.Dump$
+    funlen:
+      lines: -1
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    gocritic:
+      disabled-checks:
+        - sloppyReassign
+        - rangeValCopy
+        - octalLiteral
+        - paramTypeCombine # already handle by gofumpt.extra-rules
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      settings:
+        hugeParam:
+          sizeThreshold: 100
+    gocyclo:
+      min-complexity: 12
+    godox:
+      keywords:
+        - FIXME
+    govet:
+      disable:
+        - fieldalignment
+      enable-all: true
+    misspell:
+      locale: US
+    tagliatelle:
+      case:
+        rules:
+          json: pascal
+
+  exclusions:
+    warn-unused: true
+    presets:
+      - comments
+    rules:
+      - linters:
+          - funlen
+          - goconst
+          - maintidx
+        path: (.+)_test.go
+      - linters:
+          - forbidigo
+        path: cmd/gomoddirectives/gomoddirectives.go
+        text: use of `fmt.Println` forbidden
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

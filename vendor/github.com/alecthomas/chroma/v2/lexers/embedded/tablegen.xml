@@ -1,0 +1,69 @@
+<lexer>
+  <config>
+    <name>TableGen</name>
+    <alias>tablegen</alias>
+    <filename>*.td</filename>
+    <mime_type>text/x-tablegen</mime_type>
+  </config>
+  <rules>
+    <state name="whitespace">
+      <rule pattern="(\n|\s)+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="keyword">
+      <rule pattern="(multiclass|foreach|string|class|field|defm|bits|code|list|def|int|let|dag|bit|in)\b">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="macro"/>
+      </rule>
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="c?&#34;[^&#34;]*?&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule>
+        <include state="keyword"/>
+      </rule>
+      <rule pattern="\$[_a-zA-Z][_\w]*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\d*[_a-zA-Z][_\w]*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\[\{[\w\W]*?\}\]">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="[+-]?\d+|0x[\da-fA-F]+|0b[01]+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[=&lt;&gt;{}\[\]()*.,!:;]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="macro">
+      <rule pattern="(#include\s+)(&#34;[^&#34;]*&#34;)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^\s*#(ifdef|ifndef)\s+[_\w][_\w\d]*">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="^\s*#define\s+[_\w][_\w\d]*">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="^\s*#endif">
+        <token type="CommentPreproc"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

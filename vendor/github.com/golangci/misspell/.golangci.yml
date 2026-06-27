@@ -1,0 +1,102 @@
+version: "2"
+
+formatters:
+  enable:
+    - gci
+    - gofumpt
+  settings:
+    gofumpt:
+      extra-rules: true
+
+linters:
+  default: all
+  disable:
+    - cyclop # duplicate of gocyclo
+    - dupl
+    - err113
+    - errcheck # FIXME(ldez) must be fixed
+    - exhaustive
+    - exhaustruct
+    - forbidigo
+    - gochecknoglobals
+    - gochecknoinits
+    - gosmopolitan
+    - gosec # FIXME(ldez) must be fixed
+    - lll
+    - misspell
+    - mnd
+    - nakedret # FIXME(ldez) must be fixed
+    - nilnil
+    - nlreturn
+    - nonamedreturns # FIXME(ldez) must be fixed
+    - paralleltest
+    - prealloc
+    - rowserrcheck # not relevant (SQL)
+    - sqlclosecheck # not relevant (SQL)
+    - testpackage
+    - tparallel
+    - varnamelen
+    - wrapcheck
+    - wsl # deprecated
+
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/instana/testify
+              desc: not allowed
+            - pkg: github.com/pkg/errors
+              desc: Should be replaced by standard lib errors package
+    forbidigo:
+      forbid:
+        - pattern: ^print(ln)?$
+        - pattern: ^panic$
+        - pattern: ^spew\.Print(f|ln)?$
+        - pattern: ^spew\.Dump$
+    funlen:
+      lines: -1
+      statements: 40
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    gocritic:
+      disabled-checks:
+        - sloppyReassign
+        - rangeValCopy
+        - octalLiteral
+        - paramTypeCombine # already handle by gofumpt.extra-rules
+        - exitAfterDefer # FIXME(ldez) must be fixed
+        - ifElseChain # FIXME(ldez) must be fixed
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      settings:
+        hugeParam:
+          sizeThreshold: 100
+    gocyclo:
+      min-complexity: 16
+    godox:
+      keywords:
+        - FIXME
+    govet:
+      disable:
+        - fieldalignment
+      enable-all: true
+    misspell:
+      locale: US
+
+  exclusions:
+    warn-unused: true
+    presets:
+      - comments
+    rules:
+      - linters:
+          - funlen
+          - goconst
+        path: .*_test.go
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

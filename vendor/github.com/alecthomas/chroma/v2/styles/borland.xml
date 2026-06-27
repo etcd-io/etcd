@@ -1,0 +1,26 @@
+<style name="borland">
+  <entry type="Error" style="#a61717 bg:#e3d2d2"/>
+  <entry type="Background" style="bg:#ffffff"/>
+  <entry type="Keyword" style="bold #000080"/>
+  <entry type="NameAttribute" style="#ff0000"/>
+  <entry type="NameTag" style="bold #000080"/>
+  <entry type="LiteralString" style="#0000ff"/>
+  <entry type="LiteralStringChar" style="#800080"/>
+  <entry type="LiteralNumber" style="#0000ff"/>
+  <entry type="OperatorWord" style="bold"/>
+  <entry type="Comment" style="italic #008800"/>
+  <entry type="CommentSpecial" style="bold noitalic"/>
+  <entry type="CommentPreproc" style="noitalic #008080"/>
+  <entry type="GenericDeleted" style="#000000 bg:#ffdddd"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericError" style="#aa0000"/>
+  <entry type="GenericHeading" style="#999999"/>
+  <entry type="GenericInserted" style="#000000 bg:#ddffdd"/>
+  <entry type="GenericOutput" style="#888888"/>
+  <entry type="GenericPrompt" style="#555555"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="#aaaaaa"/>
+  <entry type="GenericTraceback" style="#aa0000"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="TextWhitespace" style="#bbbbbb"/>
+</style>

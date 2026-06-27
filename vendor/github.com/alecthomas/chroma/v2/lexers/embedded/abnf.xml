@@ -1,0 +1,66 @@
+<lexer>
+  <config>
+    <name>ABNF</name>
+    <alias>abnf</alias>
+    <filename>*.abnf</filename>
+    <mime_type>text/x-abnf</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern=";.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="(%[si])?&#34;[^&#34;]*&#34;">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern="%b[01]+\-[01]+\b">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern="%b[01]+(\.[01]+)*\b">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern="%d[0-9]+\-[0-9]+\b">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern="%d[0-9]+(\.[0-9]+)*\b">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern="%x[0-9a-fA-F]+\-[0-9a-fA-F]+\b">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern="%x[0-9a-fA-F]+(\.[0-9a-fA-F]+)*\b">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern="\b[0-9]+\*[0-9]+">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b[0-9]+\*">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b[0-9]+">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\*">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(HEXDIG|DQUOTE|DIGIT|VCHAR|OCTET|ALPHA|CHAR|CRLF|HTAB|LWSP|BIT|CTL|WSP|LF|SP|CR)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="[a-zA-Z][a-zA-Z0-9-]+\b">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(=/|=|/)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[\[\]()]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

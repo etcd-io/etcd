@@ -1,0 +1,193 @@
+<lexer>
+  <config>
+    <name>Java</name>
+    <alias>java</alias>
+    <filename>*.java</filename>
+    <mime_type>text/x-java</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="(^\s*)((?:(?:public|private|protected|static|strictfp)(?:\s+))*)(record)\b">
+        <bygroups>
+          <token type="TextWhitespace" />
+          <usingself state="root" />
+          <token type="KeywordDeclaration" />
+        </bygroups>
+        <push state="class" />
+      </rule>
+      <rule pattern="[^\S\n]+">
+        <token type="TextWhitespace" />
+      </rule>
+      <rule pattern="(//.*?)(\n)">
+        <bygroups>
+          <token type="CommentSingle" />
+          <token type="TextWhitespace" />
+        </bygroups>
+      </rule>
+      <rule pattern="/\*.*?\*/">
+        <token type="CommentMultiline" />
+      </rule>
+      <rule
+        pattern="(assert|break|case|catch|continue|default|do|else|finally|for|if|goto|instanceof|new|return|switch|this|throw|try|while)\b">
+        <token type="Keyword" />
+      </rule>
+      <rule pattern="((?:(?:[^\W\d]|\$)[\w.\[\]$&lt;&gt;]*\s+)+?)((?:[^\W\d]|\$)[\w$]*)(\s*)(\()">
+        <bygroups>
+          <usingself state="root" />
+          <token type="NameFunction" />
+          <token type="TextWhitespace" />
+          <token type="Punctuation" />
+        </bygroups>
+      </rule>
+      <rule pattern="@[^\W\d][\w.]*">
+        <token type="NameDecorator" />
+      </rule>
+      <rule
+        pattern="(abstract|const|enum|extends|final|implements|native|private|protected|public|sealed|static|strictfp|super|synchronized|throws|transient|volatile|yield)\b">
+        <token type="KeywordDeclaration" />
+      </rule>
+      <rule pattern="(boolean|byte|char|double|float|int|long|short|void)\b">
+        <token type="KeywordType" />
+      </rule>
+      <rule pattern="(package)(\s+)">
+        <bygroups>
+          <token type="KeywordNamespace" />
+          <token type="TextWhitespace" />
+        </bygroups>
+        <push state="import" />
+      </rule>
+      <rule pattern="(true|false|null)\b">
+        <token type="KeywordConstant" />
+      </rule>
+      <rule pattern="(class|interface)\b">
+        <token type="KeywordDeclaration" />
+        <push state="class" />
+      </rule>
+      <rule pattern="(var)(\s+)">
+        <bygroups>
+          <token type="KeywordDeclaration" />
+          <token type="TextWhitespace" />
+        </bygroups>
+        <push state="var" />
+      </rule>
+      <rule pattern="(import(?:\s+static)?)(\s+)">
+        <bygroups>
+          <token type="KeywordNamespace" />
+          <token type="TextWhitespace" />
+        </bygroups>
+        <push state="import" />
+      </rule>
+      <rule pattern="&quot;&quot;&quot;\n">
+        <token type="LiteralString" />
+        <push state="multiline_string" />
+      </rule>
+      <rule pattern="&quot;">
+        <token type="LiteralString" />
+        <push state="string" />
+      </rule>
+      <rule pattern="&#x27;\\.&#x27;|&#x27;[^\\]&#x27;|&#x27;\\u[0-9a-fA-F]{4}&#x27;">
+        <token type="LiteralStringChar" />
+      </rule>
+      <rule pattern="(\.)((?:[^\W\d]|\$)[\w$]*)">
+        <bygroups>
+          <token type="Punctuation" />
+          <token type="NameAttribute" />
+        </bygroups>
+      </rule>
+      <rule pattern="^(\s*)(default)(:)">
+        <bygroups>
+          <token type="TextWhitespace" />
+          <token type="Keyword" />
+          <token type="Punctuation" />
+        </bygroups>
+      </rule>
+      <rule pattern="^(\s*)((?:[^\W\d]|\$)[\w$]*)(:)">
+        <bygroups>
+          <token type="TextWhitespace" />
+          <token type="NameLabel" />
+          <token type="Punctuation" />
+        </bygroups>
+      </rule>
+      <rule pattern="([^\W\d]|\$)[\w$]*">
+        <token type="Name" />
+      </rule>
+      <rule
+        pattern="([0-9][0-9_]*\.([0-9][0-9_]*)?|\.[0-9][0-9_]*)([eE][+\-]?[0-9][0-9_]*)?[fFdD]?|[0-9][eE][+\-]?[0-9][0-9_]*[fFdD]?|[0-9]([eE][+\-]?[0-9][0-9_]*)?[fFdD]|0[xX]([0-9a-fA-F][0-9a-fA-F_]*\.?|([0-9a-fA-F][0-9a-fA-F_]*)?\.[0-9a-fA-F][0-9a-fA-F_]*)[pP][+\-]?[0-9][0-9_]*[fFdD]?">
+        <token type="LiteralNumberFloat" />
+      </rule>
+      <rule pattern="0[xX][0-9a-fA-F][0-9a-fA-F_]*[lL]?">
+        <token type="LiteralNumberHex" />
+      </rule>
+      <rule pattern="0[bB][01][01_]*[lL]?">
+        <token type="LiteralNumberBin" />
+      </rule>
+      <rule pattern="0[0-7_]+[lL]?">
+        <token type="LiteralNumberOct" />
+      </rule>
+      <rule pattern="0|[1-9][0-9_]*[lL]?">
+        <token type="LiteralNumberInteger" />
+      </rule>
+      <rule pattern="[~^*!%&amp;\[\]&lt;&gt;|+=/?-]">
+        <token type="Operator" />
+      </rule>
+      <rule pattern="[{}();:.,]">
+        <token type="Punctuation" />
+      </rule>
+      <rule pattern="\n">
+        <token type="TextWhitespace" />
+      </rule>
+    </state>
+    <state name="class">
+      <rule pattern="\s+">
+        <token type="Text" />
+      </rule>
+      <rule pattern="([^\W\d]|\$)[\w$]*">
+        <token type="NameClass" />
+        <pop depth="1" />
+      </rule>
+    </state>
+    <state name="var">
+      <rule pattern="([^\W\d]|\$)[\w$]*">
+        <token type="Name" />
+        <pop depth="1" />
+      </rule>
+    </state>
+    <state name="import">
+      <rule pattern="[\w.]+\*?">
+        <token type="NameNamespace" />
+        <pop depth="1" />
+      </rule>
+    </state>
+    <state name="multiline_string">
+      <rule pattern="&quot;&quot;&quot;">
+        <token type="LiteralString" />
+        <pop depth="1" />
+      </rule>
+      <rule pattern="&quot;">
+        <token type="LiteralString" />
+      </rule>
+      <rule>
+        <include state="string" />
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="[^\\&quot;]+">
+        <token type="LiteralString" />
+      </rule>
+      <rule pattern="\\\\">
+        <token type="LiteralString" />
+      </rule>
+      <rule pattern="\\&quot;">
+        <token type="LiteralString" />
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString" />
+      </rule>
+      <rule pattern="&quot;">
+        <token type="LiteralString" />
+        <pop depth="1" />
+      </rule>
+    </state>
+  </rules>
+</lexer>

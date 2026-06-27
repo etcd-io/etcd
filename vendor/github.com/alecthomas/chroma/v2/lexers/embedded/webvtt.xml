@@ -1,0 +1,283 @@
+<lexer>
+  <config>
+    <name>WebVTT</name>
+    <alias>vtt</alias>
+    <filename>*.vtt</filename>
+    <mime_type>text/vtt</mime_type>
+  </config>
+  <!--
+    The WebVTT spec refers to a WebVTT line terminator as either CRLF, CR or LF.
+    (https://www.w3.org/TR/webvtt1/#webvtt-line-terminator) However, with this 
+    definition it is unclear whether CRLF is one line terminator (CRLF) or two
+    line terminators (CR and LF).
+
+    To work around this ambiguity, only CRLF and LF are considered as line terminators. 
+    To my knowledge only classic Mac OS uses CR as line terminators, so the lexer should
+    still work for most files.
+  -->
+  <rules>
+    <!-- https://www.w3.org/TR/webvtt1/#webvtt-file-body -->
+    <state name="root">
+      <rule pattern="(\AWEBVTT)((?:[ \t][^\r\n]*)?(?:\r?\n){2,})">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Text" />
+        </bygroups>
+      </rule>
+      <rule pattern="(^REGION)([ \t]*$)">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Text" />
+        </bygroups>
+        <push state="region-settings-list" />
+      </rule>
+      <rule
+        pattern="(^STYLE)([ \t]*$)((?:(?!&#45;&#45;&gt;)[\s\S])*?)((?:\r?\n){2})">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Text" />
+          <using lexer="CSS" />
+          <token type="Text" />
+        </bygroups>
+      </rule>
+      <rule>
+        <include state="comment" />
+      </rule>
+      <rule
+        pattern="(?=((?![^\r\n]*&#45;&#45;&gt;)[^\r\n]*\r?\n)?(\d{2}:)?(?:[0-5][0-9]):(?:[0-5][0-9])\.\d{3}[ \t]+&#45;&#45;&gt;[ \t]+(\d{2}:)?(?:[0-5][0-9]):(?:[0-5][0-9])\.\d{3})"
+      >
+        <push state="cues" />
+      </rule>
+    </state>
+
+    <!-- https://www.w3.org/TR/webvtt1/#webvtt-region-settings-list -->
+    <state name="region-settings-list">
+      <rule pattern="(?: |\t|\r?\n(?!\r?\n))+">
+        <token type="Text" />
+      </rule>
+      <rule pattern="(?:\r?\n){2}">
+        <token type="Text" />
+        <pop depth="1" />
+      </rule>
+      <rule pattern="(id)(:)(?!&#45;&#45;&gt;)(\S+)">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Punctuation" />
+          <token type="Literal" />
+        </bygroups>
+      </rule>
+      <rule pattern="(width)(:)((?:[1-9]?\d|100)(?:\.\d+)?)(%)">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Punctuation" />
+          <token type="Literal" />
+          <token type="KeywordType" />
+        </bygroups>
+      </rule>
+      <rule pattern="(lines)(:)(\d+)">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Punctuation" />
+          <token type="Literal" />
+        </bygroups>
+      </rule>
+      <rule
+        pattern="(regionanchor|viewportanchor)(:)((?:[1-9]?\d|100)(?:\.\d+)?)(%)(,)((?:[1-9]?\d|100)(?:\.\d+)?)(%)">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Punctuation" />
+          <token type="Literal" />
+          <token type="KeywordType" />
+          <token type="Punctuation" />
+          <token type="Literal" />
+          <token type="KeywordType" />
+        </bygroups>
+      </rule>
+      <rule pattern="(scroll)(:)(up)">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Punctuation" />
+          <token type="KeywordConstant" />
+        </bygroups>
+      </rule>
+    </state>
+
+    <!-- https://www.w3.org/TR/webvtt1/#webvtt-comment-block -->
+    <state name="comment">
+      <rule
+        pattern="^NOTE( |\t|\r?\n)((?!&#45;&#45;&gt;)[\s\S])*?(?:(\r?\n){2}|\Z)">
+        <token type="Comment" />
+      </rule>
+    </state>
+
+    <!-- 
+      "Zero or more WebVTT cue blocks and WebVTT comment blocks separated from each other by one or more
+      WebVTT line terminators." (https://www.w3.org/TR/webvtt1/#file-structure)
+    -->
+    <state name="cues">
+      <rule
+        pattern="(?:((?!&#45;&#45;&gt;)[^\r\n]+)?(\r?\n))?((?:\d{2}:)?(?:[0-5][0-9]):(?:[0-5][0-9])\.\d{3})([ \t]+)(&#45;&#45;&gt;)([ \t]+)((?:\d{2}:)?(?:[0-5][0-9]):(?:[0-5][0-9])\.\d{3})([ \t]*)">
+        <bygroups>
+          <token type="Name" />
+          <token type="Text" />
+          <token type="LiteralDate" />
+          <token type="Text" />
+          <token type="Operator" />
+          <token type="Text" />
+          <token type="LiteralDate" />
+          <token type="Text" />
+        </bygroups>
+        <push state="cue-settings-list" />
+      </rule>
+      <rule>
+        <include state="comment" />
+      </rule>
+    </state>
+
+    <!-- https://www.w3.org/TR/webvtt1/#webvtt-cue-settings-list -->
+    <state name="cue-settings-list">
+      <rule pattern="[ \t]+">
+        <token type="Text" />
+      </rule>
+      <rule pattern="(vertical)(:)?(rl|lr)?">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Punctuation" />
+          <token type="KeywordConstant" />
+        </bygroups>
+      </rule>
+      <rule
+        pattern="(line)(:)?(?:(?:((?:[1-9]?\d|100)(?:\.\d+)?)(%)|(-?\d+))(?:(,)(start|center|end))?)?">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Punctuation" />
+          <token type="Literal" />
+          <token type="KeywordType" />
+          <token type="Literal" />
+          <token type="Punctuation" />
+          <token type="KeywordConstant" />
+        </bygroups>
+      </rule>
+      <rule
+        pattern="(position)(:)?(?:(?:((?:[1-9]?\d|100)(?:\.\d+)?)(%)|(-?\d+))(?:(,)(line-left|center|line-right))?)?">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Punctuation" />
+          <token type="Literal" />
+          <token type="KeywordType" />
+          <token type="Literal" />
+          <token type="Punctuation" />
+          <token type="KeywordConstant" />
+        </bygroups>
+      </rule>
+      <rule pattern="(size)(:)?(?:((?:[1-9]?\d|100)(?:\.\d+)?)(%))?">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Punctuation" />
+          <token type="Literal" />
+          <token type="KeywordType" />
+        </bygroups>
+      </rule>
+      <rule pattern="(align)(:)?(start|center|end|left|right)?">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Punctuation" />
+          <token type="KeywordConstant" />
+        </bygroups>
+      </rule>
+      <rule pattern="(region)(:)?((?![^\r\n]*&#45;&#45;&gt;(?=[ \t]+?))[^ \t\r\n]+)?">
+        <bygroups>
+          <token type="Keyword" />
+          <token type="Punctuation" />
+          <token type="Literal" />
+        </bygroups>
+      </rule>
+      <rule
+        pattern="(?=\r?\n)">
+        <push state="cue-payload" />
+      </rule>
+    </state>
+
+    <!-- https://www.w3.org/TR/webvtt1/#cue-payload -->
+    <state name="cue-payload">
+      <rule pattern="(\r?\n){2,}">
+        <token type="Text" />
+        <pop depth="2" />
+      </rule>
+      <rule pattern="[^&lt;&amp;]+?">
+        <token type="Text" />
+      </rule>
+      <rule pattern="&amp;(#\d+|#x[0-9A-Fa-f]+|[a-zA-Z0-9]+);">
+        <token type="Text" />
+      </rule>
+      <rule pattern="(?=&lt;)">
+        <token type="Text" />
+        <push state="cue-span-tag" />
+      </rule>
+    </state>
+    <state name="cue-span-tag">
+      <rule
+        pattern="&lt;(?=c|i|b|u|ruby|rt|v|lang|(?:\d{2}:)?(?:[0-5][0-9]):(?:[0-5][0-9])\.\d{3})">
+        <token type="Punctuation" />
+        <push state="cue-span-start-tag-name" />
+      </rule>
+      <rule pattern="(&lt;/)(c|i|b|u|ruby|rt|v|lang)">
+        <bygroups>
+          <token type="Punctuation" />
+          <token type="NameTag" />
+        </bygroups>
+      </rule>
+      <rule pattern="&gt;">
+        <token type="Punctuation" />
+        <pop depth="1" />
+      </rule>
+    </state>
+    <state name="cue-span-start-tag-name">
+      <rule pattern="(c|i|b|u|ruby|rt)|((?:\d{2}:)?(?:[0-5][0-9]):(?:[0-5][0-9])\.\d{3})">
+        <bygroups>
+          <token type="NameTag" />
+          <token type="LiteralDate" />
+        </bygroups>
+        <push state="cue-span-classes-without-annotations" />
+      </rule>
+      <rule pattern="v|lang">
+        <token type="NameTag" />
+        <push state="cue-span-classes-with-annotations" />
+      </rule>
+    </state>
+    <state name="cue-span-classes-without-annotations">
+      <rule>
+        <include state="cue-span-classes" />
+      </rule>
+      <rule pattern="(?=&gt;)">
+        <pop depth="2" />
+      </rule>
+    </state>
+    <state name="cue-span-classes-with-annotations">
+      <rule>
+        <include state="cue-span-classes" />
+      </rule>
+      <rule pattern="(?=[ \t])">
+        <push state="cue-span-start-tag-annotations" />
+      </rule>
+    </state>
+    <state name="cue-span-classes">
+      <rule pattern="(\.)([^ \t\n\r&amp;&lt;&gt;\.]+)">
+        <bygroups>
+          <token type="Punctuation" />
+          <token type="NameTag" />
+        </bygroups>
+      </rule>
+    </state>
+    <state name="cue-span-start-tag-annotations">
+      <rule
+        pattern="[ \t](?:[^\n\r&amp;&gt;]|&amp;(?:#\d+|#x[0-9A-Fa-f]+|[a-zA-Z0-9]+);)+">
+        <token type="Text" />
+      </rule>
+      <rule pattern="(?=&gt;)">
+        <token type="Text" />
+        <pop depth="3" />
+      </rule>
+    </state>
+  </rules>
+</lexer>

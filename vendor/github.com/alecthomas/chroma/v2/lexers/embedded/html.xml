@@ -1,0 +1,159 @@
+<lexer>
+  <config>
+    <name>HTML</name>
+    <alias>html</alias>
+    <filename>*.html</filename>
+    <filename>*.htm</filename>
+    <filename>*.xhtml</filename>
+    <filename>*.xslt</filename>
+    <mime_type>text/html</mime_type>
+    <mime_type>application/xhtml+xml</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <dot_all>true</dot_all>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="script-content">
+      <rule pattern="(&lt;)(\s*)(/)(\s*)(script)(\s*)(&gt;)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="NameTag"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=".+?(?=&lt;\s*/\s*script\s*&gt;)">
+        <using lexer="Javascript"/>
+      </rule>
+    </state>
+    <state name="style-content">
+      <rule pattern="(&lt;)(\s*)(/)(\s*)(style)(\s*)(&gt;)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="NameTag"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=".+?(?=&lt;\s*/\s*style\s*&gt;)">
+        <using lexer="CSS"/>
+      </rule>
+    </state>
+    <state name="attr">
+      <rule pattern="&#34;.*?&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="&#39;.*?&#39;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^\s&gt;]+">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="[^&lt;&amp;]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&amp;\S*?;">
+        <token type="NameEntity"/>
+      </rule>
+      <rule pattern="\&lt;\!\[CDATA\[.*?\]\]\&gt;">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="&lt;!--">
+        <token type="Comment"/>
+        <push state="comment"/>
+      </rule>
+      <rule pattern="&lt;\?.*?\?&gt;">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="&lt;![^&gt;]*&gt;">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="(&lt;)(\s*)(script)(\s*)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="NameTag"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="script-content" state="tag"/>
+      </rule>
+      <rule pattern="(&lt;)(\s*)(style)(\s*)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="NameTag"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="style-content" state="tag"/>
+      </rule>
+      <rule pattern="(&lt;)(\s*)([\w:.-]+)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="NameTag"/>
+        </bygroups>
+        <push state="tag"/>
+      </rule>
+      <rule pattern="(&lt;)(\s*)(/)(\s*)([\w:.-]+)(\s*)(&gt;)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="NameTag"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern="[^-]+">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="--&gt;">
+        <token type="Comment"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="-">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="tag">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="([\w:-]+\s*)(=)(\s*)">
+        <bygroups>
+          <token type="NameAttribute"/>
+          <token type="Operator"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="attr"/>
+      </rule>
+      <rule pattern="[\w:-]+">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="(/?)(\s*)(&gt;)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

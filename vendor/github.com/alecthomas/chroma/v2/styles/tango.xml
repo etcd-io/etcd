@@ -1,0 +1,72 @@
+<style name="tango">
+  <entry type="Other" style="#000000"/>
+  <entry type="Error" style="#a40000 border:#ef2929"/>
+  <entry type="Background" style="bg:#f8f8f8"/>
+  <entry type="Keyword" style="bold #204a87"/>
+  <entry type="KeywordConstant" style="bold #204a87"/>
+  <entry type="KeywordDeclaration" style="bold #204a87"/>
+  <entry type="KeywordNamespace" style="bold #204a87"/>
+  <entry type="KeywordPseudo" style="bold #204a87"/>
+  <entry type="KeywordReserved" style="bold #204a87"/>
+  <entry type="KeywordType" style="bold #204a87"/>
+  <entry type="Name" style="#000000"/>
+  <entry type="NameAttribute" style="#c4a000"/>
+  <entry type="NameBuiltin" style="#204a87"/>
+  <entry type="NameBuiltinPseudo" style="#3465a4"/>
+  <entry type="NameClass" style="#000000"/>
+  <entry type="NameConstant" style="#000000"/>
+  <entry type="NameDecorator" style="bold #5c35cc"/>
+  <entry type="NameEntity" style="#ce5c00"/>
+  <entry type="NameException" style="bold #cc0000"/>
+  <entry type="NameFunction" style="#000000"/>
+  <entry type="NameLabel" style="#f57900"/>
+  <entry type="NameNamespace" style="#000000"/>
+  <entry type="NameOther" style="#000000"/>
+  <entry type="NameProperty" style="#000000"/>
+  <entry type="NameTag" style="bold #204a87"/>
+  <entry type="NameVariable" style="#000000"/>
+  <entry type="NameVariableClass" style="#000000"/>
+  <entry type="NameVariableGlobal" style="#000000"/>
+  <entry type="NameVariableInstance" style="#000000"/>
+  <entry type="Literal" style="#000000"/>
+  <entry type="LiteralDate" style="#000000"/>
+  <entry type="LiteralString" style="#4e9a06"/>
+  <entry type="LiteralStringBacktick" style="#4e9a06"/>
+  <entry type="LiteralStringChar" style="#4e9a06"/>
+  <entry type="LiteralStringDoc" style="italic #8f5902"/>
+  <entry type="LiteralStringDouble" style="#4e9a06"/>
+  <entry type="LiteralStringEscape" style="#4e9a06"/>
+  <entry type="LiteralStringHeredoc" style="#4e9a06"/>
+  <entry type="LiteralStringInterpol" style="#4e9a06"/>
+  <entry type="LiteralStringOther" style="#4e9a06"/>
+  <entry type="LiteralStringRegex" style="#4e9a06"/>
+  <entry type="LiteralStringSingle" style="#4e9a06"/>
+  <entry type="LiteralStringSymbol" style="#4e9a06"/>
+  <entry type="LiteralNumber" style="bold #0000cf"/>
+  <entry type="LiteralNumberFloat" style="bold #0000cf"/>
+  <entry type="LiteralNumberHex" style="bold #0000cf"/>
+  <entry type="LiteralNumberInteger" style="bold #0000cf"/>
+  <entry type="LiteralNumberIntegerLong" style="bold #0000cf"/>
+  <entry type="LiteralNumberOct" style="bold #0000cf"/>
+  <entry type="Operator" style="bold #ce5c00"/>
+  <entry type="OperatorWord" style="bold #204a87"/>
+  <entry type="Punctuation" style="bold #000000"/>
+  <entry type="Comment" style="italic #8f5902"/>
+  <entry type="CommentMultiline" style="italic #8f5902"/>
+  <entry type="CommentSingle" style="italic #8f5902"/>
+  <entry type="CommentSpecial" style="italic #8f5902"/>
+  <entry type="CommentPreproc" style="italic #8f5902"/>
+  <entry type="Generic" style="#000000"/>
+  <entry type="GenericDeleted" style="#a40000"/>
+  <entry type="GenericEmph" style="italic #000000"/>
+  <entry type="GenericError" style="#ef2929"/>
+  <entry type="GenericHeading" style="bold #000080"/>
+  <entry type="GenericInserted" style="#00a000"/>
+  <entry type="GenericOutput" style="italic #000000"/>
+  <entry type="GenericPrompt" style="#8f5902"/>
+  <entry type="GenericStrong" style="bold #000000"/>
+  <entry type="GenericSubheading" style="bold #800080"/>
+  <entry type="GenericTraceback" style="bold #a40000"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="TextWhitespace" style="#f8f8f8"/>
+</style>

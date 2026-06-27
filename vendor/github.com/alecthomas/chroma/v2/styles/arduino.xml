@@ -1,0 +1,18 @@
+<style name="arduino">
+  <entry type="Error" style="#a61717"/>
+  <entry type="Background" style="bg:#ffffff"/>
+  <entry type="Keyword" style="#728e00"/>
+  <entry type="KeywordConstant" style="#00979d"/>
+  <entry type="KeywordPseudo" style="#00979d"/>
+  <entry type="KeywordReserved" style="#00979d"/>
+  <entry type="KeywordType" style="#00979d"/>
+  <entry type="Name" style="#434f54"/>
+  <entry type="NameBuiltin" style="#728e00"/>
+  <entry type="NameFunction" style="#d35400"/>
+  <entry type="NameOther" style="#728e00"/>
+  <entry type="LiteralString" style="#7f8c8d"/>
+  <entry type="LiteralNumber" style="#8a7b52"/>
+  <entry type="Operator" style="#728e00"/>
+  <entry type="Comment" style="#95a5a6"/>
+  <entry type="CommentPreproc" style="#728e00"/>
+</style>

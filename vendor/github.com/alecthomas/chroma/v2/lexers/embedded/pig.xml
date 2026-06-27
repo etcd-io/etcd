@@ -1,0 +1,105 @@
+<lexer>
+  <config>
+    <name>Pig</name>
+    <alias>pig</alias>
+    <filename>*.pig</filename>
+    <mime_type>text/x-pig</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="--.*">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="/\*[\w\W]*?\*/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\&#39;(?:\\[ntbrf\\\&#39;]|\\u[0-9a-f]{4}|[^\&#39;\\\n\r])*\&#39;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule>
+        <include state="types"/>
+      </rule>
+      <rule>
+        <include state="builtins"/>
+      </rule>
+      <rule>
+        <include state="punct"/>
+      </rule>
+      <rule>
+        <include state="operators"/>
+      </rule>
+      <rule pattern="[0-9]*\.[0-9]+(e[0-9]+)?[fd]?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="0x[0-9a-f]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9]+L?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="([a-z_]\w*)(\s*)(\()">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[()#:]">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[^(:#\&#39;&#34;)\s]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\S+\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="keywords">
+      <rule pattern="(assert|and|any|all|arrange|as|asc|bag|by|cache|CASE|cat|cd|cp|%declare|%default|define|dense|desc|describe|distinct|du|dump|eval|exex|explain|filter|flatten|foreach|full|generate|group|help|if|illustrate|import|inner|input|into|is|join|kill|left|limit|load|ls|map|matches|mkdir|mv|not|null|onschema|or|order|outer|output|parallel|pig|pwd|quit|register|returns|right|rm|rmf|rollup|run|sample|set|ship|split|stderr|stdin|stdout|store|stream|through|union|using|void)\b">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="builtins">
+      <rule pattern="(AVG|BinStorage|cogroup|CONCAT|copyFromLocal|copyToLocal|COUNT|cross|DIFF|MAX|MIN|PigDump|PigStorage|SIZE|SUM|TextLoader|TOKENIZE)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+    </state>
+    <state name="types">
+      <rule pattern="(bytearray|BIGINTEGER|BIGDECIMAL|chararray|datetime|double|float|int|long|tuple)\b">
+        <token type="KeywordType"/>
+      </rule>
+    </state>
+    <state name="punct">
+      <rule pattern="[;(){}\[\]]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="operators">
+      <rule pattern="[#=,./%+\-?]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(eq|gt|lt|gte|lte|neq|matches)\b">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(==|&lt;=|&lt;|&gt;=|&gt;|!=)">
+        <token type="Operator"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

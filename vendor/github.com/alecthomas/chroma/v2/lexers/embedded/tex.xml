@@ -1,0 +1,113 @@
+<lexer>
+  <config>
+    <name>TeX</name>
+    <alias>tex</alias>
+    <alias>latex</alias>
+    <filename>*.tex</filename>
+    <filename>*.aux</filename>
+    <filename>*.toc</filename>
+    <mime_type>text/x-tex</mime_type>
+    <mime_type>text/x-latex</mime_type>
+  </config>
+  <rules>
+    <state name="displaymath">
+      <rule pattern="\\\]">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\$\$">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\$">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule>
+        <include state="math"/>
+      </rule>
+    </state>
+    <state name="command">
+      <rule pattern="\[.*?\]">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="\*">
+        <token type="Keyword"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="general">
+      <rule pattern="%.*?\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="[{}]">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="[&amp;_^]">
+        <token type="NameBuiltin"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\\\[">
+        <token type="LiteralStringBacktick"/>
+        <push state="displaymath"/>
+      </rule>
+      <rule pattern="\\\(">
+        <token type="LiteralString"/>
+        <push state="inlinemath"/>
+      </rule>
+      <rule pattern="\$\$">
+        <token type="LiteralStringBacktick"/>
+        <push state="displaymath"/>
+      </rule>
+      <rule pattern="\$">
+        <token type="LiteralString"/>
+        <push state="inlinemath"/>
+      </rule>
+      <rule pattern="\\([a-zA-Z]+|.)">
+        <token type="Keyword"/>
+        <push state="command"/>
+      </rule>
+      <rule pattern="\\$">
+        <token type="Keyword"/>
+      </rule>
+      <rule>
+        <include state="general"/>
+      </rule>
+      <rule pattern="[^\\$%&amp;_^{}]+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="math">
+      <rule pattern="\\([a-zA-Z]+|.)">
+        <token type="NameVariable"/>
+      </rule>
+      <rule>
+        <include state="general"/>
+      </rule>
+      <rule pattern="[0-9]+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[-=!+*/()\[\]]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[^=!+*/()\[\]\\$%&amp;_^{}0-9-]+">
+        <token type="NameBuiltin"/>
+      </rule>
+    </state>
+    <state name="inlinemath">
+      <rule pattern="\\\)">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\$">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="math"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

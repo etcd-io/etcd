@@ -1,0 +1,73 @@
+<lexer>
+  <config>
+    <name>PkgConfig</name>
+    <alias>pkgconfig</alias>
+    <filename>*.pc</filename>
+  </config>
+  <rules>
+    <state name="curly">
+      <rule pattern="\}">
+        <token type="LiteralStringInterpol"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\w+">
+        <token type="NameAttribute"/>
+      </rule>
+    </state>
+    <state name="spvalue">
+      <rule>
+        <include state="interp"/>
+      </rule>
+      <rule pattern="#.*$">
+        <token type="CommentSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^${}#\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="#.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="^(\w+)(=)">
+        <bygroups>
+          <token type="NameAttribute"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^([\w.]+)(:)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="spvalue"/>
+      </rule>
+      <rule>
+        <include state="interp"/>
+      </rule>
+      <rule pattern="[^${}#=:\n.]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="interp">
+      <rule pattern="\$\$">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\$\{">
+        <token type="LiteralStringInterpol"/>
+        <push state="curly"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

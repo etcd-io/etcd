@@ -1,0 +1,18 @@
+builds:
+  - main: ./cmd/canonicalheader
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - windows_amd64
+
+archives:
+  - format_overrides:
+      - goos: windows
+        format: zip

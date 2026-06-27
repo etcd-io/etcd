@@ -1,0 +1,115 @@
+<lexer>
+  <config>
+    <name>scdoc</name>
+    <alias>scdoc</alias>
+    <filename>*.scd</filename>
+    <filename>*.scdoc</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="(?m)^; .*$">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(?m)^([A-Z][A-Z0-9_-]*)(\()([0-9]+)(\))(.*)$">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Punctuation"/>
+          <token type="LiteralNumber"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?m)^(##)( +)(.+)$">
+        <bygroups>
+          <token type="GenericSubheading"/>
+          <token type="Text"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?m)^(#)( +)(.+)$">
+        <bygroups>
+          <token type="GenericHeading"/>
+          <token type="Text"/>
+          <token type="GenericStrong"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?m)^```$">
+        <token type="LiteralStringBacktick"/>
+        <push state="literal_block"/>
+      </rule>
+      <rule pattern="(?m)^(\s*)(- )(.*)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <usingself state="inline"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?m)^(\s*)(\. )(.*)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <usingself state="inline"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?m)^\t[^ \t].*$">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+      <rule pattern="(?m)^\t+$">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+      <rule pattern="(?m)^(\s*)([|:\[\]].*)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?m)^(.*)(\+\+)$">
+        <bygroups>
+          <usingself state="inline"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule>
+        <include state="inline"/>
+      </rule>
+    </state>
+    <state name="literal_block">
+      <rule pattern="(?m)^```$">
+        <token type="LiteralStringBacktick"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=".*\n?">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+    </state>
+    <state name="inline">
+      <rule pattern="\\.">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="(\*)([^*\n]+)(\*)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="GenericStrong"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(_)([^_\n]+?)(_)((?=\W|\n|$))">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="GenericUnderline"/>
+          <token type="Punctuation"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[^*_\\\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

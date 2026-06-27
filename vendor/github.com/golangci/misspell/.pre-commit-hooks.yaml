@@ -1,0 +1,8 @@
+- id: misspell
+  name: misspell
+  description: Correct commonly misspelled English words... quickly
+  language: golang
+  entry: misspell
+  args:
+  - -w
+  - -error

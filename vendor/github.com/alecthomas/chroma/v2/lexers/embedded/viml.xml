@@ -1,0 +1,85 @@
+<lexer>
+  <config>
+    <name>VimL</name>
+    <alias>vim</alias>
+    <filename>*.vim</filename>
+    <filename>.vimrc</filename>
+    <filename>.exrc</filename>
+    <filename>.gvimrc</filename>
+    <filename>_vimrc</filename>
+    <filename>_exrc</filename>
+    <filename>_gvimrc</filename>
+    <filename>vimrc</filename>
+    <filename>gvimrc</filename>
+    <mime_type>text/x-vim</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="^([ \t:]*)(py(?:t(?:h(?:o(?:n)?)?)?)?)([ \t]*)(&lt;&lt;)([ \t]*)(.*)((?:\n|.)*)(\6)">
+        <bygroups>
+          <usingself state="root"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+          <token type="Text"/>
+          <token type="Text"/>
+          <using lexer="Python"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^([ \t:]*)(py(?:t(?:h(?:o(?:n)?)?)?)?)([ \t])(.*)">
+        <bygroups>
+          <usingself state="root"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <using lexer="Python"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^\s*&#34;.*">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="[ \t]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="/(\\\\|\\/|[^\n/])*/">
+        <token type="LiteralStringRegex"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^\n&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#39;(&#39;&#39;|[^\n&#39;])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="(?&lt;=\s)&#34;[^\-:.%#=*].*">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="-?\d+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="#[0-9a-f]{6}">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="^:">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[()&lt;&gt;+=!|,~-]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\b(let|if|else|endif|elseif|fun|function|endfunction|set|map|autocmd|filetype|hi(ghlight)?|execute|syntax|colorscheme)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(NONE|bold|italic|underline|dark|light)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="\b\w+\b">
+        <token type="NameOther"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

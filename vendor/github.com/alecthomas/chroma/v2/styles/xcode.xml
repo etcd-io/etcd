@@ -1,0 +1,22 @@
+<style name="xcode">
+  <entry type="Error" style="#000000"/>
+  <entry type="Background" style="bg:#ffffff"/>
+  <entry type="Keyword" style="#a90d91"/>
+  <entry type="Name" style="#000000"/>
+  <entry type="NameAttribute" style="#836c28"/>
+  <entry type="NameBuiltin" style="#a90d91"/>
+  <entry type="NameBuiltinPseudo" style="#5b269a"/>
+  <entry type="NameClass" style="#3f6e75"/>
+  <entry type="NameDecorator" style="#000000"/>
+  <entry type="NameFunction" style="#000000"/>
+  <entry type="NameLabel" style="#000000"/>
+  <entry type="NameTag" style="#000000"/>
+  <entry type="NameVariable" style="#000000"/>
+  <entry type="Literal" style="#1c01ce"/>
+  <entry type="LiteralString" style="#c41a16"/>
+  <entry type="LiteralStringChar" style="#2300ce"/>
+  <entry type="LiteralNumber" style="#1c01ce"/>
+  <entry type="Operator" style="#000000"/>
+  <entry type="Comment" style="#177500"/>
+  <entry type="CommentPreproc" style="#633820"/>
+</style>

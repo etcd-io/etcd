@@ -1,0 +1,92 @@
+<lexer>
+  <config>
+    <name>OnesEnterprise</name>
+    <alias>ones</alias>
+    <alias>onesenterprise</alias>
+    <alias>1S</alias>
+    <alias>1S:Enterprise</alias>
+    <filename>*.EPF</filename>
+    <filename>*.epf</filename>
+    <filename>*.ERF</filename>
+    <filename>*.erf</filename>
+    <mime_type>application/octet-stream</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//(.*?)\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(#область|#region|#конецобласти|#endregion|#если|#if|#иначе|#else|#конецесли|#endif).*">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="(&amp;наклиенте|&amp;atclient|&amp;насервере|&amp;atserver|&amp;насерверебезконтекста|&amp;atservernocontext|&amp;наклиентенасерверебезконтекста|&amp;atclientatservernocontext).*">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="(&gt;=|&lt;=|&lt;&gt;|\+|-|=|&gt;|&lt;|\*|/|%)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(;|,|\)|\(|\.)">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(истина|ложь|или|false|true|не|and|not|и|or)\b">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(иначеесли|конецесли|иначе|тогда|если|elsif|endif|else|then|if)\b">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(конеццикла|каждого|цикл|пока|для|while|enddo|по|each|из|for|do|in|to)\b">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(продолжить|прервать|возврат|перейти|continue|return|break|goto)\b">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(конецпроцедуры|конецфункции|процедура|функция|endprocedure|endfunction|procedure|function)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(экспорт|новый|перем|знач|export|new|val|var)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(вызватьисключение|конецпопытки|исключение|попытка|endtry|except|raise|try)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(выполнить|вычислить|execute|eval)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="[_а-яА-Я0-9][а-яА-Я0-9]*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="[_\w][\w]*">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="&#34;&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;C?">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^&#34;]+">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

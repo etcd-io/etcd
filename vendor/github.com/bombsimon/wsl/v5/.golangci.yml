@@ -1,0 +1,75 @@
+---
+version: "2"
+
+output:
+  formats:
+    text:
+      path: stdout
+      print-issued-lines: false
+
+linters:
+  default: all
+  disable:
+    - cyclop
+    - dupword
+    - err113
+    - exhaustruct
+    - forbidigo
+    - funlen
+    - gocognit
+    - godot
+    - lll
+    - mnd
+    - nlreturn
+    - noinlineerr
+    - tagliatelle
+    - testpackage
+    - varnamelen
+    - wsl
+
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/davecgh/go-spew/spew
+              desc: not allowed
+    gocognit:
+      min-complexity: 10
+    gocritic:
+      # Enable multiple checks by tags, run `GL_DEBUG=gocritic golangci-lint run`
+      # to see all tags and checks. Empty list by default. See
+      # https://github.com/go-critic/go-critic#usage -> section "Tags".
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+    misspell:
+      locale: US
+
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - std-error-handling
+    rules:
+      - path: cmd/golangci-lint-migrate
+        linters:
+          - godoclint
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: "interface{}"
+          replacement: "any"
+# vim: set sw=2 ts=2 et:

@@ -1,0 +1,35 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    - lll
+    - gomodguard
+    - gomoddirectives
+    - gochecknoglobals
+    - paralleltest
+    - varnamelen
+    - exhaustruct
+    - depguard
+    - forbidigo
+    - funlen
+    - nlreturn
+    - nonamedreturns
+    - cyclop
+    - err113
+    - perfsprint
+    - tagliatelle
+    - wrapcheck
+    - mnd
+    - wsl
+    - noinlineerr
+  settings:
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+  exclusions:
+    rules:
+      - path: _test\.go$
+        linters:
+          - goconst

@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: ll
+
+# For a library repo, publish source archives instead of binaries.
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}_{{ .Version }}"
+
+  # Optional: include/exclude files in the source archive (defaults are usually fine)
+  # files:
+  #   - README.md
+  #   - LICENSE
+  #   - go.mod
+  #   - go.sum
+  #   - "**/*.go"
+
+# No binaries to build.
+builds: []
+
+## Other Information
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"

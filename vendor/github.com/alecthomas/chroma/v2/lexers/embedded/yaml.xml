@@ -1,0 +1,122 @@
+<lexer>
+  <config>
+    <name>YAML</name>
+    <alias>yaml</alias>
+    <filename>*.yaml</filename>
+    <filename>*.yml</filename>
+    <mime_type>text/x-yaml</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="^---">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule pattern="^\.\.\.">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule pattern="[\n?]?\s*- ">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="#.*$">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="!![^\s]+">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="&amp;[^\s]+">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="\*[^\s]+">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="^%include\s+[^\n\r]+">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule>
+        <include state="key"/>
+      </rule>
+      <rule>
+        <include state="value"/>
+      </rule>
+      <rule pattern="[?:,\[\]]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="value">
+      <rule pattern="([&gt;|](?:[+-])?)(\n(^ {1,})(?:(?:.*\n*(?:^\3 *).*)+|.*))">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="LiteralStringDoc"/>
+          <token type="Ignore"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(false|False|FALSE|true|True|TRUE|null|Off|off|yes|Yes|YES|OFF|On|ON|no|No|on|NO|n|N|Y|y)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="&#34;(?:\\.|[^&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#39;(?:\\.|[^&#39;])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="\d\d\d\d-\d\d-\d\d([T ]\d\d:\d\d:\d\d(\.\d+)?(Z|\s+[-+]\d+)?)?">
+        <token type="LiteralDate"/>
+      </rule>
+      <rule pattern="\b[+\-]?(0x[\da-f]+|0o[0-7]+|(\d+\.?\d*|\.?\d+)(e[\+\-]?\d+)?|\.inf|\.nan)\b">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="([^\{\}\[\]\?,\:\!\-\*&amp;\@].*)( )+(#.*)">
+        <bygroups>
+          <token type="Literal"/>
+          <token type="TextWhitespace"/>
+          <token type="Comment"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[^\{\}\[\]\?,\:\!\-\*&amp;\@].*">
+        <token type="Literal"/>
+      </rule>
+    </state>
+    <state name="key">
+      <rule pattern="&#34;[^&#34;\n].*&#34;: ">
+        <token type="NameTag"/>
+      </rule>
+      <rule pattern="(-)( )([^&#34;\n{]*)(:)( )">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="TextWhitespace"/>
+          <token type="NameTag"/>
+          <token type="Punctuation"/>
+          <token type="TextWhitespace"/>
+        </bygroups>
+      </rule>
+      <rule pattern="([^&#34;\n{]*)(:)( )">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="Punctuation"/>
+          <token type="TextWhitespace"/>
+        </bygroups>
+      </rule>
+      <rule pattern="([^&#34;\n{]*)(:)(\n)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="Punctuation"/>
+          <token type="TextWhitespace"/>
+        </bygroups>
+      </rule>
+    </state>
+    <state name="whitespace">
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="\n+">
+        <token type="TextWhitespace"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

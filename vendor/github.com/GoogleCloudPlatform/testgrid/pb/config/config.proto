@@ -1,0 +1,790 @@
+syntax = "proto3";
+
+package testgrid.config;
+
+option go_package = "github.com/GoogleCloudPlatform/testgrid/pb/config";
+
+// Protocol buffer for configuring testgrid.k8s.io
+
+import "pb/custom_evaluator/custom_evaluator.proto";
+
+// Specifies the test name, and its source
+message TestNameConfig {
+  // Specifies name elements to be selected from configuration values
+  message NameElement {
+    // A space-delimited string of labels
+    string labels = 1;
+
+    // Configuration value to use.
+    // Valid choice are:
+    // 'Tests name': The name of a test case
+    // 'Commit': The commit number of the build
+    // 'Context', 'Thread': The info extracted from each junit files:
+    //    - junit_core-os_01.xml -> Context: core-os, Thread: 01
+    //    - junit_runner.xml -> Context: runner
+    //    - junit_01.xml -> Thread: 01
+    // or any metadata key from finished.json, which is copied from your test
+    // suite.
+    //
+    // A valid sample TestNameConfig looks like:
+    // test_name_config:
+    //   name_elements:
+    //   - target_config: Tests name
+    //   - target_config: Context
+    //   name_format: '%s [%s]'
+    string target_config = 2;
+    // Whether to use the build-target name
+    bool build_target = 3;
+    // A space-delimited string of Bazel build tags.
+    string tags = 4;
+    // The key of a test result's property.
+    string test_property = 5;
+  }
+
+  // The name elements specifying the target test name for this tab.
+  repeated NameElement name_elements = 1;
+
+  // Specifies a printf-style format string for name elements. The format
+  // string should have as many conversions as there are name_elements.
+  // For example, two name_elements could be used with name_format="%s: %s".
+  string name_format = 2;
+}
+
+// A single notification.
+message Notification {
+  // Required: Text summary of the issue or notice.
+  string summary = 1;
+  // Optional: Link to further information, such as a bug, email, document, etc.
+  string context_link = 2;
+}
+
+// Specifies a group of tests to gather.
+message TestGroup {
+  // Name of this TestGroup, for mapping dashboard tabs to tests.
+  string name = 1;
+
+  // Path to the test result stored in gcs (some-bucket/some/optional/path).
+  string gcs_prefix = 2;
+
+  // Number of days of test results to gather and serve.
+  int32 days_of_results = 3;
+
+  // Whether to ignore pending (currently running) test results.
+  bool ignore_pending = 4;
+
+  // Whether to ignore reported build results. It is recommended that tests
+  // report BUILD_FAIL instead of relying on this being disabled.
+  bool ignore_built = 5;
+
+  enum TestsName {
+    TESTS_NAME_UNSPECIFIED = 0;
+    TESTS_NAME_IGNORE = 1;
+    TESTS_NAME_REPLACE = 2;
+    TESTS_NAME_APPEND = 3;
+  }
+
+  // What to do with the 'Tests name' configuration value. It can replace the
+  // name of the test, be appended to the name of the test, or ignored. If it is
+  // ignored, then the name of the tests will be the build target.
+  TestsName tests_name_policy = 6;
+
+  reserved 7;  // Unused gather_test_properties
+
+  // Tests with names that include these substrings will be removed from the
+  // table.
+  repeated string ignore_test_substring = 8;
+
+  // Custom column headers for defining extra column-heading rows from values in
+  // the test result.
+  message ColumnHeader {
+    string label = 1;
+    string property = 2;
+    string configuration_value = 3;
+
+    // If true, list all distinct values. Else, list multiple distinct values as
+    // "*".
+    bool list_all_values = 4;
+  }
+  repeated ColumnHeader column_header = 9;
+
+  enum FallbackGrouping {
+    FALLBACK_GROUPING_NONE = 0;
+    FALLBACK_GROUPING_DATE = 1;
+    FALLBACK_GROUPING_LABELS = 2;
+    FALLBACK_GROUPING_ID = 3;
+    FALLBACK_GROUPING_BUILD = 4;
+
+    // When using this, ensure fallback_grouping_configuration_value is
+    // also set.
+    FALLBACK_GROUPING_CONFIGURATION_VALUE = 5;
+  }
+
+  // A test grouping option used if not specified by primary_grouping (#29)
+  FallbackGrouping fallback_grouping = 10;
+
+  // DEPRECATED: use DashboardTabAlertOptions > alert_stale_result_hours
+  int32 alert_stale_results_hours = 11 [deprecated = true];
+
+  // DEPRECATED: use DashboardTabAlertOptions > num_failures_to_alert
+  int32 num_failures_to_alert = 12 [ deprecated = true ];
+
+  // DEPRECATED: use dashboard_tab.beta_autobug_options.beta_autobug_component
+  // instead.
+  int32 bug_component = 13 [deprecated = true];
+
+  // Default code search path for searching regressions. Overridden by
+  // code_search_path in DashboardTab.
+  string code_search_path = 14;
+
+  // The number of columns to consider "recent" for a variety of purposes.
+  int32 num_columns_recent = 15;
+
+  // Whether to read test metadata from the test results. Information
+  // from the test metadata is used to determine where bugs are filed in
+  // specific cases.
+  bool use_test_metadata = 16;
+
+  // DEPRECATED: use DashboardTabAlertOptions > alert_mail_to_address instead
+  string alert_mail_to_addresses = 17 [deprecated = true];
+
+  // DEPRECATED: use DashboardTabAlertOptions > subject
+  string alert_mail_subject = 18 [deprecated = true];
+
+  // DEPRECATED: use DashboardTabAlertOptions > alert_mail_failure_message
+  string alert_mail_failure_message = 19 [deprecated = true];
+
+  // DEPRECATED: use DashboardTabAlertOptions > debug_url
+  string alert_mail_debug_url = 20 [deprecated = true];
+
+  // DEPRECATED: use DashboardTabAlertOptions > wait_minutes_between_emails
+  int32 min_elapsed_minutes_between_mails = 21 [deprecated = true];
+
+  reserved 22;  // No longer used
+
+  // Whether to treat a combination of passes and failures within one test as a
+  // flaky status.
+  bool enable_flaky_status = 23;
+
+  // disable_merged_status will restores deprecated behavior of
+  // splitting multiple foo rows into foo [2], etc rather a single
+  // potentially flaky row.
+  bool disable_merged_status = 60;
+
+  // deprecated - always set to true
+  bool use_kubernetes_client = 24 [deprecated = true];
+
+  // When use_kubernetes_client is on testgrid expects these results
+  // to come from prow, which should include a prowjob.json and podinfo.json
+  // to help debugging. If you do not expect these files to exist, you
+  // can optionally disable this analysis.
+  bool disable_prowjob_analysis = 62;
+
+  // deprecated - always set to true
+  bool is_external = 25;
+
+  // Specifies the test name for a test.
+  TestNameConfig test_name_config = 26;
+
+  // A list of notifications attached to this test group.
+  // This is displayed on any dashboard tab backed by this test group.
+  repeated Notification notifications = 27;
+
+  reserved 28; // Deprecated Field (column_sort_by)
+
+  enum PrimaryGrouping {
+    PRIMARY_GROUPING_NONE = 0;
+    PRIMARY_GROUPING_BUILD = 1;
+  }
+
+  // A primary grouping strategy for grouping test results in columns.
+  // If a primary grouping is specified, the fallback grouping is ignored.
+  PrimaryGrouping primary_grouping = 29;
+
+  // Whether to collect pass-fail data for test methods. Additional test cases
+  // will be added for each test method in a target.
+  bool enable_test_methods = 30;
+
+  // Associates the presence of a named test property with a custom short text
+  // displayed over the results. Short text must be <=5 characters long.
+  message TestAnnotation {
+    string short_text = 1;
+    oneof short_text_message_source {
+      string property_name = 2;
+    }
+  }
+
+  // Test annotations to look for. Adds custom icon to results.
+  repeated TestAnnotation test_annotations = 31;
+
+  // Maximum number of individual test methods to collect for any given test
+  // row. If a test has more than this many methods, no methods will be
+  // displayed.
+  int32 max_test_methods_per_test = 32;
+
+  reserved 33;
+
+  // Default metadata that should be applied for opening bugs, if a given regex
+  // matches against a test's name.
+  // Requires 'use_test_metadata = true'.
+  repeated TestMetadataOptions test_metadata_options = 34;
+
+  // A space-delimited string of tags that are used to filter test targets.
+  // A leading - before the tag means this tag should not be present
+  // in the target.
+  // Example:
+  //  contains tag1, but not tag2: test_tag_pattern = 'tag1 -tag2'
+  string test_tag_pattern = 35;
+
+  // DEPRECATED: use dashboard_tab.beta_autobug_options instead.
+  AutoBugOptions auto_bug_options = 36 [deprecated = true];
+
+  // Max number of days any single test can take.
+  int32 max_test_runtime_hours = 37;
+
+  // The number of consecutive test passes to close the alert.
+  int32 num_passes_to_disable_alert = 38;
+
+  // If true, also associate bugs with tests if the test result's overview/group
+  // ID is in the bug.
+  bool link_bugs_by_group = 39;
+
+  reserved 40;
+
+  // A string key value pair message
+  message KeyValue {
+    string key = 1;
+    string value = 2;
+  }
+
+  // Only show test methods with all required properties
+  repeated KeyValue test_method_properties = 41;
+
+  // If true, allows gathering and associating bugs with targets in the
+  // dashboard. Required in order to auto-file bugs.
+  bool gather_bugs = 42;
+
+  // Numeric property metric value to be used for short text. If this property
+  // is present, it will override all the other short text values.
+  string short_text_metric = 43;
+
+  // The key of a key-value pair in metadata (a 'configuration value').
+  // This overrides the default build with the value from the key-value pair.
+  string build_override_configuration_value = 44;
+
+  // If true, only associate bugs with test methods if that test method is
+  // mentioned in the bug. If false, bugs will be associated with all test
+  // methods.
+  bool link_bugs_by_test_methods = 45;
+
+  // Regex to match test methods. Only test methods with names that match
+  // this regex will be included in the table.
+  string test_method_match_regex = 46;
+
+  // Regex to exclude test methods. Test methods with names that match
+  // this regex will be excluded from the table, even if they match
+  // test_method_match_regex.
+  string test_method_unmatch_regex = 61;
+
+  // If true, test method names are printed with the full class names.
+  bool use_full_method_names = 47;
+
+  reserved 48;
+
+  // A configuration value that is used as a fallback grouping.
+  // This is useful for cases where there are builds that shared the same
+  // commit but are run at separate times of day.
+  string fallback_grouping_configuration_value = 49;
+
+  message ResultSource {
+    reserved 1, 3 to 5; // Legacy sources
+
+    oneof result_source_config {
+      // GCS buckets holding junit and json results, typically created by prow.
+      GCSConfig gcs_config = 2;
+      // Invocations stored in ResultStore.
+      ResultStoreConfig resultstore_config = 6;
+    }
+  }
+
+  // Configuration type of the result source.
+  ResultSource result_source = 50;
+
+  // Set of rules that are evaluated with each test result. If an evaluation is
+  // successful, the status of that test result will be whatever is specified
+  // for a given rule. For more information, look at RuleSet documention
+  testgrid.custom_evaluator.RuleSet custom_evaluator_rule_set = 51;
+
+  // If true, instead of updating the group, read the state proto from storage
+  // and update summary, alerts, etc. from that state.
+  // This only applies to test group state, not bug state for a test group.
+  // This assumes that the state proto is updated through other means (another
+  // updater, manually, etc).
+  bool read_state_from_storage = 52;
+
+  // If true, only add the most recent result for a test when multiple results
+  // for a test with the same name are encountered.
+  bool ignore_old_results = 53;
+
+  // If True, ignore the 'pass with skips' status (show as a blank cell).
+  bool ignore_skip = 54;
+
+  // A string containing python formatting specifiers that overrides the
+  // commit with the date formatted according to this string. This is useful
+  // for aggregating multiple columns that don't have a matching commit.
+  string build_override_strftime = 55;
+
+  // Specify a property that will be read into state in the user_property field.
+  // These can be substituted into LinkTemplates.
+  string user_property = 56;
+
+  reserved 57 to 59;
+
+  // Where to gather linked issues from. (Currently a no-op).
+  IssueGatherOptions issue_gather_options = 63;
+}
+
+// GCSConfig specifies results stored in GCS, typically created by prow.
+//
+// Each invocation is stored in a GCS path, containing json metadata files
+// as well as junit and other artifacts specifying the result of the run.
+//
+// More info:
+// https://github.com/GoogleCloudPlatform/testgrid/tree/master/metadata
+message GCSConfig {
+  // Path to the test result stored in gcs (some-bucket/some/optional/path).
+  string gcs_prefix = 1;
+
+  // The GCP project where GCS sends notifications for the above prefix.
+  string pubsub_project = 2;
+  // The pubsub subscription ID in the above topic
+  string pubsub_subscription = 3;
+}
+
+// ResultStoreConfig specifies results stored in ResultStore.
+message ResultStoreConfig {
+  // Google Cloud Platform project ID where ResultStore results are stored.
+  string project = 1;
+  // A simple query to filter for particular results.
+  // Currently, only allows a query in the form of `target:"<target>"`.
+  string query = 2; 
+}
+
+// Options for where to gather linked issues from.
+message IssueGatherOptions {
+  reserved 1, 2;
+}
+
+// Default metadata to apply when opening bugs.
+message TestMetadataOptions {
+  // Apply the following metadata if this regex matches a test's name.
+  string test_name_regex = 1;
+
+  // Default bug component to open a bug in.
+  int32 bug_component = 2;
+
+  // Default owner to assign a bug to.
+  string owner = 3;
+
+  // List of default users to CC a bug to.
+  repeated string cc = 4;
+
+  // Apply following metadata if this regex matches a test’s failure message.
+  string message_regex = 5;
+
+  reserved 6;
+}
+
+message AutoBugOptions {
+  // [BETA] When specified, file bugs to this component, using the beta AutoBug.
+  // If you do not want to opt into the beta, specify `bug_component` in your
+  // TestGroup instead.
+  // TODO(b/154866134): Rename to autobug_component once we've migrated.
+  int32 beta_autobug_component = 10;
+
+  // Whether to auto-close auto-filed bugs.
+  // Alias for "passing_behavior = CLOSE_ON_PASSING";
+  bool auto_close = 1;
+
+  // A list of hotlist ids attached to auto-filed bugs.
+  repeated int64 hotlist_ids = 2;
+
+  // Scale of issue priority, used to indicate importance of issue.
+  enum Priority {
+    // Unspecified; may not set priority at all
+    PRIORITY_UNSPECIFIED = 0;
+    // See https://developers.google.com/issue-tracker/concepts/issues
+    P0 = 1;
+    P1 = 2;
+    P2 = 3;
+    P3 = 4;
+    P4 = 5;
+  }
+
+  // The priority of the auto-filed bug. If provided, this will overwrite the
+  // priority in the component default template
+  Priority priority = 3;
+
+  // A list of hotlist id sources
+  // Corresponds with the list hotlist_ids (#2)
+  repeated HotlistIdFromSource hotlist_ids_from_source = 4 [deprecated = true];
+
+  // If True, files separate bugs for each failing target, instead of one bug
+  // for each set of targets failing at the same run.
+  bool file_individual = 5;
+
+  // If True; keep only one automantic bug per target, regardless of the number
+  // of separate failures a target gets. Requires `file_individual` to be True.
+  // Consider setting `num_passes_to_disable_alert` instead if you're tracking
+  // flaky tests.
+  bool singleton_autobug = 6;
+
+  // If provided: only raise one bug if the number of failures for a single
+  // query by testgrid for a single failure group exceeds this value. Requires
+  // 'file_individual' to be True.
+  int32 max_allowed_individual_bugs = 7;
+
+  // If True; file issues for the 'Overall' target, even if otherwise invalid.
+  bool file_overall = 8;
+
+  message DefaultTestMetadata {
+    int32 bug_component = 1;
+    string owner = 2;
+    repeated string cc = 3;
+  }
+
+  // If provided: supplements `max_allowed_individual_bugs` field to raise a
+  // single bug if the number of failures for a single query by testgrid exceeds
+  // the max_allowed_individual_bugs` value, regardless of `TEST_METADATA`
+  // configurations. This is useful for filing fewer suspected environmental
+  // failure bugs and routing them to a specific location (i.e. an oncall).
+  // Requires 'file_individual' to be true and `max_allowed_individual_bugs` to
+  // not be empty.
+  DefaultTestMetadata default_test_metadata = 9;
+
+  // [BETA] If True, query the test metadata API to get issue-routing metadata.
+  // Enables routing issues using structured test failures.
+  bool advanced_test_metadata = 11;
+
+  // If True, file a bug when the tab goes stale.
+  // (Requires `alert_stale_results_hours` to be set.)
+  bool file_stale = 12;
+
+  // If True, ignore overall rows when auto-filing.
+  bool ignore_overall = 13;
+
+  // [BETA] Extra text displayed in opened bugs. e.g., for including a link to a
+  // playbook.
+  string note = 14;
+
+  reserved 15, 16;
+}
+
+message HotlistIdFromSource {
+  oneof hotlist_id_source {
+    // ID value of hotlists
+    int64 value = 1;
+    // A label prefix
+    string label = 2;
+  }
+}
+
+// Specifies a dashboard.
+message Dashboard {
+  // A list of the tabs on the dashboard.
+  repeated DashboardTab dashboard_tab = 1;
+
+  // A name for the Dashboard.
+  string name = 2;
+
+  // A list of notifications attached to this dashboard.
+  // This is displayed on any dashboard tab in this dashboard.
+  repeated Notification notifications = 3;
+
+  reserved 4;  // Deprecated show_summary_first bool, unused
+
+  // Control which tab is displayed when first opening a dashboard.
+  // Defaults to Summary
+  string default_tab = 5;
+
+  // Controls whether to suppress highlighting of failing tabs.
+  bool downplay_failing_tabs = 8;
+
+  // Deprecated: Invert of 'downplay_failing_tabs'
+  bool highlight_failing_tabs = 6 [deprecated = true];
+
+  // Controls whether to apply special highlighting to result header columns for
+  // the current day.
+  bool highlight_today = 7;
+
+  // A description paragraph to be displayed.
+  string description = 9;
+}
+
+message LinkTemplate {
+  // The URL template.
+  string url = 1;
+  // The options templates.
+  repeated LinkOptionsTemplate options = 2;
+  // An optional name, used for the context menu
+  string name = 3;
+}
+
+// A simple key/value pair for link options.
+message LinkOptionsTemplate {
+  // The key for the option. This is not expanded.
+  string key = 1;
+
+  // The value for the option. This is expanded the same as the LinkTemplate.
+  string value = 2;
+}
+
+// A single tab on a dashboard.
+message DashboardTab {
+  // The name of the dashboard tab to display in the client.
+  string name = 1;
+
+  // The name of the TestGroup specifying the test results for this tab.
+  string test_group_name = 2;
+
+  // Default bug component for manually filing bugs from the dashboard
+  int32 bug_component = 3;
+
+  // Default code search path for searching regressions. This value overrides
+  // the default in the TestGroup config so that dashboards may be customized
+  // separately.
+  string code_search_path = 4;
+
+  // See TestGroup.num_columns_recent. This value overrides the default in the
+  // TestGroup config so that dashboards may be customized separately.
+  int32 num_columns_recent = 5;
+
+  // Base options to always include, for example:
+  // width=20&include-filter-by-regex=level_tests
+  // This is taken from the #fragment part of the testgrid url.
+  // Best way to create these is to setup the options on testgrid and then
+  // copy the #fragment part.
+  string base_options = 6;
+
+  // The URL template to visit after clicking on a cell.
+  LinkTemplate open_test_template = 7;
+
+  // The URL template to visit when filing a bug.
+  LinkTemplate file_bug_template = 8;
+
+  // The URL template to visit when attaching a bug
+  LinkTemplate attach_bug_template = 9;
+
+  // Text to show in the about menu as a link to another view of the results.
+  string results_text = 10;
+
+  // The URL template to visit after clicking.
+  LinkTemplate results_url_template = 11;
+
+  // The URL template to visit when searching for code changes, such as pull
+  // requests
+  LinkTemplate code_search_url_template = 12;
+
+  // A description paragraph to be displayed.
+  string description = 13;
+
+  // A regular expression that uses the named group syntax to specify how to
+  // show names in a table.
+  string tabular_names_regex = 14;
+
+  // Configuration options for dashboard tab alerts.
+  DashboardTabAlertOptions alert_options = 15;
+
+  // Configuration options for dashboard tab flakiness alerts.
+  DashboardTabFlakinessAlertOptions flakiness_alert_options = 24;
+
+  // Configuration options for customizing dashboard tab status calculation.
+  DashboardTabStatusCustomizationOptions status_customization_options = 26;
+
+  // A URL for the "About this Dashboard" menu option
+  string about_dashboard_url = 16;
+
+  // The URL template to visit when viewing an associated bug.
+  LinkTemplate open_bug_template = 17;
+
+  // If true, auto-file bugs when new alerts occur. This requires that the
+  // backing test group has `bug_component` set and uses the backing test
+  // group's `auto_bug_options`.
+  bool auto_file_bugs = 18;
+
+  // Display user local time on the dashboard when set to true (by default).
+  // If false, uses Pacific Timezone for this DashboardTab.
+  bool display_local_time = 19;
+
+  // A set of optional LinkTemplates that will become right-click context menu
+  // items.
+  // TODO(b/159042168) in the near future this should be re-implemented as a
+  // generic list of repeated LinkTemplates which users may specify in their
+  // reqpective configurations as right-click context menus with names and
+  // actions upon being clicked.
+  LinkTemplate context_menu_template = 20;
+
+  // When specified, treat a tab as BROKEN as long as one of the most recent
+  // columns are "broken" (ratio of failed to total tests exceeds <threshold>).
+  float broken_column_threshold = 21;
+
+  // Options for auto-filed bugs.
+  // Using this for a dashboard tab requires specifying `beta_autobug_component`
+  // and will opt you into the beta AutoBug.
+  AutoBugOptions beta_autobug_options = 22;
+
+  // Options for the configuration of the flakiness analysis tool, on a per tab
+  // basis
+  HealthAnalysisOptions health_analysis_options = 23;
+
+  // A set of optional Link Templates when search for diffs between columns.
+  repeated LinkTemplate column_diff_link_templates = 25;
+}
+
+// Configuration options for dashboard tab alerts.
+message DashboardTabAlertOptions {
+  // Time in hours before an alert will be added to a test results table if the
+  // run date of the latest results are older than this time.  If zero, no
+  // alerts are raised.
+  int32 alert_stale_results_hours = 1;
+
+  // The number of consecutive test result failures to see before alerting of
+  // a consistent failure. If zero, no alerts are raised.
+  int32 num_failures_to_alert = 2;
+
+  // The comma-separated addresses to send mail.
+  string alert_mail_to_addresses = 3;
+
+  // The number of consecutive test passes to close the alert.
+  int32 num_passes_to_disable_alert = 4;
+
+  // Custom subject for alert mails.
+  string subject = 5;
+
+  // Custom link for further help/instructions on debugging this alert.
+  string debug_url = 6;
+
+  // Custom text to show for the debug link.
+  string debug_message = 7;
+
+  // Wait time between emails. If unset or zero, an email will be sent only once
+  // it becomes a consistent failure, and not again until it succeeds.
+  // TestGrid does not pester about staleness
+  int32 wait_minutes_between_emails = 8;
+
+  // A custom message
+  string alert_mail_failure_message = 9;
+}
+
+// Configuration options for dashboard tab flakiness alerts.
+message DashboardTabFlakinessAlertOptions {
+  // The minimum amount of flakiness needed to trigger a flakiness alert.
+  // 0=Disable alerts
+  // This is a percentage; expected values go from 0 to 100 (100 = 100% flaky)
+  float minimum_flakiness_to_alert = 1;
+
+  // The comma-separated addresses to send mail.
+  string alert_mail_to_addresses = 2;
+
+  // Custom subject for alert mails.
+  string subject = 3;
+
+  // Minimum time between sending mails.
+  int32 wait_minutes_between_emails = 4;
+
+  // A custom message
+  // TODO(RonWeber): This should be a template
+  string alert_mail_failure_message = 5;
+}
+
+// Configuration options for customizing the tab status calculation.
+message DashboardTabStatusCustomizationOptions {
+  // Maximum amount of flakiness tolerated to categorize tab as acceptable. Will
+  // supplement dashboard tab status message, and mark the tab as ACCEPTABLE in
+  // the dashboard group view. Set to "0" to disable. This is configured as a
+  // percentage of valid (non-ignored) columns; expected values go from 0.0 to
+  // 100.0 (100% = no passing columns is acceptable)
+  float max_acceptable_flakiness = 1;
+
+  // Columns which contain cells with any status configure below will be
+  // ignored. Ignored columns affect the computation of flakiness and
+  // non-ignored number of runs.
+  enum IgnoredTestStatus {
+    TEST_STATUS_UNSPECIFIED = 0;
+    CATEGORIZED_ABORT = 1;
+    UNKNOWN = 2;
+    CANCEL = 3;
+    BLOCKED = 4;
+  }
+
+  repeated IgnoredTestStatus ignored_test_statuses = 2;
+
+  // Minimum number of runs required excluding ignored ones.
+  // If the non-ignored columns is less than this, tab status will be PENDING.
+  int32 min_acceptable_runs = 3;
+}
+
+// Specifies a dashboard group.
+message DashboardGroup {
+  // The name for the dashboard group.
+  string name = 1;
+
+  // A list of names specifying dashboards to show links to in a separate tabbed
+  // bar at the top of the page for each of the given dashboards.
+  repeated string dashboard_names = 2;
+
+  // A description paragraph to be displayed.
+  string description = 3;
+}
+
+// A service configuration consisting of multiple test groups and dashboards.
+message Configuration {
+  // A list of groups of tests to gather.
+  repeated TestGroup test_groups = 1;
+
+  // A list of all of the dashboards for a server.
+  repeated Dashboard dashboards = 2;
+
+  // A list of all the dashboard groups for a server.
+  repeated DashboardGroup dashboard_groups = 3;
+}
+
+// A grouping of configuration options for the flakiness analysis tool.
+// Later configuration options could include the ability to choose different
+// kinds of flakiness and choosing if and who to email a copy of the flakiness
+// report.
+message HealthAnalysisOptions {
+  // Defaults to false; flakiness analysis is opt-in
+  bool enable = 1;
+
+  // Defines the number of days for one interval of analysis.
+  // i.e. flakiness will be analyzed for the previous N days starting from Now,
+  // and it will be compared to the calculated N days before that for trend
+  // analysis.
+  int32 days_of_analysis = 2;
+
+  // When to send healthiness emails out, uses cron string format.
+  string email_schedule = 3;
+
+  // A comma-separated list of healthiness email recipients.
+  string email_recipients = 4;
+
+  // A compilable regex string for grouping tests by name.
+  // Works the same as the group-by-regex-mask option of base_options:
+  // go/testgrid/users/dashboard_guide#grouping-tests
+  // An empty string means no grouping.
+  // e.g. test name: "//path/to/test - env", regex: ` - \w+`
+  // The regex will match " - env" in the above test name and give a group of:
+  // //path/to/test  <- Group Name
+  //     - env       <- Group Member
+  string grouping_regex = 5;
+}
+
+// The DefaultConfiguration Proto is deprecated, and will be deleted after Nov
+// 1, 2019. For defaulting behavior, use the yamlcfg library instead.
+message DefaultConfiguration {
+  // A default testgroup with default initialization data
+  TestGroup default_test_group = 1 [deprecated = true];
+
+  // A default dashboard tab with default initialization data
+  DashboardTab default_dashboard_tab = 2 [deprecated = true];
+}

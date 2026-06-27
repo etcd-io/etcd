@@ -1,0 +1,12 @@
+<style name="hr_high_contrast">
+  <entry type="Other" style="#d5d500"/>
+  <entry type="Background" style="#000000"/>
+  <entry type="Keyword" style="#467faf"/>
+  <entry type="Name" style="#ffffff"/>
+  <entry type="LiteralString" style="#a87662"/>
+  <entry type="LiteralStringBoolean" style="#467faf"/>
+  <entry type="LiteralNumber" style="#ffffff"/>
+  <entry type="Operator" style="#e4e400"/>
+  <entry type="OperatorWord" style="#467faf"/>
+  <entry type="Comment" style="#5a8349"/>
+</style>

@@ -1,0 +1,135 @@
+<lexer>
+  <config>
+    <name>Groovy</name>
+    <alias>groovy</alias>
+    <filename>*.groovy</filename>
+    <filename>*.gradle</filename>
+    <mime_type>text/x-groovy</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="#!(.*?)$">
+        <token type="CommentPreproc"/>
+        <push state="base"/>
+      </rule>
+      <rule>
+        <push state="base"/>
+      </rule>
+    </state>
+    <state name="base">
+      <rule pattern="^(\s*(?:[a-zA-Z_][\w.\[\]]*\s+)+?)([a-zA-Z_]\w*)(\s*)(\()">
+        <bygroups>
+          <usingself state="root"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*.*?\*/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="@[a-zA-Z_][\w.]*">
+        <token type="NameDecorator"/>
+      </rule>
+      <rule pattern="(as|assert|break|case|catch|continue|default|do|else|finally|for|if|in|goto|instanceof|new|return|switch|this|throw|try|while|in|as)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(abstract|const|extends|final|implements|native|private|protected|public|static|strictfp|super|synchronized|throws|transient|volatile)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(def|var|boolean|byte|char|double|float|int|long|short|void)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(package)(\s+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(true|false|null)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(class|interface|enum|trait|record)(\s+)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="class"/>
+      </rule>
+      <rule pattern="(import)(\s+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="import"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;.*?&#34;&#34;&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#39;&#39;&#39;.*?&#39;&#39;&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#39;(\\\\|\\&#39;|[^&#39;])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="\$/((?!/\$).)*/\$">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="/(\\\\|\\&#34;|[^/])*/">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;\\.&#39;|&#39;[^\\]&#39;|&#39;\\u[0-9a-fA-F]{4}&#39;">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="(\.)([a-zA-Z_]\w*)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="NameAttribute"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*:">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="[a-zA-Z_$]\w*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="[~^*!%&amp;\[\](){}&lt;&gt;|+=:;,./?-]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[0-9][0-9]*\.[0-9]+([eE][0-9]+)?[fd]?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="0x[0-9a-fA-F]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9]+L?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="class">
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="import">
+      <rule pattern="[\w.]+\*?">
+        <token type="NameNamespace"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

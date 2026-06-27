@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package testgrid.custom_evaluator;
+
+option go_package = "github.com/GoogleCloudPlatform/testgrid/pb/custom_evaluator";
+
+import "pb/test_status/test_status.proto";
+
+// A configuration sub-object used to do custom evaluation of test results.
+
+// A collection of Rule objects. Used to define many rules.
+message RuleSet { repeated Rule rules = 1; }
+
+// A single rule that describes how to evaluate a test_cases_pb2.TestResult
+message Rule {
+  // Multiple comparisons to run against a result. EVERY TestResultComparison
+  // has to succeed for this Rule to succeed.
+  repeated TestResultComparison test_result_comparisons = 1;
+
+  // Required: The TestStatus to return if the comparison succeeds.
+  testgrid.test_status.TestStatus computed_status = 3;
+}
+
+// Describes how to get information the TestResult proto and how to compare the
+// value against the comparison value.
+message TestResultComparison {
+  // Required: This is the comparison that will be used as
+  Comparison comparison = 1;
+
+  oneof test_result_info {
+    // The name of the property to evaluate.
+    // Properties are usually strings, so a string comparison is assumed and
+    // required.
+    string property_key = 2;
+
+    // This will find the scalar field with the given name within the TestResult
+    // proto. The value of that field will be used to evaluate.
+    //
+    // Accepted junit values for junit results are:
+    //   name: name of the test case
+    //   error_count: 1 if the test case has an error message
+    //   failure_count: 1 if the test case has a failure message
+    //
+    // NOTE: Only supported for string and numerical values.
+    string test_result_field = 3;
+
+    // This will find the field nested within the first error of the TestResult
+    // proto. The value of that field will be used to evaluate.
+    //
+    // Accepted values for junit results are:
+    //   exception_type: the failure and/or error message.
+    //
+    // NOTE: Only supported for string and numerical values
+    string test_result_error_field = 4;
+
+    // This will enable the target status comparation. The value of the status
+    // will be used to evaluate.
+    bool target_status = 5;
+  }
+}
+
+// The method of comparison used for evaluation. Describes how to compare two
+// values.
+message Comparison {
+  enum Operator {
+    // Unknown. May assume OP_EQ for legacy purposes, but should warn.
+    OP_UNKNOWN = 0;
+
+    // Equals operator.
+    OP_EQ = 1;
+
+    // Not equals operator.
+    OP_NE = 2;
+
+    // Comparison value less than TestResult's value
+    OP_LT = 3;
+
+    // Comparison value less than or equal TestResult's value
+    OP_LE = 4;
+
+    // Comparison value greater than TestResult's value
+    OP_GT = 5;
+
+    // Comparison value greater than or equal TestResult's value
+    OP_GE = 6;
+
+    // Regex match of Comparison.value string with the TestResult's evaluation
+    // value string.
+    OP_REGEX = 7;
+
+    // Checks to see if the evaluation value string starts with the
+    // Comparison.value string
+    OP_STARTS_WITH = 8;
+
+    // Checks to see if the evaluation value string is contained within the
+    // Comparison.value string
+    OP_CONTAINS = 9;
+  }
+
+  // Required: Defines how to compare two attributes.
+  // When the TestResult value is numerical, numerical_value will be used to
+  // compare. When the TestResult value is a string, string_value will be used.
+  Operator op = 1;
+
+  oneof comparison_value {
+    // For operations EQ, NE, REGEX, STARTS_WITH, CONTAINS
+    string string_value = 2;
+
+    // For operations EQ, NE, LT, LE, GT, GE
+    double numerical_value = 3;
+
+    // For operations EQ
+    testgrid.test_status.TestStatus target_status_value = 4;
+  }
+}

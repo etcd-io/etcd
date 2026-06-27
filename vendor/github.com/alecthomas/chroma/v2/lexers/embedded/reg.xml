@@ -1,0 +1,68 @@
+<lexer>
+  <config>
+    <name>reg</name>
+    <alias>registry</alias>
+    <filename>*.reg</filename>
+    <mime_type>text/x-windows-registry</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="Windows Registry Editor.*">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[;#].*">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="(\[)(-?)(HKEY_[A-Z_]+)(.*?\])$">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Operator"/>
+          <token type="NameBuiltin"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&#34;(?:\\&#34;|\\\\|[^&#34;])+&#34;)([ \t]*)(=)([ \t]*)">
+        <bygroups>
+          <token type="NameAttribute"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="value"/>
+      </rule>
+      <rule pattern="(.*?)([ \t]*)(=)([ \t]*)">
+        <bygroups>
+          <token type="NameAttribute"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="value"/>
+      </rule>
+    </state>
+    <state name="value">
+      <rule pattern="-">
+        <token type="Operator"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(dword|hex(?:\([0-9a-fA-F]\))?)(:)([0-9a-fA-F,]+)">
+        <bygroups>
+          <token type="NameVariable"/>
+          <token type="Punctuation"/>
+          <token type="LiteralNumber"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=".+">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

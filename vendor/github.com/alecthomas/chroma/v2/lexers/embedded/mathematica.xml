@@ -1,0 +1,60 @@
+<lexer>
+  <config>
+    <name>Mathematica</name>
+    <alias>mathematica</alias>
+    <alias>mma</alias>
+    <alias>nb</alias>
+    <filename>*.cdf</filename>
+    <filename>*.m</filename>
+    <filename>*.ma</filename>
+    <filename>*.mt</filename>
+    <filename>*.mx</filename>
+    <filename>*.nb</filename>
+    <filename>*.nbp</filename>
+    <filename>*.wl</filename>
+    <mime_type>application/mathematica</mime_type>
+    <mime_type>application/vnd.wolfram.mathematica</mime_type>
+    <mime_type>application/vnd.wolfram.mathematica.package</mime_type>
+    <mime_type>application/vnd.wolfram.cdf</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="(?s)\(\*.*?\*\)">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="([a-zA-Z]+[A-Za-z0-9]*`)">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule pattern="([A-Za-z0-9]*_+[A-Za-z0-9]*)">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="#\d*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="([a-zA-Z]+[a-zA-Z0-9]*)">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="-?\d+\.\d*">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="-?\d*\.\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="-?\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="(!===|@@@|===|/;|:=|-&gt;|:&gt;|/\.|=\.|~~|&lt;=|@@|/@|&amp;&amp;|\|\||//|&lt;&gt;|;;|&gt;=|-|@|!|\^|/|\*|\?|\+|&amp;|&lt;|&gt;|=|\|)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(,|;|\(|\)|\[|\]|\{|\})">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="&#34;.*?&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

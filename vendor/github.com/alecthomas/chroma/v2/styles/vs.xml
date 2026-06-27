@@ -1,0 +1,16 @@
+<style name="vs">
+  <entry type="Error" style="border:#ff0000"/>
+  <entry type="Background" style="bg:#ffffff"/>
+  <entry type="Keyword" style="#0000ff"/>
+  <entry type="KeywordType" style="#2b91af"/>
+  <entry type="NameClass" style="#2b91af"/>
+  <entry type="LiteralString" style="#a31515"/>
+  <entry type="OperatorWord" style="#0000ff"/>
+  <entry type="Comment" style="#008000"/>
+  <entry type="CommentPreproc" style="#0000ff"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericHeading" style="bold"/>
+  <entry type="GenericPrompt" style="bold"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="bold"/>
+</style>

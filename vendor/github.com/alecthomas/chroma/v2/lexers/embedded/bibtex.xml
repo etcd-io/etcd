@@ -1,0 +1,152 @@
+<lexer>
+  <config>
+    <name>BibTeX</name>
+    <alias>bib</alias>
+    <alias>bibtex</alias>
+    <filename>*.bib</filename>
+    <mime_type>text/x-bibtex</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="closing-brace">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="[})]">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="braced-string">
+      <rule pattern="\{">
+        <token type="LiteralString"/>
+        <push/>
+      </rule>
+      <rule pattern="\}">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^\{\}]+">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="whitespace">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="value">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="[a-z_@!$&amp;*+\-./:;&lt;&gt;?\[\\\]^`|~][\w@!$&amp;*+\-./:;&lt;&gt;?\[\\\]^`|~]*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="quoted-string"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="LiteralString"/>
+        <push state="braced-string"/>
+      </rule>
+      <rule pattern="[\d]+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="#">
+        <token type="Punctuation"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="quoted-string">
+      <rule pattern="\{">
+        <token type="LiteralString"/>
+        <push state="braced-string"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^\{\&#34;]+">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="@comment">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="@preamble">
+        <token type="NameClass"/>
+        <push state="closing-brace" state="value" state="opening-brace"/>
+      </rule>
+      <rule pattern="@string">
+        <token type="NameClass"/>
+        <push state="closing-brace" state="field" state="opening-brace"/>
+      </rule>
+      <rule pattern="@[a-z_@!$&amp;*+\-./:;&lt;&gt;?\[\\\]^`|~][\w@!$&amp;*+\-./:;&lt;&gt;?\[\\\]^`|~]*">
+        <token type="NameClass"/>
+        <push state="closing-brace" state="command-body" state="opening-brace"/>
+      </rule>
+      <rule pattern=".+">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="command-body">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="[^\s\,\}]+">
+        <token type="NameLabel"/>
+        <push state="#pop" state="fields"/>
+      </rule>
+    </state>
+    <state name="fields">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern=",">
+        <token type="Punctuation"/>
+        <push state="field"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="=">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="=">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="field">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="[a-z_@!$&amp;*+\-./:;&lt;&gt;?\[\\\]^`|~][\w@!$&amp;*+\-./:;&lt;&gt;?\[\\\]^`|~]*">
+        <token type="NameAttribute"/>
+        <push state="value" state="="/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="opening-brace">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="[{(]">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

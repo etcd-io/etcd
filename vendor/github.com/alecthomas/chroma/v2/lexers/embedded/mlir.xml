@@ -1,0 +1,73 @@
+<lexer>
+  <config>
+    <name>MLIR</name>
+    <alias>mlir</alias>
+    <filename>*.mlir</filename>
+    <mime_type>text/x-mlir</mime_type>
+  </config>
+  <rules>
+    <state name="whitespace">
+      <rule pattern="(\n|\s)+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="keyword">
+      <rule pattern="(constant|return)">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(memref|tensor|vector|func|loc)">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="bf16|f16|f32|f64|index">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="i[1-9]\d*">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule pattern="c?&#34;[^&#34;]*?&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\^([-a-zA-Z$._][\w\-$.0-9]*)\s*">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="([\w\d_$.]+)\s*=">
+        <token type="NameLabel"/>
+      </rule>
+      <rule>
+        <include state="keyword"/>
+      </rule>
+      <rule pattern="-&gt;">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="@([\w_][\w\d_$.]*)">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="[%#][\w\d_$.]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="([1-9?][\d?]*\s*x)+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="0[xX][a-fA-F0-9]+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="-?\d+(?:[.]\d+)?(?:[eE][-+]?\d+(?:[.]\d+)?)?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[=&lt;&gt;{}\[\]()*.,!:]|x\b">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[\w\d]+">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

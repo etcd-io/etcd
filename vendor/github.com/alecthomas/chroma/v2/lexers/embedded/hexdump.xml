@@ -1,0 +1,189 @@
+<lexer>
+  <config>
+    <name>Hexdump</name>
+    <alias>hexdump</alias>
+  </config>
+  <rules>
+    <state name="offset">
+      <rule pattern="^([0-9A-Ha-h]+)(:)">
+        <bygroups>
+          <token type="NameLabel"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="offset-mode"/>
+      </rule>
+      <rule pattern="^[0-9A-Ha-h]+">
+        <token type="NameLabel"/>
+      </rule>
+    </state>
+    <state name="offset-mode">
+      <rule pattern="\s">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[0-9A-Ha-h]+">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern=":">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="piped-strings">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule>
+        <include state="offset"/>
+      </rule>
+      <rule pattern="[0-9A-Ha-h]{2}">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="(\s{2,3})(\|)(.{1,16})(\|)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="LiteralString"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\s">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="^\*">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="bracket-strings">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule>
+        <include state="offset"/>
+      </rule>
+      <rule pattern="[0-9A-Ha-h]{2}">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="(\s{2,3})(\&gt;)(.{1,16})(\&lt;)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="LiteralString"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\s">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="^\*">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="nonpiped-strings">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule>
+        <include state="offset"/>
+      </rule>
+      <rule pattern="([0-9A-Ha-h]{2})(\-)([0-9A-Ha-h]{2})">
+        <bygroups>
+          <token type="LiteralNumberHex"/>
+          <token type="Punctuation"/>
+          <token type="LiteralNumberHex"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[0-9A-Ha-h]{2}">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="(\s{19,})(.{1,20}?)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\s{2,3})(.{1,20})$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\s">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="^\*">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule>
+        <include state="offset"/>
+      </rule>
+      <rule pattern="([0-9A-Ha-h]{2})(\-)([0-9A-Ha-h]{2})">
+        <bygroups>
+          <token type="LiteralNumberHex"/>
+          <token type="Punctuation"/>
+          <token type="LiteralNumberHex"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[0-9A-Ha-h]{2}">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="(\s{2,3})(\&gt;)(.{16})(\&lt;)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="LiteralString"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="bracket-strings"/>
+      </rule>
+      <rule pattern="(\s{2,3})(\|)(.{16})(\|)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="LiteralString"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="piped-strings"/>
+      </rule>
+      <rule pattern="(\s{2,3})(\&gt;)(.{1,15})(\&lt;)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="LiteralString"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\s{2,3})(\|)(.{1,15})(\|)$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+          <token type="LiteralString"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\s{2,3})(.{1,15})$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\s{2,3})(.{16}|.{20})$">
+        <bygroups>
+          <token type="Text"/>
+          <token type="LiteralString"/>
+        </bygroups>
+        <push state="nonpiped-strings"/>
+      </rule>
+      <rule pattern="\s">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="^\*">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

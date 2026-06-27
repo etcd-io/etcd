@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+cat >volcano_data_test.go <<EOF
+// Generated code do not edit. Run \`go generate gonum.org/v1/plot/plotter\`.
+
+// Copyright ©2015 The Gonum Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package plotter_test
+
+import "gonum.org/v1/gonum/mat"
+
+// Data extracted from RDatasets volcano data for the Maunga Whau volcano topographic data.
+var volcano = deciGrid{mat.NewDense(87, 61, []float64{
+EOF
+R -q -e 'write.table(as.data.frame(volcano), file="volcano_data_test.go", sep=", ", eol=",\n", col.names=FALSE, row.names=FALSE, append=TRUE)'
+echo >> volcano_data_test.go '})}'
+go fmt volcano_data_test.go

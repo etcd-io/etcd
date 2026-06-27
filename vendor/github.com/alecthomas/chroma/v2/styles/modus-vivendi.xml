@@ -1,0 +1,13 @@
+<style name="modus-vivendi">
+  <entry type="Background" style="#ffffff bg:#000000"/>
+  <entry type="Keyword" style="#b6a0ff"/>
+  <entry type="KeywordConstant" style="#00bcff"/>
+  <entry type="KeywordType" style="#6ae4b9"/>
+  <entry type="NameBuiltin" style="#f78fe7"/>
+  <entry type="NameFunction" style="#feacd0"/>
+  <entry type="NameVariable" style="#00d3d0"/>
+  <entry type="Literal" style="#00bcff"/>
+  <entry type="LiteralString" style="#79a8ff"/>
+  <entry type="Operator" style="#00d3d0"/>
+  <entry type="Comment" style="#a8a8a8"/>
+</style>

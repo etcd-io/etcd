@@ -1,0 +1,20 @@
+# This is the official list of Freetype-Go authors for copyright purposes.
+# This file is distinct from the CONTRIBUTORS files.
+# See the latter for an explanation.
+#
+# Freetype-Go is derived from Freetype, which is written in C. The latter
+# is copyright 1996-2010 David Turner, Robert Wilhelm, and Werner Lemberg.
+
+# Names should be added to this file as
+#	Name or Organization <email address>
+# The email address is not required for organizations.
+
+# Please keep the list sorted.
+
+Google Inc.
+Jeff R. Allen <jra@nella.org>
+Maksim Kochkin <maxxarts@gmail.com>
+Michael Fogleman <fogleman@gmail.com>
+Rémy Oudompheng <oudomphe@phare.normalesup.org>
+Roger Peppe <rogpeppe@gmail.com>
+Steven Edwards <steven@stephenwithav.com>

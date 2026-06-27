@@ -1,0 +1,106 @@
+<lexer>
+  <config>
+    <name>Modelica</name>
+    <alias>modelica</alias>
+    <filename>*.mo</filename>
+    <mime_type>text/x-modelica</mime_type>
+    <dot_all>true</dot_all>
+    <ensure_nl>true</ensure_nl>
+  </config>
+  <rules>
+    <state name="root">
+      <!-- Comments -->
+      <rule pattern="//[^\n\r]*">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/[*].*?[*]/">
+        <token type="CommentMultiline"/>
+      </rule>
+
+      <!-- Whitespace and newlines -->
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+
+      <!-- Keywords (Modelica specific) -->
+      <rule pattern="\b(model|equation|end|extends|function|type|record|connector|parameter|constant|if|then|else|for|in|when|assert|outer|algorithm|flow|discrete|input|output|loop|elseif|return|public|protected|external|real|integer|boolean|string|array|complex|union|tuple|class|der|time|tstart|tstop)\b">
+        <token type="Keyword"/>
+      </rule>
+      
+      <!-- Type definitions -->
+      <rule pattern="\b(boolean|integer|real|string|array|record|complex|union|tuple)\b">
+        <token type="KeywordType"/>
+      </rule>
+
+      <!-- Preprocessor directives -->
+      <rule pattern="#[ \t]*(if|else|endif|define|include|error)\b">
+        <token type="CommentPreproc"/>
+      </rule>
+
+      <!-- Literals -->
+		<rule pattern="\\&quot;[^&quot;\n]*\\&quot;">
+		  <token type="LiteralString"/>
+		</rule>
+      <rule pattern="'[^'\n]'">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="\d+(\.\d+)?([eE][+-]?\d+)?">
+        <token type="LiteralNumber"/>
+      </rule>
+
+      <!-- Identifiers and names -->
+      <rule pattern="@[A-Za-z_]\w*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="[A-Za-z_]\w*">
+        <token type="Name"/>
+      </rule>
+
+      <!-- Punctuation -->
+      <rule pattern="[{}(),;=.+\-*/&amp;|!&lt;&gt;^%]">
+        <token type="Punctuation"/>
+      </rule>
+      
+      <!-- Operators -->
+      <rule pattern="(\+|\-|\*|\/|\^|\&amp;|\||\&lt;|\&gt;|\%|\=|\!=|\&lt;\=|\&gt;\=)">
+        <token type="Operator"/>
+      </rule>
+    </state>
+
+    <state name="function">
+      <!-- Function name -->
+      <rule pattern="[A-Za-z_]\w*">
+        <token type="NameFunction"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+
+    <state name="type">
+      <!-- Type definition -->
+      <rule pattern="[A-Za-z_]\w*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+
+    <state name="record">
+      <!-- Record definition -->
+      <rule pattern="[A-Za-z_]\w*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

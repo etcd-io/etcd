@@ -1,0 +1,68 @@
+<lexer>
+  <config>
+    <name>Docker</name>
+    <alias>docker</alias>
+    <alias>dockerfile</alias>
+    <alias>containerfile</alias>
+    <filename>Dockerfile</filename>
+    <filename>Dockerfile.*</filename>
+    <filename>*.Dockerfile</filename>
+    <filename>*.docker</filename>
+    <filename>Containerfile</filename>
+    <filename>Containerfile.*</filename>
+    <filename>*.Containerfile</filename>
+    <mime_type>text/x-dockerfile-config</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="#.*">
+        <token type="Comment" />
+      </rule>
+      <rule pattern="(ONBUILD)((?:\s*\\?\s*))">
+        <bygroups>
+          <token type="Keyword" />
+          <using lexer="Bash" />
+        </bygroups>
+      </rule>
+      <rule pattern="(HEALTHCHECK)((?:(?:\s*\\?\s*)--\w+=\w+(?:\s*\\?\s*))*)">
+        <bygroups>
+          <token type="Keyword" />
+          <using lexer="Bash" />
+        </bygroups>
+      </rule>
+      <rule pattern="(VOLUME|ENTRYPOINT|CMD|SHELL)((?:\s*\\?\s*))(\[.*?\])">
+        <bygroups>
+          <token type="Keyword" />
+          <using lexer="Bash" />
+          <using lexer="JSON" />
+        </bygroups>
+      </rule>
+      <rule pattern="(LABEL|ENV|ARG)((?:(?:\s*\\?\s*)\w+=\w+(?:\s*\\?\s*))*)">
+        <bygroups>
+          <token type="Keyword" />
+          <using lexer="Bash" />
+        </bygroups>
+      </rule>
+      <rule
+        pattern="((?:FROM|MAINTAINER|EXPOSE|WORKDIR|USER|STOPSIGNAL)|VOLUME)\b(\s)([\S]*)\b(?:(\s)(AS)\b(\s)([\S]*))?\b"
+      >
+        <bygroups>
+          <token type="Keyword" />
+          <token type="TextWhitespace" />
+          <token type="LiteralString" />
+          <token type="TextWhitespace" />
+          <token type="Keyword" />
+          <token type="TextWhitespace" />
+          <token type="LiteralString" />
+        </bygroups>
+      </rule>
+      <rule pattern="((?:RUN|CMD|ENTRYPOINT|ENV|ARG|LABEL|ADD|COPY))">
+        <token type="Keyword" />
+      </rule>
+      <rule pattern="(.*\\\n)*.+">
+        <using lexer="Bash" />
+      </rule>
+    </state>
+  </rules>
+</lexer>

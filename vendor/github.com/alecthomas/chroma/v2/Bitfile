@@ -1,0 +1,24 @@
+VERSION = %(git describe --tags --dirty  --always)%
+export CGOENABLED = 0
+
+tokentype_enumer.go: types.go
+  build: go generate
+
+# Regenerate the list of lexers in the README
+README.md: lexers/*.go lexers/*/*.xml table.py
+  build: ./table.py
+  -clean
+
+implicit %{1}%{2}.min.%{3}: **/*.{css,js}
+  build: esbuild --bundle %{IN} --minify --outfile=%{OUT}
+
+implicit build/%{1}: cmd/*
+  cd cmd/%{1}
+  inputs: cmd/%{1}/**/* **/*.go
+  build: go build -ldflags="-X 'main.version=%{VERSION}'" -o ../../build/%{1} .
+
+#upload: chromad
+#  build:
+#    scp chromad root@swapoff.org:
+#    ssh root@swapoff.org 'install -m755 ./chromad /srv/http/swapoff.org/bin && service chromad restart'
+#    touch upload

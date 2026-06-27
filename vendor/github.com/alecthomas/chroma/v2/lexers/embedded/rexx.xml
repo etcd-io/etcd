@@ -1,0 +1,127 @@
+<lexer>
+  <config>
+    <name>Rexx</name>
+    <alias>rexx</alias>
+    <alias>arexx</alias>
+    <filename>*.rexx</filename>
+    <filename>*.rex</filename>
+    <filename>*.rx</filename>
+    <filename>*.arexx</filename>
+    <mime_type>text/x-rexx</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="keyword">
+      <rule pattern="(address|arg|by|call|do|drop|else|end|exit|for|forever|if|interpret|iterate|leave|nop|numeric|off|on|options|parse|pull|push|queue|return|say|select|signal|to|then|trace|until|while)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+    </state>
+    <state name="operator">
+      <rule pattern="(-|//|/|\(|\)|\*\*|\*|\\&lt;&lt;|\\&lt;|\\==|\\=|\\&gt;&gt;|\\&gt;|\\|\|\||\||&amp;&amp;|&amp;|%|\+|&lt;&lt;=|&lt;&lt;|&lt;=|&lt;&gt;|&lt;|==|=|&gt;&lt;|&gt;=|&gt;&gt;=|&gt;&gt;|&gt;|¬&lt;&lt;|¬&lt;|¬==|¬=|¬&gt;&gt;|¬&gt;|¬|\.|,)">
+        <token type="Operator"/>
+      </rule>
+    </state>
+    <state name="string_double">
+      <rule pattern="[^&#34;\n]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="string_single">
+      <rule pattern="[^\&#39;\n]">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\&#39;\&#39;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\&#39;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern="[^*]+">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="\*/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\*">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\s">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="comment"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string_double"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralString"/>
+        <push state="string_single"/>
+      </rule>
+      <rule pattern="[0-9]+(\.[0-9]+)?(e[+-]?[0-9])?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="([a-z_]\w*)(\s*)(:)(\s*)(procedure)\b">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="TextWhitespace"/>
+          <token type="Operator"/>
+          <token type="TextWhitespace"/>
+          <token type="KeywordDeclaration"/>
+        </bygroups>
+      </rule>
+      <rule pattern="([a-z_]\w*)(\s*)(:)">
+        <bygroups>
+          <token type="NameLabel"/>
+          <token type="TextWhitespace"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule>
+        <include state="function"/>
+      </rule>
+      <rule>
+        <include state="keyword"/>
+      </rule>
+      <rule>
+        <include state="operator"/>
+      </rule>
+      <rule pattern="[a-z_]\w*">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="function">
+      <rule pattern="(sourceline|wordlength|errortext|translate|wordindex|condition|datatype|subword|lineout|lastpos|delword|address|charout|wordpos|compare|overlay|reverse|symbol|stream|charin|center|delstr|verify|digits|abbrev|bitxor|format|random|insert|bitand|queued|length|linein|substr|copies|xrange|space|words|lines|bitor|trunc|strip|right|value|chars|trace|sign|form|fuzz|word|left|time|date|c2d|d2c|d2x|c2x|pos|b2x|arg|abs|min|x2b|x2c|x2d|max)(\s*)(\()">
+        <bygroups>
+          <token type="NameBuiltin"/>
+          <token type="TextWhitespace"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+    </state>
+  </rules>
+</lexer>

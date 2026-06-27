@@ -1,0 +1,170 @@
+<lexer>
+  <config>
+    <name>Turtle</name>
+    <alias>turtle</alias>
+    <filename>*.ttl</filename>
+    <mime_type>text/turtle</mime_type>
+    <mime_type>application/x-turtle</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="triple-double-quoted-string">
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="LiteralString"/>
+        <push state="end-of-string"/>
+      </rule>
+      <rule pattern="[^\\]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+        <push state="string-escape"/>
+      </rule>
+    </state>
+    <state name="single-double-quoted-string">
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="end-of-string"/>
+      </rule>
+      <rule pattern="[^&#34;\\\n]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+        <push state="string-escape"/>
+      </rule>
+    </state>
+    <state name="triple-single-quoted-string">
+      <rule pattern="&#39;&#39;&#39;">
+        <token type="LiteralString"/>
+        <push state="end-of-string"/>
+      </rule>
+      <rule pattern="[^\\]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+        <push state="string-escape"/>
+      </rule>
+    </state>
+    <state name="single-single-quoted-string">
+      <rule pattern="&#39;">
+        <token type="LiteralString"/>
+        <push state="end-of-string"/>
+      </rule>
+      <rule pattern="[^&#39;\\\n]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+        <push state="string-escape"/>
+      </rule>
+    </state>
+    <state name="string-escape">
+      <rule pattern=".">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="end-of-string">
+      <rule pattern="(@)([a-z]+(:?-[a-z0-9]+)*)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="GenericEmph"/>
+          <token type="GenericEmph"/>
+        </bygroups>
+        <pop depth="2"/>
+      </rule>
+      <rule pattern="(\^\^)(&lt;[^&lt;&gt;&#34;{}|^`\\\x00-\x20]*&gt;)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="GenericEmph"/>
+        </bygroups>
+        <pop depth="2"/>
+      </rule>
+      <rule pattern="(\^\^)((?:[a-z][\w-]*)?\:)([a-z][\w-]*)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="GenericEmph"/>
+          <token type="GenericEmph"/>
+        </bygroups>
+        <pop depth="2"/>
+      </rule>
+      <rule>
+        <pop depth="2"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="(@base|BASE)(\s+)(&lt;[^&lt;&gt;&#34;{}|^`\\\x00-\x20]*&gt;)(\s*)(\.?)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="TextWhitespace"/>
+          <token type="NameVariable"/>
+          <token type="TextWhitespace"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(@prefix|PREFIX)(\s+)((?:[a-z][\w-]*)?\:)(\s+)(&lt;[^&lt;&gt;&#34;{}|^`\\\x00-\x20]*&gt;)(\s*)(\.?)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="TextWhitespace"/>
+          <token type="NameNamespace"/>
+          <token type="TextWhitespace"/>
+          <token type="NameVariable"/>
+          <token type="TextWhitespace"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?&lt;=\s)a(?=\s)">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(&lt;[^&lt;&gt;&#34;{}|^`\\\x00-\x20]*&gt;)">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="((?:[a-z][\w-]*)?\:)([a-z][\w-]*)">
+        <bygroups>
+          <token type="NameNamespace"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="#[^\n]+">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="\b(true|false)\b">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern="[+\-]?\d*\.\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[+\-]?\d*(:?\.\d+)?E[+\-]?\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[+\-]?\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[\[\](){}.;,:^]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="LiteralString"/>
+        <push state="triple-double-quoted-string"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="single-double-quoted-string"/>
+      </rule>
+      <rule pattern="&#39;&#39;&#39;">
+        <token type="LiteralString"/>
+        <push state="triple-single-quoted-string"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralString"/>
+        <push state="single-single-quoted-string"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

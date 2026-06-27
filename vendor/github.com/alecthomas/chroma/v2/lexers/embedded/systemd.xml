@@ -1,0 +1,63 @@
+<lexer>
+  <config>
+    <name>SYSTEMD</name>
+    <alias>systemd</alias>
+    <filename>*.automount</filename>
+    <filename>*.device</filename>
+    <filename>*.dnssd</filename>
+    <filename>*.link</filename>
+    <filename>*.mount</filename>
+    <filename>*.netdev</filename>
+    <filename>*.network</filename>
+    <filename>*.path</filename>
+    <filename>*.scope</filename>
+    <filename>*.service</filename>
+    <filename>*.slice</filename>
+    <filename>*.socket</filename>
+    <filename>*.swap</filename>
+    <filename>*.target</filename>
+    <filename>*.timer</filename>
+    <mime_type>text/plain</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[;#].*">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="\[.*?\]$">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(.*?)(=)(.*)(\\\n)">
+        <bygroups>
+          <token type="NameAttribute"/>
+          <token type="Operator"/>
+          <token type="LiteralString"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="continuation"/>
+      </rule>
+      <rule pattern="(.*?)(=)(.*)">
+        <bygroups>
+          <token type="NameAttribute"/>
+          <token type="Operator"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+    </state>
+    <state name="continuation">
+      <rule pattern="(.*?)(\\\n)">
+        <bygroups>
+          <token type="LiteralString"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(.*)">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

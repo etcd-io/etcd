@@ -1,0 +1,86 @@
+<lexer>
+  <config>
+    <name>Meson</name>
+    <alias>meson</alias>
+    <alias>meson.build</alias>
+    <filename>meson.build</filename>
+    <filename>meson.options</filename>
+    <filename>meson_options.txt</filename>
+    <mime_type>text/x-meson</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="#.*?$">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="&#39;&#39;&#39;.*&#39;&#39;&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="[1-9][0-9]*">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="0o[0-7]+">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0x[a-fA-F0-9]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule>
+        <include state="string"/>
+      </rule>
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule>
+        <include state="expr"/>
+      </rule>
+      <rule pattern="[a-zA-Z_][a-zA-Z_0-9]*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="[&#39;]{3}([&#39;]{0,2}([^\\&#39;]|\\(.|\n)))*[&#39;]{3}">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;.*?(?&lt;!\\)(\\\\)*?&#39;">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="keywords">
+      <rule pattern="(endforeach|continue|foreach|break|endif|else|elif|if)\b">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="expr">
+      <rule pattern="(in|and|or|not)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="(\*=|/=|%=|\+]=|-=|==|!=|\+|-|=)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[\[\]{}:().,?]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(false|true)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule>
+        <include state="builtins"/>
+      </rule>
+      <rule pattern="(target_machine|build_machine|host_machine|meson)\b">
+        <token type="NameVariableMagic"/>
+      </rule>
+    </state>
+    <state name="builtins">
+      <rule pattern="(?&lt;!\.)(add_project_link_arguments|add_global_link_arguments|add_project_arguments|add_global_arguments|include_directories|configuration_data|declare_dependency|install_headers|both_libraries|install_subdir|add_test_setup|configure_file|static_library|shared_library|custom_target|add_languages|shared_module|set_variable|get_variable|find_library|find_program|build_target|install_data|environment|is_disabler|run_command|subdir_done|install_man|is_variable|subproject|dependency|join_paths|get_option|executable|generator|benchmark|disabler|project|message|library|summary|vcs_tag|warning|assert|subdir|range|files|error|test|jar)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)import\b">
+        <token type="NameNamespace"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

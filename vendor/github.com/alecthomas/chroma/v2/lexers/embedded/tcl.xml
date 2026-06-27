@@ -1,0 +1,272 @@
+<lexer>
+  <config>
+    <name>Tcl</name>
+    <alias>tcl</alias>
+    <filename>*.tcl</filename>
+    <filename>*.rvt</filename>
+    <mime_type>text/x-tcl</mime_type>
+    <mime_type>text/x-script.tcl</mime_type>
+    <mime_type>application/x-tcl</mime_type>
+  </config>
+  <rules>
+    <state name="command-in-bracket">
+      <rule pattern="\b(namespace|continue|variable|uplevel|foreach|return|update|elseif|global|rename|switch|upvar|error|vwait|catch|break|unset|array|apply|trace|after|while|then|else|expr|eval|proc|for|set|if)\b">
+        <token type="Keyword"/>
+        <push state="params-in-bracket"/>
+      </rule>
+      <rule pattern="\b(platform::shell|pkg::create|pkg_mkIndex|fconfigure|re_syntax|fileevent|platform|fblocked|lreverse|mathfunc|encoding|registry|lreplace|history|bgerror|llength|lsearch|linsert|lassign|lappend|refchan|unknown|package|lrepeat|msgcat|mathop|format|interp|lrange|string|source|lindex|socket|concat|regsub|regexp|loadTk|memory|binary|append|unload|subst|split|lsort|clock|close|flush|fcopy|chan|glob|time|gets|http|dict|file|puts|tell|join|read|exit|exec|open|list|scan|seek|incr|info|lset|load|dde|pwd|pid|eof|tm|cd)\b">
+        <token type="NameBuiltin"/>
+        <push state="params-in-bracket"/>
+      </rule>
+      <rule pattern="([\w.-]+)">
+        <token type="NameVariable"/>
+        <push state="params-in-bracket"/>
+      </rule>
+      <rule pattern="#">
+        <token type="Comment"/>
+        <push state="comment"/>
+      </rule>
+    </state>
+    <state name="command-in-paren">
+      <rule pattern="\b(namespace|continue|variable|uplevel|foreach|return|update|elseif|global|rename|switch|upvar|error|vwait|catch|break|unset|array|apply|trace|after|while|then|else|expr|eval|proc|for|set|if)\b">
+        <token type="Keyword"/>
+        <push state="params-in-paren"/>
+      </rule>
+      <rule pattern="\b(platform::shell|pkg::create|pkg_mkIndex|fconfigure|re_syntax|fileevent|platform|fblocked|lreverse|mathfunc|encoding|registry|lreplace|history|bgerror|llength|lsearch|linsert|lassign|lappend|refchan|unknown|package|lrepeat|msgcat|mathop|format|interp|lrange|string|source|lindex|socket|concat|regsub|regexp|loadTk|memory|binary|append|unload|subst|split|lsort|clock|close|flush|fcopy|chan|glob|time|gets|http|dict|file|puts|tell|join|read|exit|exec|open|list|scan|seek|incr|info|lset|load|dde|pwd|pid|eof|tm|cd)\b">
+        <token type="NameBuiltin"/>
+        <push state="params-in-paren"/>
+      </rule>
+      <rule pattern="([\w.-]+)">
+        <token type="NameVariable"/>
+        <push state="params-in-paren"/>
+      </rule>
+      <rule pattern="#">
+        <token type="Comment"/>
+        <push state="comment"/>
+      </rule>
+    </state>
+    <state name="command-in-brace">
+      <rule pattern="\b(namespace|continue|variable|uplevel|foreach|return|update|elseif|global|rename|switch|upvar|error|vwait|catch|break|unset|array|apply|trace|after|while|then|else|expr|eval|proc|for|set|if)\b">
+        <token type="Keyword"/>
+        <push state="params-in-brace"/>
+      </rule>
+      <rule pattern="\b(platform::shell|pkg::create|pkg_mkIndex|fconfigure|re_syntax|fileevent|platform|fblocked|lreverse|mathfunc|encoding|registry|lreplace|history|bgerror|llength|lsearch|linsert|lassign|lappend|refchan|unknown|package|lrepeat|msgcat|mathop|format|interp|lrange|string|source|lindex|socket|concat|regsub|regexp|loadTk|memory|binary|append|unload|subst|split|lsort|clock|close|flush|fcopy|chan|glob|time|gets|http|dict|file|puts|tell|join|read|exit|exec|open|list|scan|seek|incr|info|lset|load|dde|pwd|pid|eof|tm|cd)\b">
+        <token type="NameBuiltin"/>
+        <push state="params-in-brace"/>
+      </rule>
+      <rule pattern="([\w.-]+)">
+        <token type="NameVariable"/>
+        <push state="params-in-brace"/>
+      </rule>
+      <rule pattern="#">
+        <token type="Comment"/>
+        <push state="comment"/>
+      </rule>
+    </state>
+    <state name="basic">
+      <rule pattern="\(">
+        <token type="Keyword"/>
+        <push state="paren"/>
+      </rule>
+      <rule pattern="\[">
+        <token type="Keyword"/>
+        <push state="bracket"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="Keyword"/>
+        <push state="brace"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="(eq|ne|in|ni)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="!=|==|&lt;&lt;|&gt;&gt;|&lt;=|&gt;=|&amp;&amp;|\|\||\*\*|[-+~!*/%&lt;&gt;&amp;^|?:]">
+        <token type="Operator"/>
+      </rule>
+    </state>
+    <state name="params-in-bracket">
+      <rule pattern="\]">
+        <token type="Keyword"/>
+        <push state="#pop" state="#pop"/>
+      </rule>
+      <rule>
+        <include state="params"/>
+      </rule>
+    </state>
+    <state name="data">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="0x[a-fA-F0-9]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="0[0-7]+">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="\d+\.\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="\$([\w.:-]+)">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="([\w.:-]+)">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="command">
+      <rule pattern="\b(namespace|continue|variable|uplevel|foreach|return|update|elseif|global|rename|switch|upvar|error|vwait|catch|break|unset|array|apply|trace|after|while|then|else|expr|eval|proc|for|set|if)\b">
+        <token type="Keyword"/>
+        <push state="params"/>
+      </rule>
+      <rule pattern="\b(platform::shell|pkg::create|pkg_mkIndex|fconfigure|re_syntax|fileevent|platform|fblocked|lreverse|mathfunc|encoding|registry|lreplace|history|bgerror|llength|lsearch|linsert|lassign|lappend|refchan|unknown|package|lrepeat|msgcat|mathop|format|interp|lrange|string|source|lindex|socket|concat|regsub|regexp|loadTk|memory|binary|append|unload|subst|split|lsort|clock|close|flush|fcopy|chan|glob|time|gets|http|dict|file|puts|tell|join|read|exit|exec|open|list|scan|seek|incr|info|lset|load|dde|pwd|pid|eof|tm|cd)\b">
+        <token type="NameBuiltin"/>
+        <push state="params"/>
+      </rule>
+      <rule pattern="([\w.-]+)">
+        <token type="NameVariable"/>
+        <push state="params"/>
+      </rule>
+      <rule pattern="#">
+        <token type="Comment"/>
+        <push state="comment"/>
+      </rule>
+    </state>
+    <state name="params-in-brace">
+      <rule pattern="\}">
+        <token type="Keyword"/>
+        <push state="#pop" state="#pop"/>
+      </rule>
+      <rule>
+        <include state="params"/>
+      </rule>
+    </state>
+    <state name="string-square">
+      <rule pattern="\[">
+        <token type="LiteralStringDouble"/>
+        <push state="string-square"/>
+      </rule>
+      <rule pattern="(?s)(\\\\|\\[0-7]+|\\.|\\\n|[^\]\\])">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="\]">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="bracket">
+      <rule pattern="\]">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="command-in-bracket"/>
+      </rule>
+      <rule>
+        <include state="basic"/>
+      </rule>
+      <rule>
+        <include state="data"/>
+      </rule>
+    </state>
+    <state name="params-in-paren">
+      <rule pattern="\)">
+        <token type="Keyword"/>
+        <push state="#pop" state="#pop"/>
+      </rule>
+      <rule>
+        <include state="params"/>
+      </rule>
+    </state>
+    <state name="paren">
+      <rule pattern="\)">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="command-in-paren"/>
+      </rule>
+      <rule>
+        <include state="basic"/>
+      </rule>
+      <rule>
+        <include state="data"/>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern=".*[^\\]\n">
+        <token type="Comment"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=".*\\\n">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="command"/>
+      </rule>
+      <rule>
+        <include state="basic"/>
+      </rule>
+      <rule>
+        <include state="data"/>
+      </rule>
+      <rule pattern="\}">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="brace">
+      <rule pattern="\}">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="command-in-brace"/>
+      </rule>
+      <rule>
+        <include state="basic"/>
+      </rule>
+      <rule>
+        <include state="data"/>
+      </rule>
+    </state>
+    <state name="params">
+      <rule pattern=";">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(else|elseif|then)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule>
+        <include state="basic"/>
+      </rule>
+      <rule>
+        <include state="data"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="\[">
+        <token type="LiteralStringDouble"/>
+        <push state="string-square"/>
+      </rule>
+      <rule pattern="(?s)(\\\\|\\[0-7]+|\\.|[^&#34;\\])">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

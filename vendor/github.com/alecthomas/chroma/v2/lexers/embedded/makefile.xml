@@ -1,0 +1,131 @@
+<lexer>
+  <config>
+    <name>Makefile</name>
+    <alias>make</alias>
+    <alias>makefile</alias>
+    <alias>mf</alias>
+    <alias>bsdmake</alias>
+    <filename>*.mak</filename>
+    <filename>*.mk</filename>
+    <filename>Makefile</filename>
+    <filename>makefile</filename>
+    <filename>Makefile.*</filename>
+    <filename>GNUmakefile</filename>
+    <filename>BSDmakefile</filename>
+    <filename>Justfile</filename>
+    <filename>justfile</filename>
+    <filename>.justfile</filename>
+    <mime_type>text/x-makefile</mime_type>
+    <ensure_nl>true</ensure_nl>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="^(?:[\t ]+.*\n|\n)+">
+        <using lexer="Bash"/>
+      </rule>
+      <rule pattern="\$[&lt;@$+%?|*]">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="#.*?\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(export)(\s+)(?=[\w${}\t -]+\n)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="export"/>
+      </rule>
+      <rule pattern="export\s+">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="([\w${}().-]+)(\s*)([!?:+]?=)([ \t]*)((?:.*\\\n)+|.*\n)">
+        <bygroups>
+          <token type="NameVariable"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+          <token type="Text"/>
+          <using lexer="Bash"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?s)&#34;(\\\\|\\.|[^&#34;\\])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="(?s)&#39;(\\\\|\\.|[^&#39;\\])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="([^\n:]+)(:+)([ \t]*)">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Operator"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="block-header"/>
+      </rule>
+      <rule pattern="\$\(">
+        <token type="Keyword"/>
+        <push state="expansion"/>
+      </rule>
+    </state>
+    <state name="expansion">
+      <rule pattern="[^$a-zA-Z_()]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\$">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Keyword"/>
+        <push/>
+      </rule>
+      <rule pattern="\)">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="export">
+      <rule pattern="[\w${}-]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="block-header">
+      <rule pattern="[,|]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="#.*?\n">
+        <token type="Comment"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\$\(">
+        <token type="Keyword"/>
+        <push state="expansion"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]+">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=".">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

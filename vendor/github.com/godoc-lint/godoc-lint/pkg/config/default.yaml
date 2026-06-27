@@ -1,0 +1,17 @@
+# Default configuration
+version: "1.0"
+default: basic
+options:
+  max-len/length: 77
+  max-len/include-tests: false
+  max-len/ignore-patterns: []
+  pkg-doc/include-tests: false
+  single-pkg-doc/include-tests: false
+  require-pkg-doc/include-tests: false
+  require-doc/include-tests: false
+  require-doc/ignore-exported: false
+  require-doc/ignore-unexported: true
+  start-with-name/include-tests: false
+  start-with-name/include-unexported: false
+  require-stdlib-doclink/include-tests: false
+  no-unused-link/include-tests: false

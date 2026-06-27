@@ -1,0 +1,18 @@
+<style name="algol_nu">
+  <entry type="Error" style="border:#ff0000"/>
+  <entry type="Background" style="bg:#ffffff"/>
+  <entry type="Keyword" style="bold"/>
+  <entry type="KeywordDeclaration" style="italic"/>
+  <entry type="NameBuiltin" style="bold italic"/>
+  <entry type="NameBuiltinPseudo" style="bold italic"/>
+  <entry type="NameClass" style="bold italic #666666"/>
+  <entry type="NameConstant" style="bold italic #666666"/>
+  <entry type="NameFunction" style="bold italic #666666"/>
+  <entry type="NameNamespace" style="bold italic #666666"/>
+  <entry type="NameVariable" style="bold italic #666666"/>
+  <entry type="LiteralString" style="italic #666666"/>
+  <entry type="OperatorWord" style="bold"/>
+  <entry type="Comment" style="italic #888888"/>
+  <entry type="CommentSpecial" style="bold noitalic #888888"/>
+  <entry type="CommentPreproc" style="bold noitalic #888888"/>
+</style>

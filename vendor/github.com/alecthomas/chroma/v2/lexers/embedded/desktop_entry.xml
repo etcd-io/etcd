@@ -1,0 +1,17 @@
+<lexer>
+  <config>
+    <name>Desktop file</name>
+    <alias>desktop</alias>
+    <alias>desktop_entry</alias>
+    <filename>*.desktop</filename>
+    <mime_type>application/x-desktop</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="^[ \t]*\n"><token type="TextWhitespace"/></rule>
+      <rule pattern="^(#.*)(\n)"><bygroups><token type="CommentSingle"/><token type="TextWhitespace"/></bygroups></rule>
+      <rule pattern="(\[[^\]\n]+\])(\n)"><bygroups><token type="Keyword"/><token type="TextWhitespace"/></bygroups></rule>
+      <rule pattern="([-A-Za-z0-9]+)(\[[^\] \t=]+\])?([ \t]*)(=)([ \t]*)([^\n]*)([ \t\n]*\n)"><bygroups><token type="NameAttribute"/><token type="NameNamespace"/><token type="TextWhitespace"/><token type="Operator"/><token type="TextWhitespace"/><token type="LiteralString"/><token type="TextWhitespace"/></bygroups></rule>
+    </state>
+  </rules>
+</lexer>

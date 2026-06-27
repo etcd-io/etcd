@@ -1,0 +1,37 @@
+<style name="perldoc">
+  <entry type="Error" style="#a61717 bg:#e3d2d2"/>
+  <entry type="Background" style="bg:#eeeedd"/>
+  <entry type="Keyword" style="bold #8b008b"/>
+  <entry type="KeywordType" style="#00688b"/>
+  <entry type="NameAttribute" style="#658b00"/>
+  <entry type="NameBuiltin" style="#658b00"/>
+  <entry type="NameClass" style="bold #008b45"/>
+  <entry type="NameConstant" style="#00688b"/>
+  <entry type="NameDecorator" style="#707a7c"/>
+  <entry type="NameException" style="bold #008b45"/>
+  <entry type="NameFunction" style="#008b45"/>
+  <entry type="NameNamespace" style="underline #008b45"/>
+  <entry type="NameTag" style="bold #8b008b"/>
+  <entry type="NameVariable" style="#00688b"/>
+  <entry type="LiteralString" style="#cd5555"/>
+  <entry type="LiteralStringHeredoc" style="italic #1c7e71"/>
+  <entry type="LiteralStringOther" style="#cb6c20"/>
+  <entry type="LiteralStringRegex" style="#1c7e71"/>
+  <entry type="LiteralNumber" style="#b452cd"/>
+  <entry type="OperatorWord" style="#8b008b"/>
+  <entry type="Comment" style="#228b22"/>
+  <entry type="CommentSpecial" style="bold #8b008b"/>
+  <entry type="CommentPreproc" style="#1e889b"/>
+  <entry type="GenericDeleted" style="#aa0000"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericError" style="#aa0000"/>
+  <entry type="GenericHeading" style="bold #000080"/>
+  <entry type="GenericInserted" style="#00aa00"/>
+  <entry type="GenericOutput" style="#888888"/>
+  <entry type="GenericPrompt" style="#555555"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="bold #800080"/>
+  <entry type="GenericTraceback" style="#aa0000"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="TextWhitespace" style="#bbbbbb"/>
+</style>

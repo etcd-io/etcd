@@ -1,0 +1,85 @@
+<lexer>
+  <config>
+    <name>stas</name>
+    <filename>*.stas</filename>
+  </config>
+  <rules>
+    <state name="string-double-quoted">
+      <rule pattern="\\.">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^\\&#34;]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="string-single-quoted">
+      <rule pattern="\\.">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^\\&#39;]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="string-char-literal">
+      <rule pattern="\\.">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^\\`]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="`">
+        <token type="LiteralStringChar"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="(\n|\s)+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(?&lt;!\S)(fn|argc|argv|swap|dup|over|over2|rot|rot4|drop|w8|w16|w32|w64|r8|r16|r32|r64|syscall0|syscall1|syscall2|syscall3|syscall4|syscall5|syscall6|_breakpoint|assert|const|auto|reserve|pop|include|addr|if|else|elif|while|break|continue|ret)(?!\S)">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(?&lt;!\S)(\+|\-|\*|\/|\%|\%\%|\+\+|\-\-|&gt;&gt;|&lt;&lt;)(?!\S)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(?&lt;!\S)(\=|\!\=|&gt;|&lt;|&gt;\=|&lt;\=|&gt;s|&lt;s|&gt;\=s|&lt;\=s)(?!\S)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(?&lt;!\S)(\&amp;|\||\^|\~|\!|-\>)(?!\S)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(?&lt;!\S)\-?(\d+)(?!\S)">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="(?&lt;!\S);.*(\S|\n)">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralString"/>
+        <push state="string-single-quoted"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string-double-quoted"/>
+      </rule>
+      <rule pattern="`">
+        <token type="LiteralStringChar"/>
+        <push state="string-char-literal"/>
+      </rule>
+      <rule pattern="(?&lt;!\S)[{}](?!\S)">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(?&lt;!\S)[^\s]+(?!\S)">
+        <token type="Name"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

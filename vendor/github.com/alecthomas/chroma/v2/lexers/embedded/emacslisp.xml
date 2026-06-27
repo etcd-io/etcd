@@ -1,0 +1,132 @@
+<lexer>
+  <config>
+    <name>EmacsLisp</name>
+    <alias>emacs</alias>
+    <alias>elisp</alias>
+    <alias>emacs-lisp</alias>
+    <filename>*.el</filename>
+    <mime_type>text/x-elisp</mime_type>
+    <mime_type>application/x-elisp</mime_type>
+  </config>
+  <rules>
+    <state name="string">
+      <rule pattern="[^&#34;\\`]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="`((?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|]|[#.:])*)\&#39;">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="`">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <push state="body"/>
+      </rule>
+    </state>
+    <state name="body">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=";.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="\?([^\\]|\\.)">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern=":((?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|]|[#.:])*)">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="::((?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|]|[#.:])*)">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="&#39;((?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|]|[#.:])*)">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="`">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[-+]?\d+\.?(?=[ &#34;()\]\&#39;\n,;`])">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[-+]?\d+/\d+(?=[ &#34;()\]\&#39;\n,;`])">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[-+]?(\d*\.\d+([defls][-+]?\d+)?|\d+(\.\d*)?[defls][-+]?\d+)(?=[ &#34;()\]\&#39;\n,;`])">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\[|\]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="#:((?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|]|[#.:])*)">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="#\^\^?">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="#\&#39;">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="#[bB][+-]?[01]+(/[01]+)?">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="#[oO][+-]?[0-7]+(/[0-7]+)?">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="#[xX][+-]?[0-9a-fA-F]+(/[0-9a-fA-F]+)?">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="#\d+r[+-]?[0-9a-zA-Z]+(/[0-9a-zA-Z]+)?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="#\d+=">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="#\d+#">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(,@|,|\.|:)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(t|nil)(?=[ &#34;()\]\&#39;\n,;`])">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="\*((?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|]|[#.:])*)\*">
+        <token type="NameVariableGlobal"/>
+      </rule>
+      <rule pattern="((?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|])(?:\\.|[\w!$%&amp;*+-/&lt;=&gt;?@^{}~|]|[#.:])*)">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="#\(">
+        <token type="Operator"/>
+        <push state="body"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <push state="body"/>
+      </rule>
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,89 @@
+<lexer>
+  <config>
+    <name>Mason</name>
+    <alias>mason</alias>
+    <filename>*.m</filename>
+    <filename>*.mhtml</filename>
+    <filename>*.mc</filename>
+    <filename>*.mi</filename>
+    <filename>autohandler</filename>
+    <filename>dhandler</filename>
+    <mime_type>application/x-mason</mime_type>
+    <priority>0.1</priority>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(&lt;%doc&gt;)(.*?)(&lt;/%doc&gt;)(?s)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="CommentMultiline"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;%(?:def|method))(\s*)(.*?)(&gt;)(.*?)(&lt;/%\2\s*&gt;)(?s)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+          <token type="NameTag"/>
+          <usingself state="root"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;%\w+)(.*?)(&gt;)(.*?)(&lt;/%\2\s*&gt;)(?s)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="NameFunction"/>
+          <token type="NameTag"/>
+          <using lexer="Perl"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;&amp;[^|])(.*?)(,.*?)?(&amp;&gt;)(?s)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="NameFunction"/>
+          <using lexer="Perl"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;&amp;\|)(.*?)(,.*?)?(&amp;&gt;)(?s)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="NameFunction"/>
+          <using lexer="Perl"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="&lt;/&amp;&gt;">
+        <token type="NameTag"/>
+      </rule>
+      <rule pattern="(&lt;%!?)(.*?)(%&gt;)(?s)">
+        <bygroups>
+          <token type="NameTag"/>
+          <using lexer="Perl"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?&lt;=^)#[^\n]*(\n|\Z)">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(?&lt;=^)(%)([^\n]*)(\n|\Z)">
+        <bygroups>
+          <token type="NameTag"/>
+          <using lexer="Perl"/>
+          <token type="Other"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?sx)&#xA;                 (.+?)               # anything, followed by:&#xA;                 (?:&#xA;                  (?&lt;=\n)(?=[%#]) |  # an eval or comment line&#xA;                  (?=&lt;/?[%&amp;]) |      # a substitution or block or&#xA;                                     # call start or end&#xA;                                     # - don&#39;t consume&#xA;                  (\\\n) |           # an escaped newline&#xA;                  \Z                 # end of string&#xA;                 )">
+        <bygroups>
+          <using lexer="HTML"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+    </state>
+  </rules>
+</lexer>

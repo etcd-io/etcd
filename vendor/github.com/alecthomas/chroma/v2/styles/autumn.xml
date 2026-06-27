@@ -1,0 +1,36 @@
+<style name="autumn">
+  <entry type="Error" style="#ff0000 bg:#ffaaaa"/>
+  <entry type="Background" style="bg:#ffffff"/>
+  <entry type="Keyword" style="#0000aa"/>
+  <entry type="KeywordType" style="#00aaaa"/>
+  <entry type="NameAttribute" style="#1e90ff"/>
+  <entry type="NameBuiltin" style="#00aaaa"/>
+  <entry type="NameClass" style="underline #00aa00"/>
+  <entry type="NameConstant" style="#aa0000"/>
+  <entry type="NameDecorator" style="#888888"/>
+  <entry type="NameEntity" style="bold #880000"/>
+  <entry type="NameFunction" style="#00aa00"/>
+  <entry type="NameNamespace" style="underline #00aaaa"/>
+  <entry type="NameTag" style="bold #1e90ff"/>
+  <entry type="NameVariable" style="#aa0000"/>
+  <entry type="LiteralString" style="#aa5500"/>
+  <entry type="LiteralStringRegex" style="#009999"/>
+  <entry type="LiteralStringSymbol" style="#0000aa"/>
+  <entry type="LiteralNumber" style="#009999"/>
+  <entry type="OperatorWord" style="#0000aa"/>
+  <entry type="Comment" style="italic #aaaaaa"/>
+  <entry type="CommentSpecial" style="italic #0000aa"/>
+  <entry type="CommentPreproc" style="noitalic #4c8317"/>
+  <entry type="GenericDeleted" style="#aa0000"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericError" style="#aa0000"/>
+  <entry type="GenericHeading" style="bold #000080"/>
+  <entry type="GenericInserted" style="#00aa00"/>
+  <entry type="GenericOutput" style="#888888"/>
+  <entry type="GenericPrompt" style="#555555"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="bold #800080"/>
+  <entry type="GenericTraceback" style="#aa0000"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="TextWhitespace" style="#bbbbbb"/>
+</style>

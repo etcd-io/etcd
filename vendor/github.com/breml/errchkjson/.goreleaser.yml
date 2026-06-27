@@ -1,0 +1,37 @@
+---
+version: 2
+
+# This is an example .goreleaser.yml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+builds:
+  - main: ./cmd/errchkjson
+    binary: errchkjson
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+archives:
+  - name_template: >-
+      {{- .Binary }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end -}}
+snapshot:
+  version_template: "{{ .Tag }}-next"
+changelog:
+  disable: true
+release:
+  github:
+    owner: breml
+    name: errchkjson
+gomod:
+  proxy: true

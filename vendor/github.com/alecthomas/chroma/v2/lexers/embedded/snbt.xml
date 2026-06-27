@@ -1,0 +1,58 @@
+
+<lexer>
+  <config>
+    <name>SNBT</name>
+    <alias>snbt</alias>
+    <filename>*.snbt</filename>
+    <mime_type>text/snbt</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\{"><token type="Punctuation"/><push state="compound"/></rule>
+      <rule pattern="[^\{]+"><token type="Text"/></rule>
+    </state>
+    <state name="whitespace">
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+    </state>
+    <state name="operators">
+      <rule pattern="[,:;]"><token type="Punctuation"/></rule>
+    </state>
+    <state name="literals">
+      <rule pattern="(true|false)"><token type="KeywordConstant"/></rule>
+      <rule pattern="-?\d+[eE]-?\d+"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="-?\d*\.\d+[fFdD]?"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="-?\d+[bBsSlLfFdD]?"><token type="LiteralNumberInteger"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><push state="literals.string_double"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringSingle"/><push state="literals.string_single"/></rule>
+    </state>
+    <state name="literals.string_double">
+      <rule pattern="\\."><token type="LiteralStringEscape"/></rule>
+      <rule pattern="[^\\&quot;\n]+"><token type="LiteralStringDouble"/></rule>
+      <rule pattern="&quot;"><token type="LiteralStringDouble"/><pop depth="1"/></rule>
+    </state>
+    <state name="literals.string_single">
+      <rule pattern="\\."><token type="LiteralStringEscape"/></rule>
+      <rule pattern="[^\\&#x27;\n]+"><token type="LiteralStringSingle"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringSingle"/><pop depth="1"/></rule>
+    </state>
+    <state name="compound">
+      <rule pattern="[A-Z_a-z]+"><token type="NameAttribute"/></rule>
+      <rule><include state="operators"/></rule>
+      <rule><include state="whitespace"/></rule>
+      <rule><include state="literals"/></rule>
+      <rule pattern="\{"><token type="Punctuation"/><push/></rule>
+      <rule pattern="\["><token type="Punctuation"/><push state="list"/></rule>
+      <rule pattern="\}"><token type="Punctuation"/><pop depth="1"/></rule>
+    </state>
+    <state name="list">
+      <rule pattern="[A-Z_a-z]+"><token type="NameAttribute"/></rule>
+      <rule><include state="literals"/></rule>
+      <rule><include state="operators"/></rule>
+      <rule><include state="whitespace"/></rule>
+      <rule pattern="\["><token type="Punctuation"/><push/></rule>
+      <rule pattern="\{"><token type="Punctuation"/><push state="compound"/></rule>
+      <rule pattern="\]"><token type="Punctuation"/><pop depth="1"/></rule>
+    </state>
+  </rules>
+</lexer>
+

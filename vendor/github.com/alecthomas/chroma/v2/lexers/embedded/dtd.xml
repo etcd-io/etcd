@@ -1,0 +1,168 @@
+<lexer>
+  <config>
+    <name>DTD</name>
+    <alias>dtd</alias>
+    <filename>*.dtd</filename>
+    <mime_type>application/xml-dtd</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="common">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(%|&amp;)[^;]*;">
+        <token type="NameEntity"/>
+      </rule>
+      <rule pattern="&lt;!--">
+        <token type="Comment"/>
+        <push state="comment"/>
+      </rule>
+      <rule pattern="[(|)*,?+]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="&#34;[^&#34;]*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="\&#39;[^\&#39;]*\&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern="[^-]+">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="--&gt;">
+        <token type="Comment"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="-">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="element">
+      <rule>
+        <include state="common"/>
+      </rule>
+      <rule pattern="EMPTY|ANY|#PCDATA">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="[^&gt;\s|()?+*,]+">
+        <token type="NameTag"/>
+      </rule>
+      <rule pattern="&gt;">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="attlist">
+      <rule>
+        <include state="common"/>
+      </rule>
+      <rule pattern="CDATA|IDREFS|IDREF|ID|NMTOKENS|NMTOKEN|ENTITIES|ENTITY|NOTATION">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="#REQUIRED|#IMPLIED|#FIXED">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="xml:space|xml:lang">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="[^&gt;\s|()?+*,]+">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="&gt;">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="entity">
+      <rule>
+        <include state="common"/>
+      </rule>
+      <rule pattern="SYSTEM|PUBLIC|NDATA">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="[^&gt;\s|()?+*,]+">
+        <token type="NameEntity"/>
+      </rule>
+      <rule pattern="&gt;">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="notation">
+      <rule>
+        <include state="common"/>
+      </rule>
+      <rule pattern="SYSTEM|PUBLIC">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="[^&gt;\s|()?+*,]+">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="&gt;">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="common"/>
+      </rule>
+      <rule pattern="(&lt;!ELEMENT)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameTag"/>
+        </bygroups>
+        <push state="element"/>
+      </rule>
+      <rule pattern="(&lt;!ATTLIST)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameTag"/>
+        </bygroups>
+        <push state="attlist"/>
+      </rule>
+      <rule pattern="(&lt;!ENTITY)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameEntity"/>
+        </bygroups>
+        <push state="entity"/>
+      </rule>
+      <rule pattern="(&lt;!NOTATION)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameTag"/>
+        </bygroups>
+        <push state="notation"/>
+      </rule>
+      <rule pattern="(&lt;!\[)([^\[\s]+)(\s*)(\[)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="NameEntity"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;!DOCTYPE)(\s+)([^&gt;\s]+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="PUBLIC|SYSTEM">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="[\[\]&gt;]">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

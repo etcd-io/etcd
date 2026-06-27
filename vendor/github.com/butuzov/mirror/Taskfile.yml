@@ -1,0 +1,73 @@
+version: '3'
+
+tasks:
+    default: task --list-all
+
+    # Continues Development ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    watcher:
+        desc: watcher
+        sources:
+        - ./**/*.go
+        method: timestamp
+        cmds:
+        - task: lints
+        - task: test-summary
+        - task: build-race
+
+    # Generating assets ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    generate:
+        desc: Generate Assets
+        sources:
+        - ./checkers_*.go
+        - ./cmd/internal/**/*.go
+        method: timestamp
+        cmds:
+        - task generate-mirror-table
+        - task generate-tests
+
+    generate-mirror-table:
+        desc: Generates Assets at testdata
+        cmd: make generate-mirror-table
+
+    generate-tests:
+        desc: Generate Asset MIRROR_FUNCS.md
+        cmd: make generate-tests
+
+    # Run Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    tests:
+        desc: Run Tests
+        cmd: make tests
+        ignore_error: true
+
+    test-summary:
+        desc: Run Tests (Summary)
+        cmd: make tests-summary
+        ignore_error: true
+
+    testcase: go test -v -failfast -count=1 -run "TestAll/{{ .Case }}" ./...
+
+    # Build Artifacts ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    build:
+        desc: Build binary
+        cmd: make build
+
+    build-race:
+        desc: Build binary with race flag
+        cmd: make build-race
+
+    install:
+        desc: Install binary
+        cmd: make install
+
+    # Linter ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    lints:
+        cmd: make lints
+
+    # Other
+    cover:
+        desc: Run Coverage
+        cmd: make cover
+
+    test-release:
+        desc: Testing Release
+        cmd: make test-release

@@ -1,0 +1,138 @@
+
+<lexer>
+  <config>
+    <name>Jsonnet</name>
+    <alias>jsonnet</alias>
+    <filename>*.jsonnet</filename>
+    <filename>*.libsonnet</filename>
+  </config>
+  <rules>
+    <state name="_comments">
+      <rule pattern="(//|#).*\n"><token type="CommentSingle"/></rule>
+      <rule pattern="/\*\*([^/]|/(?!\*))*\*/"><token type="LiteralStringDoc"/></rule>
+      <rule pattern="/\*([^/]|/(?!\*))*\*/"><token type="Comment"/></rule>
+    </state>
+    <state name="root">
+      <rule><include state="_comments"/></rule>
+      <rule pattern="@&#x27;.*&#x27;"><token type="LiteralString"/></rule>
+      <rule pattern="@&quot;.*&quot;"><token type="LiteralString"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralString"/><push state="singlestring"/></rule>
+      <rule pattern="&quot;"><token type="LiteralString"/><push state="doublestring"/></rule>
+      <rule pattern="\|\|\|(.|\n)*\|\|\|"><token type="LiteralString"/></rule>
+      <rule pattern="[+-]?[0-9]+(.[0-9])?"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="[!$~+\-&amp;|^=&lt;&gt;*/%]"><token type="Operator"/></rule>
+      <rule pattern="\{"><token type="Punctuation"/><push state="object"/></rule>
+      <rule pattern="\["><token type="Punctuation"/><push state="array"/></rule>
+      <rule pattern="local\b"><token type="Keyword"/><push state="local_name"/></rule>
+      <rule pattern="assert\b"><token type="Keyword"/><push state="assert"/></rule>
+      <rule pattern="(assert|else|error|false|for|if|import|importstr|in|null|tailstrict|then|self|super|true)\b"><token type="Keyword"/></rule>
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+      <rule pattern="function(?=\()"><token type="Keyword"/><push state="function_params"/></rule>
+      <rule pattern="std\.[^\W\d]\w*(?=\()"><token type="NameBuiltin"/><push state="function_args"/></rule>
+      <rule pattern="[^\W\d]\w*(?=\()"><token type="NameFunction"/><push state="function_args"/></rule>
+      <rule pattern="[^\W\d]\w*"><token type="NameVariable"/></rule>
+      <rule pattern="[\.()]"><token type="Punctuation"/></rule>
+    </state>
+    <state name="singlestring">
+      <rule pattern="[^&#x27;\\]"><token type="LiteralString"/></rule>
+      <rule pattern="\\."><token type="LiteralStringEscape"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralString"/><pop depth="1"/></rule>
+    </state>
+    <state name="doublestring">
+      <rule pattern="[^&quot;\\]"><token type="LiteralString"/></rule>
+      <rule pattern="\\."><token type="LiteralStringEscape"/></rule>
+      <rule pattern="&quot;"><token type="LiteralString"/><pop depth="1"/></rule>
+    </state>
+    <state name="array">
+      <rule pattern=","><token type="Punctuation"/></rule>
+      <rule pattern="\]"><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule><include state="root"/></rule>
+    </state>
+    <state name="local_name">
+      <rule pattern="[^\W\d]\w*(?=\()"><token type="NameFunction"/><push state="function_params"/></rule>
+      <rule pattern="[^\W\d]\w*"><token type="NameVariable"/></rule>
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+      <rule pattern="(?==)"><token type="TextWhitespace"/><push state="#pop" state="local_value"/></rule>
+    </state>
+    <state name="local_value">
+      <rule pattern="="><token type="Operator"/></rule>
+      <rule pattern=";"><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule><include state="root"/></rule>
+    </state>
+    <state name="assert">
+      <rule pattern=":"><token type="Punctuation"/></rule>
+      <rule pattern=";"><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule><include state="root"/></rule>
+    </state>
+    <state name="function_params">
+      <rule pattern="[^\W\d]\w*"><token type="NameVariable"/></rule>
+      <rule pattern="\("><token type="Punctuation"/></rule>
+      <rule pattern="\)"><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule pattern=","><token type="Punctuation"/></rule>
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+      <rule pattern="="><token type="Operator"/><push state="function_param_default"/></rule>
+    </state>
+    <state name="function_args">
+      <rule pattern="\("><token type="Punctuation"/></rule>
+      <rule pattern="\)"><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule pattern=","><token type="Punctuation"/></rule>
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+      <rule><include state="root"/></rule>
+    </state>
+    <state name="object">
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+      <rule pattern="local\b"><token type="Keyword"/><push state="object_local_name"/></rule>
+      <rule pattern="assert\b"><token type="Keyword"/><push state="object_assert"/></rule>
+      <rule pattern="\["><token type="Operator"/><push state="field_name_expr"/></rule>
+      <rule pattern="(?=[^\W\d]\w*)"><token type="Text"/><push state="field_name"/></rule>
+      <rule pattern="\}"><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule pattern="&quot;"><token type="NameVariable"/><push state="double_field_name"/></rule>
+      <rule pattern="&#x27;"><token type="NameVariable"/><push state="single_field_name"/></rule>
+      <rule><include state="_comments"/></rule>
+    </state>
+    <state name="field_name">
+      <rule pattern="[^\W\d]\w*(?=\()"><token type="NameFunction"/><push state="field_separator" state="function_params"/></rule>
+      <rule pattern="[^\W\d]\w*"><token type="NameVariable"/><push state="field_separator"/></rule>
+    </state>
+    <state name="double_field_name">
+      <rule pattern="([^&quot;\\]|\\.)*&quot;"><token type="NameVariable"/><push state="field_separator"/></rule>
+    </state>
+    <state name="single_field_name">
+      <rule pattern="([^&#x27;\\]|\\.)*&#x27;"><token type="NameVariable"/><push state="field_separator"/></rule>
+    </state>
+    <state name="field_name_expr">
+      <rule pattern="\]"><token type="Operator"/><push state="field_separator"/></rule>
+      <rule><include state="root"/></rule>
+    </state>
+    <state name="function_param_default">
+      <rule pattern="(?=[,\)])"><token type="TextWhitespace"/><pop depth="1"/></rule>
+      <rule><include state="root"/></rule>
+    </state>
+    <state name="field_separator">
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+      <rule pattern="\+?::?:?"><token type="Punctuation"/><push state="#pop" state="#pop" state="field_value"/></rule>
+      <rule><include state="_comments"/></rule>
+    </state>
+    <state name="field_value">
+      <rule pattern=","><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule pattern="\}"><token type="Punctuation"/><pop depth="2"/></rule>
+      <rule><include state="root"/></rule>
+    </state>
+    <state name="object_assert">
+      <rule pattern=":"><token type="Punctuation"/></rule>
+      <rule pattern=","><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule><include state="root"/></rule>
+    </state>
+    <state name="object_local_name">
+      <rule pattern="[^\W\d]\w*"><token type="NameVariable"/><push state="#pop" state="object_local_value"/></rule>
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+    </state>
+    <state name="object_local_value">
+      <rule pattern="="><token type="Operator"/></rule>
+      <rule pattern=","><token type="Punctuation"/><pop depth="1"/></rule>
+      <rule pattern="\}"><token type="Punctuation"/><pop depth="2"/></rule>
+      <rule><include state="root"/></rule>
+    </state>
+  </rules>
+</lexer>
+

@@ -1,0 +1,270 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/MirrexOne/unqueryvet/main/schema.json",
+  "title": "unqueryvet configuration",
+  "description": "Configuration schema for unqueryvet - a Go static analysis tool for SQL queries",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "rules": {
+      "type": "object",
+      "description": "Built-in rules severity configuration",
+      "additionalProperties": false,
+      "properties": {
+        "select-star": {
+          "$ref": "#/definitions/severity",
+          "description": "Severity for SELECT * detection"
+        },
+        "n1-queries": {
+          "$ref": "#/definitions/severity",
+          "description": "Severity for N+1 query detection"
+        },
+        "sql-injection": {
+          "$ref": "#/definitions/severity",
+          "description": "Severity for SQL injection detection"
+        },
+        "tx-leak": {
+          "$ref": "#/definitions/severity",
+          "description": "Severity for transaction leak detection"
+        }
+      }
+    },
+    "ignore": {
+      "type": "array",
+      "description": "File patterns to ignore (glob syntax)",
+      "items": {
+        "type": "string"
+      },
+      "examples": [["*_test.go", "testdata/**", "vendor/**"]]
+    },
+    "allow": {
+      "type": "array",
+      "description": "SQL patterns to whitelist (won't trigger warnings)",
+      "items": {
+        "type": "string"
+      },
+      "examples": [["COUNT(*)", "information_schema.*"]]
+    },
+    "severity": {
+      "$ref": "#/definitions/severityLevel",
+      "description": "Default diagnostic severity: 'error' or 'warning'",
+      "default": "warning"
+    },
+    "check-sql-builders": {
+      "type": "boolean",
+      "description": "Enable SQL builder library checking",
+      "default": true
+    },
+    "check-aliased-wildcard": {
+      "type": "boolean",
+      "description": "Enable aliased wildcard detection (e.g., SELECT t.*)",
+      "default": true
+    },
+    "check-string-concat": {
+      "type": "boolean",
+      "description": "Enable string concatenation analysis",
+      "default": true
+    },
+    "check-format-strings": {
+      "type": "boolean",
+      "description": "Enable format string analysis (e.g., fmt.Sprintf)",
+      "default": true
+    },
+    "check-string-builder": {
+      "type": "boolean",
+      "description": "Enable strings.Builder analysis",
+      "default": true
+    },
+    "check-subqueries": {
+      "type": "boolean",
+      "description": "Enable SELECT * detection in subqueries",
+      "default": true
+    },
+    "sql-builders": {
+      "type": "object",
+      "description": "SQL builder libraries to check",
+      "additionalProperties": false,
+      "properties": {
+        "squirrel": {
+          "type": "boolean",
+          "description": "Check github.com/Masterminds/squirrel",
+          "default": true
+        },
+        "gorm": {
+          "type": "boolean",
+          "description": "Check gorm.io/gorm",
+          "default": true
+        },
+        "sqlx": {
+          "type": "boolean",
+          "description": "Check github.com/jmoiron/sqlx",
+          "default": true
+        },
+        "ent": {
+          "type": "boolean",
+          "description": "Check entgo.io/ent",
+          "default": true
+        },
+        "pgx": {
+          "type": "boolean",
+          "description": "Check github.com/jackc/pgx",
+          "default": true
+        },
+        "bun": {
+          "type": "boolean",
+          "description": "Check github.com/uptrace/bun",
+          "default": true
+        },
+        "sqlboiler": {
+          "type": "boolean",
+          "description": "Check github.com/volatiletech/sqlboiler",
+          "default": true
+        },
+        "jet": {
+          "type": "boolean",
+          "description": "Check github.com/go-jet/jet",
+          "default": true
+        },
+        "sqlc": {
+          "type": "boolean",
+          "description": "Check sqlc generated code",
+          "default": true
+        },
+        "goqu": {
+          "type": "boolean",
+          "description": "Check github.com/doug-martin/goqu",
+          "default": true
+        },
+        "rel": {
+          "type": "boolean",
+          "description": "Check github.com/go-rel/rel",
+          "default": true
+        },
+        "reform": {
+          "type": "boolean",
+          "description": "Check gopkg.in/reform.v1",
+          "default": true
+        }
+      }
+    },
+    "ignored-files": {
+      "type": "array",
+      "description": "Legacy: File patterns to ignore (use 'ignore' instead)",
+      "items": {
+        "type": "string"
+      },
+      "deprecated": true
+    },
+    "ignored-functions": {
+      "type": "array",
+      "description": "Function patterns to ignore (regex)",
+      "items": {
+        "type": "string"
+      },
+      "examples": [["debug\\..*", "test.*"]]
+    },
+    "allowed-patterns": {
+      "type": "array",
+      "description": "Legacy: Regex patterns to allow (use 'allow' instead)",
+      "items": {
+        "type": "string"
+      },
+      "deprecated": true
+    },
+    "custom-rules": {
+      "type": "array",
+      "description": "Custom analysis rules using DSL",
+      "items": {
+        "$ref": "#/definitions/customRule"
+      }
+    },
+    "output": {
+      "type": "object",
+      "description": "Output configuration options",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["text", "json", "sarif"],
+          "description": "Output format",
+          "default": "text"
+        },
+        "color": {
+          "type": "string",
+          "enum": ["auto", "always", "never"],
+          "description": "Color output mode",
+          "default": "auto"
+        },
+        "verbose": {
+          "type": "boolean",
+          "description": "Enable verbose output",
+          "default": false
+        },
+        "quiet": {
+          "type": "boolean",
+          "description": "Quiet mode (only errors)",
+          "default": false
+        }
+      }
+    }
+  },
+  "definitions": {
+    "severity": {
+      "type": "string",
+      "enum": ["error", "warning", "info", "ignore"],
+      "description": "Severity level for a rule"
+    },
+    "severityLevel": {
+      "type": "string",
+      "enum": ["error", "warning"],
+      "description": "Default severity level"
+    },
+    "customRule": {
+      "type": "object",
+      "description": "Custom analysis rule definition",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the rule",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "SQL/code pattern to match (supports metavariables: $TABLE, $VAR, $QUERY, $COLS, $DB, $EXPR)"
+        },
+        "patterns": {
+          "type": "array",
+          "description": "Multiple patterns (any match triggers the rule)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "when": {
+          "type": "string",
+          "description": "Condition expression using expr-lang syntax. Available variables: file, package, function, query, query_type, table, tables, columns, has_join, has_where, in_loop, loop_depth, builder"
+        },
+        "message": {
+          "type": "string",
+          "description": "Diagnostic message to display when rule matches"
+        },
+        "severity": {
+          "$ref": "#/definitions/severity",
+          "description": "Severity level for this rule"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["report", "allow", "ignore"],
+          "description": "Action to take when rule matches",
+          "default": "report"
+        },
+        "fix": {
+          "type": "string",
+          "description": "Suggested fix message"
+        }
+      },
+      "oneOf": [{ "required": ["pattern"] }, { "required": ["patterns"] }]
+    }
+  }
+}

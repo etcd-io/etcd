@@ -1,0 +1,49 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "testgrid_api_v1_proto",
+    srcs = ["data.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pb/config:config_proto",
+        "//pb/state:state_proto",
+        "//pb/summary:summary_proto",
+        "@com_google_protobuf//:timestamp_proto",
+    ],
+)
+
+go_proto_library(
+    name = "testgrid_api_v1_go_proto",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "github.com/GoogleCloudPlatform/testgrid/pb/api/v1",
+    proto = ":testgrid_api_v1_proto",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pb/config:go_default_library",
+        "//pb/state:go_default_library",
+        "//pb/summary:go_default_library",
+    ],
+)
+
+go_library(
+    name = "go_default_library",
+    embed = [":testgrid_api_v1_go_proto"],
+    importpath = "github.com/GoogleCloudPlatform/testgrid/pb/api/v1",
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+    tags = ["automanaged"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "all-srcs",
+    srcs = [":package-srcs"],
+    tags = ["automanaged"],
+    visibility = ["//visibility:public"],
+)

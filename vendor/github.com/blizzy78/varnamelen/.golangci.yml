@@ -1,0 +1,70 @@
+# https://github.com/golangci/golangci-lint/issues/456#issuecomment-617470264
+issues:
+  exclude-use-default: false
+  exclude:
+    # errcheck: Almost all programs ignore errors on these functions and in most cases it's ok
+    - Error return value of .((os\.)?std(out|err)\..*|.*print(f|ln)?|os\.(Un)?Setenv). is not checked
+    # golint: False positive when tests are defined in package 'test'
+    - func name will be used as test\.Test.* by other packages, and that stutters; consider calling this
+    # gosec: Duplicated errcheck checks
+    - G104
+    # gosec: Too many issues in popular repos
+    - (Expect directory permissions to be 0750 or less|Expect file permissions to be 0600 or less)
+    # gosec: False positive is triggered by 'src, err := ioutil.ReadFile(filename)'
+    - Potential file inclusion via variable
+
+linters:
+  enable:
+    - asciicheck
+    - bodyclose
+    - cyclop
+    - durationcheck
+    - errname
+    - errorlint
+    - exportloopref
+    - forcetypeassert
+    - gocognit
+    - gocritic
+    - goerr113
+    - gofmt
+    - goprintffuncname
+    - gosec
+    - ifshort
+    - nakedret
+    - nestif
+    - nilerr
+    - noctx
+    - nolintlint
+    - prealloc
+    - predeclared
+    - promlinter
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - stylecheck
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - varnamelen
+    - wastedassign
+    - wrapcheck
+    - wsl
+
+linters-settings:
+  gocognit:
+    min-complexity: 15
+  nakedret:
+    max-func-lines: 0
+  nolintlint:
+    allow-unused: false
+    allow-leading-space: false
+    require-explanation: true
+    require-specific: true
+  unused:
+    go: 1.16
+  varnamelen:
+    check-return: true
+    ignore-type-assert-ok: true
+    ignore-map-index-ok: true
+    ignore-chan-recv-ok: true

@@ -1,0 +1,119 @@
+<lexer>
+  <config>
+    <name>PL/pgSQL</name>
+    <alias>plpgsql</alias>
+    <mime_type>text/x-plpgsql</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\%[a-z]\w*\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern=":=">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\&lt;\&lt;[a-z]\w*\&gt;\&gt;">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="\#[a-z]\w*\b">
+        <token type="KeywordPseudo"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="--.*\n?">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="multiline-comments"/>
+      </rule>
+      <rule pattern="(bigint|bigserial|bit|bit\s+varying|bool|boolean|box|bytea|char|character|character\s+varying|cidr|circle|date|decimal|double\s+precision|float4|float8|inet|int|int2|int4|int8|integer|interval|json|jsonb|line|lseg|macaddr|money|numeric|path|pg_lsn|point|polygon|real|serial|serial2|serial4|serial8|smallint|smallserial|text|time|timestamp|timestamptz|timetz|tsquery|tsvector|txid_snapshot|uuid|varbit|varchar|with\s+time\s+zone|without\s+time\s+zone|xml|anyarray|anyelement|anyenum|anynonarray|anyrange|cstring|fdw_handler|internal|language_handler|opaque|record|void)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(CURRENT_TIMESTAMP|CHARACTERISTICS|CURRENT_CATALOG|CURRENT_SCHEMA|LOCALTIMESTAMP|XMLATTRIBUTES|AUTHORIZATION|CONFIGURATION|CURRENT_TIME|CURRENT_ROLE|CURRENT_USER|CURRENT_DATE|MATERIALIZED|SESSION_USER|SERIALIZABLE|CONCURRENTLY|XMLSERIALIZE|DIAGNOSTICS|UNCOMMITTED|UNENCRYPTED|TRANSACTION|INSENSITIVE|CONSTRAINTS|CONVERSION|ORDINALITY|LC_COLLATE|DEALLOCATE|CONSTRAINT|CONNECTION|PRIVILEGES|PROCEDURAL|STANDALONE|DICTIONARY|XMLELEMENT|STATISTICS|DEFERRABLE|DELIMITERS|REPEATABLE|TABLESPACE|REFERENCES|CHECKPOINT|WHITESPACE|ASYMMETRIC|ASSIGNMENT|CHARACTER|INCLUDING|SYMMETRIC|IMMUTABLE|IMMEDIATE|XMLCONCAT|INTERSECT|ISOLATION|DELIMITER|COLLATION|TIMESTAMP|INCREMENT|ENCRYPTED|PROCEDURE|COMMITTED|SUBSTRING|EXCEPTION|VALIDATOR|UNBOUNDED|PARTITION|ATTRIBUTE|INITIALLY|EXCLUSIVE|SAVEPOINT|XMLEXISTS|ASSERTION|EXTENSION|STATEMENT|RETURNING|LEAKPROOF|RECURSIVE|FUNCTIONS|AGGREGATE|LOCALTIME|FOLLOWING|PRECEDING|PRECISION|SEQUENCES|XMLFOREST|TEMPORARY|EXCLUDING|DATABASE|XMLPARSE|CONTINUE|INHERITS|UNLOGGED|DEFAULTS|COMMENTS|DEFERRED|MINVALUE|TRAILING|VARIADIC|COALESCE|INTERVAL|OVERLAPS|MAXVALUE|IMPLICIT|DISTINCT|VOLATILE|DOCUMENT|SMALLINT|OPERATOR|SEQUENCE|CONSTANT|CASCADED|IDENTITY|ENCODING|SNAPSHOT|TRUNCATE|ROLLBACK|PREPARED|LANGUAGE|UNLISTEN|TEMPLATE|BACKWARD|VALIDATE|NATIONAL|REASSIGN|GREATEST|LC_CTYPE|EXTERNAL|PASSWORD|SECURITY|LOCATION|PRESERVE|FUNCTION|RELATIVE|POSITION|SQLSTATE|ABSOLUTE|RESTRICT|BOOLEAN|FORWARD|UNKNOWN|FOREIGN|RECHECK|NOTHING|NOTNULL|EXTRACT|NATURAL|GRANTED|EXPLAIN|EXECUTE|HANDLER|EXCLUDE|NUMERIC|TRUSTED|VERSION|TRIGGER|VERBOSE|WITHOUT|WRAPPER|OPTIONS|DISCARD|VARYING|DISABLE|DEFINER|DEFAULT|INDEXES|PRIMARY|DECLARE|DECIMAL|PROGRAM|RETURNS|CURRENT|XMLROOT|CONTENT|COMMENT|INSTEAD|COLLATE|INTEGER|CLUSTER|SESSION|VARCHAR|INVOKER|CATALOG|CASCADE|OVERLAY|RESTART|BETWEEN|REPLICA|PARTIAL|REPLACE|FOREACH|LATERAL|PASSING|PERFORM|LEADING|ANALYZE|ANALYSE|SIMILAR|REFRESH|MAPPING|RELEASE|PLACING|REVERSE|REINDEX|STORAGE|INHERIT|PREPARE|UPDATE|VACUUM|RENAME|ISNULL|VALUES|MINUTE|INSERT|INLINE|SCROLL|REVOKE|HEADER|HAVING|TABLES|SYSTEM|GLOBAL|FREEZE|UNIQUE|SCHEMA|SEARCH|FILTER|NOTIFY|SECOND|NOWAIT|FAMILY|NULLIF|EXISTS|EXCEPT|OBJECT|SELECT|ESCAPE|OFFSET|WINDOW|WITHIN|ENABLE|DOUBLE|OPTION|DOMAIN|DELETE|CURSOR|CREATE|SERVER|COMMIT|COLUMN|SIMPLE|CALLED|BINARY|BIGINT|PARSER|STABLE|BEFORE|NOTICE|ALWAYS|STDOUT|RETURN|POLICY|STRICT|ACTION|ACCESS|LISTEN|ABORT|PLANS|MONTH|PRIOR|OWNER|OWNED|OUTER|ORDER|QUOTE|RANGE|TREAT|TYPES|NULLS|UNION|NCHAR|NAMES|UNTIL|MATCH|LOCAL|USING|LIMIT|LEVEL|LEAST|LARGE|LABEL|RESET|VALUE|INPUT|INOUT|INNER|INDEX|RIGHT|ILIKE|VIEWS|GROUP|TABLE|GRANT|WHERE|FORCE|FLOAT|FIRST|FETCH|FALSE|EVENT|WRITE|CYCLE|CROSS|XMLPI|CLOSE|CLASS|SYSID|SETOF|SHARE|CHECK|WHILE|CHAIN|ALIAS|CACHE|ELSIF|BEGIN|ARRAY|START|QUERY|RAISE|STDIN|ALTER|AFTER|ADMIN|STRIP|VALID|WORK|ALSO|RULE|ROWS|OPEN|ROLE|TEMP|LOOP|REAL|TEXT|THEN|TIME|READ|SOME|OVER|EXIT|BOTH|ONLY|TRIM|TRUE|CASE|OIDS|TYPE|CAST|ZONE|NULL|YEAR|NONE|CHAR|NEXT|NAME|MOVE|MODE|LOCK|USER|LOAD|LIKE|LEFT|LAST|COST|JOIN|DATA|INTO|DESC|DROP|ELSE|HOUR|VIEW|HOLD|FULL|WHEN|FROM|EACH|ENUM|WITH|SHOW|COPY|OUT|FOR|ADD|XML|ALL|INT|DEC|DAY|SET|CSV|KEY|AND|ANY|NOT|YES|ROW|END|ASC|REF|GET|BIT|OFF|TO|OR|BY|ON|OF|AS|NO|AT|IS|DO|IN|IF)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="[+*/&lt;&gt;=~!@#%^&amp;|`?-]+">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="::">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\$\d+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="([0-9]*\.[0-9]*|[0-9]+)(e[+-]?[0-9]+)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="((?:E|U&amp;)?)(&#39;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringSingle"/>
+        </bygroups>
+        <push state="string"/>
+      </rule>
+      <rule pattern="((?:U&amp;)?)(&#34;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringName"/>
+        </bygroups>
+        <push state="quoted-ident"/>
+      </rule>
+      <rule pattern="[a-z_]\w*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern=":([&#39;&#34;]?)[a-z]\w*\b\1">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[;:()\[\]{},.]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="multiline-comments">
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="multiline-comments"/>
+      </rule>
+      <rule pattern="\*/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^/*]+">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="[/*]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="[^&#39;]+">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="&#39;&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="quoted-ident">
+      <rule pattern="[^&#34;]+">
+        <token type="LiteralStringName"/>
+      </rule>
+      <rule pattern="&#34;&#34;">
+        <token type="LiteralStringName"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringName"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

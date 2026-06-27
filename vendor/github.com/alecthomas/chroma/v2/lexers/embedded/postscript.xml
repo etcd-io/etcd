@@ -1,0 +1,89 @@
+<lexer>
+  <config>
+    <name>PostScript</name>
+    <alias>postscript</alias>
+    <alias>postscr</alias>
+    <filename>*.ps</filename>
+    <filename>*.eps</filename>
+    <mime_type>application/postscript</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="^%!.+\n">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="%%.*\n">
+        <token type="CommentSpecial"/>
+      </rule>
+      <rule pattern="(^%.*\n){2,}">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="%.*\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="LiteralString"/>
+        <push state="stringliteral"/>
+      </rule>
+      <rule pattern="[{}&lt;&gt;\[\]]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="&lt;[0-9A-Fa-f]+&gt;(?=[()&lt;&gt;\[\]{}/%\s])">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9]+\#(\-|\+)?([0-9]+\.?|[0-9]*\.[0-9]+|[0-9]+\.[0-9]*)((e|E)[0-9]+)?(?=[()&lt;&gt;\[\]{}/%\s])">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="(\-|\+)?([0-9]+\.?|[0-9]*\.[0-9]+|[0-9]+\.[0-9]*)((e|E)[0-9]+)?(?=[()&lt;&gt;\[\]{}/%\s])">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="(\-|\+)?[0-9]+(?=[()&lt;&gt;\[\]{}/%\s])">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="\/[^()&lt;&gt;\[\]{}/%\s]+(?=[()&lt;&gt;\[\]{}/%\s])">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[^()&lt;&gt;\[\]{}/%\s]+(?=[()&lt;&gt;\[\]{}/%\s])">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="(false|true)(?=[()&lt;&gt;\[\]{}/%\s])">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(eq|ne|g[et]|l[et]|and|or|not|if(?:else)?|for(?:all)?)(?=[()&lt;&gt;\[\]{}/%\s])">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="(dictstackoverflow|undefinedfilename|currentlinewidth|undefinedresult|currentmatrix|defaultmatrix|invertmatrix|concatmatrix|currentpoint|setlinewidth|syntaxerror|idtransform|identmatrix|setrgbcolor|stringwidth|setlinejoin|getinterval|itransform|strokepath|pathforall|rangecheck|setlinecap|dtransform|transform|translate|setmatrix|typecheck|undefined|scalefont|closepath|findfont|showpage|rcurveto|grestore|truncate|pathbbox|charpath|rlineto|rmoveto|ceiling|newpath|setdash|setfont|restore|curveto|setgray|stroke|pstack|matrix|length|lineto|repeat|rotate|moveto|shfill|concat|gsave|aload|scale|array|round|stack|index|begin|print|floor|exch|quit|clip|copy|bind|loop|idiv|fill|show|roll|exit|load|dict|save|arcn|sqrt|exec|rand|atan|end|div|abs|run|def|cvs|exp|cvi|sin|cos|get|dup|mod|put|sub|pop|add|neg|mul|arc|log|ln|gt)(?=[()&lt;&gt;\[\]{}/%\s])">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="stringliteral">
+      <rule pattern="[^()\\]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralStringEscape"/>
+        <push state="escape"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="LiteralString"/>
+        <push/>
+      </rule>
+      <rule pattern="\)">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="escape">
+      <rule pattern="[0-8]{3}|n|r|t|b|f|\\|\(|\)">
+        <token type="LiteralStringEscape"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

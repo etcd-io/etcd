@@ -1,0 +1,44 @@
+<style name="emacs">
+  <entry type="Error" style="border:#ff0000"/>
+  <entry type="Background" style="bg:#f8f8f8"/>
+  <entry type="Keyword" style="bold #aa22ff"/>
+  <entry type="KeywordPseudo" style="nobold"/>
+  <entry type="KeywordType" style="bold #00bb00"/>
+  <entry type="NameAttribute" style="#bb4444"/>
+  <entry type="NameBuiltin" style="#aa22ff"/>
+  <entry type="NameClass" style="#0000ff"/>
+  <entry type="NameConstant" style="#880000"/>
+  <entry type="NameDecorator" style="#aa22ff"/>
+  <entry type="NameEntity" style="bold #999999"/>
+  <entry type="NameException" style="bold #d2413a"/>
+  <entry type="NameFunction" style="#00a000"/>
+  <entry type="NameLabel" style="#a0a000"/>
+  <entry type="NameNamespace" style="bold #0000ff"/>
+  <entry type="NameTag" style="bold #008000"/>
+  <entry type="NameVariable" style="#b8860b"/>
+  <entry type="LiteralString" style="#bb4444"/>
+  <entry type="LiteralStringDoc" style="italic"/>
+  <entry type="LiteralStringEscape" style="bold #bb6622"/>
+  <entry type="LiteralStringInterpol" style="bold #bb6688"/>
+  <entry type="LiteralStringOther" style="#008000"/>
+  <entry type="LiteralStringRegex" style="#bb6688"/>
+  <entry type="LiteralStringSymbol" style="#b8860b"/>
+  <entry type="LiteralNumber" style="#666666"/>
+  <entry type="Operator" style="#666666"/>
+  <entry type="OperatorWord" style="bold #aa22ff"/>
+  <entry type="Comment" style="italic #008800"/>
+  <entry type="CommentSpecial" style="bold noitalic"/>
+  <entry type="CommentPreproc" style="noitalic"/>
+  <entry type="GenericDeleted" style="#a00000"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericError" style="#ff0000"/>
+  <entry type="GenericHeading" style="bold #000080"/>
+  <entry type="GenericInserted" style="#00a000"/>
+  <entry type="GenericOutput" style="#888888"/>
+  <entry type="GenericPrompt" style="bold #000080"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="bold #800080"/>
+  <entry type="GenericTraceback" style="#0044dd"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="TextWhitespace" style="#bbbbbb"/>
+</style>

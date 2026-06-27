@@ -1,0 +1,23 @@
+<style name="bw">
+  <entry type="Error" style="border:#ff0000"/>
+  <entry type="Background" style="bg:#ffffff"/>
+  <entry type="Keyword" style="bold"/>
+  <entry type="KeywordPseudo" style="nobold"/>
+  <entry type="KeywordType" style="nobold"/>
+  <entry type="NameClass" style="bold"/>
+  <entry type="NameEntity" style="bold"/>
+  <entry type="NameException" style="bold"/>
+  <entry type="NameNamespace" style="bold"/>
+  <entry type="NameTag" style="bold"/>
+  <entry type="LiteralString" style="italic"/>
+  <entry type="LiteralStringEscape" style="bold"/>
+  <entry type="LiteralStringInterpol" style="bold"/>
+  <entry type="OperatorWord" style="bold"/>
+  <entry type="Comment" style="italic"/>
+  <entry type="CommentPreproc" style="noitalic"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericHeading" style="bold"/>
+  <entry type="GenericPrompt" style="bold"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="bold"/>
+</style>

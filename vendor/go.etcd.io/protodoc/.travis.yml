@@ -1,0 +1,10 @@
+language: go
+go_import_path: go.etcd.io/protodoc
+
+sudo: false
+
+go:
+- 1.11
+
+script:
+- ./test

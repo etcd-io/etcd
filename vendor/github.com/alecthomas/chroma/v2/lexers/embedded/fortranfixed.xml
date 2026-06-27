@@ -1,0 +1,71 @@
+<lexer>
+  <config>
+    <name>FortranFixed</name>
+    <alias>fortranfixed</alias>
+    <filename>*.f</filename>
+    <filename>*.F</filename>
+    <mime_type>text/x-fortran</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="cont-char">
+      <rule pattern=" ">
+        <token type="TextWhitespace"/>
+        <push state="code"/>
+      </rule>
+      <rule pattern=".">
+        <token type="GenericStrong"/>
+        <push state="code"/>
+      </rule>
+    </state>
+    <state name="code">
+      <rule pattern="(.{66})(.*)(\n)">
+        <bygroups>
+          <using lexer="Fortran"/>
+          <token type="Comment"/>
+          <token type="TextWhitespace"/>
+        </bygroups>
+        <push state="root"/>
+      </rule>
+      <rule pattern="(.*)(!.*)(\n)">
+        <bygroups>
+          <using lexer="Fortran"/>
+          <token type="Comment"/>
+          <token type="TextWhitespace"/>
+        </bygroups>
+        <push state="root"/>
+      </rule>
+      <rule pattern="(.*)(\n)">
+        <bygroups>
+          <using lexer="Fortran"/>
+          <token type="TextWhitespace"/>
+        </bygroups>
+        <push state="root"/>
+      </rule>
+      <rule>
+        <mutators>
+          <push state="root"/>
+        </mutators>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="[C*].*\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="#.*\n">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern=" {0,4}!.*\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(.{5})">
+        <token type="NameLabel"/>
+        <push state="cont-char"/>
+      </rule>
+      <rule pattern=".*\n">
+        <using lexer="Fortran"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

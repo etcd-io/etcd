@@ -1,0 +1,29 @@
+<style name="monokai">
+  <entry type="Error" style="#960050 bg:#1e0010"/>
+  <entry type="Background" style="bg:#272822"/>
+  <entry type="Keyword" style="#66d9ef"/>
+  <entry type="KeywordNamespace" style="#f92672"/>
+  <entry type="Name" style="#f8f8f2"/>
+  <entry type="NameAttribute" style="#a6e22e"/>
+  <entry type="NameClass" style="#a6e22e"/>
+  <entry type="NameConstant" style="#66d9ef"/>
+  <entry type="NameDecorator" style="#a6e22e"/>
+  <entry type="NameException" style="#a6e22e"/>
+  <entry type="NameFunction" style="#a6e22e"/>
+  <entry type="NameOther" style="#a6e22e"/>
+  <entry type="NameTag" style="#f92672"/>
+  <entry type="Literal" style="#ae81ff"/>
+  <entry type="LiteralDate" style="#e6db74"/>
+  <entry type="LiteralString" style="#e6db74"/>
+  <entry type="LiteralStringEscape" style="#ae81ff"/>
+  <entry type="LiteralNumber" style="#ae81ff"/>
+  <entry type="Operator" style="#f92672"/>
+  <entry type="Punctuation" style="#f8f8f2"/>
+  <entry type="Comment" style="#75715e"/>
+  <entry type="GenericDeleted" style="#f92672"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericInserted" style="#a6e22e"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="#75715e"/>
+  <entry type="Text" style="#f8f8f2"/>
+</style>

@@ -1,0 +1,126 @@
+<lexer>
+  <config>
+    <name>ArmAsm</name>
+    <alias>armasm</alias>
+    <filename>*.s</filename>
+    <filename>*.S</filename>
+    <mime_type>text/x-armasm</mime_type>
+    <mime_type>text/x-asm</mime_type>
+    <ensure_nl>true</ensure_nl>
+  </config>
+  <rules>
+    <state name="root">
+      <rule>
+        <include state="commentsandwhitespace" />
+      </rule>
+      <rule pattern="(\.\w+)([ \t]+\w+\s+?)?">
+        <bygroups>
+          <token type="KeywordNamespace" />
+          <token type="NameLabel" />
+        </bygroups>
+      </rule>
+      <rule pattern="(\w+)(:)(\s+\.\w+\s+)">
+        <bygroups>
+          <token type="NameLabel" />
+          <token type="Punctuation" />
+          <token type="KeywordNamespace" />
+        </bygroups>
+        <push state="literal" />
+      </rule>
+      <rule pattern="(\w+)(:)">
+        <bygroups>
+          <token type="NameLabel" />
+          <token type="Punctuation" />
+        </bygroups>
+      </rule>
+      <rule pattern="svc\s+\w+">
+        <token type="NameNamespace" />
+      </rule>
+      <rule pattern="[a-zA-Z]+">
+        <token type="Text" />
+        <push state="opcode" />
+      </rule>
+    </state>
+    <state name="commentsandwhitespace">
+      <rule pattern="\s+">
+        <token type="Text" />
+      </rule>
+      <rule pattern="[@;].*?\n">
+        <token type="CommentSingle" />
+      </rule>
+      <rule pattern="/\*.*?\*/">
+        <token type="CommentMultiline" />
+      </rule>
+    </state>
+    <state name="literal">
+      <rule pattern="0b[01]+">
+        <token type="LiteralNumberBin" />
+        <pop depth="1" />
+      </rule>
+      <rule pattern="0x\w{1,8}">
+        <token type="LiteralNumberHex" />
+        <pop depth="1" />
+      </rule>
+      <rule pattern="0\d+">
+        <token type="LiteralNumberOct" />
+        <pop depth="1" />
+      </rule>
+      <rule pattern="\d+?\.\d+?">
+        <token type="LiteralNumberFloat" />
+        <pop depth="1" />
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumberInteger" />
+        <pop depth="1" />
+      </rule>
+      <rule pattern="(&#34;)(.+)(&#34;)">
+        <bygroups>
+          <token type="Punctuation" />
+          <token type="LiteralStringDouble" />
+          <token type="Punctuation" />
+        </bygroups>
+        <pop depth="1" />
+      </rule>
+      <rule pattern="(&#39;)(.{1}|\\.{1})(&#39;)">
+        <bygroups>
+          <token type="Punctuation" />
+          <token type="LiteralStringChar" />
+          <token type="Punctuation" />
+        </bygroups>
+        <pop depth="1" />
+      </rule>
+    </state>
+    <state name="opcode">
+      <rule pattern="\n">
+        <token type="Text" />
+        <pop depth="1" />
+      </rule>
+      <rule pattern="(@|;).*\n">
+        <token type="CommentSingle" />
+        <pop depth="1" />
+      </rule>
+      <rule pattern="(\s+|,)">
+        <token type="Text" />
+      </rule>
+      <rule pattern="[rapcfxwbhsdqv]\d{1,2}">
+        <token type="NameClass" />
+      </rule>
+      <rule pattern="(=)(0x\w+)">
+        <bygroups>
+          <token type="Text" />
+          <token type="NameLabel" />
+        </bygroups>
+      </rule>
+      <rule pattern="(=)(\w+)">
+        <bygroups>
+          <token type="Text" />
+          <token type="NameLabel" />
+        </bygroups>
+      </rule>
+      <rule pattern="#">
+        <token type="Text" />
+        <push state="literal" />
+      </rule>
+    </state>
+  </rules>
+</lexer>

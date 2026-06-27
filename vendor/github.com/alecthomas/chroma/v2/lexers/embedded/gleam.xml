@@ -1,0 +1,100 @@
+<lexer>
+  <config>
+    <name>Gleam</name>
+    <alias>gleam</alias>
+    <filename>*.gleam</filename>
+    <mime_type>text/x-gleam</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="///(.*?)\n">
+        <token type="LiteralStringDoc"/>
+      </rule>
+      <rule pattern="//(.*?)\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="(as|assert|case|opaque|panic|pub|todo)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(import|use)\b">
+        <token type="KeywordNamespace"/>
+      </rule>
+      <rule pattern="(auto|const|delegate|derive|echo|else|if|implement|macro|test)\b">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="(let)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(fn)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(type)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(True|False)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="0[bB][01](_?[01])*">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="0[oO][0-7](_?[0-7])*">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0[xX][\da-fA-F](_?[\dA-Fa-f])*">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="\d(_?\d)*\.\d(_?\d)*([eE][-+]?\d(_?\d)*)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d(_?\d)*">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="@([a-z_]\w*[!?]?)">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="[{}()\[\],]|[#(]|\.\.|&lt;&gt;|&lt;&lt;|&gt;&gt;">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern=":|-&gt;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[+\-*/%!=&lt;&gt;&amp;|.]|&lt;-">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="([a-z_][A-Za-z0-9_]*)(\()">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[A-Z][A-Za-z0-9_]*">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="([a-z_]\w*[!?]?)">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\[&#34;\\fnrt]|\\u\{[\da-fA-F]{1,6}\}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^\\&#34;]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

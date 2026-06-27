@@ -1,0 +1,46 @@
+---
+project_name: mirror
+
+builds:
+  - binary: mirror
+    env:
+    - CGO_ENABLED=0
+    main: ./cmd/mirror/
+    flags:
+      - -trimpath
+    ldflags: -s -w
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '(?i)^docs?:'
+      - '(?i)^docs\([^:]+\):'
+      - '(?i)^docs\[[^:]+\]:'
+      - '^tests?:'
+      - '(?i)^dev:'
+      - Merge pull request
+      - Merge branch
+
+
+checksum:
+  name_template: 'checksums.txt'
+
+
+archives:
+  - format: tar.gz
+    name_template: >-
+        {{ .ProjectName }}_{{- tolower .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - readme.md

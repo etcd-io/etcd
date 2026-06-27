@@ -1,0 +1,120 @@
+<lexer>
+  <config>
+    <name>Mako</name>
+    <alias>mako</alias>
+    <filename>*.mao</filename>
+    <mime_type>application/x-mako</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="(\s*)(%)(\s*end(?:\w+))(\n|\Z)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="CommentPreproc"/>
+          <token type="Keyword"/>
+          <token type="Other"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\s*)(%)([^\n]*)(\n|\Z)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="CommentPreproc"/>
+          <using lexer="Python"/>
+          <token type="Other"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\s*)(##[^\n]*)(\n|\Z)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="CommentPreproc"/>
+          <token type="Other"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?s)&lt;%doc&gt;.*?&lt;/%doc&gt;">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="(&lt;%)([\w.:]+)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <token type="NameBuiltin"/>
+        </bygroups>
+        <push state="tag"/>
+      </rule>
+      <rule pattern="(&lt;/%)([\w.:]+)(&gt;)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <token type="NameBuiltin"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="&lt;%(?=([\w.:]+))">
+        <token type="CommentPreproc"/>
+        <push state="ondeftags"/>
+      </rule>
+      <rule pattern="(&lt;%(?:!?))(.*?)(%&gt;)(?s)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <using lexer="Python"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\$\{)(.*?)(\})">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <using lexer="Python"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?sx)&#xA;                (.+?)                # anything, followed by:&#xA;                (?:&#xA;                 (?&lt;=\n)(?=%|\#\#) | # an eval or comment line&#xA;                 (?=\#\*) |          # multiline comment&#xA;                 (?=&lt;/?%) |          # a python block&#xA;                                     # call start or end&#xA;                 (?=\$\{) |          # a substitution&#xA;                 (?&lt;=\n)(?=\s*%) |&#xA;                                     # - don&#39;t consume&#xA;                 (\\\n) |            # an escaped newline&#xA;                 \Z                  # end of string&#xA;                )&#xA;            ">
+        <bygroups>
+          <token type="Other"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="ondeftags">
+      <rule pattern="&lt;%">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="(?&lt;=&lt;%)(include|inherit|namespace|page)">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule>
+        <include state="tag"/>
+      </rule>
+    </state>
+    <state name="tag">
+      <rule pattern="((?:\w+)\s*=)(\s*)(&#34;.*?&#34;)">
+        <bygroups>
+          <token type="NameAttribute"/>
+          <token type="Text"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="/?\s*&gt;">
+        <token type="CommentPreproc"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="attr">
+      <rule pattern="&#34;.*?&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="&#39;.*?&#39;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^\s&gt;]+">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

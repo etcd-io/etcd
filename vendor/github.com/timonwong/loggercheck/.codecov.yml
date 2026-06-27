@@ -1,0 +1,16 @@
+coverage:
+  range: 70..90  # green if 90+, red if 70-
+  status:
+    patch:
+      # coverage status for pull request diff
+      default:
+        threshold: 1%  # allow a little drop
+    project:
+      # coverage status for whole project
+      default:
+        target: auto    # use coverage of base commit as target
+        threshold: 1%   # allow a little drop
+
+ignore:
+  - "plugin/**"
+  - "cmd/**"

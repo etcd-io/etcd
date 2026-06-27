@@ -1,0 +1,121 @@
+<lexer>
+  <config>
+    <name>Newspeak</name>
+    <alias>newspeak</alias>
+    <filename>*.ns2</filename>
+    <mime_type>text/x-newspeak</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\b(Newsqueak2)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="&#39;[^&#39;]*&#39;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\b(class)(\s+)(\w+)(\s*)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\b(mixin|self|super|private|public|protected|nil|true|false)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(\w+\:)(\s*)([a-zA-Z_]\w+)">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="NameVariable"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\w+)(\s*)(=)">
+        <bygroups>
+          <token type="NameAttribute"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="&lt;\w+&gt;">
+        <token type="CommentSpecial"/>
+      </rule>
+      <rule>
+        <include state="expressionstat"/>
+      </rule>
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+    </state>
+    <state name="expressionstat">
+      <rule pattern="(\d+\.\d*|\.\d+|\d+[fF])[fF]?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern=":\w+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(\w+)(::)">
+        <bygroups>
+          <token type="NameVariable"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\w+:">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="\w+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\(|\)">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\[|\]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\{|\}">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(\^|\+|\/|~|\*|&lt;|&gt;|=|@|%|\||&amp;|\?|!|,|-|:)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\.|;">
+        <token type="Punctuation"/>
+      </rule>
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule>
+        <include state="literals"/>
+      </rule>
+    </state>
+    <state name="literals">
+      <rule pattern="\$.">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;[^&#39;]*&#39;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="#&#39;[^&#39;]*&#39;">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="#\w+:?">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="#(\+|\/|~|\*|&lt;|&gt;|=|@|%|\||&amp;|\?|!|,|-)+">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+    </state>
+    <state name="whitespace">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&#34;[^&#34;]*&#34;">
+        <token type="Comment"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

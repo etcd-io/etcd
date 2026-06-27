@@ -1,0 +1,35 @@
+# config file for the tagpr in git config format
+# The tagpr generates the initial configuration, which you can rewrite to suit your environment.
+# CONFIGURATIONS:
+#   tagpr.releaseBranch
+#       Generally, it is "main." It is the branch for releases. The pcpr tracks this branch,
+#       creates or updates a pull request as a release candidate, or tags when they are merged.
+#
+#   tagpr.versionFile
+#       Versioning file containing the semantic version needed to be updated at release.
+#       It will be synchronized with the "git tag".
+#       Often this is a meta-information file such as gemspec, setup.cfg, package.json, etc.
+#       Sometimes the source code file, such as version.go or Bar.pm, is used.
+#       If you do not want to use versioning files but only git tags, specify the "-" string here.
+#       You can specify multiple version files by comma separated strings.
+#
+#   tagpr.vPrefix
+#       Flag whether or not v-prefix is added to semver when git tagging. (e.g. v1.2.3 if true)
+#       This is only a tagging convention, not how it is described in the version file.
+#
+#   tagpr.changelog (Optional)
+#       Flag whether or not changelog is added or changed during the release.
+#
+#   tagpr.command (Optional)
+#       Command to change files just before release.
+#
+#   tagpr.tmplate (Optional)
+#       Pull request template in go template format
+#
+#   tagpr.release (Optional)
+#       GitHub Release creation behavior after tagging [true, draft, false]
+#       If this value is not set, the release is to be created.
+[tagpr]
+	vPrefix = true
+	releaseBranch = main
+	versionFile = version.txt

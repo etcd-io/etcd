@@ -1,0 +1,90 @@
+<lexer>
+  <config>
+    <name>EBNF</name>
+    <alias>ebnf</alias>
+    <filename>*.ebnf</filename>
+    <mime_type>text/x-ebnf</mime_type>
+  </config>
+  <rules>
+    <state name="comment">
+      <rule pattern="[^*)]">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule>
+        <include state="comment_start"/>
+      </rule>
+      <rule pattern="\*\)">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[*)]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="identifier">
+      <rule pattern="([a-zA-Z][\w \-]*)">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule>
+        <include state="comment_start"/>
+      </rule>
+      <rule>
+        <include state="identifier"/>
+      </rule>
+      <rule pattern="=">
+        <token type="Operator"/>
+        <push state="production"/>
+      </rule>
+    </state>
+    <state name="production">
+      <rule>
+        <include state="whitespace"/>
+      </rule>
+      <rule>
+        <include state="comment_start"/>
+      </rule>
+      <rule>
+        <include state="identifier"/>
+      </rule>
+      <rule pattern="&#34;[^&#34;]*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#39;[^&#39;]*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="(\?[^?]*\?)">
+        <token type="NameEntity"/>
+      </rule>
+      <rule pattern="[\[\]{}(),|]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="-">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern=";">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\.">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="whitespace">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="comment_start">
+      <rule pattern="\(\*">
+        <token type="CommentMultiline"/>
+        <push state="comment"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,66 @@
+<lexer>
+  <config>
+    <name>Agda</name>
+    <alias>agda</alias>
+    <filename>*.agda</filename>
+    <mime_type>text/x-agda</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="^(\s*)([^\s(){}]+)(\s*)(:)(\s*)"><bygroups><token type="TextWhitespace"/><token type="NameFunction"/><token type="TextWhitespace"/><token type="OperatorWord"/><token type="TextWhitespace"/></bygroups></rule>
+      <rule pattern="--(?![!#$%&amp;*+./&lt;=&gt;?@^|_~:\\]).*?$"><token type="CommentSingle"/></rule>
+      <rule pattern="\{-"><token type="CommentMultiline"/><push state="comment"/></rule>
+      <rule pattern="\{!"><token type="CommentMultiline"/><push state="hole"/></rule>
+      <rule pattern="\b(abstract|codata|coinductive|constructor|data|do|eta-equality|field|forall|hiding|in|inductive|infix|infixl|infixr|instance|interleaved|let|macro|mutual|no-eta-equality|open|overlap|pattern|postulate|primitive|private|quote|quoteTerm|record|renaming|rewrite|syntax|tactic|unquote|unquoteDecl|unquoteDef|using|variable|where|with)(?!\&#x27;)\b"><token type="KeywordReserved"/></rule>
+      <rule pattern="(import|module)(\s+)"><bygroups><token type="KeywordReserved"/><token type="TextWhitespace"/></bygroups><push state="module"/></rule>
+      <rule pattern="\b(Set|Prop)[\u2080-\u2089]*\b"><token type="KeywordType"/></rule>
+      <rule pattern="(\(|\)|\{|\})"><token type="Operator"/></rule>
+      <rule pattern="(\.{1,3}|\||\u03BB|\u2200|\u2192|:|=|-&gt;)"><token type="OperatorWord"/></rule>
+      <rule pattern="\d+[eE][+-]?\d+"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="\d+\.\d+([eE][+-]?\d+)?"><token type="LiteralNumberFloat"/></rule>
+      <rule pattern="0[xX][\da-fA-F]+"><token type="LiteralNumberHex"/></rule>
+      <rule pattern="\d+"><token type="LiteralNumberInteger"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringChar"/><push state="character"/></rule>
+      <rule pattern="&quot;"><token type="LiteralString"/><push state="string"/></rule>
+      <rule pattern="[^\s(){}]+"><token type="Text"/></rule>
+      <rule pattern="\s+?"><token type="TextWhitespace"/></rule>
+    </state>
+    <state name="hole">
+      <rule pattern="[^!{}]+"><token type="CommentMultiline"/></rule>
+      <rule pattern="\{!"><token type="CommentMultiline"/><push/></rule>
+      <rule pattern="!\}"><token type="CommentMultiline"/><pop depth="1"/></rule>
+      <rule pattern="[!{}]"><token type="CommentMultiline"/></rule>
+    </state>
+    <state name="module">
+      <rule pattern="\{-"><token type="CommentMultiline"/><push state="comment"/></rule>
+      <rule pattern="[a-zA-Z][\w.\&#x27;]*"><token type="Name"/><pop depth="1"/></rule>
+      <rule pattern="[\W0-9_]+"><token type="Text"/></rule>
+    </state>
+    <state name="comment">
+      <rule pattern="[^-{}]+"><token type="CommentMultiline"/></rule>
+      <rule pattern="\{-"><token type="CommentMultiline"/><push/></rule>
+      <rule pattern="-\}"><token type="CommentMultiline"/><pop depth="1"/></rule>
+      <rule pattern="[-{}]"><token type="CommentMultiline"/></rule>
+    </state>
+    <state name="character">
+      <rule pattern="[^\\&#x27;]&#x27;"><token type="LiteralStringChar"/><pop depth="1"/></rule>
+      <rule pattern="\\"><token type="LiteralStringEscape"/><push state="escape"/></rule>
+      <rule pattern="&#x27;"><token type="LiteralStringChar"/><pop depth="1"/></rule>
+    </state>
+    <state name="string">
+      <rule pattern="[^\\&quot;]+"><token type="LiteralString"/></rule>
+      <rule pattern="\\"><token type="LiteralStringEscape"/><push state="escape"/></rule>
+      <rule pattern="&quot;"><token type="LiteralString"/><pop depth="1"/></rule>
+    </state>
+    <state name="escape">
+      <rule pattern="[abfnrtv&quot;\&#x27;&amp;\\]"><token type="LiteralStringEscape"/><pop depth="1"/></rule>
+      <rule pattern="\^[][A-ZÀ-ÖØ-ÞĀĂĄĆĈĊČĎĐĒĔĖĘĚĜĞĠĢĤĦĨĪĬĮİĲĴĶĹĻĽĿŁŃŅŇŊŌŎŐŒŔŖŘŚŜŞŠŢŤŦŨŪŬŮŰŲŴŶŸ-ŹŻŽƁ-ƂƄƆ-ƇƉ-ƋƎ-ƑƓ-ƔƖ-ƘƜ-ƝƟ-ƠƢƤƦ-ƧƩƬƮ-ƯƱ-ƳƵƷ-ƸƼǄǇǊǍǏǑǓǕǗǙǛǞǠǢǤǦǨǪǬǮǱǴǶ-ǸǺǼǾȀȂȄȆȈȊȌȎȐȒȔȖȘȚȜȞȠȢȤȦȨȪȬȮȰȲȺ-ȻȽ-ȾɁɃ-ɆɈɊɌɎͰͲͶͿΆΈ-ΊΌΎ-ΏΑ-ΡΣ-ΫϏϒ-ϔϘϚϜϞϠϢϤϦϨϪϬϮϴϷϹ-ϺϽ-ЯѠѢѤѦѨѪѬѮѰѲѴѶѸѺѼѾҀҊҌҎҐҒҔҖҘҚҜҞҠҢҤҦҨҪҬҮҰҲҴҶҸҺҼҾӀ-ӁӃӅӇӉӋӍӐӒӔӖӘӚӜӞӠӢӤӦӨӪӬӮӰӲӴӶӸӺӼӾԀԂԄԆԈԊԌԎԐԒԔԖԘԚԜԞԠԢԤԦԨԪԬԮԱ-ՖႠ-ჅჇჍᎠ-ᏵᲐ-ᲺᲽ-ᲿḀḂḄḆḈḊḌḎḐḒḔḖḘḚḜḞḠḢḤḦḨḪḬḮḰḲḴḶḸḺḼḾṀṂṄṆṈṊṌṎṐṒṔṖṘṚṜṞṠṢṤṦṨṪṬṮṰṲṴṶṸṺṼṾẀẂẄẆẈẊẌẎẐẒẔẞẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸỺỼỾἈ-ἏἘ-ἝἨ-ἯἸ-ἿὈ-ὍὙὛὝὟὨ-ὯᾸ-ΆῈ-ΉῘ-ΊῨ-ῬῸ-Ώℂℇℋ-ℍℐ-ℒℕℙ-ℝℤΩℨK-ℭℰ-ℳℾ-ℿⅅↃⰀ-ⰮⱠⱢ-ⱤⱧⱩⱫⱭ-ⱰⱲⱵⱾ-ⲀⲂⲄⲆⲈⲊⲌⲎⲐⲒⲔⲖⲘⲚⲜⲞⲠⲢⲤⲦⲨⲪⲬⲮⲰⲲⲴⲶⲸⲺⲼⲾⳀⳂⳄⳆⳈⳊⳌⳎⳐⳒⳔⳖⳘⳚⳜⳞⳠⳢⳫⳭⳲꙀꙂꙄꙆꙈꙊꙌꙎꙐꙒꙔꙖꙘꙚꙜꙞꙠꙢꙤꙦꙨꙪꙬꚀꚂꚄꚆꚈꚊꚌꚎꚐꚒꚔꚖꚘꚚꜢꜤꜦꜨꜪꜬꜮꜲꜴꜶꜸꜺꜼꜾꝀꝂꝄꝆꝈꝊꝌꝎꝐꝒꝔꝖꝘꝚꝜꝞꝠꝢꝤꝦꝨꝪꝬꝮꝹꝻꝽ-ꝾꞀꞂꞄꞆꞋꞍꞐꞒꞖꞘꞚꞜꞞꞠꞢꞤꞦꞨꞪ-ꞮꞰ-ꞴꞶꞸＡ-Ｚ𐐀-𐐧𐒰-𐓓𐲀-𐲲𑢠-𑢿𖹀-𖹟𝐀-𝐙𝐴-𝑍𝑨-𝒁𝒜𝒞-𝒟𝒢𝒥-𝒦𝒩-𝒬𝒮-𝒵𝓐-𝓩𝔄-𝔅𝔇-𝔊𝔍-𝔔𝔖-𝔜𝔸-𝔹𝔻-𝔾𝕀-𝕄𝕆𝕊-𝕐𝕬-𝖅𝖠-𝖹𝗔-𝗭𝘈-𝘡𝘼-𝙕𝙰-𝚉𝚨-𝛀𝛢-𝛺𝜜-𝜴𝝖-𝝮𝞐-𝞨𝟊𞤀-𞤡@^_]"><token type="LiteralStringEscape"/><pop depth="1"/></rule>
+      <rule pattern="NUL|SOH|[SE]TX|EOT|ENQ|ACK|BEL|BS|HT|LF|VT|FF|CR|S[OI]|DLE|DC[1-4]|NAK|SYN|ETB|CAN|EM|SUB|ESC|[FGRU]S|SP|DEL"><token type="LiteralStringEscape"/><pop depth="1"/></rule>
+      <rule pattern="o[0-7]+"><token type="LiteralStringEscape"/><pop depth="1"/></rule>
+      <rule pattern="x[\da-fA-F]+"><token type="LiteralStringEscape"/><pop depth="1"/></rule>
+      <rule pattern="\d+"><token type="LiteralStringEscape"/><pop depth="1"/></rule>
+      <rule pattern="(\s+)(\\)"><bygroups><token type="TextWhitespace"/><token type="LiteralStringEscape"/></bygroups><pop depth="1"/></rule>
+    </state>
+  </rules>
+</lexer>
+

@@ -1,0 +1,84 @@
+<lexer>
+  <config>
+    <name>Bicep</name>
+    <alias>bicep</alias>
+    <filename>*.bicep</filename>
+  </config>
+  <rules>
+    <state name="interp">
+      <rule pattern="'">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\$\{">
+        <token type="LiteralStringInterpol"/>
+        <push state="interp-inside"/>
+      </rule>
+      <rule pattern="\$">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="[^'\\$]+">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="interp-inside">
+      <rule pattern="\}">
+        <token type="LiteralStringInterpol"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="commentsandwhitespace">
+      <rule pattern="//[^\n\r]+">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*.*?\*/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="commentsandwhitespace"/>
+      </rule>
+      <rule pattern="'''.*?'''">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="'">
+        <token type="LiteralString"/>
+        <push state="interp"/>
+      </rule>
+      <rule pattern="#[\w-]+\b">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="[\w_]+(?=\()">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="\b(metadata|targetScope|resource|module|param|var|output|for|in|if|existing|import|as|type|with|using|func|assert)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="\b(true|false|null)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(&gt;=|&gt;|&lt;=|&lt;|==|!=|=~|!~|::|&amp;&amp;|\?\?|!|-|%|\*|\/|\+)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(\(|\)|\[|\]|\.|:|\?|{|}|@|,|\||=&gt;|=)">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[\w_]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

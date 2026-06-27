@@ -1,0 +1,11 @@
+<style name="abap">
+  <entry type="Error" style="#ff0000"/>
+  <entry type="Background" style="bg:#ffffff"/>
+  <entry type="Keyword" style="#0000ff"/>
+  <entry type="Name" style="#000000"/>
+  <entry type="LiteralString" style="#55aa22"/>
+  <entry type="LiteralNumber" style="#33aaff"/>
+  <entry type="OperatorWord" style="#0000ff"/>
+  <entry type="Comment" style="italic #888888"/>
+  <entry type="CommentSpecial" style="#888888"/>
+</style>

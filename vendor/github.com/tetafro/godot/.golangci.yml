@@ -1,0 +1,74 @@
+version: "2"
+run:
+  concurrency: 2
+linters:
+  default: none
+  enable:
+    - asciicheck
+    - bodyclose
+    - copyloopvar
+    - cyclop
+    - dogsled
+    - durationcheck
+    - err113
+    - errcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - goprintffuncname
+    - gosec
+    - govet
+    - importas
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - nestif
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - wastedassign
+    - whitespace
+    - wrapcheck
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - cyclop
+          - dupl
+          - errcheck
+          - gocognit
+          - goconst
+          - gocyclo
+          - gosec
+          - noctx
+      - path: main\.go
+        linters:
+          - cyclop
+          - gocognit
+      - path: main\.go
+        text: '`defer cancel\(\)` will not run'
+      - path: (.+)\.go$
+        text: 'G404: Use of weak random number generator'
+      - path: (.+)\.go$
+        text: do not define dynamic errors, use wrapped static errors instead
+      - path: (.+)\.go$
+        text: Error return value of `.*.Body.Close` is not checked
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports

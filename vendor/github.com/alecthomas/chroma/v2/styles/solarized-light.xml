@@ -1,0 +1,17 @@
+<style name="solarized-light">
+  <entry type="Background" style="bg:#fdf6e3"/>
+  <entry type="Keyword" style="#859900"/>
+  <entry type="KeywordConstant" style="bold"/>
+  <entry type="KeywordNamespace" style="bold #dc322f"/>
+  <entry type="KeywordType" style="bold"/>
+  <entry type="Name" style="#268bd2"/>
+  <entry type="NameBuiltin" style="#cb4b16"/>
+  <entry type="NameClass" style="#cb4b16"/>
+  <entry type="NameTag" style="bold"/>
+  <entry type="Literal" style="#2aa198"/>
+  <entry type="LiteralNumber" style="bold"/>
+  <entry type="OperatorWord" style="#859900"/>
+  <entry type="Comment" style="italic #93a1a1"/>
+  <entry type="Generic" style="#d33682"/>
+  <entry type="Text" style="#586e75"/>
+</style>

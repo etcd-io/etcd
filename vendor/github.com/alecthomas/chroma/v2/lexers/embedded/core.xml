@@ -1,0 +1,79 @@
+<lexer>
+  <config>
+    <name>Core</name>
+    <alias>core</alias>
+    <filename>*.core</filename>
+    <mime_type>text/x-core</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="//(.*?)\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="(class|value|union|trait|impl|annotation)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(fun|let|var)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(mod|import)\b">
+        <token type="KeywordNamespace"/>
+      </rule>
+      <rule pattern="(if|else|is|for|in|while|return)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(true|false|self)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="0[b][01](_?[01])*(i32|i64|u8|f32|f64)?">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="0[x][\da-fA-F](_?[\dA-Fa-f])*(i32|i64|u8|f32|f64)?">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="\d(_?\d)*\.\d(_?\d)*([eE][-+]?\d(_?\d)*)?(f32|f64)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d(_?\d)*(i32|i64|u8|f32|f64)?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="@([a-z_]\w*[!?]?)">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="===|!==|==|!=|&gt;=|&lt;=|[&gt;&lt;*/+-=&amp;|^]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[A-Z][A-Za-z0-9_]*">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="([a-z_]\w*[!?]?)">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="[(){}\[\],.;]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\[&#34;\\fnrt]|\\u\{[\da-fA-F]{1,6}\}">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="[^\\&#34;]+">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

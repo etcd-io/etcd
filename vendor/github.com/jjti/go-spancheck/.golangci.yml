@@ -1,0 +1,93 @@
+## A good ref for this: https://gist.github.com/maratori/47a4d00457a92aa426dbd48a18776322
+
+run:
+  timeout: 5m
+  tests: true
+linters:
+  enable:
+    - asasalint # checks for pass []any as any in variadic func(...any)
+    - asciicheck # checks that your code does not contain non-ASCII identifiers
+    - bidichk # checks for dangerous unicode character sequences
+    - bodyclose
+    - containedctx
+    - decorder # checks declaration order and count of types, constants, variables and functions
+    - dogsled
+    - dupword # checks for duplicate words in the source code
+    - durationcheck # checks for two durations multiplied together
+    - errcheck
+    - errname
+    - errorlint
+    - gci
+    - gochecknoinits # checks that no init functions are present in Go code
+    - gocritic
+    - gosimple
+    - govet
+    - importas # enforces consistent import aliases
+    - ineffassign
+    - loggercheck
+    - makezero # finds slice declarations with non-zero initial length
+    - mirror
+    - misspell
+    - musttag # enforces field tags in (un)marshaled structs
+    - nakedret
+    - nestif # reports deeply nested if statements
+    - nilerr # finds the code that returns nil even if it checks that the error is not nil
+    - noctx # finds sending http request without context.Context
+    - nolintlint # reports ill-formed or insufficient nolint directives
+    - predeclared # finds code that shadows one of Go's predeclared identifiers
+    - promlinter
+    - reassign # checks that package variables are not reassigned
+    - revive # fast, configurable, extensible, flexible, and beautiful linter for Go, drop-in replacement of golint
+    - staticcheck
+    - stylecheck
+    - thelper # detects golang test helpers without t.Helper() call and checks the consistency of test helpers
+    - unconvert # removes unnecessary type conversions
+    - unparam # reports unused function parameters
+    - unused
+    - usestdlibvars # detects the possibility to use variables/constants from the Go standard library
+    - wastedassign # finds wasted assignment statements
+    - whitespace # detects leading and trailing whitespace
+linters-settings:
+  gci:
+    skip-generated: true
+    custom-order: true
+    sections:
+      - standard # Standard section: captures all standard packages.
+      - default # Default section: contains all imports that could not be matched to another section type.
+      - prefix(github.com/jjti)
+  gocritic:
+    settings:
+      captLocal:
+        # Whether to restrict checker to params only.
+        # Default: true
+        paramsOnly: false
+      underef:
+        # Whether to skip (*x).method() calls where x is a pointer receiver.
+        # Default: true
+        skipRecvDeref: false
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment # too strict
+      - shadow # bunch of false positive, doesn't realize when we return from a func
+  misspell:
+    locale: US
+  nakedret:
+    max-func-lines: 0
+  nestif:
+    # Minimal complexity of if statements to report.
+    # Default: 5
+    min-complexity: 5
+  nolintlint:
+    # Enable to require an explanation of nonzero length after each nolint directive.
+    # Default: false
+    require-explanation: true
+  stylecheck:
+    checks: ["all"]
+issues:
+  include:
+    - EXC0001 # Error return value of x is not checked
+    - EXC0013 # package comment should be of the form "(.+)...
+    - EXC0014 # comment on exported (.+) should be of the form "(.+)..."
+  exclude:
+    - ifElseChain

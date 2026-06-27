@@ -1,0 +1,61 @@
+<lexer>
+  <config>
+    <name>Sieve</name>
+    <alias>sieve</alias>
+    <filename>*.siv</filename>
+    <filename>*.sieve</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[();,{}\[\]]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(?i)require">
+        <token type="KeywordNamespace"/>
+      </rule>
+      <rule pattern="(?i)(:)(addresses|all|contains|content|create|copy|comparator|count|days|detail|domain|fcc|flags|from|handle|importance|is|localpart|length|lowerfirst|lower|matches|message|mime|options|over|percent|quotewildcard|raw|regex|specialuse|subject|text|under|upperfirst|upper|value)">
+        <bygroups>
+          <token type="NameTag"/>
+          <token type="NameTag"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?i)(address|addflag|allof|anyof|body|discard|elsif|else|envelope|ereject|exists|false|fileinto|if|hasflag|header|keep|notify_method_capability|notify|not|redirect|reject|removeflag|setflag|size|spamtest|stop|string|true|vacation|virustest)">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(?i)set">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="([0-9.]+)([kmgKMG])?">
+        <bygroups>
+          <token type="LiteralNumber"/>
+          <token type="LiteralNumber"/>
+        </bygroups>
+      </rule>
+      <rule pattern="#.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*.*\*/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="&#34;[^&#34;]*?&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="text:">
+        <token type="NameTag"/>
+        <push state="text"/>
+      </rule>
+    </state>
+    <state name="text">
+      <rule pattern="[^.].*?\n">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="^\.">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

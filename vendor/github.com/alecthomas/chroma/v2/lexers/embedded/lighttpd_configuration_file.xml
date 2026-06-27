@@ -1,0 +1,42 @@
+<lexer>
+  <config>
+    <name>Lighttpd configuration file</name>
+    <alias>lighty</alias>
+    <alias>lighttpd</alias>
+    <mime_type>text/x-lighttpd-conf</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="#.*\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\S*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="[a-zA-Z._-]+">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\d+\.\d+\.\d+\.\d+(?:/\d+)?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[0-9]+">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="=&gt;|=~|\+=|==|=|\+">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\$[A-Z]+">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="[(){}\[\],]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="&#34;([^&#34;\\]*(?:\\.[^&#34;\\]*)*)&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

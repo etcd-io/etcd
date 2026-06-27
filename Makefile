@@ -6,7 +6,7 @@ include $(REPOSITORY_ROOT)/tests/robustness/Makefile
 
 .PHONY: build
 build:
-	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build.sh
+	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=vendor" ./scripts/build.sh
 
 .PHONY: install-benchmark
 install-benchmark: build
@@ -32,11 +32,11 @@ build-all:
 
 .PHONY: build-%
 build-%:
-	GOOS=$$(echo $* | cut -d- -f 1) GOARCH=$$(echo $* | cut -d- -f 2) GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build.sh
+	GOOS=$$(echo $* | cut -d- -f 1) GOARCH=$$(echo $* | cut -d- -f 2) GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v" ./scripts/build.sh
 
 .PHONY: tools
 tools:
-	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build_tools.sh
+	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=vendor" ./scripts/build_tools.sh
 
 # Tests
 

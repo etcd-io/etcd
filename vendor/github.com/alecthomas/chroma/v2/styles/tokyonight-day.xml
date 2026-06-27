@@ -1,0 +1,83 @@
+<style name="tokyonight-day">
+  <entry type="Background" style="bg:#e1e2e7 #3760bf"/>
+  <entry type="CodeLine" style="#3760bf"/>
+  <entry type="Error" style="#c64343"/>
+  <entry type="Other" style="#3760bf"/>
+  <entry type="LineTableTD" style=""/>
+  <entry type="LineTable" style=""/>
+  <entry type="LineHighlight" style="bg:#a1a6c5"/>
+  <entry type="LineNumbersTable" style="#6172b0"/>
+  <entry type="LineNumbers" style="#6172b0"/>
+  <entry type="Keyword" style="#9854f1"/>
+  <entry type="KeywordReserved" style="#9854f1"/>
+  <entry type="KeywordPseudo" style="#9854f1"/>
+  <entry type="KeywordConstant" style="#8c6c3e"/>
+  <entry type="KeywordDeclaration" style="#9d7cd8"/>
+  <entry type="KeywordNamespace" style="#007197"/>
+  <entry type="KeywordType" style="#0db9d7"/>
+  <entry type="Name" style="#3760bf"/>
+  <entry type="NameClass" style="#b15c00"/>
+  <entry type="NameConstant" style="#b15c00"/>
+  <entry type="NameDecorator" style="bold #2e7de9"/>
+  <entry type="NameEntity" style="#007197"/>
+  <entry type="NameException" style="#8c6c3e"/>
+  <entry type="NameFunction" style="#2e7de9"/>
+  <entry type="NameFunctionMagic" style="#2e7de9"/>
+  <entry type="NameLabel" style="#587539"/>
+  <entry type="NameNamespace" style="#8c6c3e"/>
+  <entry type="NameProperty" style="#8c6c3e"/>
+  <entry type="NameTag" style="#9854f1"/>
+  <entry type="NameVariable" style="#3760bf"/>
+  <entry type="NameVariableClass" style="#3760bf"/>
+  <entry type="NameVariableGlobal" style="#3760bf"/>
+  <entry type="NameVariableInstance" style="#3760bf"/>
+  <entry type="NameVariableMagic" style="#3760bf"/>
+  <entry type="NameAttribute" style="#2e7de9"/>
+  <entry type="NameBuiltin" style="#587539"/>
+  <entry type="NameBuiltinPseudo" style="#587539"/>
+  <entry type="NameOther" style="#3760bf"/>
+  <entry type="Literal" style="#3760bf"/>
+  <entry type="LiteralDate" style="#3760bf"/>
+  <entry type="LiteralString" style="#587539"/>
+  <entry type="LiteralStringChar" style="#587539"/>
+  <entry type="LiteralStringSingle" style="#587539"/>
+  <entry type="LiteralStringDouble" style="#587539"/>
+  <entry type="LiteralStringBacktick" style="#587539"/>
+  <entry type="LiteralStringOther" style="#587539"/>
+  <entry type="LiteralStringSymbol" style="#587539"/>
+  <entry type="LiteralStringInterpol" style="#587539"/>
+  <entry type="LiteralStringAffix" style="#9d7cd8"/>
+  <entry type="LiteralStringDelimiter" style="#2e7de9"/>
+  <entry type="LiteralStringEscape" style="#2e7de9"/>
+  <entry type="LiteralStringRegex" style="#007197"/>
+  <entry type="LiteralStringDoc" style="#a1a6c5"/>
+  <entry type="LiteralStringHeredoc" style="#a1a6c5"/>
+  <entry type="LiteralNumber" style="#8c6c3e"/>
+  <entry type="LiteralNumberBin" style="#8c6c3e"/>
+  <entry type="LiteralNumberHex" style="#8c6c3e"/>
+  <entry type="LiteralNumberInteger" style="#8c6c3e"/>
+  <entry type="LiteralNumberFloat" style="#8c6c3e"/>
+  <entry type="LiteralNumberIntegerLong" style="#8c6c3e"/>
+  <entry type="LiteralNumberOct" style="#8c6c3e"/>
+  <entry type="Operator" style="bold #587539"/>
+  <entry type="OperatorWord" style="bold #587539"/>
+  <entry type="Comment" style="italic #a1a6c5"/>
+  <entry type="CommentSingle" style="italic #a1a6c5"/>
+  <entry type="CommentMultiline" style="italic #a1a6c5"/>
+  <entry type="CommentSpecial" style="italic #a1a6c5"/>
+  <entry type="CommentHashbang" style="italic #a1a6c5"/>
+  <entry type="CommentPreproc" style="italic #a1a6c5"/>
+  <entry type="CommentPreprocFile" style="bold #a1a6c5"/>
+  <entry type="Generic" style="#3760bf"/>
+  <entry type="GenericInserted" style="bg:#e9e9ed #587539"/>
+  <entry type="GenericDeleted" style="#c64343 bg:#e9e9ed"/>
+  <entry type="GenericEmph" style="italic #3760bf"/>
+  <entry type="GenericStrong" style="bold #3760bf"/>
+  <entry type="GenericUnderline" style="underline #3760bf"/>
+  <entry type="GenericHeading" style="bold #8c6c3e"/>
+  <entry type="GenericSubheading" style="bold #8c6c3e"/>
+  <entry type="GenericOutput" style="#3760bf"/>
+  <entry type="GenericPrompt" style="#3760bf"/>
+  <entry type="GenericError" style="#c64343"/>
+  <entry type="GenericTraceback" style="#c64343"/>
+</style>

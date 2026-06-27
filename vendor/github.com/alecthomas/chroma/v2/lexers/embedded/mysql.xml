@@ -1,0 +1,121 @@
+<lexer>
+  <config>
+    <name>MySQL</name>
+    <alias>mysql</alias>
+    <alias>mariadb</alias>
+    <filename>*.sql</filename>
+    <mime_type>text/x-mysql</mime_type>
+    <mime_type>text/x-mariadb</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="string">
+      <rule pattern="[^&#39;]+">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="&#39;&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="double-string">
+      <rule pattern="[^&#34;]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#34;&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="(#|--).*\n?">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="multiline-comments"/>
+      </rule>
+      <rule pattern="[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[0-9]*\.[0-9]+(e[+-][0-9]+)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="((?:_[a-z0-9]+)?)(&#39;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringSingle"/>
+        </bygroups>
+        <push state="string"/>
+      </rule>
+      <rule pattern="((?:_[a-z0-9]+)?)(&#34;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringDouble"/>
+        </bygroups>
+        <push state="double-string"/>
+      </rule>
+      <rule pattern="[+*/&lt;&gt;=~!@#%^&amp;|`?-]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b(tinyint|smallint|mediumint|int|integer|bigint|date|datetime|time|bit|bool|tinytext|mediumtext|longtext|text|tinyblob|mediumblob|longblob|blob|float|double|double\s+precision|real|numeric|dec|decimal|timestamp|year|char|varchar|varbinary|varcharacter|enum|set)(\b\s*)(\()?">
+        <bygroups>
+          <token type="KeywordType"/>
+          <token type="TextWhitespace"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\b(add|all|alter|analyze|and|as|asc|asensitive|before|between|bigint|binary|blob|both|by|call|cascade|case|change|char|character|check|collate|column|condition|constraint|continue|convert|create|cross|current_date|current_time|current_timestamp|current_user|cursor|database|databases|day_hour|day_microsecond|day_minute|day_second|dec|decimal|declare|default|delayed|delete|desc|describe|deterministic|distinct|distinctrow|div|double|drop|dual|each|else|elseif|enclosed|escaped|exists|exit|explain|fetch|flush|float|float4|float8|for|force|foreign|from|fulltext|grant|group|having|high_priority|hour_microsecond|hour_minute|hour_second|identified|if|ignore|in|index|infile|inner|inout|insensitive|insert|int|int1|int2|int3|int4|int8|integer|interval|into|is|iterate|join|key|keys|kill|leading|leave|left|like|limit|lines|load|localtime|localtimestamp|lock|long|loop|low_priority|match|minute_microsecond|minute_second|mod|modifies|natural|no_write_to_binlog|not|numeric|on|optimize|option|optionally|or|order|out|outer|outfile|precision|primary|privileges|procedure|purge|raid0|read|reads|real|references|regexp|release|rename|repeat|replace|require|restrict|return|revoke|right|rlike|schema|schemas|second_microsecond|select|sensitive|separator|set|show|smallint|soname|spatial|specific|sql|sql_big_result|sql_calc_found_rows|sql_small_result|sqlexception|sqlstate|sqlwarning|ssl|starting|straight_join|table|terminated|then|to|trailing|trigger|undo|union|unique|unlock|unsigned|update|usage|use|user|using|utc_date|utc_time|utc_timestamp|values|varying|when|where|while|with|write|x509|xor|year_month|zerofill)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(auto_increment|engine|charset|tables)\b">
+        <token type="KeywordPseudo"/>
+      </rule>
+      <rule pattern="(true|false|null)">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="([a-z_]\w*)(\s*)(\()">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="TextWhitespace"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[a-z_]\w*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="@[a-z0-9]*[._]*[a-z0-9]*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[;:()\[\],.]">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="multiline-comments">
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="multiline-comments"/>
+      </rule>
+      <rule pattern="\*/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^/*]+">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="[/*]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

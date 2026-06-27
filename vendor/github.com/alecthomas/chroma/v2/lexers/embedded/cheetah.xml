@@ -1,0 +1,55 @@
+<lexer>
+  <config>
+    <name>Cheetah</name>
+    <alias>cheetah</alias>
+    <alias>spitfire</alias>
+    <filename>*.tmpl</filename>
+    <filename>*.spt</filename>
+    <mime_type>application/x-cheetah</mime_type>
+    <mime_type>application/x-spitfire</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="(##[^\n]*)$">
+        <bygroups>
+          <token type="Comment"/>
+        </bygroups>
+      </rule>
+      <rule pattern="#[*](.|\n)*?[*]#">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="#end[^#\n]*(?:#|$)">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="#slurp$">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="(#[a-zA-Z]+)([^#\n]*)(#|$)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <using lexer="Python"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\$)([a-zA-Z_][\w.]*\w)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <using lexer="Python"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\$\{!?)(.*?)(\})(?s)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <using lexer="Python"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?sx)&#xA;                (.+?)               # anything, followed by:&#xA;                (?:&#xA;                 (?=\#[#a-zA-Z]*) | # an eval comment&#xA;                 (?=\$[a-zA-Z_{]) | # a substitution&#xA;                 \Z                 # end of string&#xA;                )&#xA;            ">
+        <token type="Other"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

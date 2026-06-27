@@ -1,0 +1,13 @@
+language: go
+go:
+- 1.8
+- 1.9
+- 1.13
+
+script:
+- make
+- make test
+- make verify-generate
+
+notifications:
+  email: false

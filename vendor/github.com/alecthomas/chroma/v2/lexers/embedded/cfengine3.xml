@@ -1,0 +1,197 @@
+<lexer>
+  <config>
+    <name>CFEngine3</name>
+    <alias>cfengine3</alias>
+    <alias>cf3</alias>
+    <filename>*.cf</filename>
+  </config>
+  <rules>
+    <state name="interpol">
+      <rule pattern="\$[{(]">
+        <token type="LiteralStringInterpol"/>
+        <push/>
+      </rule>
+      <rule pattern="[})]">
+        <token type="LiteralStringInterpol"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^${()}]+">
+        <token type="LiteralStringInterpol"/>
+      </rule>
+    </state>
+    <state name="arglist">
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=",">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\w+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="#.*?\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="^@.*?\n">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="(body)(\s+)(\S+)(\s+)(control)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(body|bundle|promise)(\s+)(\S+)(\s+)(\w+)(\()">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+          <token type="Punctuation"/>
+        </bygroups>
+        <push state="arglist"/>
+      </rule>
+      <rule pattern="(body|bundle|promise)(\s+)(\S+)(\s+)(\w+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\S+)(\s*)(=&gt;)(\s*)">
+        <bygroups>
+          <token type="KeywordReserved"/>
+          <token type="Text"/>
+          <token type="Operator"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="([\w.!&amp;|()&#34;&#36;]+)(::)">
+        <bygroups>
+          <token type="NameClass"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="doublequotestring"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralString"/>
+        <push state="singlequotestring"/>
+      </rule>
+      <rule pattern="&#96;">
+        <token type="LiteralString"/>
+        <push state="backtickstring"/>
+      </rule>
+      <rule pattern="(\w+)(\()">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\w+)(:)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="@[{(][^)}]+[})]">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\$[(][^)]+[)]">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[(){},;]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="=&gt;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="-&gt;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\d+\.\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="\w+">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="doublequotestring">
+      <rule pattern="\$[{(]">
+        <token type="LiteralStringInterpol"/>
+        <push state="interpol"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern=".">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="singlequotestring">
+      <rule pattern="\$[{(]">
+        <token type="LiteralStringInterpol"/>
+        <push state="interpol"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern=".">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="backtickstring">
+      <rule pattern="\$[{(]">
+        <token type="LiteralStringInterpol"/>
+        <push state="interpol"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="&#96;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern=".">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

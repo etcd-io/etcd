@@ -1,0 +1,51 @@
+<lexer>
+  <config>
+    <name>Brainfuck</name>
+    <alias>brainfuck</alias>
+    <alias>bf</alias>
+    <filename>*.bf</filename>
+    <filename>*.b</filename>
+    <mime_type>application/x-brainfuck</mime_type>
+  </config>
+  <rules>
+    <state name="common">
+      <rule pattern="[.,]+">
+        <token type="NameTag"/>
+      </rule>
+      <rule pattern="[+-]+">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="[&lt;&gt;]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[^.,+\-&lt;&gt;\[\]]+">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\[">
+        <token type="Keyword"/>
+        <push state="loop"/>
+      </rule>
+      <rule pattern="\]">
+        <token type="Error"/>
+      </rule>
+      <rule>
+        <include state="common"/>
+      </rule>
+    </state>
+    <state name="loop">
+      <rule pattern="\[">
+        <token type="Keyword"/>
+        <push/>
+      </rule>
+      <rule pattern="\]">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="common"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

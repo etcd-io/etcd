@@ -1,0 +1,356 @@
+<lexer>
+  <config>
+    <name>Python 2</name>
+    <alias>python2</alias>
+    <alias>py2</alias>
+    <mime_type>text/x-python2</mime_type>
+    <mime_type>application/x-python2</mime_type>
+  </config>
+  <rules>
+    <state name="tdqs">
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="strings-double"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="LiteralStringDouble"/>
+      </rule>
+    </state>
+    <state name="name">
+      <rule pattern="@[\w.]+">
+        <token type="NameDecorator"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="magicfuncs">
+      <rule pattern="(__instancecheck__|__subclasscheck__|__getattribute__|__rfloordiv__|__ifloordiv__|__setslice__|__getslice__|__contains__|__reversed__|__floordiv__|__rtruediv__|__itruediv__|__delslice__|__rlshift__|__rrshift__|__delitem__|__rdivmod__|__nonzero__|__missing__|__delattr__|__setattr__|__irshift__|__complex__|__setitem__|__getitem__|__truediv__|__unicode__|__ilshift__|__getattr__|__delete__|__coerce__|__invert__|__lshift__|__divmod__|__rshift__|__enter__|__index__|__float__|__iadd__|__rsub__|__init__|__imul__|__rpow__|__repr__|__rmul__|__isub__|__iter__|__rmod__|__ixor__|__call__|__imod__|__long__|__hash__|__rxor__|__idiv__|__iand__|__rdiv__|__ipow__|__rcmp__|__rand__|__exit__|__radd__|__str__|__cmp__|__pos__|__pow__|__oct__|__new__|__neg__|__mul__|__mod__|__set__|__xor__|__sub__|__len__|__and__|__get__|__rop__|__add__|__ior__|__div__|__iop__|__int__|__abs__|__hex__|__ror__|__del__|__eq__|__or__|__ne__|__lt__|__le__|__ge__|__gt__|__op__)\b">
+        <token type="NameFunctionMagic"/>
+      </rule>
+    </state>
+    <state name="keywords">
+      <rule pattern="(yield from|continue|finally|lambda|assert|global|except|return|print|yield|while|break|raise|elif|pass|exec|else|with|try|for|del|as|if)\b">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="tsqs">
+      <rule pattern="&#39;&#39;&#39;">
+        <token type="LiteralStringSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="strings-single"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="LiteralStringSingle"/>
+      </rule>
+    </state>
+    <state name="stringescape">
+      <rule pattern="\\([\\abfnrtv&#34;\&#39;]|\n|N\{.*?\}|u[a-fA-F0-9]{4}|U[a-fA-F0-9]{8}|x[a-fA-F0-9]{2}|[0-7]{1,3})">
+        <token type="LiteralStringEscape"/>
+      </rule>
+    </state>
+    <state name="numbers">
+      <rule pattern="(\d+\.\d*|\d*\.\d+)([eE][+-]?[0-9]+)?j?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d+[eE][+-]?[0-9]+j?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="0[0-7]+j?">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0[bB][01]+">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="0[xX][a-fA-F0-9]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="\d+L">
+        <token type="LiteralNumberIntegerLong"/>
+      </rule>
+      <rule pattern="\d+j?">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+    </state>
+    <state name="import">
+      <rule pattern="(?:[ \t]|\\\n)+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="as\b">
+        <token type="KeywordNamespace"/>
+      </rule>
+      <rule pattern=",">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[a-zA-Z_][\w.]*">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="magicvars">
+      <rule pattern="(__metaclass__|__defaults__|__globals__|__closure__|__weakref__|__module__|__slots__|__class__|__bases__|__file__|__func__|__dict__|__name__|__self__|__code__|__mro__|__doc__)\b">
+        <token type="NameVariableMagic"/>
+      </rule>
+    </state>
+    <state name="fromimport">
+      <rule pattern="(?:[ \t]|\\\n)+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="import\b">
+        <token type="KeywordNamespace"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="None\b">
+        <token type="NameBuiltinPseudo"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[a-zA-Z_.][\w.]*">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="strings-single">
+      <rule pattern="%(\(\w+\))?[-#0 +]*([0-9]+|[*])?(\.([0-9]+|[*]))?[hlL]?[E-GXc-giorsux%]">
+        <token type="LiteralStringInterpol"/>
+      </rule>
+      <rule pattern="[^\\\&#39;&#34;%\n]+">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="[\&#39;&#34;\\]">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="%">
+        <token type="LiteralStringSingle"/>
+      </rule>
+    </state>
+    <state name="funcname">
+      <rule>
+        <include state="magicfuncs"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="NameFunction"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="classname">
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="backtick">
+      <rule pattern="`.*?`">
+        <token type="LiteralStringBacktick"/>
+      </rule>
+    </state>
+    <state name="strings-double">
+      <rule pattern="%(\(\w+\))?[-#0 +]*([0-9]+|[*])?(\.([0-9]+|[*]))?[hlL]?[E-GXc-giorsux%]">
+        <token type="LiteralStringInterpol"/>
+      </rule>
+      <rule pattern="[^\\\&#39;&#34;%\n]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="[\&#39;&#34;\\]">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="%">
+        <token type="LiteralStringDouble"/>
+      </rule>
+    </state>
+    <state name="dqs">
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\\\|\\&#34;|\\\n">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule>
+        <include state="strings-double"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="^(\s*)([rRuUbB]{,2})(&#34;&#34;&#34;(?:.|\n)*?&#34;&#34;&#34;)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringDoc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(\s*)([rRuUbB]{,2})(&#39;&#39;&#39;(?:.|\n)*?&#39;&#39;&#39;)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringDoc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\A#!.+$">
+        <token type="CommentHashbang"/>
+      </rule>
+      <rule pattern="#.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="[]{}:(),;[]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\\\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\\">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(in|is|and|or|not)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="!=|==|&lt;&lt;|&gt;&gt;|[-~+/*%=&lt;&gt;&amp;^|.]">
+        <token type="Operator"/>
+      </rule>
+      <rule>
+        <include state="keywords"/>
+      </rule>
+      <rule pattern="(def)((?:\s|\\\s)+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="funcname"/>
+      </rule>
+      <rule pattern="(class)((?:\s|\\\s)+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="classname"/>
+      </rule>
+      <rule pattern="(from)((?:\s|\\\s)+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="fromimport"/>
+      </rule>
+      <rule pattern="(import)((?:\s|\\\s)+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="import"/>
+      </rule>
+      <rule>
+        <include state="builtins"/>
+      </rule>
+      <rule>
+        <include state="magicfuncs"/>
+      </rule>
+      <rule>
+        <include state="magicvars"/>
+      </rule>
+      <rule>
+        <include state="backtick"/>
+      </rule>
+      <rule pattern="([rR]|[uUbB][rR]|[rR][uUbB])(&#34;&#34;&#34;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringDouble"/>
+        </bygroups>
+        <push state="tdqs"/>
+      </rule>
+      <rule pattern="([rR]|[uUbB][rR]|[rR][uUbB])(&#39;&#39;&#39;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringSingle"/>
+        </bygroups>
+        <push state="tsqs"/>
+      </rule>
+      <rule pattern="([rR]|[uUbB][rR]|[rR][uUbB])(&#34;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringDouble"/>
+        </bygroups>
+        <push state="dqs"/>
+      </rule>
+      <rule pattern="([rR]|[uUbB][rR]|[rR][uUbB])(&#39;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringSingle"/>
+        </bygroups>
+        <push state="sqs"/>
+      </rule>
+      <rule pattern="([uUbB]?)(&#34;&#34;&#34;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringDouble"/>
+        </bygroups>
+        <combined state="stringescape" state="tdqs"/>
+      </rule>
+      <rule pattern="([uUbB]?)(&#39;&#39;&#39;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringSingle"/>
+        </bygroups>
+        <combined state="stringescape" state="tsqs"/>
+      </rule>
+      <rule pattern="([uUbB]?)(&#34;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringDouble"/>
+        </bygroups>
+        <combined state="stringescape" state="dqs"/>
+      </rule>
+      <rule pattern="([uUbB]?)(&#39;)">
+        <bygroups>
+          <token type="LiteralStringAffix"/>
+          <token type="LiteralStringSingle"/>
+        </bygroups>
+        <combined state="stringescape" state="sqs"/>
+      </rule>
+      <rule>
+        <include state="name"/>
+      </rule>
+      <rule>
+        <include state="numbers"/>
+      </rule>
+    </state>
+    <state name="sqs">
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\\\\|\\&#39;|\\\n">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule>
+        <include state="strings-single"/>
+      </rule>
+    </state>
+    <state name="builtins">
+      <rule pattern="(?&lt;!\.)(staticmethod|classmethod|__import__|isinstance|basestring|issubclass|frozenset|raw_input|bytearray|enumerate|property|callable|reversed|execfile|hasattr|setattr|compile|complex|delattr|unicode|globals|getattr|unichr|reduce|xrange|buffer|intern|filter|locals|divmod|coerce|sorted|reload|object|slice|round|float|super|input|bytes|apply|tuple|range|iter|dict|long|type|hash|vars|next|file|exit|open|repr|eval|bool|list|bin|pow|zip|ord|oct|min|set|any|max|map|all|len|sum|int|dir|hex|chr|abs|cmp|str|id)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)(self|None|Ellipsis|NotImplemented|False|True|cls)\b">
+        <token type="NameBuiltinPseudo"/>
+      </rule>
+      <rule pattern="(?&lt;!\.)(PendingDeprecationWarning|UnicodeTranslateError|NotImplementedError|UnicodeDecodeError|DeprecationWarning|UnicodeEncodeError|FloatingPointError|ZeroDivisionError|UnboundLocalError|KeyboardInterrupt|EnvironmentError|IndentationError|OverflowWarning|ArithmeticError|ReferenceError|AttributeError|AssertionError|RuntimeWarning|UnicodeWarning|GeneratorExit|SyntaxWarning|StandardError|BaseException|OverflowError|FutureWarning|ImportWarning|StopIteration|UnicodeError|WindowsError|RuntimeError|ImportError|UserWarning|LookupError|SyntaxError|SystemError|MemoryError|SystemExit|ValueError|IndexError|NameError|Exception|TypeError|EOFError|KeyError|VMSError|TabError|IOError|Warning|OSError)\b">
+        <token type="NameException"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

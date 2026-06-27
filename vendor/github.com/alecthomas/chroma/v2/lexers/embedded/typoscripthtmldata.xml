@@ -1,0 +1,52 @@
+<lexer>
+  <config>
+    <name>TypoScriptHtmlData</name>
+    <alias>typoscripthtmldata</alias>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="(INCLUDE_TYPOSCRIPT)">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(EXT|FILE|LLL):[^}\n&#34;]*">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="(.*)(###\w+###)(.*)">
+        <bygroups>
+          <token type="LiteralString"/>
+          <token type="NameConstant"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\{)(\$)((?:[\w\-]+\.)*)([\w\-]+)(\})">
+        <bygroups>
+          <token type="LiteralStringSymbol"/>
+          <token type="Operator"/>
+          <token type="NameConstant"/>
+          <token type="NameConstant"/>
+          <token type="LiteralStringSymbol"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(.*)(\{)([\w\-]+)(\s*:\s*)([\w\-]+)(\})(.*)">
+        <bygroups>
+          <token type="LiteralString"/>
+          <token type="LiteralStringSymbol"/>
+          <token type="NameConstant"/>
+          <token type="Operator"/>
+          <token type="NameConstant"/>
+          <token type="LiteralStringSymbol"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[&lt;&gt;,:=.*%+|]">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="[\w&#34;\-!/&amp;;(){}#]+">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,106 @@
+<lexer>
+  <config>
+    <name>Scheme</name>
+    <alias>scheme</alias>
+    <alias>scm</alias>
+    <filename>*.scm</filename>
+    <filename>*.ss</filename>
+    <mime_type>text/x-scheme</mime_type>
+    <mime_type>application/x-scheme</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern=";.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="#\|">
+        <token type="CommentMultiline"/>
+        <push state="multiline-comment"/>
+      </rule>
+      <rule pattern="#;\s*\(">
+        <token type="Comment"/>
+        <push state="commented-form"/>
+      </rule>
+      <rule pattern="#!r6rs">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="-?\d+\.\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="-?\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;[\w!$%&amp;*+,/:&lt;=&gt;?@^~|-]+">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="#\\(alarm|backspace|delete|esc|linefeed|newline|page|return|space|tab|vtab|x[0-9a-zA-Z]{1,5}|.)">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="(#t|#f)">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="(&#39;|#|`|,@|,|\.)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(lambda |define |if |else |cond |and |or |case |let |let\* |letrec |begin |do |delay |set\! |\=\&gt; |quote |quasiquote |unquote |unquote\-splicing |define\-syntax |let\-syntax |letrec\-syntax |syntax\-rules )">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(?&lt;=&#39;\()[\w!$%&amp;*+,/:&lt;=&gt;?@^~|-]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(?&lt;=#\()[\w!$%&amp;*+,/:&lt;=&gt;?@^~|-]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(?&lt;=\()(\* |\+ |\- |\/ |\&lt; |\&lt;\= |\= |\&gt; |\&gt;\= |abs |acos |angle |append |apply |asin |assoc |assq |assv |atan |boolean\? |caaaar |caaadr |caaar |caadar |caaddr |caadr |caar |cadaar |cadadr |cadar |caddar |cadddr |caddr |cadr |call\-with\-current\-continuation |call\-with\-input\-file |call\-with\-output\-file |call\-with\-values |call\/cc |car |cdaaar |cdaadr |cdaar |cdadar |cdaddr |cdadr |cdar |cddaar |cddadr |cddar |cdddar |cddddr |cdddr |cddr |cdr |ceiling |char\-\&gt;integer |char\-alphabetic\? |char\-ci\&lt;\=\? |char\-ci\&lt;\? |char\-ci\=\? |char\-ci\&gt;\=\? |char\-ci\&gt;\? |char\-downcase |char\-lower\-case\? |char\-numeric\? |char\-ready\? |char\-upcase |char\-upper\-case\? |char\-whitespace\? |char\&lt;\=\? |char\&lt;\? |char\=\? |char\&gt;\=\? |char\&gt;\? |char\? |close\-input\-port |close\-output\-port |complex\? |cons |cos |current\-input\-port |current\-output\-port |denominator |display |dynamic\-wind |eof\-object\? |eq\? |equal\? |eqv\? |eval |even\? |exact\-\&gt;inexact |exact\? |exp |expt |floor |for\-each |force |gcd |imag\-part |inexact\-\&gt;exact |inexact\? |input\-port\? |integer\-\&gt;char |integer\? |interaction\-environment |lcm |length |list |list\-\&gt;string |list\-\&gt;vector |list\-ref |list\-tail |list\? |load |log |magnitude |make\-polar |make\-rectangular |make\-string |make\-vector |map |max |member |memq |memv |min |modulo |negative\? |newline |not |null\-environment |null\? |number\-\&gt;string |number\? |numerator |odd\? |open\-input\-file |open\-output\-file |output\-port\? |pair\? |peek\-char |port\? |positive\? |procedure\? |quotient |rational\? |rationalize |read |read\-char |real\-part |real\? |remainder |reverse |round |scheme\-report\-environment |set\-car\! |set\-cdr\! |sin |sqrt |string |string\-\&gt;list |string\-\&gt;number |string\-\&gt;symbol |string\-append |string\-ci\&lt;\=\? |string\-ci\&lt;\? |string\-ci\=\? |string\-ci\&gt;\=\? |string\-ci\&gt;\? |string\-copy |string\-fill\! |string\-length |string\-ref |string\-set\! |string\&lt;\=\? |string\&lt;\? |string\=\? |string\&gt;\=\? |string\&gt;\? |string\? |substring |symbol\-\&gt;string |symbol\? |tan |transcript\-off |transcript\-on |truncate |values |vector |vector\-\&gt;list |vector\-fill\! |vector\-length |vector\-ref |vector\-set\! |vector\? |with\-input\-from\-file |with\-output\-to\-file |write |write\-char |zero\? )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(?&lt;=\()[\w!$%&amp;*+,/:&lt;=&gt;?@^~|-]+">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="[\w!$%&amp;*+,/:&lt;=&gt;?@^~|-]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(\(|\))">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(\[|\])">
+        <token type="Punctuation"/>
+      </rule>
+    </state>
+    <state name="multiline-comment">
+      <rule pattern="#\|">
+        <token type="CommentMultiline"/>
+        <push/>
+      </rule>
+      <rule pattern="\|#">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^|#]+">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="[|#]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="commented-form">
+      <rule pattern="\(">
+        <token type="Comment"/>
+        <push/>
+      </rule>
+      <rule pattern="\)">
+        <token type="Comment"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^()]+">
+        <token type="Comment"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

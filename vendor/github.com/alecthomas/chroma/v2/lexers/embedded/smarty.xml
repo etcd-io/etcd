@@ -1,0 +1,79 @@
+<lexer>
+  <config>
+    <name>Smarty</name>
+    <alias>smarty</alias>
+    <filename>*.tpl</filename>
+    <mime_type>application/x-smarty</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="[^{]+">
+        <token type="Other"/>
+      </rule>
+      <rule pattern="(\{)(\*.*?\*)(\})">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <token type="Comment"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\{php\})(.*?)(\{/php\})">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <using lexer="PHP"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\{)(/?[a-zA-Z_]\w*)(\s*)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="smarty"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="CommentPreproc"/>
+        <push state="smarty"/>
+      </rule>
+    </state>
+    <state name="smarty">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="CommentPreproc"/>
+        <push/>
+      </rule>
+      <rule pattern="\}">
+        <token type="CommentPreproc"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="#[a-zA-Z_]\w*#">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\$[a-zA-Z_]\w*(\.\w+)*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="[~!%^&amp;*()+=|\[\]:;,.&lt;&gt;/?@-]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(true|false|null)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="[0-9](\.[0-9]*)?(eE[+-][0-9])?[flFLdD]?|0[xX][0-9a-fA-F]+[Ll]?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#39;(\\\\|\\&#39;|[^&#39;])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="NameAttribute"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

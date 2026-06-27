@@ -1,0 +1,13 @@
+version: 2
+
+builds:
+  - dir: ./cmd/godot
+checksum:
+  name_template: checksums.txt
+snapshot:
+  version_template: "{{ .Tag }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^Merge pull request'

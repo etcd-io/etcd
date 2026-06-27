@@ -1,0 +1,6 @@
+.idea
+.VSCode
+.envrc
+
+build
+dist

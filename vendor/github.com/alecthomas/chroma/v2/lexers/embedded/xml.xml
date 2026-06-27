@@ -1,0 +1,96 @@
+<lexer>
+  <config>
+    <name>XML</name>
+    <alias>xml</alias>
+    <filename>*.xml</filename>
+    <filename>*.xsl</filename>
+    <filename>*.rss</filename>
+    <filename>*.xslt</filename>
+    <filename>*.xsd</filename>
+    <filename>*.wsdl</filename>
+    <filename>*.wsf</filename>
+    <filename>*.svg</filename>
+    <filename>*.qrc</filename>
+    <filename>*.csproj</filename>
+    <filename>*.vcxproj</filename>
+    <filename>*.fsproj</filename>
+    <mime_type>text/xml</mime_type>
+    <mime_type>application/xml</mime_type>
+    <mime_type>image/svg+xml</mime_type>
+    <mime_type>application/rss+xml</mime_type>
+    <mime_type>application/atom+xml</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="[^&lt;&amp;]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&amp;\S*?;">
+        <token type="NameEntity"/>
+      </rule>
+      <rule pattern="\&lt;\!\[CDATA\[.*?\]\]\&gt;">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="&lt;!--">
+        <token type="Comment"/>
+        <push state="comment"/>
+      </rule>
+      <rule pattern="&lt;\?.*?\?&gt;">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="&lt;![^&gt;]*&gt;">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="&lt;\s*[\w:.-]+">
+        <token type="NameTag"/>
+        <push state="tag"/>
+      </rule>
+      <rule pattern="&lt;\s*/\s*[\w:.-]+\s*&gt;">
+        <token type="NameTag"/>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern="[^-]+">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="--&gt;">
+        <token type="Comment"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="-">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="tag">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[\w.:-]+\s*=">
+        <token type="NameAttribute"/>
+        <push state="attr"/>
+      </rule>
+      <rule pattern="/?\s*&gt;">
+        <token type="NameTag"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="attr">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&#34;.*?&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="&#39;.*?&#39;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^\s&gt;]+">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

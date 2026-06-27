@@ -1,0 +1,107 @@
+linters-settings:
+  gci:
+    sections:
+      - standard
+      - default
+      - localmodule
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+  goimports:
+    local-prefixes: github.com/ckaznocha/intrange
+  govet:
+    enable:
+      - appends
+      - asmdecl
+      - assign
+      - atomic
+      - atomicalign
+      - bools
+      - buildtag
+      - cgocall
+      - composites
+      - copylocks
+      - deepequalerrors
+      - defers
+      - directive
+      - errorsas
+      - fieldalignment
+      - findcall
+      - framepointer
+      - httpresponse
+      - ifaceassert
+      - loopclosure
+      - lostcancel
+      - nilfunc
+      - nilness
+      - printf
+      - reflectvaluecompare
+      - shadow
+      - shift
+      - sigchanyzer
+      - slog
+      - sortslice
+      - stdmethods
+      - stdversion
+      - stringintconv
+      - structtag
+      - testinggoroutine
+      - tests
+      - timeformat
+      - unmarshal
+      - unreachable
+      - unsafeptr
+      - unusedresult
+      - unusedwrite
+      - waitgroup
+  misspell:
+    locale: US
+linters:
+  disable-all: true
+  enable:
+    - asciicheck
+    - dupl
+    - errcheck
+    - errorlint
+    - gci
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - godot
+    - godox
+    - err113
+    - gofmt
+    - gofumpt
+    - goimports
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - nlreturn
+    - noctx
+    - nolintlint
+    - prealloc
+    - predeclared
+    - revive
+    - rowserrcheck
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unused
+    - wastedassign
+    - whitespace
+    - wsl
+issues:
+  exclude-dirs:
+    - testdata/

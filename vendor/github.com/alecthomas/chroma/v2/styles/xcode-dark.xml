@@ -1,0 +1,31 @@
+<style name="xcode-dark">
+  <entry type="Error" style="#960050"/>
+  <entry type="Background" style="#ffffff bg:#1f1f24"/>
+  <entry type="Keyword" style="#fc5fa3"/>
+  <entry type="KeywordConstant" style="#fc5fa3"/>
+  <entry type="KeywordDeclaration" style="#fc5fa3"/>
+  <entry type="KeywordReserved" style="#fc5fa3"/>
+  <entry type="Name" style="#ffffff"/>
+  <entry type="NameBuiltin" style="#d0a8ff"/>
+  <entry type="NameBuiltinPseudo" style="#a167e6"/>
+  <entry type="NameClass" style="#5dd8ff"/>
+  <entry type="NameFunction" style="#41a1c0"/>
+  <entry type="NameVariable" style="#41a1c0"/>
+  <entry type="LiteralString" style="#fc6a5d"/>
+  <entry type="LiteralStringEscape" style="#fc6a5d"/>
+  <entry type="LiteralStringInterpol" style="#ffffff"/>
+  <entry type="LiteralNumber" style="#d0bf69"/>
+  <entry type="LiteralNumberBin" style="#d0bf69"/>
+  <entry type="LiteralNumberFloat" style="#d0bf69"/>
+  <entry type="LiteralNumberHex" style="#d0bf69"/>
+  <entry type="LiteralNumberInteger" style="#d0bf69"/>
+  <entry type="LiteralNumberOct" style="#d0bf69"/>
+  <entry type="Operator" style="#ffffff"/>
+  <entry type="Punctuation" style="#ffffff"/>
+  <entry type="Comment" style="#6c7986"/>
+  <entry type="CommentMultiline" style="#6c7986"/>
+  <entry type="CommentSingle" style="#6c7986"/>
+  <entry type="CommentSpecial" style="italic #6c7986"/>
+  <entry type="CommentPreproc" style="#fd8f3f"/>
+  <entry type="Text" style="#ffffff"/>
+</style>

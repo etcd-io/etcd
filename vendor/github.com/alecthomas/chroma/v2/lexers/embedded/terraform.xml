@@ -1,0 +1,149 @@
+<lexer>
+  <config>
+    <name>Terraform</name>
+    <alias>terraform</alias>
+    <alias>tf</alias>
+    <alias>hcl</alias>
+    <filename>*.tf</filename>
+    <filename>*.hcl</filename>
+    <mime_type>application/x-tf</mime_type>
+    <mime_type>application/x-terraform</mime_type>
+  </config>
+  <rules>
+    <state name="string">
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble" />
+        <pop depth="1" />
+      </rule>
+      <rule pattern="\\\\&#34;">
+        <token type="LiteralStringDouble" />
+      </rule>
+      <rule pattern="[^&#34;\\\\$]+">
+        <token type="LiteralStringDouble" />
+      </rule>
+      <rule pattern="[^\\\\&#34;$]+">
+        <token type="LiteralStringDouble" />
+      </rule>
+      <rule pattern="\$\{">
+        <token type="LiteralStringInterpol" />
+        <push state="interp-inside" />
+      </rule>
+    </state>
+    <state name="interp-inside">
+      <rule pattern="\}">
+        <token type="LiteralStringInterpol" />
+        <pop depth="1" />
+      </rule>
+      <rule>
+        <include state="root" />
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="[\[\](),.{}]">
+        <token type="Punctuation" />
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble" />
+        <push state="string" />
+      </rule>
+      <rule pattern="-?[0-9]+">
+        <token type="LiteralNumber" />
+      </rule>
+      <rule pattern="=&gt;">
+        <token type="Punctuation" />
+      </rule>
+      <rule pattern="(false|true)\b">
+        <token type="KeywordConstant" />
+      </rule>
+      <rule pattern="/(?s)\*(((?!\*/).)*)\*/">
+        <token type="CommentMultiline" />
+      </rule>
+      <rule pattern="\s*(#|//).*\n">
+        <token type="CommentSingle" />
+      </rule>
+      <rule pattern="(?!\s*)(variable)(\s*)">
+        <bygroups>
+          <token type="Name" />
+          <token type="Text" />
+        </bygroups>
+      </rule>
+      <rule pattern="^(provisioner|variable|resource|provider|module|output|data)(?!\.)\b">
+        <token type="KeywordReserved" />
+      </rule>
+      <rule pattern="(for|in)\b">
+        <token type="Keyword" />
+      </rule>
+      <rule pattern="(module|count|data|each|var)\b">
+        <token type="NameBuiltin" />
+      </rule>
+      <rule pattern="(parseint|signum|floor|ceil|log|max|min|abs|pow)\b">
+        <token type="NameBuiltin" />
+      </rule>
+      <rule
+        pattern="(trimsuffix|formatlist|trimprefix|trimspace|regexall|replace|indent|strrev|format|substr|chomp|split|title|regex|lower|upper|trim|join)\b"
+      >
+        <token type="NameBuiltin" />
+      </rule>
+      <rule
+        pattern="[^.](setintersection|coalescelist|setsubtract|setproduct|matchkeys|chunklist|transpose|contains|distinct|coalesce|setunion|reverse|flatten|element|compact|lookup|length|concat|values|zipmap|range|merge|slice|index|list|sort|keys|map)\b"
+      >
+        <token type="NameBuiltin" />
+      </rule>
+      <rule
+        pattern="[^.](base64decode|base64encode|base64gzip|jsondecode|jsonencode|yamldecode|yamlencode|csvdecode|urlencode)\b"
+      >
+        <token type="NameBuiltin" />
+      </rule>
+      <rule pattern="(templatefile|filebase64|fileexists|pathexpand|basename|abspath|fileset|dirname|file)\b">
+        <token type="NameBuiltin" />
+      </rule>
+      <rule pattern="(formatdate|timestamp|timeadd)\b">
+        <token type="NameBuiltin" />
+      </rule>
+      <rule
+        pattern="(filebase64sha256|filebase64sha512|base64sha512|base64sha256|filesha256|rsadecrypt|filesha512|filesha1|filemd5|uuidv5|bcrypt|sha256|sha512|sha1|uuid|md5)\b"
+      >
+        <token type="NameBuiltin" />
+      </rule>
+      <rule pattern="(cidrnetmask|cidrsubnet|cidrhost)\b">
+        <token type="NameBuiltin" />
+      </rule>
+      <rule pattern="(tostring|tonumber|tobool|tolist|tomap|toset|can|try)\b">
+        <token type="NameBuiltin" />
+      </rule>
+      <rule pattern="(^|[^.\w])(name|x|default|type|description|value)(_[a-zA-Z]\w*)*">
+        <token type="NameAttribute" />
+      </rule>
+      <rule pattern="=(?!&gt;)|\+|-|\*|\/|:|!|%|&gt;|&lt;(?!&lt;)|&gt;=|&lt;=|==|!=|&amp;&amp;|\||\?">
+        <token type="Operator" />
+      </rule>
+      <rule pattern="\n|\s+|\\\n">
+        <token type="Text" />
+      </rule>
+      <rule pattern="[a-zA-Z]\w*">
+        <token type="NameOther" />
+      </rule>
+      <rule pattern="(?s)(&lt;&lt;-?)(\w+)(\n\s*(?:(?!\2).)*\s*\n\s*)(\2)">
+        <bygroups>
+          <token type="Operator" />
+          <token type="Operator" />
+          <token type="LiteralString" />
+          <token type="Operator" />
+        </bygroups>
+      </rule>
+    </state>
+    <state name="declaration">
+      <rule pattern="(\s*)(&#34;(?:\\\\|\\&#34;|[^&#34;])*&#34;)(\s*)">
+        <bygroups>
+          <token type="Text" />
+          <token type="NameAttribute" />
+          <token type="Text" />
+        </bygroups>
+      </rule>
+      <rule pattern="\{">
+        <token type="Punctuation" />
+        <pop depth="1" />
+      </rule>
+    </state>
+  </rules>
+</lexer>

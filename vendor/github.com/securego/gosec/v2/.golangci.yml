@@ -1,0 +1,65 @@
+version: "2"
+linters:
+  enable:
+    - asciicheck
+    - bodyclose
+    - copyloopvar
+    - dogsled
+    - durationcheck
+    - errorlint
+    - ginkgolinter
+    - gochecknoinits
+    - gosec
+    - importas
+    - misspell
+    - nakedret
+    - nolintlint
+    - revive
+    - testifylint
+    - unconvert
+    - unparam
+    - wastedassign
+  settings:
+    revive:
+      rules:
+        - name: dot-imports
+          disabled: true
+        - name: filename-format
+          arguments:
+            - ^[a-z][_a-z0-9]*.go$
+        - name: redefines-builtin-id
+    staticcheck:
+      checks:
+        - all
+        - -SA1019
+    testifylint:
+      enable-all: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/securego)
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

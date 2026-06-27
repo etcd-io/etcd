@@ -1,0 +1,744 @@
+<lexer>
+  <config>
+    <name>Elixir</name>
+    <alias>elixir</alias>
+    <alias>ex</alias>
+    <alias>exs</alias>
+    <filename>*.ex</filename>
+    <filename>*.eex</filename>
+    <filename>*.exs</filename>
+    <mime_type>text/x-elixir</mime_type>
+  </config>
+  <rules>
+    <state name="cb-intp">
+      <rule pattern="[^#\}\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\}[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="triquot-end">
+      <rule pattern="[a-zA-Z]+">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="apos-no-intp">
+      <rule pattern="[^&#39;\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="&#39;[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="slas-no-intp">
+      <rule pattern="[^/\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="/[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="pipe-no-intp">
+      <rule pattern="[^\|\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\|[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="apos-intp">
+      <rule pattern="[^#&#39;\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="&#39;[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="cb-no-intp">
+      <rule pattern="[^\}\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\}[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="heredoc_double">
+      <rule pattern="^\s*&#34;&#34;&#34;">
+        <token type="LiteralStringHeredoc"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="heredoc_interpol"/>
+      </rule>
+    </state>
+    <state name="triapos-end">
+      <rule pattern="[a-zA-Z]+">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="interpol_string">
+      <rule pattern="\}">
+        <token type="LiteralStringInterpol"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+    <state name="triquot-intp">
+      <rule pattern="^\s*&#34;&#34;&#34;">
+        <token type="LiteralStringHeredoc"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="heredoc_interpol"/>
+      </rule>
+    </state>
+    <state name="interpol">
+      <rule pattern="#\{">
+        <token type="LiteralStringInterpol"/>
+        <push state="interpol_string"/>
+      </rule>
+    </state>
+    <state name="pa-no-intp">
+      <rule pattern="[^\)\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\)[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="map_key">
+      <rule>
+        <include state="root"/>
+      </rule>
+      <rule pattern=":">
+        <token type="Punctuation"/>
+        <push state="map_val"/>
+      </rule>
+      <rule pattern="=&gt;">
+        <token type="Punctuation"/>
+        <push state="map_val"/>
+      </rule>
+      <rule pattern="\}">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="pa-intp">
+      <rule pattern="[^#\)\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\)[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="tuple">
+      <rule>
+        <include state="root"/>
+      </rule>
+      <rule pattern="\}">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="#.*$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="(\?)(\\x\{)([\da-fA-F]+)(\})">
+        <bygroups>
+          <token type="LiteralStringChar"/>
+          <token type="LiteralStringEscape"/>
+          <token type="LiteralNumberHex"/>
+          <token type="LiteralStringEscape"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\?)(\\x[\da-fA-F]{1,2})">
+        <bygroups>
+          <token type="LiteralStringChar"/>
+          <token type="LiteralStringEscape"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\?)(\\[abdefnrstv])">
+        <bygroups>
+          <token type="LiteralStringChar"/>
+          <token type="LiteralStringEscape"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\?\\?.">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern=":::">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="::">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern=":(?:\.\.\.|&lt;&lt;&gt;&gt;|%\{\}|%|\{\})">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern=":(?:(?:\.\.\.|[a-z_]\w*[!?]?)|[A-Z]\w*(?:\.[A-Z]\w*)*|(?:\&lt;\&lt;\&lt;|\&gt;\&gt;\&gt;|\|\|\||\&amp;\&amp;\&amp;|\^\^\^|\~\~\~|\=\=\=|\!\=\=|\~\&gt;\&gt;|\&lt;\~\&gt;|\|\~\&gt;|\&lt;\|\&gt;|\=\=|\!\=|\&lt;\=|\&gt;\=|\&amp;\&amp;|\|\||\&lt;\&gt;|\+\+|\-\-|\|\&gt;|\=\~|\-\&gt;|\&lt;\-|\||\.|\=|\~\&gt;|\&lt;\~|\&lt;|\&gt;|\+|\-|\*|\/|\!|\^|\&amp;))">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern=":&#34;">
+        <token type="LiteralStringSymbol"/>
+        <push state="string_double_atom"/>
+      </rule>
+      <rule pattern=":&#39;">
+        <token type="LiteralStringSymbol"/>
+        <push state="string_single_atom"/>
+      </rule>
+      <rule pattern="((?:\.\.\.|&lt;&lt;&gt;&gt;|%\{\}|%|\{\})|(?:(?:\.\.\.|[a-z_]\w*[!?]?)|[A-Z]\w*(?:\.[A-Z]\w*)*|(?:\&lt;\&lt;\&lt;|\&gt;\&gt;\&gt;|\|\|\||\&amp;\&amp;\&amp;|\^\^\^|\~\~\~|\=\=\=|\!\=\=|\~\&gt;\&gt;|\&lt;\~\&gt;|\|\~\&gt;|\&lt;\|\&gt;|\=\=|\!\=|\&lt;\=|\&gt;\=|\&amp;\&amp;|\|\||\&lt;\&gt;|\+\+|\-\-|\|\&gt;|\=\~|\-\&gt;|\&lt;\-|\||\.|\=|\~\&gt;|\&lt;\~|\&lt;|\&gt;|\+|\-|\*|\/|\!|\^|\&amp;)))(:)(?=\s|\n)">
+        <bygroups>
+          <token type="LiteralStringSymbol"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(fn|do|end|after|else|rescue|catch)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(not|and|or|when|in)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="(case|cond|for|if|unless|try|receive|raise|quote|unquote|unquote_splicing|throw|super|while)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(def|defp|defmodule|defprotocol|defmacro|defmacrop|defdelegate|defexception|defstruct|defimpl|defcallback)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="(import|require|use|alias)\b">
+        <token type="KeywordNamespace"/>
+      </rule>
+      <rule pattern="(nil|true|false)\b">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="(_|__MODULE__|__DIR__|__ENV__|__CALLER__)\b">
+        <token type="NamePseudo"/>
+      </rule>
+      <rule pattern="@(?:\.\.\.|[a-z_]\w*[!?]?)">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="(?:\.\.\.|[a-z_]\w*[!?]?)">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="(%?)([A-Z]\w*(?:\.[A-Z]\w*)*)">
+        <bygroups>
+          <token type="Punctuation"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\&lt;\&lt;\&lt;|\&gt;\&gt;\&gt;|\|\|\||\&amp;\&amp;\&amp;|\^\^\^|\~\~\~|\=\=\=|\!\=\=|\~\&gt;\&gt;|\&lt;\~\&gt;|\|\~\&gt;|\&lt;\|\&gt;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\=\=|\!\=|\&lt;\=|\&gt;\=|\&amp;\&amp;|\|\||\&lt;\&gt;|\+\+|\-\-|\|\&gt;|\=\~|\-\&gt;|\&lt;\-|\||\.|\=|\~\&gt;|\&lt;\~">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\\\\|\&lt;\&lt;|\&gt;\&gt;|\=\&gt;|\(|\)|\:|\;|\,|\[|\]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="&amp;\d">
+        <token type="NameEntity"/>
+      </rule>
+      <rule pattern="\&lt;|\&gt;|\+|\-|\*|\/|\!|\^|\&amp;">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="0b[01](_?[01])*">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="0o[0-7](_?[0-7])*">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="0x[\da-fA-F](_?[\dA-Fa-f])*">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="\d(_?\d)*\.\d(_?\d)*([eE][-+]?\d(_?\d)*)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d(_?\d)*">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;\s*">
+        <token type="LiteralStringHeredoc"/>
+        <push state="heredoc_double"/>
+      </rule>
+      <rule pattern="&#39;&#39;&#39;\s*$">
+        <token type="LiteralStringHeredoc"/>
+        <push state="heredoc_single"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string_double"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <push state="string_single"/>
+      </rule>
+      <rule>
+        <include state="sigils"/>
+      </rule>
+      <rule pattern="%\{">
+        <token type="Punctuation"/>
+        <push state="map_key"/>
+      </rule>
+      <rule pattern="\{">
+        <token type="Punctuation"/>
+        <push state="tuple"/>
+      </rule>
+    </state>
+    <state name="sigils">
+      <rule pattern="(~[a-z])(&#34;&#34;&#34;)">
+        <bygroups>
+          <token type="LiteralStringOther"/>
+          <token type="LiteralStringHeredoc"/>
+        </bygroups>
+        <push state="triquot-end" state="triquot-intp"/>
+      </rule>
+      <rule pattern="(~[A-Z])(&#34;&#34;&#34;)">
+        <bygroups>
+          <token type="LiteralStringOther"/>
+          <token type="LiteralStringHeredoc"/>
+        </bygroups>
+        <push state="triquot-end" state="triquot-no-intp"/>
+      </rule>
+      <rule pattern="(~[a-z])(&#39;&#39;&#39;)">
+        <bygroups>
+          <token type="LiteralStringOther"/>
+          <token type="LiteralStringHeredoc"/>
+        </bygroups>
+        <push state="triapos-end" state="triapos-intp"/>
+      </rule>
+      <rule pattern="(~[A-Z])(&#39;&#39;&#39;)">
+        <bygroups>
+          <token type="LiteralStringOther"/>
+          <token type="LiteralStringHeredoc"/>
+        </bygroups>
+        <push state="triapos-end" state="triapos-no-intp"/>
+      </rule>
+      <rule pattern="~[a-z]\{">
+        <token type="LiteralStringOther"/>
+        <push state="cb-intp"/>
+      </rule>
+      <rule pattern="~[A-Z]\{">
+        <token type="LiteralStringOther"/>
+        <push state="cb-no-intp"/>
+      </rule>
+      <rule pattern="~[a-z]\[">
+        <token type="LiteralStringOther"/>
+        <push state="sb-intp"/>
+      </rule>
+      <rule pattern="~[A-Z]\[">
+        <token type="LiteralStringOther"/>
+        <push state="sb-no-intp"/>
+      </rule>
+      <rule pattern="~[a-z]\(">
+        <token type="LiteralStringOther"/>
+        <push state="pa-intp"/>
+      </rule>
+      <rule pattern="~[A-Z]\(">
+        <token type="LiteralStringOther"/>
+        <push state="pa-no-intp"/>
+      </rule>
+      <rule pattern="~[a-z]&lt;">
+        <token type="LiteralStringOther"/>
+        <push state="ab-intp"/>
+      </rule>
+      <rule pattern="~[A-Z]&lt;">
+        <token type="LiteralStringOther"/>
+        <push state="ab-no-intp"/>
+      </rule>
+      <rule pattern="~[a-z]/">
+        <token type="LiteralStringOther"/>
+        <push state="slas-intp"/>
+      </rule>
+      <rule pattern="~[A-Z]/">
+        <token type="LiteralStringOther"/>
+        <push state="slas-no-intp"/>
+      </rule>
+      <rule pattern="~[a-z]\|">
+        <token type="LiteralStringOther"/>
+        <push state="pipe-intp"/>
+      </rule>
+      <rule pattern="~[A-Z]\|">
+        <token type="LiteralStringOther"/>
+        <push state="pipe-no-intp"/>
+      </rule>
+      <rule pattern="~[a-z]&#34;">
+        <token type="LiteralStringOther"/>
+        <push state="quot-intp"/>
+      </rule>
+      <rule pattern="~[A-Z]&#34;">
+        <token type="LiteralStringOther"/>
+        <push state="quot-no-intp"/>
+      </rule>
+      <rule pattern="~[a-z]&#39;">
+        <token type="LiteralStringOther"/>
+        <push state="apos-intp"/>
+      </rule>
+      <rule pattern="~[A-Z]&#39;">
+        <token type="LiteralStringOther"/>
+        <push state="apos-no-intp"/>
+      </rule>
+    </state>
+    <state name="triapos-intp">
+      <rule pattern="^\s*&#39;&#39;&#39;">
+        <token type="LiteralStringHeredoc"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="heredoc_interpol"/>
+      </rule>
+    </state>
+    <state name="string_single_atom">
+      <rule pattern="[^#&#39;\\]+">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="(&#39;)">
+        <bygroups>
+          <token type="LiteralStringSymbol"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="quot-intp">
+      <rule pattern="[^#&#34;\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="&#34;[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="sb-no-intp">
+      <rule pattern="[^\]\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\][a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="slas-intp">
+      <rule pattern="[^#/\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="/[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="sb-intp">
+      <rule pattern="[^#\]\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\][a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="heredoc_no_interpol">
+      <rule pattern="[^\\\n]+">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+      <rule pattern="\n+">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+    </state>
+    <state name="pipe-intp">
+      <rule pattern="[^#\|\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\|[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="map_val">
+      <rule>
+        <include state="root"/>
+      </rule>
+      <rule pattern=",">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(?=\})">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="heredoc_single">
+      <rule pattern="^\s*&#39;&#39;&#39;">
+        <token type="LiteralStringHeredoc"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="heredoc_interpol"/>
+      </rule>
+    </state>
+    <state name="heredoc_interpol">
+      <rule pattern="[^#\\\n]+">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+      <rule pattern="\n+">
+        <token type="LiteralStringHeredoc"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="string_single">
+      <rule pattern="[^#&#39;\\]+">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="(&#39;)">
+        <bygroups>
+          <token type="LiteralStringSingle"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="string_double_atom">
+      <rule pattern="[^#&#34;\\]+">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="(&#34;)">
+        <bygroups>
+          <token type="LiteralStringSymbol"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="ab-no-intp">
+      <rule pattern="[^&gt;\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="&gt;[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="ab-intp">
+      <rule pattern="[^#&gt;\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="&gt;[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="quot-no-intp">
+      <rule pattern="[^&#34;\\]+">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringOther"/>
+      </rule>
+      <rule pattern="&#34;[a-zA-Z]*">
+        <token type="LiteralStringOther"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="triapos-no-intp">
+      <rule pattern="^\s*&#39;&#39;&#39;">
+        <token type="LiteralStringHeredoc"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="heredoc_no_interpol"/>
+      </rule>
+    </state>
+    <state name="string_double">
+      <rule pattern="[^#&#34;\\]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule>
+        <include state="escapes"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="(&#34;)">
+        <bygroups>
+          <token type="LiteralStringDouble"/>
+        </bygroups>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="interpol"/>
+      </rule>
+    </state>
+    <state name="escapes">
+      <rule pattern="(\\x\{)([\da-fA-F]+)(\})">
+        <bygroups>
+          <token type="LiteralStringEscape"/>
+          <token type="LiteralNumberHex"/>
+          <token type="LiteralStringEscape"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\\x[\da-fA-F]{1,2})">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="(\\[abdefnrstv])">
+        <token type="LiteralStringEscape"/>
+      </rule>
+    </state>
+    <state name="triquot-no-intp">
+      <rule pattern="^\s*&#34;&#34;&#34;">
+        <token type="LiteralStringHeredoc"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="heredoc_no_interpol"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

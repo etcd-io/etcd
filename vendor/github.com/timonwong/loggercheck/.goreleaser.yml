@@ -1,0 +1,59 @@
+---
+project_name: loggercheck
+
+release:
+  github:
+    owner: timonwong
+    name: loggercheck
+
+builds:
+  - binary: loggercheck
+    goos:
+      - darwin
+      - windows
+      - linux
+    goarch:
+      - '386'
+      - amd64
+      - arm
+      - arm64
+    goarm:
+      - '7'
+    env:
+      - CGO_ENABLED=0
+    ignore:
+      - goos: darwin
+        goarch: '386'
+    main: ./cmd/loggercheck/
+    flags:
+      - -trimpath
+    ldflags: -s -w
+
+archives:
+  - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+
+snapshot:
+  name_template: '{{ incpatch .Version }}-next'
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '(?i)^docs?:'
+      - '(?i)^docs\([^:]+\):'
+      - '(?i)^docs\[[^:]+\]:'
+      - '^tests?:'
+      - '(?i)^dev:'
+      - '^build\(deps\): bump .* in /docs \(#\d+\)'
+      - '^build\(deps\): bump .* in /\.github/peril \(#\d+\)'
+      - Merge pull request
+      - Merge branch

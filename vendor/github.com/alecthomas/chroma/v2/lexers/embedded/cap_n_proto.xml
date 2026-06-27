@@ -1,0 +1,122 @@
+<lexer>
+  <config>
+    <name>Cap&#39;n Proto</name>
+    <alias>capnp</alias>
+    <filename>*.capnp</filename>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="#.*?$">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="@[0-9a-zA-Z]*">
+        <token type="NameDecorator"/>
+      </rule>
+      <rule pattern="=">
+        <token type="Literal"/>
+        <push state="expression"/>
+      </rule>
+      <rule pattern=":">
+        <token type="NameClass"/>
+        <push state="type"/>
+      </rule>
+      <rule pattern="\$">
+        <token type="NameAttribute"/>
+        <push state="annotation"/>
+      </rule>
+      <rule pattern="(struct|enum|interface|union|import|using|const|annotation|extends|in|of|on|as|with|from|fixed)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="[\w.]+">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="[^#@=:$\w]+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="type">
+      <rule pattern="[^][=;,(){}$]+">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="[[(]">
+        <token type="NameClass"/>
+        <push state="parentype"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="parentype">
+      <rule pattern="[^][;()]+">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="[[(]">
+        <token type="NameClass"/>
+        <push/>
+      </rule>
+      <rule pattern="[])]">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="expression">
+      <rule pattern="[^][;,(){}$]+">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern="[[(]">
+        <token type="Literal"/>
+        <push state="parenexp"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="parenexp">
+      <rule pattern="[^][;()]+">
+        <token type="Literal"/>
+      </rule>
+      <rule pattern="[[(]">
+        <token type="Literal"/>
+        <push/>
+      </rule>
+      <rule pattern="[])]">
+        <token type="Literal"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="annotation">
+      <rule pattern="[^][;,(){}=:]+">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="[[(]">
+        <token type="NameAttribute"/>
+        <push state="annexp"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="annexp">
+      <rule pattern="[^][;()]+">
+        <token type="NameAttribute"/>
+      </rule>
+      <rule pattern="[[(]">
+        <token type="NameAttribute"/>
+        <push/>
+      </rule>
+      <rule pattern="[])]">
+        <token type="NameAttribute"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

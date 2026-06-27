@@ -1,0 +1,360 @@
+syntax = "proto3";
+
+package testgrid.api.v1;
+
+option go_package = "github.com/GoogleCloudPlatform/testgrid/pb/api/v1";
+
+import "google/protobuf/timestamp.proto";
+import "pb/config/config.proto";
+import "pb/state/state.proto";
+import "pb/summary/summary.proto";
+
+service TestGridData {
+  // GET /dashboards
+  // Lists dashboard names
+  rpc ListDashboards(ListDashboardsRequest) returns (ListDashboardsResponse) {}
+
+  // GET /dashboard-groups
+  // Lists the dashboard group names
+  rpc ListDashboardGroups(ListDashboardGroupsRequest)
+      returns (ListDashboardGroupsResponse) {}
+
+  // GET /dashboards/{dashboard}/tabs
+  // Lists the dashboard tab names
+  rpc ListDashboardTabs(ListDashboardTabsRequest)
+      returns (ListDashboardTabsResponse) {}
+
+  // GET /dashboards/{dashboard}
+  // Returns a Dashboard config's metadata
+  // Excludes subtabs, accessed through the /tabs list method instead
+  rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse) {}
+
+  // GET /dashboard-groups/{dashboard-group}
+  // Lists the dashboard names in that group
+  rpc GetDashboardGroup(GetDashboardGroupRequest)
+      returns (GetDashboardGroupResponse) {}
+
+  // GET /dashboards/{dashboard}/tabs/{tab}/headers
+  // Returns the headers for grid results
+  rpc ListHeaders(ListHeadersRequest) returns (ListHeadersResponse) {}
+
+  // GET /dashboards/{dashboard}/tabs/{tab}/rows
+  // Returns information on grid rows, and data within those rows
+  rpc ListRows(ListRowsRequest) returns (ListRowsResponse) {}
+
+  // GET /dashboards/{dashboard}/tab-summaries
+  // Returns the list of tab summaries for dashboard.
+  rpc ListTabSummaries(ListTabSummariesRequest) returns (ListTabSummariesResponse){}
+
+  // GET /dashboards/{dashboard}/tab-summaries/{tab}
+  rpc GetTabSummary(GetTabSummaryRequest) returns (GetTabSummaryResponse){}
+
+  // GET /dashboard-groups/{dashboard-group}/dashboard-summaries
+  rpc ListDashboardSummaries(ListDashboardSummariesRequest) returns (ListDashboardSummariesResponse){}
+
+  // GET /dashboards/{dashboard}/summary
+  rpc GetDashboardSummary(GetDashboardSummaryRequest) returns (GetDashboardSummaryResponse){}
+}
+
+message ListDashboardsRequest { string scope = 1; }
+
+message ListDashboardsResponse { repeated DashboardResource dashboards = 1; }
+
+message ListDashboardGroupsRequest { string scope = 1; }
+
+message ListDashboardGroupsResponse { repeated Resource dashboard_groups = 1; }
+
+message ListDashboardTabsRequest {
+  string scope = 1;
+  string dashboard = 2;
+}
+
+message ListDashboardTabsResponse { repeated Resource dashboard_tabs = 1; }
+
+message GetDashboardRequest {
+  string scope = 1;
+  string dashboard = 2;
+}
+
+message GetDashboardResponse {
+  // A list of notifications attached to this dashboard.
+  // This is displayed on any dashboard tab in this dashboard.
+  repeated testgrid.config.Notification notifications = 1;
+
+  // Control which tab is displayed when first opening a dashboard.
+  // Defaults to Summary
+  string default_tab = 2;
+
+  // Controls whether to suppress highlighting of failing tabs.
+  bool suppress_failing_tabs = 3;
+
+  // Controls whether to apply special highlighting to result header columns for
+  // the current day.
+  bool highlight_today = 4;
+}
+
+message GetDashboardGroupRequest {
+  string scope = 1;
+  string dashboard_group = 2;
+}
+
+message GetDashboardGroupResponse { repeated Resource dashboards = 1; }
+
+message ListHeadersRequest {
+  string scope = 1;
+  string dashboard = 2;
+  string tab = 3;
+}
+
+message ListHeadersResponse {
+  repeated Header headers = 1;
+
+  message Header {
+    // Unique instance of the job, typically BUILD_NUMBER from prow or a guid
+    string build = 1;
+
+    // Name associated with the column (such as the run/invocation ID). No two
+    // columns should have the same build_id and name. The name field allows the
+    // display of multiple columns with the same build_id.
+    string name = 2;
+
+    // When the build started running
+    google.protobuf.Timestamp started = 3;
+
+    // Additional custom headers like commit, image used, etc.
+    repeated string extra = 4;
+
+    // Custom hotlist ids.
+    string hotlist_ids = 5;
+  }
+}
+
+message ListRowsRequest {
+  string scope = 1;
+  string dashboard = 2;
+  string tab = 3;
+}
+
+message ListRowsResponse {
+  repeated Row rows = 1;
+
+  message Row {
+    // Display name of the test case
+    string name = 1;
+
+    // Historical results of the test case. Unencoded.
+    repeated Cell cells = 2;
+
+    // Issue or Bug IDs associated with the test case
+    repeated string issues = 3;
+
+    // Alert associated with the test case
+    testgrid.state.AlertInfo alert = 4;
+
+    // TODO(chases2): Add metrics to these resources
+  }
+
+  message Cell {
+    int32 result = 1;
+    string cell_id = 2;
+    string message = 3;
+    string icon = 4;
+  }
+}
+
+// A Resource is a REST resource, often returned by a LIST command
+// It includes the name of the resource and a link to the resource
+message Resource {
+  string name = 1;
+  string link = 2;
+}
+
+// A DashboardResource is a REST resource for a dashboard
+// It includes the name of the resource, a link, and a dashboard group to which it belongs
+message DashboardResource {
+  string name = 1;
+  string link = 2;
+  // Dashboard group to which the dashboard belongs to.
+  // Empty if dashboard doesn't belong to any group.
+  string dashboard_group_name = 3;
+}
+
+message ListTabSummariesRequest {
+  // Scope defines the GCS bucket to read the results from.
+  string scope = 1;
+
+  // Name of the dashboard to fetch tab summaries for.
+  string dashboard = 2;
+}
+
+message ListTabSummariesResponse {
+  // List of tab summaries.
+  repeated TabSummary tab_summaries = 1;
+}
+
+message GetTabSummaryRequest{
+  // Scope defines the GCS bucket to read the results from.
+  string scope = 1;
+
+  // Name of the dashboard to fetch tab summaries for.
+  string dashboard = 2;
+
+  // Name of the particular tab to fetch the summary for.
+  string tab = 3;
+}
+
+message GetTabSummaryResponse{
+  // Summary for the tab
+  TabSummary tab_summary = 1;
+}
+
+message ListDashboardSummariesRequest{
+  // Scope defines the GCS bucket to read the results from.
+  string scope = 1;
+
+  // Name of the dashboard group to fetch dashboard summaries for.
+  string dashboard_group = 2;
+}
+
+message ListDashboardSummariesResponse{
+  // List of dashboard summaries.
+  repeated DashboardSummary dashboard_summaries = 1;
+}
+
+message GetDashboardSummaryRequest{
+  // Scope defines the GCS bucket to read the results from.
+  string scope = 1;
+
+  // Name of the dashboard to fetch the summary for.
+  string dashboard = 2;
+}
+
+message GetDashboardSummaryResponse{
+  // Summary for the dashboard.
+  DashboardSummary dashboard_summary = 1;
+}
+
+// Summary for a particular tab.
+// Contains the info required to render tab summary in UI.
+message TabSummary {
+  // The name of the dashboard this tab belongs to.
+  string dashboard_name = 1;
+
+  // The name of the tab.
+  string tab_name = 2;
+
+  // Overall status for the dashboard tab (e.g. PASSING, FAILING, etc.)
+  string overall_status = 3;
+
+  // Summary of the status for this dashboard tab.
+  string detailed_status_message = 4;
+
+  // Timestamp at which tests last ran.
+  google.protobuf.Timestamp last_run_timestamp = 5;
+
+  // Timestamp at which the test group was last updated.
+  google.protobuf.Timestamp last_update_timestamp = 6;
+
+  // The ID for the latest passing build.
+  string latest_passing_build = 7;
+
+  // Summarized info on the failing tests.
+  // In this case, any test which raised an alert and did not suppress it is considered failing.
+  FailuresSummary failures_summary = 8;
+
+  //Summarized info on the tab's healthiness.
+  HealthinessSummary healthiness_summary = 9;
+}
+
+// Summarized representation of data from failing test summaries.
+// Will be rendered in failures summary component within tab summary.
+message FailuresSummary {
+
+  // Top failing tests by fail count.
+  repeated FailingTestInfo top_failing_tests = 1;
+
+  // Aggregated stats across all failing tests.
+  FailureStats failure_stats = 2;
+}
+
+// Subset of data from FailingTestSummary defined in summary.proto.
+message FailingTestInfo {
+
+  // Name of the failing test.
+  string display_name = 1;
+
+  // number of times the test has failed.
+  int32 fail_count = 2;
+
+  // Timestamp for the last cycle in which the test passed.
+  google.protobuf.Timestamp pass_timestamp = 3;
+
+  // Timestamp for the first cycle in which the test failed.
+  google.protobuf.Timestamp fail_timestamp = 4;
+}
+
+// Aggregate stats across all failing tests.
+message FailureStats {
+
+  // Number of failing tests for the tab.
+  int32 num_failing_tests = 1;
+}
+
+// Summarized representation of data from tab's HealthinessInfo.
+// Will be rendered in healthiness summary component within tab summary.
+message HealthinessSummary {
+
+  // Top flaky tests (with flakiness > 0) by the current flakiness %.
+  repeated FlakyTestInfo top_flaky_tests = 1;
+
+  // Aggregated healthiness stats for the tab.
+  HealthinessStats healthiness_stats = 2;
+}
+
+// Subset of data from HealthinessInfo.TestInfo defined in summary.proto.
+message FlakyTestInfo {
+
+  // Name of the flaky test.
+  string display_name = 1;
+
+  // The flakiness of the test, in % measured out of 100
+  float flakiness = 2;
+
+  // The change of flakiness based on the last interval's flakiness
+  // The interval is set by each tab's config, with a default of 7 days.
+  testgrid.summary.TestInfo.Trend change = 3;
+}
+
+// Aggregated healthiness stats across the tab.
+message HealthinessStats {
+
+  // The start of the time frame that the analysis was run for.
+  google.protobuf.Timestamp start = 1;
+
+  // The end of the time frame that the analysis was run for.
+  google.protobuf.Timestamp end = 2;
+
+  // Number of flaky tests in the tab.
+  int32 num_flaky_tests = 3;
+
+  // Average flakiness for the current analysis interval.
+  float average_flakiness = 4;
+
+  // Average flakiness for the previous analysis interval.
+  float previous_flakiness = 5;
+}
+
+// Summary for a particular dashboard.
+// Contains the info required to render dashboard summary in UI (done in the dashboard group view).
+message DashboardSummary{
+
+  // Name of the dashboard.
+  string name = 1;
+
+  // Overall status of the dashboard.
+  // Will be calculated based on the presence and importance of underlying tabs.
+  string overall_status = 2;
+
+  // Count of the tabs by status.
+  map<string, int32> tab_status_count = 3;
+}

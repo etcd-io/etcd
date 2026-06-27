@@ -1,0 +1,98 @@
+<lexer>
+  <config>
+    <name>Jungle</name>
+    <alias>jungle</alias>
+    <filename>*.jungle</filename>
+    <mime_type>text/x-jungle</mime_type>
+  </config>
+  <rules>
+    <state name="var">
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\b(((re)?source|barrel)Path|excludeAnnotations|annotations|lang)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="\bbase\b">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="\b(ind|zsm|hrv|ces|dan|dut|eng|fin|fre|deu|gre|hun|ita|nob|po[lr]|rus|sl[ov]|spa|swe|ara|heb|zh[st]|jpn|kor|tha|vie|bul|tur)">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="\b((semi)?round|rectangle)(-\d+x\d+)?\b">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="[\.;\[\]\(\$]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="Name"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="#(\n|[\w\W]*?[^#]\n)">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="^(?=\S)">
+        <token type="None"/>
+        <push state="instruction"/>
+      </rule>
+      <rule pattern="[\.;\[\]\(\)\$]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="instruction">
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="=">
+        <token type="Operator"/>
+        <push state="value"/>
+      </rule>
+      <rule pattern="(?=\S)">
+        <token type="None"/>
+        <push state="var"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="value">
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\$\(">
+        <token type="Punctuation"/>
+        <push state="var"/>
+      </rule>
+      <rule pattern="[;\[\]\(\)\$]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="#(\n|[\w\W]*?[^#]\n)">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="[\w_\-\.\/\\]+">
+        <token type="Text"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

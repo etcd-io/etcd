@@ -1,0 +1,56 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/unqueryvet
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.html
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+go.work
+.golangci.local.yml
+
+# Build tools (downloaded by Taskfile/Gradle)
+.tools/
+.task/
+
+# VS Code extension build artifacts
+extensions/vscode/node_modules/
+extensions/vscode/out/
+extensions/vscode/*.vsix
+*.vsix
+
+# Claude Code
+.claude/

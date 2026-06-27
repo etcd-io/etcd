@@ -1,0 +1,398 @@
+# https://taskfile.dev
+version: "3"
+
+vars:
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  DATE:
+    sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
+  BUILT_BY:
+    sh: echo "$(whoami)@$(hostname)"
+  LDFLAGS: >-
+    -X 'github.com/MirrexOne/unqueryvet/internal/version.Version={{.VERSION}}'
+    -X 'github.com/MirrexOne/unqueryvet/internal/version.Commit={{.COMMIT}}'
+    -X 'github.com/MirrexOne/unqueryvet/internal/version.Date={{.DATE}}'
+    -X 'github.com/MirrexOne/unqueryvet/internal/version.BuiltBy={{.BUILT_BY}}'
+  BINARY_NAME: unqueryvet
+  BINARY_EXT:
+    sh: if [ "$(go env GOOS)" = "windows" ]; then echo ".exe"; fi
+
+tasks:
+  default:
+    desc: Format, test, and build
+    cmds:
+      - task: fmt
+      - task: test
+      - task: build
+
+  # ============================================================================
+  # BUILD TASKS
+  # ============================================================================
+
+  build:
+    desc: Build the unqueryvet binary
+    cmds:
+      - echo "Building {{.BINARY_NAME}}..."
+      - go build -v -ldflags "{{.LDFLAGS}}" -o {{.BINARY_NAME}}{{.BINARY_EXT}} ./cmd/unqueryvet
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.BINARY_NAME}}{{.BINARY_EXT}}"
+
+  build:lsp:
+    desc: Build the LSP server binary
+    cmds:
+      - echo "Building unqueryvet-lsp..."
+      - go build -v -ldflags "{{.LDFLAGS}}" -o unqueryvet-lsp{{.BINARY_EXT}} ./cmd/unqueryvet-lsp
+    sources:
+      - "**/*.go"
+      - go.mod
+    generates:
+      - "unqueryvet-lsp{{.BINARY_EXT}}"
+
+  build:all:
+    desc: Build all binaries
+    cmds:
+      - task: build
+      - task: build:lsp
+
+  build:lsp:all:
+    desc: Build LSP server for all platforms (cross-compile)
+    cmds:
+      - echo "Building LSP for all platforms..."
+      - |
+        if [ "$(go env GOOS)" = "windows" ]; then
+          powershell -ExecutionPolicy Bypass -File ./scripts/build-lsp.ps1 -Version "{{.VERSION}}"
+        else
+          chmod +x ./scripts/build-lsp.sh
+          ./scripts/build-lsp.sh "{{.VERSION}}"
+        fi
+      - echo "Binaries available in dist/"
+
+  build:lsp:release:
+    desc: Build LSP for all platforms with release optimizations
+    cmds:
+      - echo "Building LSP release binaries..."
+      - |
+        if [ "$(go env GOOS)" = "windows" ]; then
+          powershell -ExecutionPolicy Bypass -File ./scripts/build-lsp.ps1 -Version "{{.VERSION}}"
+        else
+          chmod +x ./scripts/build-lsp.sh
+          ./scripts/build-lsp.sh "{{.VERSION}}"
+        fi
+      - cd dist && sha256sum * > checksums.txt
+      - echo "Release binaries with checksums in dist/"
+
+  install:
+    desc: Install unqueryvet binary to GOPATH/bin
+    cmds:
+      - echo "Installing unqueryvet..."
+      - go install -ldflags "{{.LDFLAGS}}" ./cmd/unqueryvet
+
+  install:all:
+    desc: Install all binaries to GOPATH/bin
+    cmds:
+      - echo "Installing all binaries..."
+      - go install -ldflags "{{.LDFLAGS}}" ./cmd/unqueryvet
+      - go install -ldflags "{{.LDFLAGS}}" ./cmd/unqueryvet-lsp
+
+  # ============================================================================
+  # TEST TASKS
+  # ============================================================================
+
+  test:
+    desc: Run tests with race detection (requires CGO on Windows)
+    cmds:
+      - echo "Running tests..."
+      - go test -v -coverprofile=coverage.out ./...
+
+  test:race:
+    desc: Run tests with race detection (requires CGO_ENABLED=1)
+    cmds:
+      - echo "Running tests with race detection..."
+      - go test -v -race -coverprofile=coverage.out ./...
+
+  test:short:
+    desc: Run short tests (skip long-running tests)
+    cmds:
+      - echo "Running short tests..."
+      - go test -v -short ./...
+
+  test:unit:
+    desc: Run unit tests only
+    cmds:
+      - echo "Running unit tests..."
+      - go test -v ./internal/...
+
+  test:integration:
+    desc: Run integration tests
+    cmds:
+      - echo "Running integration tests..."
+      - go test -v -tags=integration ./...
+
+  bench:
+    desc: Run benchmarks
+    cmds:
+      - echo "Running benchmarks..."
+      - go test -bench=. -benchmem ./internal/analyzer
+
+  bench:all:
+    desc: Run all benchmarks with comparison
+    cmds:
+      - echo "Running all benchmarks..."
+      - go test -bench=. -benchmem -count=5 ./... | tee bench.txt
+
+  coverage:
+    desc: Generate coverage report
+    deps: [test]
+    cmds:
+      - echo "Generating coverage report..."
+      - go tool cover -html=coverage.out -o coverage.html
+      - echo "Coverage report generated - coverage.html"
+
+  coverage:func:
+    desc: Show function coverage
+    deps: [test]
+    cmds:
+      - go tool cover -func=coverage.out
+
+  # ============================================================================
+  # FORMAT & LINT TASKS
+  # ============================================================================
+
+  fmt:
+    desc: Format all Go files
+    cmds:
+      - echo "Formatting code..."
+      - gofmt -s -w .
+      - go fmt ./...
+
+  fmt:check:
+    desc: Check if code is formatted
+    cmds:
+      - echo "Checking code formatting..."
+      - |
+        UNFORMATTED=$(gofmt -s -l .)
+        if [ -n "$UNFORMATTED" ]; then
+          echo "The following files need formatting:"
+          echo "$UNFORMATTED"
+          exit 1
+        else
+          echo "All files are properly formatted"
+        fi
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - echo "Running linter..."
+      - golangci-lint run ./...
+
+  lint:fix:
+    desc: Run golangci-lint with auto-fix
+    cmds:
+      - echo "Running linter with auto-fix..."
+      - golangci-lint run --fix ./...
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - echo "Running go vet..."
+      - go vet ./...
+
+  check:
+    desc: Run unqueryvet on the project itself
+    cmds:
+      - echo "Running unqueryvet on project..."
+      - go run ./cmd/unqueryvet ./...
+
+  check:all:
+    desc: Run all checks (fmt, vet, lint, test)
+    cmds:
+      - task: fmt:check
+      - task: vet
+      - task: lint
+      - task: test
+
+  # ============================================================================
+  # DEPENDENCY TASKS
+  # ============================================================================
+
+  deps:
+    desc: Update and verify dependencies
+    cmds:
+      - echo "Updating dependencies..."
+      - go mod tidy
+      - go mod verify
+
+  deps:download:
+    desc: Download all dependencies
+    cmds:
+      - echo "Downloading dependencies..."
+      - go mod download
+
+  deps:upgrade:
+    desc: Upgrade all dependencies to latest
+    cmds:
+      - echo "Upgrading dependencies..."
+      - go get -u ./...
+      - go mod tidy
+
+  deps:graph:
+    desc: Show dependency graph
+    cmds:
+      - go mod graph
+
+  # ============================================================================
+  # DOCKER TASKS
+  # ============================================================================
+
+  docker:build:
+    desc: Build Docker image
+    cmds:
+      - echo "Building Docker image..."
+      - docker build -t unqueryvet:{{.VERSION}} -t unqueryvet:latest .
+
+  docker:run:
+    desc: Run unqueryvet in Docker
+    cmds:
+      - docker run --rm -v $(pwd):/app unqueryvet:latest /app/...
+
+  docker:push:
+    desc: Push Docker image to registry
+    vars:
+      REGISTRY: '{{.REGISTRY | default "ghcr.io/mirrexone"}}'
+    cmds:
+      - docker tag unqueryvet:{{.VERSION}} {{.REGISTRY}}/unqueryvet:{{.VERSION}}
+      - docker tag unqueryvet:latest {{.REGISTRY}}/unqueryvet:latest
+      - docker push {{.REGISTRY}}/unqueryvet:{{.VERSION}}
+      - docker push {{.REGISTRY}}/unqueryvet:latest
+
+  # ============================================================================
+  # RELEASE TASKS
+  # ============================================================================
+
+  release:snapshot:
+    desc: Create a snapshot release (no publish)
+    cmds:
+      - echo "Creating snapshot release..."
+      - goreleaser release --snapshot --clean
+
+  release:
+    desc: Create and publish a release
+    cmds:
+      - echo "Creating release..."
+      - goreleaser release --clean
+    preconditions:
+      - sh: test -n "$GITHUB_TOKEN"
+        msg: "GITHUB_TOKEN is required"
+
+  # ============================================================================
+  # DEVELOPMENT TASKS
+  # ============================================================================
+
+  dev:
+    desc: Run in development mode with watch
+    cmds:
+      - echo "Starting development mode..."
+      - go run ./cmd/unqueryvet -watch ./...
+
+  dev:lsp:
+    desc: Run LSP server in development mode
+    cmds:
+      - echo "Starting LSP server..."
+      - go run ./cmd/unqueryvet-lsp
+
+  generate:
+    desc: Run go generate
+    cmds:
+      - echo "Running go generate..."
+      - go generate ./...
+
+  # ============================================================================
+  # CLEAN TASKS
+  # ============================================================================
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - echo "Cleaning..."
+      - rm -f {{.BINARY_NAME}}{{.BINARY_EXT}}
+      - rm -f unqueryvet-lsp{{.BINARY_EXT}}
+      - rm -f coverage.out coverage.html
+      - rm -f bench.txt
+      - rm -rf dist/
+      - go clean
+
+  clean:cache:
+    desc: Clean Go build cache
+    cmds:
+      - echo "Cleaning Go cache..."
+      - go clean -cache
+
+  clean:testcache:
+    desc: Clean Go test cache
+    cmds:
+      - echo "Cleaning test cache..."
+      - go clean -testcache
+
+  clean:all:
+    desc: Clean everything
+    cmds:
+      - task: clean
+      - task: clean:cache
+      - task: clean:testcache
+
+  # ============================================================================
+  # EXTENSION TASKS
+  # ============================================================================
+
+  ext:vscode:build:
+    desc: Build VS Code extension
+    dir: extensions/vscode
+    cmds:
+      - echo "Building VS Code extension..."
+      - npm install
+      - npm run compile
+
+  ext:vscode:package:
+    desc: Package VS Code extension
+    dir: extensions/vscode
+    cmds:
+      - echo "Packaging VS Code extension..."
+      - npm run package
+
+  ext:goland:build:
+    desc: Build GoLand plugin
+    dir: extensions/goland
+    cmds:
+      - echo "Building GoLand plugin..."
+      - ./gradlew buildPlugin
+
+  # ============================================================================
+  # DOCUMENTATION TASKS
+  # ============================================================================
+
+  docs:serve:
+    desc: Serve documentation locally
+    cmds:
+      - echo "Serving docs on http://localhost:8000"
+      - python -m http.server 8000 --directory docs
+
+  docs:godoc:
+    desc: Run godoc server
+    cmds:
+      - echo "Starting godoc on http://localhost:6060"
+      - godoc -http=:6060
+
+  # ============================================================================
+  # HELP
+  # ============================================================================
+
+  help:
+    desc: Show all available tasks
+    cmds:
+      - task --list-all

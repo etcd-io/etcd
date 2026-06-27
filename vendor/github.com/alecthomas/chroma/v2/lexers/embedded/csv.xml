@@ -1,0 +1,53 @@
+<!--
+Lexer for RFC-4180 compliant CSV subject to the following additions:
+- UTF-8 encoding is accepted (the RFC requires 7-bit ASCII)
+- The line terminator character can be LF or CRLF (the RFC allows CRLF only)
+
+Link to the RFC-4180 specification: https://tools.ietf.org/html/rfc4180
+
+Additions inspired by:
+https://github.com/frictionlessdata/datapackage/issues/204#issuecomment-193242077
+
+Future improvements:
+- Identify non-quoted numbers as LiteralNumber
+- Identify y as an error in "x"y. Currently it's identified as another string
+  literal.
+-->
+
+<lexer>
+    <config>
+        <name>CSV</name>
+        <alias>csv</alias>
+        <filename>*.csv</filename>
+        <mime_type>text/csv</mime_type>
+    </config>
+    <rules>
+        <state name="root">
+            <rule pattern="\r?\n">
+                <token type="Punctuation" />
+            </rule>
+            <rule pattern=",">
+                <token type="Punctuation" />
+            </rule>
+            <rule pattern="&quot;">
+                <token type="LiteralStringDouble" />
+                <push state="escaped" />
+            </rule>
+            <rule pattern="[^\r\n,]+">
+                <token type="LiteralString" />
+            </rule>
+        </state>
+        <state name="escaped">
+            <rule pattern="&quot;&quot;">
+                <token type="LiteralStringEscape"/>
+            </rule>
+            <rule pattern="&quot;">
+                <token type="LiteralStringDouble" />
+                <pop depth="1"/>
+            </rule>
+            <rule pattern="[^&quot;]+">
+                <token type="LiteralStringDouble" />
+            </rule>
+        </state>
+    </rules>
+</lexer>

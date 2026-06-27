@@ -1,0 +1,51 @@
+<style name="doom-one">
+  <entry type="Error" style="#b0c4de"/>
+  <entry type="Background" style="#b0c4de bg:#282c34"/>
+  <entry type="Keyword" style="#c678dd"/>
+  <entry type="KeywordConstant" style="bold #b756ff"/>
+  <entry type="KeywordType" style="#ef8383"/>
+  <entry type="Name" style="#c1abea"/>
+  <entry type="NameAttribute" style="#b3d23c"/>
+  <entry type="NameBuiltin" style="#ef8383"/>
+  <entry type="NameClass" style="#76a9f9"/>
+  <entry type="NameConstant" style="bold #b756ff"/>
+  <entry type="NameDecorator" style="#e5c07b"/>
+  <entry type="NameEntity" style="#bda26f"/>
+  <entry type="NameException" style="bold #fd7474"/>
+  <entry type="NameFunction" style="#00b1f7"/>
+  <entry type="NameLabel" style="#f5a40d"/>
+  <entry type="NameNamespace" style="#76a9f9"/>
+  <entry type="NameProperty" style="#cebc3a"/>
+  <entry type="NameTag" style="#e06c75"/>
+  <entry type="NameVariable" style="#dcaeea"/>
+  <entry type="NameVariableGlobal" style="bold #dcaeea"/>
+  <entry type="NameVariableInstance" style="#e06c75"/>
+  <entry type="Literal" style="#98c379"/>
+  <entry type="LiteralString" style="#98c379"/>
+  <entry type="LiteralStringDoc" style="#7e97c3"/>
+  <entry type="LiteralStringDouble" style="#63c381"/>
+  <entry type="LiteralStringEscape" style="bold #d26464"/>
+  <entry type="LiteralStringHeredoc" style="#98c379"/>
+  <entry type="LiteralStringInterpol" style="#98c379"/>
+  <entry type="LiteralStringOther" style="#70b33f"/>
+  <entry type="LiteralStringRegex" style="#56b6c2"/>
+  <entry type="LiteralStringSingle" style="#98c379"/>
+  <entry type="LiteralStringSymbol" style="#56b6c2"/>
+  <entry type="LiteralNumber" style="#d19a66"/>
+  <entry type="Operator" style="#c7bf54"/>
+  <entry type="OperatorWord" style="bold #b756ff"/>
+  <entry type="Punctuation" style="#b0c4de"/>
+  <entry type="Comment" style="italic #8a93a5"/>
+  <entry type="CommentHashbang" style="bold"/>
+  <entry type="Generic" style="#b0c4de"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericHeading" style="bold #a2cbff"/>
+  <entry type="GenericInserted" style="#a6e22e"/>
+  <entry type="GenericOutput" style="#a6e22e"/>
+  <entry type="GenericPrompt" style="#a6e22e"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="#a2cbff"/>
+  <entry type="GenericTraceback" style="#a2cbff"/>
+  <entry type="GenericUnderline" style="underline"/>
+  <entry type="Text" style="#b0c4de"/>
+</style>

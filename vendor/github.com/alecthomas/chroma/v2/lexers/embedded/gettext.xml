@@ -1,0 +1,24 @@
+
+<lexer>
+  <config>
+    <name>Gettext</name>
+    <alias>pot</alias>
+    <alias>po</alias>
+    <filename>*.pot</filename>
+    <filename>*.po</filename>
+    <mime_type>application/x-gettext</mime_type>
+    <mime_type>text/x-gettext</mime_type>
+    <mime_type>text/gettext</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="^#,\s.*?$"><token type="KeywordType"/></rule>
+      <rule pattern="^#:\s.*?$"><token type="KeywordDeclaration"/></rule>
+      <rule pattern="^(#|#\.\s|#\|\s|#~\s|#\s).*$"><token type="CommentSingle"/></rule>
+      <rule pattern="^(&quot;)([A-Za-z-]+:)(.*&quot;)$"><bygroups><token type="LiteralString"/><token type="NameProperty"/><token type="LiteralString"/></bygroups></rule>
+      <rule pattern="^&quot;.*&quot;$"><token type="LiteralString"/></rule>
+      <rule pattern="^(msgid|msgid_plural|msgstr|msgctxt)(\s+)(&quot;.*&quot;)$"><bygroups><token type="NameVariable"/><token type="Text"/><token type="LiteralString"/></bygroups></rule>
+      <rule pattern="^(msgstr\[)(\d)(\])(\s+)(&quot;.*&quot;)$"><bygroups><token type="NameVariable"/><token type="LiteralNumberInteger"/><token type="NameVariable"/><token type="Text"/><token type="LiteralString"/></bygroups></rule>
+    </state>
+  </rules>
+</lexer>

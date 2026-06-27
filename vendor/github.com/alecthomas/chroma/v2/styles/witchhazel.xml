@@ -1,0 +1,31 @@
+<style name="witchhazel">
+  <entry type="Error" style="#960050 bg:#1e0010"/>
+  <entry type="Background" style="bg:#433e56"/>
+  <entry type="Keyword" style="#c2ffdf"/>
+  <entry type="KeywordNamespace" style="#ffb8d1"/>
+  <entry type="Name" style="#f8f8f2"/>
+  <entry type="NameAttribute" style="#ceb1ff"/>
+  <entry type="NameBuiltinPseudo" style="#80cbc4"/>
+  <entry type="NameClass" style="#ceb1ff"/>
+  <entry type="NameConstant" style="#c5a3ff"/>
+  <entry type="NameDecorator" style="#ceb1ff"/>
+  <entry type="NameException" style="#ceb1ff"/>
+  <entry type="NameFunction" style="#ceb1ff"/>
+  <entry type="NameProperty" style="#f8f8f2"/>
+  <entry type="NameTag" style="#ffb8d1"/>
+  <entry type="NameVariable" style="#f8f8f2"/>
+  <entry type="Literal" style="#ae81ff"/>
+  <entry type="LiteralDate" style="#e6db74"/>
+  <entry type="LiteralString" style="#1bc5e0"/>
+  <entry type="LiteralNumber" style="#c5a3ff"/>
+  <entry type="Operator" style="#ffb8d1"/>
+  <entry type="Punctuation" style="#f8f8f2"/>
+  <entry type="Comment" style="#b0bec5"/>
+  <entry type="GenericDeleted" style="#f92672"/>
+  <entry type="GenericEmph" style="italic"/>
+  <entry type="GenericInserted" style="#a6e22e"/>
+  <entry type="GenericStrong" style="bold"/>
+  <entry type="GenericSubheading" style="#75715e"/>
+  <entry type="Text" style="#f8f8f2"/>
+  <entry type="TextWhitespace" style="#a8757b"/>
+</style>

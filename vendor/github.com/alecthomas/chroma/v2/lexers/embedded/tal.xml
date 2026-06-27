@@ -1,0 +1,43 @@
+
+<lexer>
+  <config>
+    <name>Tal</name>
+    <alias>tal</alias>
+    <alias>uxntal</alias>
+    <filename>*.tal</filename>
+    <mime_type>text/x-uxntal</mime_type>
+  </config>
+  <rules>
+    <state name="comment">
+      <rule pattern="(?&lt;!\S)\((?!\S)"><token type="CommentMultiline"/><push/></rule>
+      <rule pattern="(?&lt;!\S)\)(?!\S)"><token type="CommentMultiline"/><pop depth="1"/></rule>
+      <rule pattern="[^()]+"><token type="CommentMultiline"/></rule>
+      <rule pattern="[()]+"><token type="CommentMultiline"/></rule>
+    </state>
+    <state name="root">
+      <rule pattern="\s+"><token type="TextWhitespace"/></rule>
+      <rule pattern="(?&lt;!\S)\((?!\S)"><token type="CommentMultiline"/><push state="comment"/></rule>
+      <rule pattern="(?&lt;!\S)(BRK|LIT|INC|POP|DUP|NIP|SWP|OVR|ROT|EQU|NEQ|GTH|LTH|JMP|JCN|JSR|STH|LDZ|STZ|LDR|STR|LDA|STA|DEI|DEO|ADD|SUB|MUL|DIV|AND|ORA|EOR|SFT)2?k?r?(?!\S)"><token type="KeywordReserved"/></rule>
+      <rule pattern="[][{}](?!\S)"><token type="Punctuation"/></rule>
+      <rule pattern="#([0-9a-f]{2}){1,2}(?!\S)"><token type="LiteralNumberHex"/></rule>
+      <rule pattern="&quot;\S+"><token type="LiteralString"/></rule>
+      <rule pattern="([0-9a-f]{2}){1,2}(?!\S)"><token type="Literal"/></rule>
+      <rule pattern="[|$][0-9a-f]{1,4}(?!\S)"><token type="KeywordDeclaration"/></rule>
+      <rule pattern="%\S+"><token type="NameDecorator"/></rule>
+      <rule pattern="@\S+"><token type="NameFunction"/></rule>
+      <rule pattern="&amp;\S+"><token type="NameLabel"/></rule>
+      <rule pattern="/\S+"><token type="NameTag"/></rule>
+      <rule pattern="\.\S+"><token type="NameVariableMagic"/></rule>
+      <rule pattern=",\S+"><token type="NameVariableInstance"/></rule>
+      <rule pattern=";\S+"><token type="NameVariableGlobal"/></rule>
+      <rule pattern="-\S+"><token type="Literal"/></rule>
+      <rule pattern="_\S+"><token type="Literal"/></rule>
+      <rule pattern="=\S+"><token type="Literal"/></rule>
+      <rule pattern="!\S+"><token type="NameFunction"/></rule>
+      <rule pattern="\?\S+"><token type="NameFunction"/></rule>
+      <rule pattern="~\S+"><token type="KeywordNamespace"/></rule>
+      <rule pattern="\S+"><token type="NameFunction"/></rule>
+    </state>
+  </rules>
+</lexer>
+

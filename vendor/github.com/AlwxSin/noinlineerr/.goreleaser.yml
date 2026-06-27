@@ -1,0 +1,25 @@
+project_name: noinlineerr
+builds:
+  - main: ./cmd/noinlineerr/main.go
+    binary: noinlineerr
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - formats: [ 'tar.gz' ]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: 'checksums.txt'
+
+release:
+  github:
+    owner: AlwxSin
+    name: noinlineerr

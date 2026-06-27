@@ -1,0 +1,25 @@
+<style name="onedark">
+  <entry type="Background" style="#ABB2BF bg:#282C34"/>
+  <entry type="Punctuation"        style="#ABB2BF"/>
+  <entry type="Keyword"            style="#C678DD"/>
+  <entry type="KeywordConstant"    style="#E5C07B"/>
+  <entry type="KeywordDeclaration" style="#C678DD"/>
+  <entry type="KeywordNamespace"   style="#C678DD"/>
+  <entry type="KeywordReserved"    style="#C678DD"/>
+  <entry type="KeywordType"        style="#E5C07B"/>
+  <entry type="Name"               style="#E06C75"/>
+  <entry type="NameAttribute"      style="#E06C75"/>
+  <entry type="NameBuiltin"         style="#E5C07B"/>
+  <entry type="NameClass"           style="#E5C07B"/>
+  <entry type="NameFunction"        style="bold #61AFEF"/>
+  <entry type="NameFunctionMagic"   style="bold #56B6C2"/>
+  <entry type="NameOther"           style="#E06C75"/>
+  <entry type="NameTag"             style="#E06C75"/>
+  <entry type="NameDecorator"       style="#61AFEF"/>
+  <entry type="LiteralString"       style="#98C379"/>
+  <entry type="LiteralNumber"       style="#D19A66"/>
+  <entry type="Operator"            style="#56B6C2"/>
+  <entry type="Comment"             style="#7F848E"/>
+  <entry type="GenericDeleted"      style="#E06C75"/>
+  <entry type="GenericInserted"     style="bold #98C379"/>
+</style>

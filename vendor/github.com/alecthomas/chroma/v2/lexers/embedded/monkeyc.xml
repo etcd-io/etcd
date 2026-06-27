@@ -1,0 +1,153 @@
+<lexer>
+  <config>
+    <name>MonkeyC</name>
+    <alias>monkeyc</alias>
+    <filename>*.mc</filename>
+    <mime_type>text/x-monkeyc</mime_type>
+  </config>
+  <rules>
+    <state name="class">
+      <rule pattern="([a-zA-Z_][\w_\.]*)(?:(\s+)(extends)(\s+)([a-zA-Z_][\w_\.]*))?">
+        <bygroups>
+          <token type="NameClass"/>
+          <token type="Text"/>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="function">
+      <rule pattern="initialize">
+        <token type="NameFunctionMagic"/>
+      </rule>
+      <rule pattern="[a-zA-Z_][\w_\.]*">
+        <token type="NameFunction"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="module">
+      <rule pattern="[a-zA-Z_][\w_\.]*">
+        <token type="NameNamespace"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//(\n|[\w\W]*?[^\\]\n)">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/(\\\n)?[*][\w\W]*?[*](\\\n)?/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="/(\\\n)?[*][\w\W]*">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern=":[a-zA-Z_][\w_\.]*">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="[{}\[\]\(\),;:\.]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[&amp;~\|\^!+\-*\/%=?]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="=&gt;|[+-]=|&amp;&amp;|\|\||&gt;&gt;|&lt;&lt;|[&lt;&gt;]=?|[!=]=">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="\b(and|or|instanceof|has|extends|new)">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="(false|null|true|NaN)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(using)((?:\s|\\\\s)+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="import"/>
+      </rule>
+      <rule pattern="(class)((?:\s|\\\\s)+)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="class"/>
+      </rule>
+      <rule pattern="(function)((?:\s|\\\\s)+)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="function"/>
+      </rule>
+      <rule pattern="(module)((?:\s|\\\\s)+)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="module"/>
+      </rule>
+      <rule pattern="\b(if|else|for|switch|case|while|break|continue|default|do|try|catch|finally|return|throw|extends|function)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(const|enum|hidden|public|protected|private|static)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="\bvar\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="\b(Activity(Monitor|Recording)?|Ant(Plus)?|Application|Attention|Background|Communications|Cryptography|FitContributor|Graphics|Gregorian|Lang|Math|Media|Persisted(Content|Locations)|Position|Properties|Sensor(History|Logging)?|Storage|StringUtil|System|Test|Time(r)?|Toybox|UserProfile|WatchUi|Rez|Drawables|Strings|Fonts|method)\b">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="\b(me|self|\$)\b">
+        <token type="NameBuiltinPseudo"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#39;(\\\\|\\&#39;|[^&#39;&#39;])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="-?(0x[0-9a-fA-F]+l?)">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="-?([0-9]+(\.[0-9]+[df]?|[df]))\b">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="-?([0-9]+l?)">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[a-zA-Z_]\w*">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="import">
+      <rule pattern="([a-zA-Z_][\w_\.]*)(?:(\s+)(as)(\s+)([a-zA-Z_][\w_]*))?">
+        <bygroups>
+          <token type="NameNamespace"/>
+          <token type="Text"/>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+          <token type="NameNamespace"/>
+        </bygroups>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

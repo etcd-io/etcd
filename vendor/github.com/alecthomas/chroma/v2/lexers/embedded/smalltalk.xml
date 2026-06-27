@@ -1,0 +1,294 @@
+<lexer>
+  <config>
+    <name>Smalltalk</name>
+    <alias>smalltalk</alias>
+    <alias>squeak</alias>
+    <alias>st</alias>
+    <filename>*.st</filename>
+    <mime_type>text/x-smalltalk</mime_type>
+  </config>
+  <rules>
+    <state name="inner_parenth">
+      <rule pattern="\)">
+        <token type="LiteralStringSymbol"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="_parenth_helper"/>
+      </rule>
+    </state>
+    <state name="objects">
+      <rule pattern="\[">
+        <token type="Text"/>
+        <push state="blockvariables"/>
+      </rule>
+      <rule pattern="\]">
+        <token type="Text"/>
+        <push state="afterobject"/>
+      </rule>
+      <rule pattern="\b(self|super|true|false|nil|thisContext)\b">
+        <token type="NameBuiltinPseudo"/>
+        <push state="afterobject"/>
+      </rule>
+      <rule pattern="\b[A-Z]\w*(?!:)\b">
+        <token type="NameClass"/>
+        <push state="afterobject"/>
+      </rule>
+      <rule pattern="\b[a-z]\w*(?!:)\b">
+        <token type="NameVariable"/>
+        <push state="afterobject"/>
+      </rule>
+      <rule pattern="#(&#34;(&#34;&#34;|[^&#34;])*&#34;|[-+*/\\~&lt;&gt;=|&amp;!?,@%]+|[\w:]+)">
+        <token type="LiteralStringSymbol"/>
+        <push state="afterobject"/>
+      </rule>
+      <rule>
+        <include state="literals"/>
+      </rule>
+    </state>
+    <state name="afterobject">
+      <rule pattern="! !$">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="whitespaces"/>
+      </rule>
+      <rule pattern="\b(ifTrue:|ifFalse:|whileTrue:|whileFalse:|timesRepeat:)">
+        <token type="NameBuiltin"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\b(new\b(?!:))">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern=":=|_">
+        <token type="Operator"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\b[a-zA-Z]+\w*:">
+        <token type="NameFunction"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\b[a-zA-Z]+\w*">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="\w+:?|[-+*/\\~&lt;&gt;=|&amp;!?,@%]+">
+        <token type="NameFunction"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\.">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern=";">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[\])}]">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="[\[({]">
+        <token type="Text"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="literals">
+      <rule pattern="&#39;(&#39;&#39;|[^&#39;])*&#39;">
+        <token type="LiteralString"/>
+        <push state="afterobject"/>
+      </rule>
+      <rule pattern="\$.">
+        <token type="LiteralStringChar"/>
+        <push state="afterobject"/>
+      </rule>
+      <rule pattern="#\(">
+        <token type="LiteralStringSymbol"/>
+        <push state="parenth"/>
+      </rule>
+      <rule pattern="\)">
+        <token type="Text"/>
+        <push state="afterobject"/>
+      </rule>
+      <rule pattern="(\d+r)?-?\d+(\.\d+)?(e-?\d+)?">
+        <token type="LiteralNumber"/>
+        <push state="afterobject"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="(&lt;)(\w+:)(.*?)(&gt;)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule>
+        <include state="squeak fileout"/>
+      </rule>
+      <rule>
+        <include state="whitespaces"/>
+      </rule>
+      <rule>
+        <include state="method definition"/>
+      </rule>
+      <rule pattern="(\|)([\w\s]*)(\|)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="NameVariable"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule>
+        <include state="objects"/>
+      </rule>
+      <rule pattern="\^|:=|_">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[\]({}.;!]">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="_parenth_helper">
+      <rule>
+        <include state="whitespaces"/>
+      </rule>
+      <rule pattern="(\d+r)?-?\d+(\.\d+)?(e-?\d+)?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[-+*/\\~&lt;&gt;=|&amp;#!?,@%\w:]+">
+        <token type="LiteralStringSymbol"/>
+      </rule>
+      <rule pattern="&#39;(&#39;&#39;|[^&#39;])*&#39;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\$.">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="#*\(">
+        <token type="LiteralStringSymbol"/>
+        <push state="inner_parenth"/>
+      </rule>
+    </state>
+    <state name="parenth">
+      <rule pattern="\)">
+        <token type="LiteralStringSymbol"/>
+        <push state="root" state="afterobject"/>
+      </rule>
+      <rule>
+        <include state="_parenth_helper"/>
+      </rule>
+    </state>
+    <state name="whitespaces">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&#34;(&#34;&#34;|[^&#34;])*&#34;">
+        <token type="Comment"/>
+      </rule>
+    </state>
+    <state name="squeak fileout">
+      <rule pattern="^&#34;(&#34;&#34;|[^&#34;])*&#34;!">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="^&#39;(&#39;&#39;|[^&#39;])*&#39;!">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="^(!)(\w+)( commentStamp: )(.*?)( prior: .*?!\n)(.*?)(!)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="NameClass"/>
+          <token type="Keyword"/>
+          <token type="LiteralString"/>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(!)(\w+(?: class)?)( methodsFor: )(&#39;(?:&#39;&#39;|[^&#39;])*&#39;)(.*?!)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="NameClass"/>
+          <token type="Keyword"/>
+          <token type="LiteralString"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(\w+)( subclass: )(#\w+)(\s+instanceVariableNames: )(.*?)(\s+classVariableNames: )(.*?)(\s+poolDictionaries: )(.*?)(\s+category: )(.*?)(!)">
+        <bygroups>
+          <token type="NameClass"/>
+          <token type="Keyword"/>
+          <token type="LiteralStringSymbol"/>
+          <token type="Keyword"/>
+          <token type="LiteralString"/>
+          <token type="Keyword"/>
+          <token type="LiteralString"/>
+          <token type="Keyword"/>
+          <token type="LiteralString"/>
+          <token type="Keyword"/>
+          <token type="LiteralString"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(\w+(?: class)?)(\s+instanceVariableNames: )(.*?)(!)">
+        <bygroups>
+          <token type="NameClass"/>
+          <token type="Keyword"/>
+          <token type="LiteralString"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(!\n)(\].*)(! !)$">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="Keyword"/>
+        </bygroups>
+      </rule>
+      <rule pattern="! !$">
+        <token type="Keyword"/>
+      </rule>
+    </state>
+    <state name="method definition">
+      <rule pattern="([a-zA-Z]+\w*:)(\s*)(\w+)">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="NameVariable"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^(\b[a-zA-Z]+\w*\b)(\s*)$">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="^([-+*/\\~&lt;&gt;=|&amp;!?,@%]+)(\s*)(\w+)(\s*)$">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="NameVariable"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+    </state>
+    <state name="blockvariables">
+      <rule>
+        <include state="whitespaces"/>
+      </rule>
+      <rule pattern="(:)(\s*)(\w+)">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="Text"/>
+          <token type="NameVariable"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\|">
+        <token type="Operator"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

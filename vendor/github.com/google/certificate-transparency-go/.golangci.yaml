@@ -1,0 +1,22 @@
+run:
+  deadline: 90s
+  skip-dirs:
+    - (^|/)x509($|/)
+    - (^|/)x509util($|/)
+    - (^|/)asn1($|/)
+
+linters-settings:
+  gocyclo:
+    min-complexity: 25
+  depguard:
+    list-type: blacklist
+    packages:
+      - ^golang.org/x/net/context$
+      - github.com/gogo/protobuf/proto
+      - encoding/asn1
+      - crypto/x509
+
+issues:
+  exclude-use-default: false
+  exclude:
+    - "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked"

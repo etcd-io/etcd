@@ -1,0 +1,21 @@
+# https://golangci-lint.run/docs/configuration/file
+version: "2"
+
+linters:
+  enable:
+    - gocritic
+    - modernize
+  settings:
+    gocritic:
+      enable-all: true
+  exclusions:
+    presets:
+      - std-error-handling
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      extra-rules: true

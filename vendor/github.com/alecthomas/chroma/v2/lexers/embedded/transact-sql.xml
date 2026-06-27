@@ -1,0 +1,137 @@
+<lexer>
+  <config>
+    <name>Transact-SQL</name>
+    <alias>tsql</alias>
+    <alias>t-sql</alias>
+    <mime_type>text/x-tsql</mime_type>
+    <case_insensitive>true</case_insensitive>
+    <not_multiline>true</not_multiline>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="TextWhitespace"/>
+      </rule>
+      <rule pattern="--(?m).*?$\n?">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="multiline-comments"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <push state="string"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringName"/>
+        <push state="quoted-ident"/>
+      </rule>
+      <rule pattern="(\*=|!=|!&gt;|\^=|&lt;=|&lt;&gt;|\|=|&amp;=|&gt;=|%=|\+=|/=|-=|!&lt;|::|/|-|%|\+|&amp;|&gt;|\||=|\^|&lt;|~|\*)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="(intersect|between|except|exists|union|some|like|all|any|not|and|or|in)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="(uniqueidentifier|datetimeoffset|smalldatetime|hierarchyid|sql_variant|smallmoney|varbinary|datetime2|timestamp|datetime|smallint|nvarchar|decimal|tinyint|varchar|numeric|binary|bigint|cursor|image|nchar|money|float|table|ntext|text|time|real|date|char|int|bit|xml)\b">
+        <token type="NameClass"/>
+      </rule>
+      <rule pattern="(get_filestream_transaction_context|datetimeoffsetfromparts|fulltextserviceproperty|fulltextcatalogproperty|current_transaction_id|smalldatetimefromparts|min_active_rowversion|database_principal_id|current_request_id|databasepropertyex|connectionproperty|datetime2fromparts|object_schema_name|indexkey_property|filegroupproperty|current_timestamp|sysdatetimeoffset|has_perms_by_name|object_definition|datetimefromparts|assemblyproperty|todatetimeoffset|original_db_name|objectpropertyex|is_srvrolemember|error_procedure|binary_checksum|session_context|sp_helplanguage|newsequentialid|error_severity|original_login|objectproperty|opendatasource|columnproperty|sysutcdatetime|scope_identity|serverproperty|certprivatekey|filegroup_name|cursor_status|formatmessage|indexproperty|is_rolemember|datefromparts|timefromparts|string_escape|error_message|switchoffset|filegroup_id|string_split|string_agg|current_user|checksum_agg|applock_test|session_user|typeproperty|rowcount_big|context_info|fileproperty|error_number|datediff_big|applock_mode|sysdatetime|error_state|json_modify|grouping_id|getansinull|try_convert|certencoded|system_user|permissions|schema_name|object_name|suser_sname|difference|xact_state|json_value|\$partition|row_number|json_query|getutcdate|col_length|decompress|error_line|openrowset|stats_date|pwdcompare|dense_rank|pwdencrypt|suser_name|is_member|index_col|quotename|host_name|charindex|parsename|isnumeric|user_name|replicate|openquery|count_big|type_name|object_id|try_parse|file_idex|substring|file_name|textvalid|suser_sid|schema_id|compress|grouping|suser_id|app_name|try_cast|col_name|datepart|datename|datediff|checksum|patindex|openjson|getdate|convert|openxml|file_id|db_name|radians|ceiling|unicode|reverse|dateadd|soundex|degrees|eomonth|user_id|type_id|host_id|textptr|replace|concat|concat_ws|square|isdate|stdevp|isjson|isnull|choose|format|stuff|floor|round|right|upper|log10|rtrim|lower|power|ltrim|space|db_id|month|parse|stdev|nchar|newid|count|ntile|ascii|char|year|varp|rank|left|sign|cast|acos|atn2|atan|asin|rand|sqrt|sin|max|min|tan|avg|cos|log|len|abs|cot|str|iif|exp|var|day|sum|pi)\b">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="(goto)(\s+)(\w+\b)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="TextWhitespace"/>
+          <token type="NameLabel"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(current_transform_group_for_type|current_default_transform_group|semanticsimilaritydetailstable|semanticsimilaritytable|semantickeyphrasetable|occurrences_regex|current_timestamp|character_length|percentile_cont|identity_insert|current_catalog|translate_regex|timezone_minute|substring_regex|percentile_disc|regr_intercept|localtimestamp|current_schema|opendatasource|position_regex|deterministic|timezone_hour|authorization|xmlattributes|corresponding|xmlnamespaces|fulltexttable|containstable|securityaudit|freetexttable|current_date|width_bucket|specifictype|session_user|intersection|percent_rank|sqlexception|current_path|current_role|current_time|xmlserialize|octet_length|nonclustered|current_user|reconfigure|xmlvalidate|cardinality|replication|try_convert|char_length|xmldocument|tablesample|identitycol|system_user|referencing|translation|submultiset|diagnostics|insensitive|distributed|constructor|constraints|stddev_samp|transaction|fillfactor|completion|destructor|descriptor|connection|dictionary|disconnect|initialize|statistics|sqlwarning|stddev_pop|constraint|references|privileges|parameters|deferrable|covar_samp|asymmetric|deallocate|asensitive|checkpoint|regr_count|xmlcomment|regr_slope|updatetext|like_regex|xmliterate|ordinality|openrowset|rowguidcol|xmlelement|bit_length|parameter|temporary|immediate|initially|cume_dist|symmetric|recursive|timestamp|substring|collation|regr_avgy|normalize|covar_pop|indicator|raiserror|structure|procedure|intersect|terminate|isolation|savepoint|precision|condition|openquery|assertion|translate|aggregate|operation|xmlconcat|character|xmlexists|partition|clustered|sensitive|exception|statement|xmlbinary|localtime|xmlforest|regr_avgx|writetext|smallint|shutdown|specific|allocate|overlaps|sqlstate|coalesce|sequence|xmlparse|external|distinct|truncate|absolute|position|sqlerror|xmlquery|xmltable|cascaded|rowcount|preorder|preserve|describe|rollback|freetext|regr_sxy|interval|restrict|continue|function|modifies|trailing|readtext|whenever|relative|deferred|multiset|regr_sxx|grouping|textsize|database|end-exec|var_samp|regr_syy|identity|national|variable|holdlock|contains|language|breadth|include|varying|varchar|waitfor|regr_r2|var_pop|release|unpivot|between|general|restore|integer|unknown|without|returns|cascade|primary|routine|iterate|fortran|foreign|section|overlay|postfix|uescape|lateral|leading|tsequal|xmlcast|catalog|extract|execute|percent|session|partial|setuser|similar|trigger|element|locator|sqlcode|dynamic|collate|nocheck|openxml|collect|compute|destroy|offsets|connect|convert|boolean|numeric|default|declare|decimal|current|natural|xmltext|prepare|window|unnest|called|exists|select|unique|escape|action|filter|nullif|module|object|modify|second|search|except|minute|scroll|schema|errlvl|equals|browse|method|update|member|atomic|option|xmlagg|rollup|double|domain|revoke|output|revert|return|fusion|global|delete|having|before|lineno|pascal|values|binary|system|cursor|column|insert|commit|public|static|ignore|create|prefix|within|backup|result|cross|names|prior|large|cycle|begin|usage|pivot|range|table|reads|input|close|inout|inner|while|index|where|level|limit|using|value|treat|class|group|grant|local|depth|check|deref|lower|state|print|write|start|upper|outer|right|xmlpi|match|order|found|sqlca|array|float|space|catch|under|first|alter|scope|alias|after|admin|throw|month|nchar|fetch|false|every|break|nclob|union|merge|count|zone|exit|file|save|size|rule|some|rows|both|else|bulk|blob|each|dump|drop|free|role|from|full|disk|call|desc|view|when|deny|goto|hold|dbcc|host|hour|real|date|read|data|proc|into|cube|than|then|with|time|join|kill|last|user|left|corr|tran|plan|less|like|clob|path|load|trim|work|char|over|sets|cast|case|only|null|none|year|next|open|exec|true|are|top|use|not|day|sum|dec|sql|end|set|for|row|get|bit|ada|add|mod|ref|int|new|off|key|old|pad|map|out|all|avg|max|and|asc|any|min|try|as|at|on|or|ln|is|of|in|if|go|to|no|by)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(\[)([^]]+)(\])">
+        <bygroups>
+          <token type="Operator"/>
+          <token type="Name"/>
+          <token type="Operator"/>
+        </bygroups>
+      </rule>
+      <rule pattern="0x[0-9a-f]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="[0-9]+\.[0-9]*(e[+-]?[0-9]+)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\.[0-9]+(e[+-]?[0-9]+)?">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[0-9]+e[+-]?[0-9]+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="[;(),.]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="@@\w+">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="@\w+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(\w+)(:)">
+        <bygroups>
+          <token type="NameLabel"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="#?#?\w+">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\?">
+        <token type="NameVariableMagic"/>
+      </rule>
+    </state>
+    <state name="multiline-comments">
+      <rule pattern="/\*">
+        <token type="CommentMultiline"/>
+        <push state="multiline-comments"/>
+      </rule>
+      <rule pattern="\*/">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^/*]+">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="[/*]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="[^&#39;]+">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="&#39;&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="quoted-ident">
+      <rule pattern="[^&#34;]+">
+        <token type="LiteralStringName"/>
+      </rule>
+      <rule pattern="&#34;&#34;">
+        <token type="LiteralStringName"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringName"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,105 @@
+<lexer>
+  <config>
+    <name>Plutus Core</name>
+    <alias>plutus-core</alias>
+    <alias>plc</alias>
+    <filename>*.plc</filename>
+    <mime_type>text/x-plutus-core</mime_type>
+    <mime_type>application/x-plutus-core</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="(\(|\))">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="(\[|\])">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="({|})">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="([+-]?\d+)">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="(#([a-fA-F0-9][a-fA-F0-9])+)">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="(\(\))">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="(True|False)">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="(con |abs |iwrap |unwrap |lam |builtin |delay |force |error)">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(fun |all |ifix |lam |con )">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(type|fun )">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(program )(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="LiteralString"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(unit|bool|integer|bytestring|string)">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(addInteger |subtractInteger |multiplyInteger |divideInteger |quotientInteger |remainderInteger |modInteger |equalsInteger |lessThanInteger |lessThanEqualsInteger )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(appendByteString |consByteString |sliceByteString |lengthOfByteString |indexByteString |equalsByteString |lessThanByteString |lessThanEqualsByteString )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(sha2_256 |sha3_256 |blake2b_256 |verifySignature )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(appendString |equalsString |encodeUtf8 |decodeUtf8 )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(ifThenElse )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(chooseUnit )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(trace )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(fstPair |sndPair )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(chooseList |mkCons |headList |tailList |nullList )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(chooseData |constrData |mapData |listData |iData |bData |unConstrData |unMapData |unListData |unIData |unBData |equalsData )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(mkPairData |mkNilData |mkNilPairData )">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="([a-zA-Z][a-zA-Z0-9_&#39;]*)">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string"/>
+      </rule>
+    </state>
+    <state name="string">
+      <rule pattern="[^\\&#34;]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

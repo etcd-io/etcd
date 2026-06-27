@@ -1,0 +1,96 @@
+<lexer>
+  <config>
+    <name>ISCdhcpd</name>
+    <alias>iscdhcpd</alias>
+    <filename>dhcpd.conf</filename>
+  </config>
+  <rules>
+    <state name="interpol">
+      <rule pattern="\$[{(]">
+        <token type="LiteralStringInterpol"/>
+        <push/>
+      </rule>
+      <rule pattern="[})]">
+        <token type="LiteralStringInterpol"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^${()}]+">
+        <token type="LiteralStringInterpol"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="#.*?\n">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(hardware|packet|leased-address|host-decl-name|lease-time|max-lease-time|client-state|config-option|option|filename|next-server|allow|deny|match|ignore)\b">
+         <token type="Keyword"/>
+      </rule>
+      <rule pattern="(include|group|host|subnet|subnet6|netmask|class|subclass|pool|failover|include|shared-network|range|range6|prefix6)\b">
+         <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(on|off|true|false|none)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(if|elsif|else)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(exists|known|static)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="(and|or|not)\b">
+        <token type="OperatorWord"/>
+      </rule>
+      <rule pattern="(==|!=|~=|~~|=)">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[{},;\)]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[a-fA-F0-9]{1,2}:[a-fA-F0-9]{1,2}:[a-fA-F0-9]{1,2}:[a-fA-F0-9]{1,2}:[a-fA-F0-9]{1,2}:[a-fA-F0-9]{1,2}">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <push state="doublequotestring"/>
+      </rule>
+      <rule pattern="([\w\-.]+)(\s*)(\()">
+        <bygroups>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="Punctuation"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[\w\-.]+">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="doublequotestring">
+      <rule pattern="\$[{(]">
+        <token type="LiteralStringInterpol"/>
+        <push state="interpol"/>
+      </rule>
+      <rule pattern="\\.">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern=".">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

@@ -1,0 +1,24 @@
+build: off
+
+image: Visual Studio 2019
+
+stack: go 1.20
+
+clone_folder: c:\gopath\src\gonum.org\v1\plot
+
+cache:
+  - '%LocalAppData%\go-build'
+
+branches:
+  only:
+    - master
+
+environment:
+  GO111MODULE: 'on'
+
+build_script:
+  - go version
+  - go get -v -t ./...
+
+test_script:
+  - go test ./...

@@ -1,0 +1,213 @@
+<lexer>
+  <config>
+    <name>Dart</name>
+    <alias>dart</alias>
+    <filename>*.dart</filename>
+    <mime_type>text/x-dart</mime_type>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="string_double_multiline">
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^&#34;$\\]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule>
+        <include state="string_common"/>
+      </rule>
+      <rule pattern="(\$|\&#34;)+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+    </state>
+    <state name="class">
+      <rule pattern="[a-zA-Z_$]\w*">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="import_decl">
+      <rule>
+        <include state="string_literal"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\b(as|show|hide)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="[a-zA-Z_$]\w*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="\,">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="\;">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="string_single_multiline">
+      <rule pattern="&#39;&#39;&#39;">
+        <token type="LiteralStringSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^\&#39;$\\]+">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule>
+        <include state="string_common"/>
+      </rule>
+      <rule pattern="(\$|\&#39;)+">
+        <token type="LiteralStringSingle"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule>
+        <include state="string_literal"/>
+      </rule>
+      <rule pattern="#!(.*?)$">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="\b(import|export)\b">
+        <token type="Keyword"/>
+        <push state="import_decl"/>
+      </rule>
+      <rule pattern="\b(library|source|part of|part)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="[^\S\n]+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="//.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="/\*.*?\*/">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="\b(class)\b(\s+)">
+        <bygroups>
+          <token type="KeywordDeclaration"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="class"/>
+      </rule>
+      <rule pattern="\b(assert|break|case|catch|continue|default|do|else|finally|for|if|in|is|new|return|super|switch|this|throw|try|while)\b">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="\b(abstract|async|await|const|extends|factory|final|get|implements|native|operator|required|set|static|sync|typedef|var|with|yield)\b">
+        <token type="KeywordDeclaration"/>
+      </rule>
+      <rule pattern="\b(bool|double|dynamic|int|num|Object|String|void)\b">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="\b(false|null|true)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="[~!%^&amp;*+=|?:&lt;&gt;/-]|as\b">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[a-zA-Z_$]\w*:">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="[a-zA-Z_$]\w*">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="[(){}\[\],.;]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="0[xX][0-9a-fA-F]+">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="\d+(\.\d*)?([eE][+-]?\d+)?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="\.\d+([eE][+-]?\d+)?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="\n">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="string_literal">
+      <rule pattern="r&#34;&#34;&#34;([\w\W]*?)&#34;&#34;&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="r&#39;&#39;&#39;([\w\W]*?)&#39;&#39;&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="r&#34;(.*?)&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="r&#39;(.*?)&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string_double_multiline"/>
+      </rule>
+      <rule pattern="&#39;&#39;&#39;">
+        <token type="LiteralStringSingle"/>
+        <push state="string_single_multiline"/>
+      </rule>
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <push state="string_double"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <push state="string_single"/>
+      </rule>
+    </state>
+    <state name="string_common">
+      <rule pattern="\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|u\{[0-9A-Fa-f]*\}|[a-z&#39;\&#34;$\\])">
+        <token type="LiteralStringEscape"/>
+      </rule>
+      <rule pattern="(\$)([a-zA-Z_]\w*)">
+        <bygroups>
+          <token type="LiteralStringInterpol"/>
+          <token type="Name"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(\$\{)(.*?)(\})">
+        <bygroups>
+          <token type="LiteralStringInterpol"/>
+          <usingself state="root"/>
+          <token type="LiteralStringInterpol"/>
+        </bygroups>
+      </rule>
+    </state>
+    <state name="string_double">
+      <rule pattern="&#34;">
+        <token type="LiteralStringDouble"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^&#34;$\\\n]+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule>
+        <include state="string_common"/>
+      </rule>
+      <rule pattern="\$+">
+        <token type="LiteralStringDouble"/>
+      </rule>
+    </state>
+    <state name="string_single">
+      <rule pattern="&#39;">
+        <token type="LiteralStringSingle"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[^&#39;$\\\n]+">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule>
+        <include state="string_common"/>
+      </rule>
+      <rule pattern="\$+">
+        <token type="LiteralStringSingle"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

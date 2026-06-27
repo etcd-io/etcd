@@ -1,0 +1,412 @@
+<lexer>
+  <config>
+    <name>Factor</name>
+    <alias>factor</alias>
+    <filename>*.factor</filename>
+    <mime_type>text/x-factor</mime_type>
+  </config>
+  <rules>
+    <state name="base">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="((?:MACRO|MEMO|TYPED)?:[:]?)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(M:[:]?)(\s+)(\S+)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(C:)(\s+)(\S+)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(GENERIC:)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(HOOK:|GENERIC#)(\s+)(\S+)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\(\s">
+        <token type="NameFunction"/>
+        <push state="stackeffect"/>
+      </rule>
+      <rule pattern=";\s">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(USING:)(\s+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="vocabs"/>
+      </rule>
+      <rule pattern="(USE:|UNUSE:|IN:|QUALIFIED:)(\s+)(\S+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+          <token type="NameNamespace"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(QUALIFIED-WITH:)(\s+)(\S+)(\s+)(\S+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+          <token type="NameNamespace"/>
+          <token type="Text"/>
+          <token type="NameNamespace"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(FROM:|EXCLUDE:)(\s+)(\S+)(\s+=&gt;\s)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+          <token type="NameNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="words"/>
+      </rule>
+      <rule pattern="(RENAME:)(\s+)(\S+)(\s+)(\S+)(\s+=&gt;\s+)(\S+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="NameNamespace"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(ALIAS:|TYPEDEF:)(\s+)(\S+)(\s+)(\S+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(DEFER:|FORGET:|POSTPONE:)(\s+)(\S+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(TUPLE:|ERROR:)(\s+)(\S+)(\s+&lt;\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+        <push state="slots"/>
+      </rule>
+      <rule pattern="(TUPLE:|ERROR:|BUILTIN:)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+        <push state="slots"/>
+      </rule>
+      <rule pattern="(MIXIN:|UNION:|INTERSECTION:)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(PREDICATE:)(\s+)(\S+)(\s+&lt;\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(C:)(\s+)(\S+)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(INSTANCE:)(\s+)(\S+)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(SLOT:)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(SINGLETON:)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="SINGLETONS:">
+        <token type="Keyword"/>
+        <push state="classes"/>
+      </rule>
+      <rule pattern="(CONSTANT:|SYMBOL:|MAIN:|HELP:)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+        </bygroups>
+      </rule>
+      <rule pattern="SYMBOLS:\s">
+        <token type="Keyword"/>
+        <push state="words"/>
+      </rule>
+      <rule pattern="SYNTAX:\s">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="ALIEN:\s">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(STRUCT:)(\s+)(\S+)">
+        <bygroups>
+          <token type="Keyword"/>
+          <token type="Text"/>
+          <token type="NameClass"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(FUNCTION:)(\s+\S+\s+)(\S+)(\s+\(\s+[^)]+\)\s)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(FUNCTION-ALIAS:)(\s+)(\S+)(\s+\S+\s+)(\S+)(\s+\(\s+[^)]+\)\s)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+          <token type="NameFunction"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(?:&lt;PRIVATE|PRIVATE&gt;)\s">
+        <token type="KeywordNamespace"/>
+      </rule>
+      <rule pattern="&#34;&#34;&#34;\s+(?:.|\n)*?\s+&#34;&#34;&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#34;(?:\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="\S+&#34;\s+(?:\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="CHAR:\s+(?:\\[\\abfnrstv]|[^\\]\S*)\s">
+        <token type="LiteralStringChar"/>
+      </rule>
+      <rule pattern="!\s+.*$">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="#!\s+.*$">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="/\*\s+(?:.|\n)*?\s\*/\s">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="[tf]\s">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="[\\$]\s+\S+">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="M\\\s+\S+\s+\S+">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="[+-]?(?:[\d,]*\d)?\.(?:\d([\d,]*\d)?)?(?:[eE][+-]?\d+)?\s">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="[+-]?\d(?:[\d,]*\d)?(?:[eE][+-]?\d+)?\s">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="0x[a-fA-F\d](?:[a-fA-F\d,]*[a-fA-F\d])?(?:p\d([\d,]*\d)?)?\s">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="NAN:\s+[a-fA-F\d](?:[a-fA-F\d,]*[a-fA-F\d])?(?:p\d([\d,]*\d)?)?\s">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="0b[01]+\s">
+        <token type="LiteralNumberBin"/>
+      </rule>
+      <rule pattern="0o[0-7]+\s">
+        <token type="LiteralNumberOct"/>
+      </rule>
+      <rule pattern="(?:\d([\d,]*\d)?)?\+\d(?:[\d,]*\d)?/\d(?:[\d,]*\d)?\s">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="(?:\-\d([\d,]*\d)?)?\-\d(?:[\d,]*\d)?/\d(?:[\d,]*\d)?\s">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="(?:deprecated|final|foldable|flushable|inline|recursive)\s">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(identity-hashcode|callstack&gt;array|identity-tuple\?|identity-tuple|retainstack|callstack\?|tri-curry\*|tri-curry@|tri-curry|&lt;wrapper&gt;|datastack|bi-curry@|bi-curry\*|hashcode\*|callstack|\?execute|hashcode|boolean\?|compose\?|&gt;boolean|wrapper\?|bi-curry|unless\*|boolean|assert\?|\(clone\)|either\?|prepose|assert=|execute|wrapper|compose|3curry|assert|2curry|curry\?|object|equal\?|tuple\?|unless|build|3drop|same\?|2tri\*|2tri@|both\?|3keep|4drop|throw|2over|swapd|clear|2keep|2drop|until|curry|4keep|clone|while|tuple|when\*|-rot|tri@|dupd|drop|tri\*|call|when|with|4dup|4dip|3tri|3dup|3dip|2tri|keep|loop|most|2nip|swap|2dup|null|2dip|2bi\*|2bi@|pick|over|and|rot|not|nip|new|if\*|tri|2bi|boa|eq\?|dup|3bi|dip|die|bi\*|bi@|\?if|xor|bi|do|if|or|\?|=)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(assoc-clone-like|assoc-filter-as|assoc-partition|assoc-intersect|assoc-hashcode|assoc-combine|assoc-filter!|assoc-subset\?|assoc-union!|maybe-set-at|extract-keys|assoc-map-as|assoc-differ|assoc-refine|assoc-empty\?|assoc-filter|assoc-diff!|sift-values|assoc-union|assoc-stack|clear-assoc|assoc-all\?|delete-at\*|assoc-find|substitute|assoc-each|assoc-size|assoc-diff|assoc-any\?|assoc-like|rename-at|sift-keys|new-assoc|map&gt;assoc|value-at\*|assoc-map|delete-at|change-at|assoc&gt;map|value-at|push-at|assoc=|values|set-at|&lt;enum&gt;|inc-at|2cache|value\?|assoc\?|&gt;alist|cache|enum\?|assoc|unzip|key\?|enum|keys|\?at|\?of|zip|at\+|at\*|at|of)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(shallow-spread&gt;quot|recursive-hashcode|linear-case-quot|deep-spread&gt;quot|to-fixed-point|execute-effect|wrong-values\?|4cleave&gt;quot|2cleave&gt;quot|wrong-values|3cleave&gt;quot|cleave&gt;quot|call-effect|alist&gt;quot|case&gt;quot|case-find|cond&gt;quot|no-case\?|no-cond\?|no-case|no-cond|4cleave|3cleave|2cleave|cleave|spread|cond|case)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(log2-expects-positive\?|integer&gt;fixnum-strict|log2-expects-positive|out-of-fixnum-range\?|out-of-fixnum-range|find-last-integer|next-power-of-2|\(all-integers\?\)|integer&gt;fixnum|\(find-integer\)|\(each-integer\)|imaginary-part|fp-nan-payload|all-integers\?|find-integer|each-integer|fp-infinity\?|fp-special\?|fp-bitwise=|bits&gt;double|double&gt;bits|power-of-2\?|unless-zero|denominator|next-float|bits&gt;float|float&gt;bits|prev-float|unordered\?|real-part|when-zero|numerator|rational\?|&gt;integer|rational|complex\?|&lt;fp-nan&gt;|fp-qnan\?|fp-snan\?|integer\?|number=|bignum\?|integer|&gt;fixnum|fp-sign|fp-nan\?|fixnum\?|number\?|complex|if-zero|&gt;bignum|bignum|number|fixnum|float\?|bitxor|ratio\?|bitnot|bitand|&gt;float|real\?|bitor|zero\?|even\?|times|shift|float|recip|align|ratio|neg\?|real|log2|bit\?|odd\?|/mod|\?1\+|mod|rem|neg|sgn|u&lt;=|u&gt;=|abs|u&gt;|2/|2\^|/i|/f|sq|&lt;=|u&lt;|&gt;=|-|\+|&lt;|\*|/|&gt;)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(non-negative-integer-expected\?|non-negative-integer-expected|immutable-sequence\?|immutable-sequence|virtual-sequence\?|sequence-hashcode|cartesian-product|check-slice-error|unclip-last-slice|assert-sequence=|assert-sequence\?|virtual-exemplar|virtual-sequence|assert-sequence|trim-head-slice|last-index-from|find-index-from|trim-tail-slice|find-last-from|cartesian-each|collapse-slice|but-last-slice|map-find-last|cartesian-map|collector-for|bounds-error\?|accumulate-as|replace-slice|bounds-check\?|binary-reduce|new-resizable|unless-empty|delete-slice|replicate-as|map-integers|selector-for|bounds-check|reduce-index|bounds-error|unclip-slice|new-sequence|&lt;repetition&gt;|slice-error\?|slice-error|unclip-last|drop-prefix|supremum-by|push-either|2map-reduce|accumulate!|tail-slice\*|repetition\?|check-slice|iota-tuple\?|remove-nth!|sum-lengths|head-slice\*|find-index|clone-like|delete-all|change-nth|prepend-as|member-eq\?|max-length|each-index|map-reduce|iota-tuple|produce-as|snip-slice|accumulate|remove-eq!|last-index|min-length|remove-nth|&lt;reversed&gt;|repetition|tail-slice|3append-as|when-empty|interleave|insert-nth|infimum-by|index-from|set-second|immutable\?|rest-slice|set-fourth|head-slice|trim-slice|set-length|set-third|concat-as|immutable|trim-tail|cut-slice|collector|set-first|sequence\?|sequence=|midpoint@|trim-head|each-from|reversed\?|map-index|partition|find-last|2selector|2sequence|replicate|find-from|filter-as|3sequence|append-as|4sequence|remove-eq|1sequence|virtual@|push-all|lengthen|shorter\?|map-find|reverse!|reversed|exchange|pad-tail|pad-head|surround|selector|shortest|sequence|set-last|mismatch|supremum|new-like|if-empty|but-last|\?set-nth|filter!|harvest|member\?|map-sum|indices|padding|set-nth|2map-as|shorter|shorten|prepend|infimum|2reduce|append!|product|subseq\?|longest|longer\?|push-if|suffix!|reverse|join-as|remove!|3append|\?second|3map-as|&lt;slice&gt;|produce|length|\?first|start\*|longer|remove|subseq|unclip|first2|first3|reduce|second|follow|filter|slice\?|map-as|empty\?|fourth|suffix|halves|concat|first4|prefix|append|index|short|2all\?|count|2each|third|tail\*|slice|first|tail\?|head\*|3each|head\?|start|\?last|join|iota|last|like|snip|map!|head|glue|move|tail|2map|find|sift|flip|nths|trim|each|cut\*|3map|pop\*|copy|any\?|all\?|\?nth|push|rest|sum|nth|pop|map|cut)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(init-namespaces|with-variables|with-variable|set-namestack|change-global|with-global|initialize|get-global|set-global|with-scope|make-assoc|is-global|namespace|namestack|counter|change|toggle|global|set|get|dec|off|inc|on|\+@)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(resize-array|&lt;array&gt;|1array|2array|3array|4array|&gt;array|array\?|array|pair\?|pair)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(\(stream-contents-by-length-or-block\)|with-input-output\+error-streams\*|with-input-output\+error-streams|\(stream-contents-by-element\)|\(stream-contents-by-length\)|stream-read-partial-unsafe|\(stream-contents-by-block\)|with-output\+error-stream\*|\(each-stream-block-slice\)|stream-read-partial-into|with-output\+error-stream|each-stream-block-slice|invalid-read-buffer\?|stream-read-partial|stream-element-type|\(each-stream-block\)|with-output-stream\*|invalid-read-buffer|with-output-stream|with-input-stream\*|stream-read-unsafe|with-error-stream\*|with-error-stream|stream-read-until|each-stream-block|with-output&gt;error|with-input-stream|with-error&gt;output|read-partial-into|stream-contents\*|each-stream-line|stream-seekable\?|stream-read-into|each-block-slice|each-block-size|stream-contents|bad-seek-type\?|seek-absolute\?|output-stream\?|seek-relative\?|stream-write1|with-streams\*|output-stream|stream-length|bad-seek-type|seek-absolute|input-stream\?|stream-readln|seek-relative|with-streams|read-partial|stream-copy\*|stream-flush|stream-read1|stream-lines|stream-write|stream-print|error-stream|input-stream|stream-tell|\+character\+|stream-copy|each-morsel|seek-output|stream-read|tell-output|stream-seek|read-until|seek-input|each-block|tell-input|each-line|seek-end\?|read-into|stream-nl|stream-bl|contents|seek-end|write1|\+byte\+|readln|write|read1|print|flush|lines|read|nl|bl)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(resize-string|&lt;string&gt;|1string|&gt;string|string\?|string)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(&lt;vector&gt;|1vector|&gt;vector|vector\?|vector|\?push)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="(current-continuation|return-continuation|callback-error-hook|error-continuation|attempt-all-error\?|thread-error-hook|attempt-all-error|rethrow-restarts|continue-restart|compute-restarts|error-in-thread|throw-continue|throw-restarts|with-datastack|&lt;continuation&gt;|original-error|ignore-errors|continue-with|continuation\?|in-callback\?|continuation|error-thread|attempt-all|&lt;condition&gt;|with-return|condition\?|&lt;restart&gt;|condition|continue|restart\?|restarts|rethrow|callcc0|recover|restart|cleanup|callcc1|return|error|ifcc)\s">
+        <token type="NameBuiltin"/>
+      </rule>
+      <rule pattern="\S+">
+        <token type="Text"/>
+      </rule>
+    </state>
+    <state name="stackeffect">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\(\s+">
+        <token type="NameFunction"/>
+        <push state="stackeffect"/>
+      </rule>
+      <rule pattern="\)\s">
+        <token type="NameFunction"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="--\s">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="\S+">
+        <token type="NameVariable"/>
+      </rule>
+    </state>
+    <state name="slots">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=";\s">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="(\{\s+)(\S+)(\s+[^}]+\s+\}\s)">
+        <bygroups>
+          <token type="Text"/>
+          <token type="NameVariable"/>
+          <token type="Text"/>
+        </bygroups>
+      </rule>
+      <rule pattern="\S+">
+        <token type="NameVariable"/>
+      </rule>
+    </state>
+    <state name="vocabs">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=";\s">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\S+">
+        <token type="NameNamespace"/>
+      </rule>
+    </state>
+    <state name="classes">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=";\s">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\S+">
+        <token type="NameClass"/>
+      </rule>
+    </state>
+    <state name="words">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern=";\s">
+        <token type="Keyword"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="\S+">
+        <token type="NameFunction"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="#!.*$">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule>
+        <push state="base"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

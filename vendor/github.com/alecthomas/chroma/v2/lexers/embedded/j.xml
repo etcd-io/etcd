@@ -1,0 +1,157 @@
+<lexer>
+  <config>
+    <name>J</name>
+    <alias>j</alias>
+    <filename>*.ijs</filename>
+    <mime_type>text/x-j</mime_type>
+  </config>
+  <rules>
+    <state name="singlequote">
+      <rule pattern="[^&#39;]">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;&#39;">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="root">
+      <rule pattern="#!.*$">
+        <token type="CommentPreproc"/>
+      </rule>
+      <rule pattern="NB\..*">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="\n+\s*Note">
+        <token type="CommentMultiline"/>
+        <push state="comment"/>
+      </rule>
+      <rule pattern="\s*Note.*">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="&#39;">
+        <token type="LiteralString"/>
+        <push state="singlequote"/>
+      </rule>
+      <rule pattern="0\s+:\s*0|noun\s+define\s*$">
+        <token type="NameEntity"/>
+        <push state="nounDefinition"/>
+      </rule>
+      <rule pattern="(([1-4]|13)\s+:\s*0|(adverb|conjunction|dyad|monad|verb)\s+define)\b">
+        <token type="NameFunction"/>
+        <push state="explicitDefinition"/>
+      </rule>
+      <rule pattern="(label_|goto_|for_)\b[a-zA-Z]\w*\.">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="(continue|select|return|assert|catchd|catcht|elseif|whilst|break|catch|fcase|while|throw|else|case|end|try|for|do|if)\.">
+        <token type="NameLabel"/>
+      </rule>
+      <rule pattern="\b[a-zA-Z]\w*">
+        <token type="NameVariable"/>
+      </rule>
+      <rule pattern="(timespacex|fixdotdot|nameclass|namelist|file2url|tmoutput|ucpcount|boxxopen|smoutput|JVERSION|datatype|toupper|tolower|alpha17|alpha27|getargs|evtloop|boxopen|fliprgb|inverse|scriptd|iospath|cutopen|isatty|toCRLF|toHOST|isutf8|getenv|stdout|script|usleep|sminfo|expand|stderr|clear|fetch|every|erase|empty|Debug|EMPTY|split|names|timex|cutLF|stdin|apply|items|table|exit|Note|list|take|leaf|type|bind|drop|rows|each|echo|sign|CRLF|utf8|sort|pick|ARGV|uucp|ucp|DEL|inv|hfd|dfh|def|LF2|EAV|toJ|TAB|nl|FF|LF|bx|nc|CR|on)">
+        <token type="NameFunction"/>
+      </rule>
+      <rule pattern="=[.:]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[-=+*#$%@!~`^&amp;&#34;;:.,&lt;&gt;{}\[\]\\|/]">
+        <token type="Operator"/>
+      </rule>
+      <rule pattern="[abCdDeEfHiIjLMoprtT]\.">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="[aDiLpqsStux]\:">
+        <token type="KeywordReserved"/>
+      </rule>
+      <rule pattern="(_[0-9])\:">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="\(">
+        <token type="Punctuation"/>
+        <push state="parentheses"/>
+      </rule>
+      <rule>
+        <include state="numbers"/>
+      </rule>
+    </state>
+    <state name="comment">
+      <rule pattern="[^)]">
+        <token type="CommentMultiline"/>
+      </rule>
+      <rule pattern="^\)">
+        <token type="CommentMultiline"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[)]">
+        <token type="CommentMultiline"/>
+      </rule>
+    </state>
+    <state name="explicitDefinition">
+      <rule pattern="\b[nmuvxy]\b">
+        <token type="NameDecorator"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+      <rule pattern="[^)]">
+        <token type="Name"/>
+      </rule>
+      <rule pattern="^\)">
+        <token type="NameLabel"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[)]">
+        <token type="Name"/>
+      </rule>
+    </state>
+    <state name="numbers">
+      <rule pattern="\b_{1,2}\b">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="_?\d+(\.\d+)?(\s*[ejr]\s*)_?\d+(\.?=\d+)?">
+        <token type="LiteralNumber"/>
+      </rule>
+      <rule pattern="_?\d+\.(?=\d+)">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="_?\d+x">
+        <token type="LiteralNumberIntegerLong"/>
+      </rule>
+      <rule pattern="_?\d+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+    </state>
+    <state name="nounDefinition">
+      <rule pattern="[^)]">
+        <token type="LiteralString"/>
+      </rule>
+      <rule pattern="^\)">
+        <token type="NameLabel"/>
+        <pop depth="1"/>
+      </rule>
+      <rule pattern="[)]">
+        <token type="LiteralString"/>
+      </rule>
+    </state>
+    <state name="parentheses">
+      <rule pattern="\)">
+        <token type="Punctuation"/>
+        <pop depth="1"/>
+      </rule>
+      <rule>
+        <include state="explicitDefinition"/>
+      </rule>
+      <rule>
+        <include state="root"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

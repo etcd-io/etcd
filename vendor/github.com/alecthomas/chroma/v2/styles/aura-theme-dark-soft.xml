@@ -1,0 +1,107 @@
+<!--
+# Aura Theme Dark Soft > Color scheme for Chroma syntax highlighter
+# Repository: https://github.com/daltonmenezes/aura-theme
+# Theme version: 1.0.1
+-->
+
+<style name="aura-theme-dark-soft">
+  <!-- Base -->
+  <entry type="Background" style="bg:#15141b #bdbdbd"/>
+  <entry type="CodeLine" style="#bdbdbd"/>
+  <entry type="Error" style="#c55858"/>
+  <entry type="Other" style="#bdbdbd"/>
+  <entry type="LineTableTD" style=""/>
+  <entry type="LineTable" style=""/>
+  <entry type="LineHighlight" style="bg:#29263c"/>
+  <entry type="LineNumbersTable" style="#6d6d6d"/>
+  <entry type="LineNumbers" style="#6d6d6d"/>
+
+  <!-- Keywords -->
+  <entry type="Keyword" style="#8464c6"/>
+  <entry type="KeywordReserved" style="#8464c6"/>
+  <entry type="KeywordPseudo" style="#8464c6"/>
+  <entry type="KeywordConstant" style="#54c59f"/>
+  <entry type="KeywordDeclaration" style="#8464c6"/>
+  <entry type="KeywordNamespace" style="#8464c6"/>
+  <entry type="KeywordType" style="#6cb2c7"/>
+
+  <!-- Names -->
+  <entry type="Name" style="#bdbdbd"/>
+  <entry type="NameClass" style="#6cb2c7"/>
+  <entry type="NameConstant" style="#54c59f"/>
+  <entry type="NameDecorator" style="#c17ac8"/>
+  <entry type="NameEntity" style="#c7a06f"/>
+  <entry type="NameException" style="#c55858"/>
+  <entry type="NameFunction" style="#c7a06f"/>
+  <entry type="NameFunctionMagic" style="#c7a06f"/>
+  <entry type="NameLabel" style="#c17ac8"/>
+  <entry type="NameNamespace" style="#bdbdbd"/>
+  <entry type="NameProperty" style="#c17ac8"/>
+  <entry type="NameTag" style="#8464c6"/>
+  <entry type="NameVariable" style="#bdbdbd"/>
+  <entry type="NameVariableClass" style="#bdbdbd"/>
+  <entry type="NameVariableGlobal" style="#bdbdbd"/>
+  <entry type="NameVariableInstance" style="#bdbdbd"/>
+  <entry type="NameVariableMagic" style="#bdbdbd"/>
+  <entry type="NameAttribute" style="#c17ac8"/>
+  <entry type="NameBuiltin" style="#6cb2c7"/>
+  <entry type="NameBuiltinPseudo" style="#6cb2c7"/>
+  <entry type="NameOther" style="#bdbdbd"/>
+
+  <!-- Literals -->
+  <entry type="Literal" style="#54c59f"/>
+  <entry type="LiteralDate" style="#54c59f"/>
+  <entry type="LiteralString" style="#54c59f"/>
+  <entry type="LiteralStringChar" style="#54c59f"/>
+  <entry type="LiteralStringSingle" style="#54c59f"/>
+  <entry type="LiteralStringDouble" style="#54c59f"/>
+  <entry type="LiteralStringBacktick" style="#54c59f"/>
+  <entry type="LiteralStringOther" style="#54c59f"/>
+  <entry type="LiteralStringSymbol" style="#54c59f"/>
+  <entry type="LiteralStringInterpol" style="#54c59f"/>
+  <entry type="LiteralStringAffix" style="#8464c6"/>
+  <entry type="LiteralStringDelimiter" style="#54c59f"/>
+  <entry type="LiteralStringEscape" style="#8464c6"/>
+  <entry type="LiteralStringRegex" style="#54c59f"/>
+  <entry type="LiteralStringDoc" style="#6d6d6d"/>
+  <entry type="LiteralStringHeredoc" style="#6d6d6d"/>
+  <entry type="LiteralNumber" style="#54c59f"/>
+  <entry type="LiteralNumberBin" style="#54c59f"/>
+  <entry type="LiteralNumberHex" style="#54c59f"/>
+  <entry type="LiteralNumberInteger" style="#54c59f"/>
+  <entry type="LiteralNumberFloat" style="#54c59f"/>
+  <entry type="LiteralNumberIntegerLong" style="#54c59f"/>
+  <entry type="LiteralNumberOct" style="#54c59f"/>
+
+  <!-- Operators -->
+  <entry type="Operator" style="#8464c6"/>
+  <entry type="OperatorWord" style="#8464c6"/>
+
+  <!-- Comments (italic) -->
+  <entry type="Comment" style="italic #6d6d6d"/>
+  <entry type="CommentSingle" style="italic #6d6d6d"/>
+  <entry type="CommentMultiline" style="italic #6d6d6d"/>
+  <entry type="CommentSpecial" style="italic #6d6d6d"/>
+  <entry type="CommentHashbang" style="italic #6d6d6d"/>
+  <entry type="CommentPreproc" style="italic #6d6d6d"/>
+  <entry type="CommentPreprocFile" style="italic #6d6d6d"/>
+
+  <!-- Generic -->
+  <entry type="Generic" style="#bdbdbd"/>
+  <entry type="GenericInserted" style="bg:#15141b #54c59f"/>
+  <entry type="GenericDeleted" style="bg:#15141b #c55858"/>
+  <entry type="GenericEmph" style="italic #bdbdbd"/>
+  <entry type="GenericStrong" style="bold #bdbdbd"/>
+  <entry type="GenericUnderline" style="underline #bdbdbd"/>
+  <entry type="GenericHeading" style="bold #8464c6"/>
+  <entry type="GenericSubheading" style="bold #8464c6"/>
+  <entry type="GenericOutput" style="#bdbdbd"/>
+  <entry type="GenericPrompt" style="#bdbdbd"/>
+  <entry type="GenericError" style="#c55858"/>
+  <entry type="GenericTraceback" style="#c55858"/>
+
+  <!-- Punctuation -->
+  <entry type="Punctuation" style="#c17ac8"/>
+  <entry type="Text" style="#bdbdbd"/>
+  <entry type="TextWhitespace" style="#bdbdbd"/>
+</style>

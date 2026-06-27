@@ -1,0 +1,55 @@
+# See for configurations: https://golangci-lint.run/usage/configuration/
+version: 2
+# See: https://golangci-lint.run/usage/formatters/
+formatters:
+  default: none
+  enable:
+    - gofmt # https://pkg.go.dev/cmd/gofmt
+    - gofumpt # https://github.com/mvdan/gofumpt
+
+  settings:
+    gofmt:
+      simplify: true # Simplify code: gofmt with `-s` option.
+
+    gofumpt:
+      # Module path which contains the source code being formatted.
+      # Default: ""
+      module-path: github.com/olekukonko/tablewriter # Should match with module in go.mod
+      # Choose whether to use the extra rules.
+      # Default: false
+      extra-rules: true
+
+# See: https://golangci-lint.run/usage/linters/
+linters:
+  default: none
+  enable:
+    - staticcheck
+    - govet
+    - gocritic
+    # - unused # TODO: There are many unused functions, should I directly remove those ?
+    - ineffassign
+    - unconvert
+    - mirror
+    - usestdlibvars
+    - loggercheck
+    - exptostd
+    - godot
+    - perfsprint
+
+  # See: https://golangci-lint.run/usage/false-positives/
+  exclusion:
+    # paths:
+    # rules:
+
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - "-SA1019" # disabled because it warns about deprecated: kept for compatibility will be removed soon
+        - "-ST1019" # disabled because it warns about deprecated: kept for compatibility will be removed soon
+        - "-ST1021" # disabled because it warns to have comment on exported packages
+        - "-ST1000" # disabled because it warns to have comment on exported functions
+        - "-ST1020" # disabled because it warns to have at least one file in a package should have a package comment
+
+    godot:
+      period: false

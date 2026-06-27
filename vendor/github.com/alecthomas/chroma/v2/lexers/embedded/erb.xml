@@ -1,0 +1,37 @@
+<lexer>
+  <config>
+    <name>ERB</name>
+    <dot_all>true</dot_all>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="(&lt;%#)(.*?)(-?%&gt;)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <token type="Comment"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;%-?=)(.*?)(-?%&gt;)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <using lexer="Ruby"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="(&lt;%-?)(.*?)(-?%&gt;)">
+        <bygroups>
+          <token type="CommentPreproc"/>
+          <using lexer="Ruby"/>
+          <token type="CommentPreproc"/>
+        </bygroups>
+      </rule>
+      <rule pattern="[^&lt;]+">
+        <token type="Other"/>
+      </rule>
+      <rule pattern="&lt;">
+        <token type="Other"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

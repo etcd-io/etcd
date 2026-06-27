@@ -1,0 +1,45 @@
+<lexer>
+  <config>
+    <name>TOML</name>
+    <alias>toml</alias>
+    <filename>*.toml</filename>
+    <filename>Pipfile</filename>
+    <filename>poetry.lock</filename>
+    <filename>uv.lock</filename>
+    <mime_type>text/x-toml</mime_type>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="#.*">
+        <token type="Comment"/>
+      </rule>
+      <rule pattern="(false|true)\b">
+        <token type="KeywordConstant"/>
+      </rule>
+      <rule pattern="\d\d\d\d-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d\+)?(Z|[+-]\d{2}:\d{2})">
+        <token type="LiteralDate"/>
+      </rule>
+      <rule pattern="[+-]?[0-9](_?\d)*\.\d+">
+        <token type="LiteralNumberFloat"/>
+      </rule>
+      <rule pattern="[+-]?[0-9](_?\d)*">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="&#34;(\\\\|\\&#34;|[^&#34;])*&#34;">
+        <token type="LiteralStringDouble"/>
+      </rule>
+      <rule pattern="&#39;(\\\\|\\&#39;|[^&#39;])*&#39;">
+        <token type="LiteralStringSingle"/>
+      </rule>
+      <rule pattern="[.,=\[\]{}]">
+        <token type="Punctuation"/>
+      </rule>
+      <rule pattern="[A-Za-z0-9_-]+">
+        <token type="NameOther"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>

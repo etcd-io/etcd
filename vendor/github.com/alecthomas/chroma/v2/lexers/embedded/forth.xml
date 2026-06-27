@@ -1,0 +1,78 @@
+<lexer>
+  <config>
+    <name>Forth</name>
+    <alias>forth</alias>
+    <filename>*.frt</filename>
+    <filename>*.fth</filename>
+    <filename>*.fs</filename>
+    <mime_type>application/x-forth</mime_type>
+    <case_insensitive>true</case_insensitive>
+  </config>
+  <rules>
+    <state name="root">
+      <rule pattern="\s+">
+        <token type="Text"/>
+      </rule>
+      <rule pattern="\\.*?\n">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="\([\s].*?\)">
+        <token type="CommentSingle"/>
+      </rule>
+      <rule pattern="(:|variable|constant|value|buffer:)(\s+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="worddef"/>
+      </rule>
+      <rule pattern="([.sc]&#34;)(\s+?)">
+        <bygroups>
+          <token type="LiteralString"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="stringdef"/>
+      </rule>
+      <rule pattern="(blk|block|buffer|evaluate|flush|load|save-buffers|update|empty-buffers|list|refill|scr|thru|\#s|\*\/mod|\+loop|\/mod|0&lt;|0=|1\+|1-|2!|2\*|2\/|2@|2drop|2dup|2over|2swap|&gt;body|&gt;in|&gt;number|&gt;r|\?dup|abort|abort\&#34;|abs|accept|align|aligned|allot|and|base|begin|bl|c!|c,|c@|cell\+|cells|char|char\+|chars|constant|count|cr|create|decimal|depth|do|does&gt;|drop|dup|else|emit|environment\?|evaluate|execute|exit|fill|find|fm\/mod|here|hold|i|if|immediate|invert|j|key|leave|literal|loop|lshift|m\*|max|min|mod|move|negate|or|over|postpone|quit|r&gt;|r@|recurse|repeat|rot|rshift|s\&#34;|s&gt;d|sign|sm\/rem|source|space|spaces|state|swap|then|type|u\.|u\&lt;|um\*|um\/mod|unloop|until|variable|while|word|xor|\[char\]|\[\&#39;\]|@|!|\#|&lt;\#|\#&gt;|:|;|\+|-|\*|\/|,|&lt;|&gt;|\|1\+|1-|\.|\.r|0&lt;&gt;|0&gt;|2&gt;r|2r&gt;|2r@|:noname|\?do|again|c\&#34;|case|compile,|endcase|endof|erase|false|hex|marker|nip|of|pad|parse|pick|refill|restore-input|roll|save-input|source-id|to|true|tuck|u\.r|u&gt;|unused|value|within|\[compile\]|\#tib|convert|expect|query|span|tib|2constant|2literal|2variable|d\+|d-|d\.|d\.r|d0&lt;|d0=|d2\*|d2\/|d&lt;|d=|d&gt;s|dabs|dmax|dmin|dnegate|m\*\/|m\+|2rot|du&lt;|catch|throw|abort|abort\&#34;|at-xy|key\?|page|ekey|ekey&gt;char|ekey\?|emit\?|ms|time&amp;date|BIN|CLOSE-FILE|CREATE-FILE|DELETE-FILE|FILE-POSITION|FILE-SIZE|INCLUDE-FILE|INCLUDED|OPEN-FILE|R\/O|R\/W|READ-FILE|READ-LINE|REPOSITION-FILE|RESIZE-FILE|S\&#34;|SOURCE-ID|W/O|WRITE-FILE|WRITE-LINE|FILE-STATUS|FLUSH-FILE|REFILL|RENAME-FILE|&gt;float|d&gt;f|f!|f\*|f\+|f-|f\/|f0&lt;|f0=|f&lt;|f&gt;d|f@|falign|faligned|fconstant|fdepth|fdrop|fdup|fliteral|float\+|floats|floor|fmax|fmin|fnegate|fover|frot|fround|fswap|fvariable|represent|df!|df@|dfalign|dfaligned|dfloat\+|dfloats|f\*\*|f\.|fabs|facos|facosh|falog|fasin|fasinh|fatan|fatan2|fatanh|fcos|fcosh|fe\.|fexp|fexpm1|fln|flnp1|flog|fs\.|fsin|fsincos|fsinh|fsqrt|ftan|ftanh|f~|precision|set-precision|sf!|sf@|sfalign|sfaligned|sfloat\+|sfloats|\(local\)|to|locals\||allocate|free|resize|definitions|find|forth-wordlist|get-current|get-order|search-wordlist|set-current|set-order|wordlist|also|forth|only|order|previous|-trailing|\/string|blank|cmove|cmove&gt;|compare|search|sliteral|.s|dump|see|words|;code|ahead|assembler|bye|code|cs-pick|cs-roll|editor|state|\[else\]|\[if\]|\[then\]|forget|defer|defer@|defer!|action-of|begin-structure|field:|buffer:|parse-name|buffer:|traverse-wordlist|n&gt;r|nr&gt;|2value|fvalue|name&gt;interpret|name&gt;compile|name&gt;string|cfield:|end-structure)\s">
+        <token type="Keyword"/>
+      </rule>
+      <rule pattern="(\$[0-9A-F]+)">
+        <token type="LiteralNumberHex"/>
+      </rule>
+      <rule pattern="(\#|%|&amp;|\-|\+)?[0-9]+">
+        <token type="LiteralNumberInteger"/>
+      </rule>
+      <rule pattern="(\#|%|&amp;|\-|\+)?[0-9.]+">
+        <token type="KeywordType"/>
+      </rule>
+      <rule pattern="(@i|!i|@e|!e|pause|noop|turnkey|sleep|itype|icompare|sp@|sp!|rp@|rp!|up@|up!|&gt;a|a&gt;|a@|a!|a@+|a@-|&gt;b|b&gt;|b@|b!|b@+|b@-|find-name|1ms|sp0|rp0|\(evaluate\)|int-trap|int!)\s">
+        <token type="NameConstant"/>
+      </rule>
+      <rule pattern="(do-recognizer|r:fail|recognizer:|get-recognizers|set-recognizers|r:float|r&gt;comp|r&gt;int|r&gt;post|r:name|r:word|r:dnum|r:num|recognizer|forth-recognizer|rec:num|rec:float|rec:word)\s">
+        <token type="NameDecorator"/>
+      </rule>
+      <rule pattern="(Evalue|Rvalue|Uvalue|Edefer|Rdefer|Udefer)(\s+)">
+        <bygroups>
+          <token type="KeywordNamespace"/>
+          <token type="Text"/>
+        </bygroups>
+        <push state="worddef"/>
+      </rule>
+      <rule pattern="[^\s]+(?=[\s])">
+        <token type="NameFunction"/>
+      </rule>
+    </state>
+    <state name="worddef">
+      <rule pattern="\S+">
+        <token type="NameClass"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+    <state name="stringdef">
+      <rule pattern="[^&#34;]+">
+        <token type="LiteralString"/>
+        <pop depth="1"/>
+      </rule>
+    </state>
+  </rules>
+</lexer>
