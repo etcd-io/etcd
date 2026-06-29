@@ -18,7 +18,7 @@ require (
 	github.com/olekukonko/tablewriter v1.1.4
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
-	go.etcd.io/bbolt v1.5.0-rc.0
+	go.etcd.io/bbolt v1.5.0
 	go.etcd.io/etcd/api/v3 v3.7.0-beta.0
 	go.etcd.io/etcd/client/pkg/v3 v3.7.0-beta.0
 	go.etcd.io/etcd/client/v3 v3.7.0-beta.0
