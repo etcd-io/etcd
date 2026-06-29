@@ -166,6 +166,34 @@ func (l *tlsListener) acceptLoop() {
 	}
 }
 
+// ConfigureCRLVerification appends a VerifyPeerCertificate hook to cfg that
+// rejects any peer certificate whose serial number appears in the CRL file
+// configured on info. It is a no-op when CRLFile is empty. Any existing
+// VerifyPeerCertificate hook is called first and its error short-circuits.
+func (info TLSInfo) ConfigureCRLVerification(cfg *tls.Config) {
+	if len(info.CRLFile) == 0 {
+		return
+	}
+	crlFile := info.CRLFile
+	prev := cfg.VerifyPeerCertificate
+	cfg.VerifyPeerCertificate = func(rawCerts [][]byte, chains [][]*x509.Certificate) error {
+		if prev != nil {
+			if err := prev(rawCerts, chains); err != nil {
+				return err
+			}
+		}
+		certs := make([]*x509.Certificate, 0, len(rawCerts))
+		for _, raw := range rawCerts {
+			c, err := x509.ParseCertificate(raw)
+			if err != nil {
+				return err
+			}
+			certs = append(certs, c)
+		}
+		return checkCRL(crlFile, certs)
+	}
+}
+
 func checkCRL(crlPath string, cert []*x509.Certificate) error {
 	// TODO: cache
 	crlBytes, err := ioutil.ReadFile(crlPath)
