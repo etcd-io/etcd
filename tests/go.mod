@@ -27,10 +27,10 @@ require (
 	github.com/olekukonko/tablewriter v1.1.4
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.67.5
+	github.com/prometheus/common v0.69.0
 	github.com/soheilhy/cmux v0.1.5
 	github.com/stretchr/testify v1.11.1
-	go.etcd.io/bbolt v1.5.0-rc.0
+	go.etcd.io/bbolt v1.5.0
 	go.etcd.io/etcd/api/v3 v3.7.0-beta.0
 	go.etcd.io/etcd/cache/v3 v3.7.0-beta.0
 	go.etcd.io/etcd/client/pkg/v3 v3.7.0-beta.0
@@ -40,7 +40,7 @@ require (
 	go.etcd.io/etcd/pkg/v3 v3.7.0-beta.0
 	go.etcd.io/etcd/server/v3 v3.7.0-beta.0
 	go.etcd.io/gofail v0.2.0
-	go.etcd.io/raft/v3 v3.7.0-rc.1
+	go.etcd.io/raft/v3 v3.7.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/sdk v1.44.0
@@ -94,7 +94,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.yaml.in/yaml/v2 v2.4.3 // indirect
+	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
