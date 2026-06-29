@@ -55,6 +55,22 @@ func TestCtlV3GetRevokedCRL(t *testing.T) {
 	testCtl(t, testGetRevokedCRL, withCfg(*cfg))
 }
 
+// TestCtlV3GetRevokedCRLGRPCOnly is the same as TestCtlV3GetRevokedCRL but uses
+// --listen-client-http-urls to split HTTP and gRPC onto separate ports. In that
+// mode the gRPC server owns the TLS handshake directly (onlyGRPC=true in
+// serve.go) and CRL checking must be injected via ConfigureCRLVerification
+// rather than through the wrapping TLS listener used in the combined path.
+func TestCtlV3GetRevokedCRLGRPCOnly(t *testing.T) {
+	cfg := e2e.NewConfig(
+		e2e.WithClusterSize(1),
+		e2e.WithClientConnType(e2e.ClientTLS),
+		e2e.WithClientRevokeCerts(true),
+		e2e.WithClientCertAuthority(true),
+		e2e.WithClientHTTPSeparate(true),
+	)
+	testCtl(t, testGetRevokedCRL, withCfg(*cfg))
+}
+
 func testGetRevokedCRL(cx ctlCtx) {
 	// test reject
 	require.ErrorContains(cx.t, ctlV3Put(cx, "k", "v", ""), "context deadline exceeded")
