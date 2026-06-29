@@ -14,7 +14,7 @@ require (
 	github.com/ryancurrah/gomodguard v1.4.1
 	go.etcd.io/gofail v0.2.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
-	go.etcd.io/raft/v3 v3.7.0-rc.1
+	go.etcd.io/raft/v3 v3.7.0
 	golang.org/x/tools v0.45.0
 	golang.org/x/vuln v1.3.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.2

@@ -88,8 +88,8 @@ github.com/xiang90/probing v0.0.0-20221125231312-a49e3df8f510 h1:S2dVYn90KE98chq
 github.com/xiang90/probing v0.0.0-20221125231312-a49e3df8f510/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 go.etcd.io/bbolt v1.5.0-rc.0 h1:eep+LDTa+VGJ6mmNMe0wWB8OdLUHnyuvvSimdJsWtAE=
 go.etcd.io/bbolt v1.5.0-rc.0/go.mod h1:HXpeuv7FrPaEH3z9FzbnSXSntD27WQyEMjQNJbd+vd8=
-go.etcd.io/raft/v3 v3.7.0-rc.1 h1:ZjxgOnOT16uEGhR6xiijKT0OcTk+9Nw0sU2ZgGAAjGg=
-go.etcd.io/raft/v3 v3.7.0-rc.1/go.mod h1:sWN3FZ3+MUeGidw1pzYc78c11I7VmeteCFB3YjA7tcw=
+go.etcd.io/raft/v3 v3.7.0 h1:BGzlwx07bLv8PW6OU5HObuz1y4hlPZUXA07pM1mPUh4=
+go.etcd.io/raft/v3 v3.7.0/go.mod h1:6gX6T2X907DjnjsFLODnTxba77stjs84W9gTTI0GUNA=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0 h1:0Qx7VGBacMm9ZENQ7TnNObTYI4ShC+lHI16seduaxZo=
