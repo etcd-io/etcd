@@ -11,7 +11,7 @@ require (
 )
 
 require (
-	codeberg.org/go-fonts/liberation v0.5.0 // indirect
+	codeberg.org/go-fonts/liberation v0.6.0 // indirect
 	codeberg.org/go-latex/latex v0.3.0 // indirect
 	codeberg.org/go-pdf/fpdf v0.12.0 // indirect
 	git.sr.ht/~sbinet/gg v0.7.0 // indirect
