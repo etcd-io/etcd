@@ -69,6 +69,23 @@ func TestCtlV3GetRevokedCRL(t *testing.T) {
 	testCtl(t, testGetRevokedCRL, withCfg(cfg))
 }
 
+// TestCtlV3GetRevokedCRLGRPCOnly is the same as TestCtlV3GetRevokedCRL but uses
+// --listen-client-http-urls to split HTTP and gRPC onto separate ports. In that
+// mode the gRPC server owns the TLS handshake directly (onlyGRPC=true in
+// serve.go) and CRL checking must be injected via ConfigureCRLVerification
+// rather than through the wrapping TLS listener used in the combined path.
+func TestCtlV3GetRevokedCRLGRPCOnly(t *testing.T) {
+	cfg := e2e.EtcdProcessClusterConfig{
+		ClusterSize:           1,
+		InitialToken:          "new",
+		ClientTLS:             e2e.ClientTLS,
+		IsClientCRL:           true,
+		ClientCertAuthEnabled: true,
+		ClientHttpSeparate:    true,
+	}
+	testCtl(t, testGetRevokedCRL, withCfg(cfg))
+}
+
 func testGetRevokedCRL(cx ctlCtx) {
 	// test reject
 	if err := ctlV3Put(cx, "k", "v", ""); err == nil || !strings.Contains(err.Error(), "Error:") {
