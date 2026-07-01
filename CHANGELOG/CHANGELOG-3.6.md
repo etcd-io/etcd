@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.13 (TBC)
+## v3.6.14 (TBC)
+
+---
+
+## v3.6.13 (2026-07-01)
 
 ### etcd server
 
@@ -15,7 +19,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 ### Dependencies
 
 - Compile binaries using [go 1.25.11](https://github.com/etcd-io/etcd/pull/21892)
-- Bump golang.org/x/crypto to [v0.52.0](https://github.com/etcd-io/etcd/pull/21904) to resolve several CVEs.
+- Bump golang.org/x/crypto to [v0.52.0](https://github.com/etcd-io/etcd/pull/21904) to resolve CVE-2026-46598, CVE-2026-39835, CVE-2026-39828 and CVE-2026-46597.
 - Bump `go.opentelemetry.io/otel` from `v1.40.0` to `v1.43.0` and `go.opentelemetry.io/otel/sdk` from `v1.40.0` to `v1.43.0` to address CVE-2026-29181 and CVE-2026-39883 ([#21918](https://github.com/etcd-io/etcd/pull/21918)).
 
 ---
