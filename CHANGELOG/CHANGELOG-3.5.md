@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.32 (TBC)
+## v3.5.33 (TBC)
+
+---
+
+## v3.5.32 (2026-07-01)
 
 ### etcd server
 
@@ -12,6 +16,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - [server: allow non-admin maintenance status](https://github.com/etcd-io/etcd/pull/21815)
 - Fix [websocket authentication with bearer-prefixed auth tokens](https://github.com/etcd-io/etcd/pull/21935).
 - Fix [CRL enforcement bypass on gRPC listener when `--listen-client-http-urls` is configured](https://github.com/etcd-io/etcd/pull/22021), refer to [security/advisories/GHSA-3wh4-j44w-pg92](https://github.com/etcd-io/etcd/security/advisories/GHSA-3wh4-j44w-pg92) for more details.
+- Avoid logging for JWT token for a case of failed parsing ([#21993](https://github.com/etcd-io/etcd/pull/21993)).
 
 ### etcdutl
 
