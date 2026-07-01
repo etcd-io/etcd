@@ -26,7 +26,8 @@ antithesis-build-etcd-image:
 		--build-arg GO_IMAGE_TAG=$(shell go work edit -json | jq .Go) \
 		--build-arg REF=$(REF) \
 		--tag etcd-server:latest \
-		$(ANTITHESIS_ROOT)/server/
+		-f ./server/Dockerfile \
+		$(ANTITHESIS_ROOT)
 
 .PHONY: antithesis-build-etcd-image-release-3.4
 antithesis-build-etcd-image-release-3.4: REF=release-3.4

@@ -8,16 +8,24 @@ ARG REF=main
 RUN git clone --depth=1 https://github.com/etcd-io/etcd.git --branch=${REF} /etcd
 RUN go env -w GOTOOLCHAIN="go$(cat .go-version)"
 
-# inject assertions in place of gofail
+# Replacing math/rand with etcd's antithesis-sdk-go/random wrapper
+# See https://antithesis.com/docs/configuration/the_antithesis_environment/?sid=8fce.35&sterm=random&marks=Random#random-devices
+WORKDIR /etcd
+COPY pkg /etcd/tests/antithesis/pkg
+RUN find . -path "./tests/antithesis" -prune -type f -o -name 'go.mod' -type f -execdir go mod edit -replace=math/rand=$(git rev-parse --show-toplevel)/tests/antithesis/pkg/rand \;
+RUN find . -path "./tests/antithesis" -prune -type f -o -name 'go.mod' -type f -execdir go mod edit -replace=math/rand/v2=$(git rev-parse --show-toplevel)/tests/antithesis/pkg/rand/v2 \;
+RUN find . -name 'go.mod' -type f -execdir go mod tidy \;
+
+## inject assertions in place of gofail
 WORKDIR /etcd/server
 RUN go install golang.org/x/tools/cmd/goimports@latest
-RUN go get github.com/antithesishq/antithesis-sdk-go@v0.4.4
+RUN go get github.com/antithesishq/antithesis-sdk-go@v0.7.2
 RUN for file in $(grep -rl '// gofail'); do sed -i 's|\/\/ gofail.*var \([[:alnum:]]*\) .*|assert\.Reachable("\1", nil)|' $file; goimports -w $file; done
 RUN go mod tidy
 
 # replace verify with antithesis
 WORKDIR /etcd
-COPY inject/* .
+COPY server/inject/* .
 RUN if [ "${REF}" = "main" ]; then git apply *.patch; fi
 WORKDIR /etcd/client/pkg
 RUN go mod tidy
