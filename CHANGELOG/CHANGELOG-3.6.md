@@ -10,6 +10,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - Add [`write-only-skip-check` option for `--v2-deprecation` to bypass the v2 content check](https://github.com/etcd-io/etcd/pull/21850)
 - Fix [websocket authentication with bearer-prefixed auth tokens](https://github.com/etcd-io/etcd/pull/21932).
+- Fix [CRL enforcement bypass on gRPC listener when `--listen-client-http-urls` is configured](https://github.com/etcd-io/etcd/pull/22025), refer to [security/advisories/GHSA-3wh4-j44w-pg92](https://github.com/etcd-io/etcd/security/advisories/GHSA-3wh4-j44w-pg92) for more details.
 
 ### Dependencies
 
