@@ -25,6 +25,8 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 - Compile binaries using [go 1.26.4](https://github.com/etcd-io/etcd/pull/21891).
 - Bump golang.org/x/crypto to [v0.52.0](https://github.com/etcd-io/etcd/pull/21903) to resolve several CVEs.
+- Bump go.etcd.io/raft/v3 from 3.7.0-rc.1 to [v3.7.0](https://github.com/etcd-io/etcd/pull/22008).
+- Bump go.etcd.io/bbolt from 1.5.0-rc.0 to [v1.5.0](https://github.com/etcd-io/etcd/pull/22008).
 
 ---
 
