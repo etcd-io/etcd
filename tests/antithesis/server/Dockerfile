@@ -11,7 +11,7 @@ RUN go env -w GOTOOLCHAIN="go$(cat .go-version)"
 # inject assertions in place of gofail
 WORKDIR /etcd/server
 RUN go install golang.org/x/tools/cmd/goimports@latest
-RUN go get github.com/antithesishq/antithesis-sdk-go@v0.4.4
+RUN go get github.com/antithesishq/antithesis-sdk-go@v0.7.2
 RUN for file in $(grep -rl '// gofail'); do sed -i 's|\/\/ gofail.*var \([[:alnum:]]*\) .*|assert\.Reachable("\1", nil)|' $file; goimports -w $file; done
 RUN go mod tidy
 
@@ -29,8 +29,8 @@ WORKDIR /etcd
 RUN go mod download
 
 # install instrumentor
-RUN go get github.com/antithesishq/antithesis-sdk-go@v0.4.4
-RUN go install github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor@a802e8810442e01d16b3e9df77d7ce3875e36e55 # v0.4.3
+RUN go get github.com/antithesishq/antithesis-sdk-go@v0.7.2
+RUN go install github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor@v0.7.2
 RUN go mod tidy
 
 # compile etcd server with instrumentor
