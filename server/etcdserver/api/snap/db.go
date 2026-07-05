@@ -54,6 +54,7 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 	fn := s.dbFilePath(id)
 	if fileutil.Exist(fn) {
 		os.Remove(f.Name())
+		s.markPendingDB(id)
 		return n, nil
 	}
 	err = os.Rename(f.Name(), fn)
@@ -61,6 +62,7 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 		os.Remove(f.Name())
 		return n, err
 	}
+	s.markPendingDB(id)
 
 	s.lg.Info(
 		"saved database snapshot to disk",
@@ -71,6 +73,34 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 
 	snapDBSaveSec.Observe(time.Since(start).Seconds())
 	return n, nil
+}
+
+// markPendingDB records that the snapshot database file with the given id has
+// been saved but not applied yet, protecting it from ReleaseSnapDBs.
+func (s *Snapshotter) markPendingDB(id uint64) {
+	s.pendingDBsMu.Lock()
+	defer s.pendingDBsMu.Unlock()
+	s.pendingDBs[id] = struct{}{}
+}
+
+// isPendingDB reports whether the snapshot database file with the given id is
+// still waiting to be applied.
+func (s *Snapshotter) isPendingDB(id uint64) bool {
+	s.pendingDBsMu.Lock()
+	defer s.pendingDBsMu.Unlock()
+	_, ok := s.pendingDBs[id]
+	return ok
+}
+
+// ReleaseDBSnapshot removes the pending-apply protection from the snapshot
+// database file with the given id. It must be called once the file has been
+// consumed by the apply path, so that ReleaseSnapDBs can clean up any file
+// that is left behind (for example when the same snapshot db is received
+// again).
+func (s *Snapshotter) ReleaseDBSnapshot(id uint64) {
+	s.pendingDBsMu.Lock()
+	defer s.pendingDBsMu.Unlock()
+	delete(s.pendingDBs, id)
 }
 
 // DBFilePath returns the file path for the snapshot of the database with
