@@ -26,14 +26,14 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.5.0
-	go.etcd.io/etcd/api/v3 v3.7.0-rc.0
-	go.etcd.io/etcd/client/pkg/v3 v3.7.0-rc.0
-	go.etcd.io/etcd/client/v3 v3.7.0-rc.0
-	go.etcd.io/etcd/etcdctl/v3 v3.7.0-rc.0
-	go.etcd.io/etcd/etcdutl/v3 v3.7.0-rc.0
-	go.etcd.io/etcd/pkg/v3 v3.7.0-rc.0
-	go.etcd.io/etcd/server/v3 v3.7.0-rc.0
-	go.etcd.io/etcd/tests/v3 v3.7.0-rc.0
+	go.etcd.io/etcd/api/v3 v3.7.0
+	go.etcd.io/etcd/client/pkg/v3 v3.7.0
+	go.etcd.io/etcd/client/v3 v3.7.0
+	go.etcd.io/etcd/etcdctl/v3 v3.7.0
+	go.etcd.io/etcd/etcdutl/v3 v3.7.0
+	go.etcd.io/etcd/pkg/v3 v3.7.0
+	go.etcd.io/etcd/server/v3 v3.7.0
+	go.etcd.io/etcd/tests/v3 v3.7.0
 	go.etcd.io/raft/v3 v3.7.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/time v0.15.0
