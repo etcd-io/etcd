@@ -3,28 +3,25 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 ---
 
-## v3.7.0 (TBC)
+## v3.7.1 (TBC)
+
+---
+
+## v3.7.0 (2026-07-08)
 
 ### etcd server
 
 - Fix [CRL enforcement bypass on gRPC listener when `--listen-client-http-urls` is configured](https://github.com/etcd-io/etcd/pull/22024), refer to [security/advisories/GHSA-3wh4-j44w-pg92](https://github.com/etcd-io/etcd/security/advisories/GHSA-3wh4-j44w-pg92) for more details.
-
----
-
-## v3.7.0-rc.1 (TBC)
+- Fix [websocket authentication with bearer-prefixed auth tokens](https://github.com/etcd-io/etcd/pull/21929).
 
 ### Package `clientv3`
 
 - [Make the etcd client creation non-blocking](https://github.com/etcd-io/etcd/pull/21942): etcd no longer honors the deprecated `grpc.WithBlock` dial option. To preserve the previous blocking behavior when needed, follow the guidance in grpc-go's [anti-patterns documentation](https://github.com/grpc/grpc-go/blob/master/Documentation/anti-patterns.md#especially-bad-using-deprecated-dialoptions).
 
-### etcd server
-
-- Fix [websocket authentication with bearer-prefixed auth tokens](https://github.com/etcd-io/etcd/pull/21929).
-
 ### Dependencies
 
-- Compile binaries using [go 1.26.4](https://github.com/etcd-io/etcd/pull/21891).
-- Bump golang.org/x/crypto to [v0.52.0](https://github.com/etcd-io/etcd/pull/21903) to resolve several CVEs.
+- Compile binaries using [go 1.26.5](https://github.com/etcd-io/etcd/pull/22058).
+- Bump golang.org/x/crypto to [v0.52.0](https://github.com/etcd-io/etcd/pull/21903) to resolve CVE-2026-46598, CVE-2026-39835, CVE-2026-39828 and CVE-2026-46597.
 - Bump go.etcd.io/raft/v3 from 3.7.0-rc.1 to [v3.7.0](https://github.com/etcd-io/etcd/pull/22008).
 - Bump go.etcd.io/bbolt from 1.5.0-rc.0 to [v1.5.0](https://github.com/etcd-io/etcd/pull/22008).
 
