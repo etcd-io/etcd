@@ -241,6 +241,8 @@ type Config struct {
 	AdvertisePeerUrls, AdvertiseClientUrls                 []url.URL
 	//revive:enable:var-naming
 
+	ClientListeners, HTTPClientListeners map[url.URL]net.Listener
+
 	ClientTLSInfo transport.TLSInfo
 	ClientAutoTLS bool
 	PeerTLSInfo   transport.TLSInfo

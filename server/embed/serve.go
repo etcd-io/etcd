@@ -60,6 +60,7 @@ type serveCtx struct {
 	secure   bool
 	insecure bool
 	httpOnly bool
+	owned    bool
 
 	// ctx is used to control the grpc gateway. Terminate the grpc gateway
 	// by calling `cancel` when shutting down the etcd.
