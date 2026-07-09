@@ -564,19 +564,20 @@ func TestResumeCompactionOnTombstone(t *testing.T) {
 	}
 }
 
-// TestWatchLeakViaFromKey reproduces a security report: a user granted READ
-// permission on exactly one key can still receive watch responses for every
-// key starting from (and beyond) that key.
+// TestWatchWithLowPermissionUser guards against a security issue where a
+// user granted READ permission on exactly one key could still receive watch
+// responses for every key starting from (and beyond) that key.
 //
-// Root cause: server/etcdserver/api/v3rpc/watch.go rewrites the wire
-// sentinel for an open-ended ">= key" watch (RangeEnd == a single 0x00 byte,
-// which is what clientv3.WithFromKey() sends) into []byte{} *before* the
-// permission check runs. server/auth/range_perm_cache.go's
-// isRangeOpPermitted then does `if len(rangeEnd) == 0`, and len([]byte{})
-// is 0 just like len(nil) - so an open-ended range request is checked as if
-// it were an exact single-key point query. A single-key grant satisfies
-// that point check, so the watch is created covering [key, +inf) instead of
-// being denied.
+// Root cause was in server/etcdserver/api/v3rpc/watch.go: it rewrote the
+// wire sentinel for an open-ended ">= key" watch (RangeEnd == a single 0x00
+// byte, which is what clientv3.WithFromKey() sends) into []byte{} *before*
+// the permission check ran. server/auth/range_perm_cache.go's
+// isRangeOpPermitted does `if len(rangeEnd) == 0`, and len([]byte{}) is 0
+// just like len(nil) - so the open-ended range request was checked as if it
+// were an exact single-key point query. A single-key grant satisfied that
+// point check, so the watch was created covering [key, +inf) instead of
+// being denied. Fixed by running the permission check against the
+// unmodified RangeEnd, before the []byte{}/nil rewrite for watchStream.Watch.
 func TestWatchWithLowPermissionUser(t *testing.T) {
 	e2e.BeforeTest(t)
 
@@ -610,32 +611,30 @@ func TestWatchWithLowPermissionUser(t *testing.T) {
 	rootClient := newClientWithAuth(t, epc, "root", "rootPassword")
 	testClient := newClientWithAuth(t, epc, "test", "testPassword")
 
-	t.Log("Low-permission user (exact single-key read permission on 'foo') watches from 'foo' onward")
+	t.Log("Low-permission user (exact single-key read permission on 'foo') tries to watch from 'foo' onward, which exceeds its permission")
 	watchCtx, cancelWatch := context.WithCancel(t.Context())
 	defer cancelWatch()
 	wc := testClient.Watch(watchCtx, "foo", clientv3.WithFromKey(), clientv3.WithCreatedNotify())
 
 	select {
 	case wresp := <-wc:
-		require.NoError(t, wresp.Err())
 		require.EqualError(t, wresp.Err(), v3rpc.ErrGRPCPermissionDenied.Error())
+		require.True(t, wresp.Canceled)
 	case <-time.After(3 * time.Second):
 		t.Fatal("timed out waiting for watch creation ack")
 	}
 
-	t.Log("Root writes to a sibling key sharing the 'foo' prefix that 'test' has no permission to read")
+	t.Log("Confirm root can still write to a sibling key sharing the 'foo' prefix without any leaked event reaching 'test'")
 	_, err = rootClient.Put(t.Context(), "foo1", "leaked-value")
 	require.NoError(t, err)
 
 	select {
-	case wresp := <-wc:
-		require.NoError(t, wresp.Err())
-		for _, ev := range wresp.Events {
-			t.Logf("Received watch event, key: %s, value: %s", ev.Kv.Key, ev.Kv.Value)
-			require.Equal(t, "foo", string(ev.Kv.Key), "low-permission user must not receive events for keys outside its exact-key permission")
+	case wresp, ok := <-wc:
+		if ok {
+			t.Fatalf("expected watch channel to be closed after denial, got response: %+v", wresp)
 		}
 	case <-time.After(3 * time.Second):
-		t.Fatal("timed out waiting for watch event")
+		t.Fatal("timed out waiting for watch channel to close")
 	}
 }
 
