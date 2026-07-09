@@ -34,6 +34,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	v3rpc "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -562,4 +563,91 @@ func TestResumeCompactionOnTombstone(t *testing.T) {
 		// escape hatch in case the watch response is delayed.
 		t.Fatal("timed out getting watch response")
 	}
+}
+
+// TestWatchLeakViaFromKey reproduces a security report: a user granted READ
+// permission on exactly one key can still receive watch responses for every
+// key starting from (and beyond) that key.
+//
+// Root cause: server/etcdserver/api/v3rpc/watch.go rewrites the wire
+// sentinel for an open-ended ">= key" watch (RangeEnd == a single 0x00 byte,
+// which is what clientv3.WithFromKey() sends) into []byte{} *before* the
+// permission check runs. server/auth/range_perm_cache.go's
+// isRangeOpPermitted then does `if len(rangeEnd) == 0`, and len([]byte{})
+// is 0 just like len(nil) - so an open-ended range request is checked as if
+// it were an exact single-key point query. A single-key grant satisfies
+// that point check, so the watch is created covering [key, +inf) instead of
+// being denied.
+func TestWatchWithLowPermissionUser(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	t.Log("Create a new one member cluster")
+	cfg := e2e.NewConfig(e2e.WithClusterSize(1))
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, epc.Close())
+	}()
+
+	t.Log("Create users and roles")
+	ec := epc.Etcdctl()
+	_, err = ec.UserAdd(t.Context(), "root", "rootPassword", config.UserAddOptions{})
+	require.NoError(t, err)
+	_, err = ec.UserGrantRole(t.Context(), "root", "root")
+	require.NoError(t, err)
+	_, err = ec.RoleAdd(t.Context(), "test")
+	require.NoError(t, err)
+	// Grant read permission on the EXACT single key "foo" only (RangeEnd == "").
+	_, err = ec.RoleGrantPermission(t.Context(), "test", "foo", "", clientv3.PermissionType(clientv3.PermRead))
+	require.NoError(t, err)
+	_, err = ec.UserAdd(t.Context(), "test", "testPassword", config.UserAddOptions{})
+	require.NoError(t, err)
+	_, err = ec.UserGrantRole(t.Context(), "test", "test")
+	require.NoError(t, err)
+
+	t.Log("Enable auth")
+	require.NoError(t, ec.AuthEnable(t.Context()))
+
+	rootClient := newClientWithAuth(t, epc, "root", "rootPassword")
+	testClient := newClientWithAuth(t, epc, "test", "testPassword")
+
+	t.Log("Low-permission user (exact single-key read permission on 'foo') watches from 'foo' onward")
+	watchCtx, cancelWatch := context.WithCancel(t.Context())
+	defer cancelWatch()
+	wc := testClient.Watch(watchCtx, "foo", clientv3.WithFromKey(), clientv3.WithCreatedNotify())
+
+	select {
+	case wresp := <-wc:
+		require.NoError(t, wresp.Err())
+		require.EqualError(t, wresp.Err(), v3rpc.ErrGRPCPermissionDenied.Error())
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for watch creation ack")
+	}
+
+	t.Log("Root writes to a sibling key sharing the 'foo' prefix that 'test' has no permission to read")
+	_, err = rootClient.Put(t.Context(), "foo1", "leaked-value")
+	require.NoError(t, err)
+
+	select {
+	case wresp := <-wc:
+		require.NoError(t, wresp.Err())
+		for _, ev := range wresp.Events {
+			t.Logf("Received watch event, key: %s, value: %s", ev.Kv.Key, ev.Kv.Value)
+			require.Equal(t, "foo", string(ev.Kv.Key), "low-permission user must not receive events for keys outside its exact-key permission")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for watch event")
+	}
+}
+
+func newClientWithAuth(t *testing.T, epc *e2e.EtcdProcessCluster, username, password string) *clientv3.Client {
+	c, err := clientv3.New(clientv3.Config{
+		Endpoints:   epc.EndpointsGRPC(),
+		Username:    username,
+		Password:    password,
+		DialTimeout: 5 * time.Second,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { c.Close() })
+	return c
 }
