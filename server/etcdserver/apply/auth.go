@@ -47,18 +47,19 @@ func (aa *authApplierV3) Apply(r *InternalRaftRequestWrapper, shouldApplyV3 memb
 		// backward-compatible with pre-3.0 releases when internalRaftRequest
 		// does not have header field
 		aa.authInfo.Username = r.Header.Username
-		aa.authInfo.Revision = r.Header.AuthRevision
+		// AuthRevision carries AuthInfo.PasswordRevision; see its doc comment.
+		aa.authInfo.PasswordRevision = r.Header.AuthRevision
 	}
 	if needAdminPermission(r.InternalRaftRequest) {
 		if err := aa.as.IsAdminPermitted(&aa.authInfo); err != nil {
 			aa.authInfo.Username = ""
-			aa.authInfo.Revision = 0
+			aa.authInfo.PasswordRevision = 0
 			return &Result{Err: err}
 		}
 	}
 	ret := aa.applierV3.Apply(r, shouldApplyV3, applyFunc)
 	aa.authInfo.Username = ""
-	aa.authInfo.Revision = 0
+	aa.authInfo.PasswordRevision = 0
 	return ret
 }
 
@@ -223,7 +224,7 @@ func (aa *authApplierV3) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetRespo
 	err := aa.as.IsAdminPermitted(&aa.authInfo)
 	if err != nil && r.Name != aa.authInfo.Username {
 		aa.authInfo.Username = ""
-		aa.authInfo.Revision = 0
+		aa.authInfo.PasswordRevision = 0
 		return &pb.AuthUserGetResponse{}, err
 	}
 
@@ -234,7 +235,7 @@ func (aa *authApplierV3) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetRespo
 	err := aa.as.IsAdminPermitted(&aa.authInfo)
 	if err != nil && !aa.as.HasRole(aa.authInfo.Username, r.Role) {
 		aa.authInfo.Username = ""
-		aa.authInfo.Revision = 0
+		aa.authInfo.PasswordRevision = 0
 		return &pb.AuthRoleGetResponse{}, err
 	}
 

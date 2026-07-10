@@ -96,6 +96,12 @@ func createUsers(c interfaces.Client, users []authUser) error {
 	return nil
 }
 
+// createSignedJWT signs a token entirely outside of etcd, simulating an
+// external identity provider in JWT verify-only mode (etcd holds only the
+// pub-key there, so it cannot mint tokens itself via Authenticate()). The
+// authRevision value is only relevant for tokens etcd itself issues; for
+// externally-signed tokens etcd ignores it (see tokenJWT.info), so any
+// placeholder value is fine.
 func createSignedJWT(keyPath, alg, username string, authRevision uint64) (string, error) {
 	signMethod := jwt.GetSigningMethod(alg)
 
@@ -131,29 +137,6 @@ func setupAuth(c interfaces.Client, roles []authRole, users []authUser) error {
 
 	// enable auth
 	return c.AuthEnable(context.TODO())
-}
-
-func setupAuthAndGetRevision(c interfaces.Client, roles []authRole, users []authUser) (uint64, error) {
-	// create roles
-	if err := createRoles(c, roles); err != nil {
-		return 0, err
-	}
-
-	if err := createUsers(c, users); err != nil {
-		return 0, err
-	}
-
-	// This needs to happen before enabling auth for the TestAuthJWTOnly
-	// test case because once auth is enabled we can no longer mint a valid
-	// auth token without the revision, which we won't be able to obtain
-	// without a valid auth token.
-	authrev, err := c.AuthStatus(context.TODO())
-	if err != nil {
-		return 0, err
-	}
-
-	// enable auth
-	return authrev.AuthRevision, c.AuthEnable(context.TODO())
 }
 
 func requireRolePermissionEqual(t *testing.T, expectRole authRole, actual []*authpb.Permission) {

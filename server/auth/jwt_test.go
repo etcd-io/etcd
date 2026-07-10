@@ -103,7 +103,7 @@ func testJWTInfo(t *testing.T, opts map[string]string) {
 	}
 	ai, ok := jwt.info(ctx, token, 123)
 	require.Truef(t, ok, "failed to authenticate with token %s", token)
-	require.Equalf(t, uint64(123), ai.Revision, "expected revision 123, got %d", ai.Revision)
+	require.Equalf(t, uint64(123), ai.PasswordRevision, "expected revision 123, got %d", ai.PasswordRevision)
 	ai, ok = jwt.info(ctx, "aaa", 120)
 	if ok || ai != nil {
 		t.Fatalf("expected aaa to fail to authenticate, got %+v", ai)
@@ -122,7 +122,7 @@ func testJWTInfo(t *testing.T, opts map[string]string) {
 
 			ai, ok := verify.info(ctx, token, 123)
 			require.Truef(t, ok, "failed to authenticate with token %s", token)
-			require.Equalf(t, uint64(123), ai.Revision, "expected revision 123, got %d", ai.Revision)
+			require.Equalf(t, uint64(0), ai.PasswordRevision, "expected revision 123, got %d", ai.PasswordRevision)
 			ai, ok = verify.info(ctx, "aaa", 120)
 			if ok || ai != nil {
 				t.Fatalf("expected aaa to fail to authenticate, got %+v", ai)
@@ -200,7 +200,7 @@ func TestJWTTokenWithMissingFields(t *testing.T) {
 			require.Equal(t, tc.expectValid, ok)
 			if ok {
 				require.Equal(t, tc.username, ai.Username)
-				require.Equal(t, tc.revision, ai.Revision)
+				require.Equal(t, tc.revision, ai.PasswordRevision)
 			}
 		})
 	}

@@ -401,7 +401,7 @@ func TestIsOpPermitted(t *testing.T) {
 
 	// check permission reflected to user
 
-	err = as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType)
+	err = as.isOpPermitted("foo", 0, perm.Key, perm.RangeEnd, perm.PermType)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -411,7 +411,7 @@ func TestIsOpPermitted(t *testing.T) {
 	as.rangePermCacheMu.Lock()
 	delete(as.rangePermCache, "foo")
 	as.rangePermCacheMu.Unlock()
-	if err := as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType); !errors.Is(err, ErrPermissionDenied) {
+	if err := as.isOpPermitted("foo", 0, perm.Key, perm.RangeEnd, perm.PermType); !errors.Is(err, ErrPermissionDenied) {
 		t.Fatal(err)
 	}
 }
@@ -923,32 +923,32 @@ func TestIsAdminPermitted(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
 
-	err := as.IsAdminPermitted(&AuthInfo{Username: "root", Revision: 1})
+	err := as.IsAdminPermitted(&AuthInfo{Username: "root", PasswordRevision: 1})
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
 
 	// invalid user
-	err = as.IsAdminPermitted(&AuthInfo{Username: "rooti", Revision: 1})
+	err = as.IsAdminPermitted(&AuthInfo{Username: "rooti", PasswordRevision: 1})
 	if !errors.Is(err, ErrUserNotFound) {
 		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
 	}
 
 	// empty user
-	err = as.IsAdminPermitted(&AuthInfo{Username: "", Revision: 1})
+	err = as.IsAdminPermitted(&AuthInfo{Username: "", PasswordRevision: 1})
 	if !errors.Is(err, ErrUserEmpty) {
 		t.Errorf("expected %v, got %v", ErrUserEmpty, err)
 	}
 
 	// non-admin user
-	err = as.IsAdminPermitted(&AuthInfo{Username: "foo", Revision: 1})
+	err = as.IsAdminPermitted(&AuthInfo{Username: "foo", PasswordRevision: 1})
 	if !errors.Is(err, ErrPermissionDenied) {
 		t.Errorf("expected %v, got %v", ErrPermissionDenied, err)
 	}
 
 	// disabled auth should return nil
 	as.AuthDisable()
-	err = as.IsAdminPermitted(&AuthInfo{Username: "root", Revision: 1})
+	err = as.IsAdminPermitted(&AuthInfo{Username: "root", PasswordRevision: 1})
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}

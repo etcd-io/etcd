@@ -1047,11 +1047,6 @@ func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) e
 	trace.Step("get authentication metadata")
 	// fetch response for serialized request
 	get()
-	// check for stale token revision in case the auth store was updated while
-	// the request has been handled.
-	if ai.Revision != 0 && ai.Revision != s.authStore.Revision() {
-		return auth.ErrAuthOldRevision
-	}
 	return nil
 }
 
@@ -1075,7 +1070,11 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r *pb.I
 		}
 		if authInfo != nil {
 			r.Header.Username = authInfo.Username
-			r.Header.AuthRevision = authInfo.Revision
+			// AuthRevision now carries AuthInfo.PasswordRevision (a
+			// per-user password fingerprint), not the global auth
+			// revision; the wire field name is kept to avoid a proto
+			// change, see AuthInfo.PasswordRevision for details.
+			r.Header.AuthRevision = authInfo.PasswordRevision
 		}
 	}
 

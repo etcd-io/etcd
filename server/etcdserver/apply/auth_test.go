@@ -167,11 +167,12 @@ func mustCreateRolesAndEnableAuth(t *testing.T, authApplier *authApplierV3) {
 	require.NoError(t, err)
 }
 
-// setAuthInfo manually sets the authInfo of the applier. In reality, authInfo is filled before Apply()
+// setAuthInfo manually sets the authInfo of the applier. In reality, authInfo is filled before Apply().
+// PasswordRevision is left at 0 (no fingerprint to check) since these tests exercise permission
+// checks, not credential staleness, which is covered separately by TestCheckLeasePutsKeys.
 func setAuthInfo(authApplier *authApplierV3, userName string) {
 	authApplier.authInfo = auth.AuthInfo{
 		Username: userName,
-		Revision: authApplier.as.Revision(),
 	}
 }
 
@@ -788,17 +789,22 @@ func TestCheckLeasePutsKeys(t *testing.T) {
 
 	l := lease.NewLease(lease.LeaseID(1), 3600)
 	l.SetLeaseItem(lease.LeaseItem{Key: "a"})
-	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: 0}
-	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrUserEmpty, "auth is enabled, should not allow bob, non existing at rev 0")
-	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: 1}
-	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrAuthOldRevision, "auth is enabled, old revision")
+	aa.authInfo = auth.AuthInfo{Username: ""}
+	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrUserEmpty, "auth is enabled, should not allow an empty username")
 
-	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
+	aa.authInfo = auth.AuthInfo{Username: "bob"}
 	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrPermissionDenied, "auth is enabled, bob does not have permissions, bob does not exist")
 	_, err := aa.as.UserAdd(&pb.AuthUserAddRequest{Name: "bob", Options: &authpb.UserAddOptions{NoPassword: true}})
 	require.NoErrorf(t, err, "bob should be added without error")
-	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
+	aa.authInfo = auth.AuthInfo{Username: "bob"}
 	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrPermissionDenied, "auth is enabled, bob exists yet does not have permissions")
+
+	// A credential carrying a password fingerprint that doesn't match bob's
+	// current password is rejected as stale, independent of the permission
+	// check (this is what makes a leaked/stolen JWT stop working as soon as
+	// the password changes).
+	aa.authInfo = auth.AuthInfo{Username: "bob", PasswordRevision: 1}
+	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrAuthOldRevision, "auth is enabled, stale password fingerprint")
 
 	// allow bob to access "a"
 	_, err = aa.as.RoleAdd(&pb.AuthRoleAddRequest{Name: "bobsrole"})
@@ -818,7 +824,7 @@ func TestCheckLeasePutsKeys(t *testing.T) {
 	})
 	require.NoErrorf(t, err, "bob should be granted bobsrole without error")
 
-	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
+	aa.authInfo = auth.AuthInfo{Username: "bob"}
 	assert.NoErrorf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), "bob should be able to access key 'a'")
 }
 
@@ -1043,7 +1049,7 @@ func TestCheckTxnAuth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CheckTxnAuth(as, &auth.AuthInfo{Username: "foo", Revision: 8}, &lease.FakeLessor{}, tt.txnRequest)
+			err := CheckTxnAuth(as, &auth.AuthInfo{Username: "foo"}, &lease.FakeLessor{}, tt.txnRequest)
 			assert.Equal(t, tt.err, err)
 		})
 	}

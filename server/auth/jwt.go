@@ -81,13 +81,31 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 		return nil, false
 	}
 
+	// Claim key kept as "revision" for compatibility with tokens signed
+	// before AuthInfo.PasswordRevision replaced the global auth revision
+	// with a per-user password fingerprint: a pre-existing token still
+	// parses fine here and is rejected downstream in isOpPermitted as
+	// stale (ErrAuthOldRevision) rather than failing to parse at all.
 	revision, ok = claims["revision"].(float64)
 	if !ok {
 		t.lg.Warn("failed to obtain revision claims from jwt token")
 		return nil, false
 	}
 
-	return &AuthInfo{Username: username, Revision: uint64(revision)}, true
+	passwordRevision := uint64(revision)
+	if t.verifyOnly {
+		// Verify-only mode has no priv-key: tokens are minted entirely by
+		// an external identity provider that has no way to learn etcd's
+		// internal password fingerprint (and shouldn't need to - that's
+		// what makes it useful as an unguessable invalidation signal for
+		// tokens etcd itself issues). Credential lifecycle in this mode is
+		// that issuer's responsibility (e.g. short TTLs), not etcd's, so
+		// exempt these tokens from the staleness check, same as simple
+		// tokens and TLS-CN auth.
+		passwordRevision = 0
+	}
+
+	return &AuthInfo{Username: username, PasswordRevision: passwordRevision}, true
 }
 
 func (t *tokenJWT) assign(ctx context.Context, username string, revision uint64) (string, error) {

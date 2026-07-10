@@ -920,10 +920,12 @@ func TestAuthJWTOnly(t *testing.T) {
 	defer clus.Close()
 	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
-		authRev, err := setupAuthAndGetRevision(cc, []authRole{testRole}, []authUser{rootUser, testUser})
-		require.NoErrorf(t, err, "failed to enable auth")
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
 
-		token, err := createSignedJWT(defaultKeyPath, "RS256", testUserName, authRev)
+		// etcd holds no priv-key in verify-only mode, so it cannot mint a
+		// token via Authenticate(); sign one externally instead, simulating
+		// an external identity provider.
+		token, err := createSignedJWT(defaultKeyPath, "RS256", testUserName, 0)
 		require.NoErrorf(t, err, "failed to create test user JWT")
 
 		testUserAuthClient := testutils.MustClient(clus.Client(WithAuthToken(token)))

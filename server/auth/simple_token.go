@@ -209,7 +209,10 @@ func (t *tokenSimple) info(ctx context.Context, token string, revision uint64) (
 		t.simpleTokenKeeper.resetSimpleToken(token)
 	}
 	t.simpleTokensMu.Unlock()
-	return &AuthInfo{Username: username, Revision: revision}, ok
+	// Simple tokens carry no password fingerprint of their own (revision is
+	// always 0, passed in by authInfoFromToken); they're actively
+	// invalidated on password change instead, via TokenProvider.invalidateUser.
+	return &AuthInfo{Username: username, PasswordRevision: revision}, ok
 }
 
 func (t *tokenSimple) assign(ctx context.Context, username string, rev uint64) (string, error) {

@@ -19,6 +19,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"sort"
@@ -78,7 +79,18 @@ const (
 
 type AuthInfo struct {
 	Username string
-	Revision uint64
+	// PasswordRevision is a fingerprint of the user's hashed password at the
+	// time this credential was issued (see passwordRevision). It is used to
+	// detect a JWT that predates a password change, so a leaked/stolen JWT
+	// stops working as soon as the password is changed, without etcd having
+	// to maintain a token revocation list.
+	//
+	// It is 0 for credential types that don't carry such a fingerprint:
+	// simple tokens (actively invalidated on password change instead, see
+	// TokenProvider.invalidateUser) and TLS-CN auth (re-validated live from
+	// the peer certificate on every request, so it can't go stale). Those
+	// are exempt from the staleness check in isOpPermitted.
+	PasswordRevision uint64
 }
 
 // AuthenticateParamIndex is used for a key of context in the parameters of Authenticate()
@@ -346,7 +358,7 @@ func (as *authStore) Authenticate(ctx context.Context, username, password string
 	// Password checking is already performed in the API layer, so we don't need to check for now.
 	// Staleness of password can be detected with OCC in the API layer, too.
 
-	token, err := as.tokenProvider.assign(ctx, username, as.Revision())
+	token, err := as.tokenProvider.assign(ctx, username, passwordRevision(user.Password))
 	if err != nil {
 		return nil, err
 	}
@@ -788,7 +800,11 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 }
 
 func (as *authStore) authInfoFromToken(ctx context.Context, token string) (*AuthInfo, bool) {
-	return as.tokenProvider.info(ctx, token, as.Revision())
+	// Passed through untouched by tokenJWT.info (which extracts its own
+	// embedded fingerprint from the token instead), and echoed back as
+	// AuthInfo.PasswordRevision by tokenSimple.info. Simple tokens carry no
+	// fingerprint of their own, so this is always 0 for them.
+	return as.tokenProvider.info(ctx, token, 0)
 }
 
 type permSlice []*authpb.Permission
@@ -856,24 +872,35 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	return &pb.AuthRoleGrantPermissionResponse{}, nil
 }
 
-func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeEnd []byte, permTyp authpb.Permission_Type) error {
+// passwordFingerprintBits caps passwordRevision to a value that round-trips
+// exactly through a JWT claim. JWT claims are JSON numbers, decoded by
+// golang-jwt as float64, which is only exact for integers up to 2^53; a
+// full 64-bit fingerprint would get silently rounded there, making every
+// token appear stale. 48 bits leaves a large safety margin below that limit
+// while still making a collision between two different password hashes
+// astronomically unlikely.
+const passwordFingerprintBits = 48
+
+// passwordRevision derives an opaque fingerprint from a user's hashed
+// password. It changes whenever UserChangePassword assigns a new hash, and
+// is embedded in JWTs at issuance (see AuthInfo.PasswordRevision) so a
+// stale token can be detected without etcd having to maintain a revocation
+// list: if the fingerprint no longer matches the user's current password
+// hash, the password has changed since the token was issued.
+func passwordRevision(hashedPassword []byte) uint64 {
+	sum := sha256.Sum256(hashedPassword)
+	return binary.BigEndian.Uint64(sum[:8]) & (1<<passwordFingerprintBits - 1)
+}
+
+func (as *authStore) isOpPermitted(userName string, credRevision uint64, key, rangeEnd []byte, permTyp authpb.Permission_Type) error {
 	// TODO(mitake): this function would be costly so we need a caching mechanism
 	if !as.IsAuthEnabled() {
 		return nil
 	}
 
-	// only gets rev == 0 when passed AuthInfo{}; no user given
-	if revision == 0 {
+	// empty username only happens when passed AuthInfo{}; no user given
+	if userName == "" {
 		return ErrUserEmpty
-	}
-	rev := as.Revision()
-	if revision < rev {
-		as.lg.Warn("request auth revision is less than current node auth revision",
-			zap.Uint64("current node auth revision", rev),
-			zap.Uint64("request auth revision", revision),
-			zap.ByteString("request key", key),
-			zap.Error(ErrAuthOldRevision))
-		return ErrAuthOldRevision
 	}
 
 	tx := as.be.ReadTx()
@@ -884,6 +911,16 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	if user == nil {
 		as.lg.Error("cannot find a user for permission check", zap.String("user-name", userName))
 		return ErrPermissionDenied
+	}
+
+	// Reject a credential that predates the user's current password.
+	// credRevision == 0 means the credential type doesn't carry a
+	// fingerprint (see AuthInfo.PasswordRevision) and is exempt.
+	if credRevision != 0 && credRevision != passwordRevision(user.Password) {
+		as.lg.Warn("rejecting stale credential: user's password has changed since the credential was issued",
+			zap.String("user-name", userName),
+			zap.Error(ErrAuthOldRevision))
+		return ErrAuthOldRevision
 	}
 
 	// root role should have permission on all ranges
@@ -899,15 +936,15 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 }
 
 func (as *authStore) IsPutPermitted(authInfo *AuthInfo, key []byte) error {
-	return as.isOpPermitted(authInfo.Username, authInfo.Revision, key, nil, authpb.Permission_WRITE)
+	return as.isOpPermitted(authInfo.Username, authInfo.PasswordRevision, key, nil, authpb.Permission_WRITE)
 }
 
 func (as *authStore) IsRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) error {
-	return as.isOpPermitted(authInfo.Username, authInfo.Revision, key, rangeEnd, authpb.Permission_READ)
+	return as.isOpPermitted(authInfo.Username, authInfo.PasswordRevision, key, rangeEnd, authpb.Permission_READ)
 }
 
 func (as *authStore) IsDeleteRangePermitted(authInfo *AuthInfo, key, rangeEnd []byte) error {
-	return as.isOpPermitted(authInfo.Username, authInfo.Revision, key, rangeEnd, authpb.Permission_WRITE)
+	return as.isOpPermitted(authInfo.Username, authInfo.PasswordRevision, key, rangeEnd, authpb.Permission_WRITE)
 }
 
 func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
@@ -1023,7 +1060,10 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 		}
 		ai = &AuthInfo{
 			Username: chains[0].Subject.CommonName,
-			Revision: as.Revision(),
+			// TLS-CN auth is re-derived from the peer certificate on every
+			// request, so it can't go stale; exempt it from the check in
+			// isOpPermitted.
+			PasswordRevision: 0,
 		}
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
@@ -1038,7 +1078,6 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 				"ignoring common name in gRPC-gateway proxy request",
 				zap.String("common-name", ai.Username),
 				zap.String("user-name", ai.Username),
-				zap.Uint64("revision", ai.Revision),
 			)
 			return nil
 		}
@@ -1046,7 +1085,6 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 			"found command name",
 			zap.String("common-name", ai.Username),
 			zap.String("user-name", ai.Username),
-			zap.Uint64("revision", ai.Revision),
 		)
 		break
 	}
@@ -1177,7 +1215,15 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 		ctxForAssign = ctx
 	}
 
-	token, err := as.tokenProvider.assign(ctxForAssign, "root", as.Revision())
+	var rootPasswordRevision uint64
+	tx := as.be.ReadTx()
+	tx.RLock()
+	if u := tx.UnsafeGetUser(rootUser); u != nil {
+		rootPasswordRevision = passwordRevision(u.Password)
+	}
+	tx.RUnlock()
+
+	token, err := as.tokenProvider.assign(ctxForAssign, "root", rootPasswordRevision)
 	if err != nil {
 		// this must not happen
 		as.lg.Error(
