@@ -130,7 +130,7 @@ On the day of the release:
 6. Update the changelog to reflect the correct release date.
 7. Paste the release link to the issue raised in Step 1 and close the issue.
 8. Raise a follow-up `kubernetes/org` pull request to return the GitHub release team to empty, least privilege state.
-9. Crease a new stable branch through `git push origin release-${VERSION_MAJOR}.${VERSION_MINOR}` if this is a new major or minor stable release.
+9. Create a new stable branch through `git push origin release-${VERSION_MAJOR}.${VERSION_MINOR}` if this is a new major or minor stable release.
 10. Re-generate a new password for quay.io if needed (e.g. shared to a contributor who isn't in the release team, and we should rotate the password at least once every 3 months).
 11. Bump the new etcd release in Kubernetes, refer to [Bump etcd Version in Kubernetes](bump_etcd_version_k8s.md).
 
