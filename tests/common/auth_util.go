@@ -96,7 +96,7 @@ func createUsers(c interfaces.Client, users []authUser) error {
 	return nil
 }
 
-func createSignedJWT(keyPath, alg, username string, authRevision uint64) (string, error) {
+func createSignedJWT(keyPath, alg, username string, authRevision uint64, expires int64) (string, error) {
 	signMethod := jwt.GetSigningMethod(alg)
 
 	keyBytes, err := os.ReadFile(keyPath)
@@ -109,11 +109,15 @@ func createSignedJWT(keyPath, alg, username string, authRevision uint64) (string
 		return "", err
 	}
 
+	if expires <= 0 {
+		expires = time.Now().Add(time.Minute).Unix()
+	}
+
 	tk := jwt.NewWithClaims(signMethod,
 		jwt.MapClaims{
 			"username": username,
 			"revision": authRevision,
-			"exp":      time.Now().Add(time.Minute).Unix(),
+			"exp":      expires,
 		})
 
 	return tk.SignedString(key)

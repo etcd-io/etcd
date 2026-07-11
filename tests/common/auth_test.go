@@ -33,18 +33,20 @@ import (
 )
 
 var (
-	tokenTTL         = time.Second * 3
-	defaultAuthToken = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=%s",
-		mustAbsPath("../fixtures/server.crt"), mustAbsPath("../fixtures/server.key.insecure"), tokenTTL)
+	tokenTTL          = time.Second * 3
+	defaultSignMethod = "RS256"
+	defaultAuthToken  = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=%s,ttl=%s",
+		mustAbsPath("../fixtures/server.crt"), mustAbsPath("../fixtures/server.key.insecure"), defaultSignMethod, tokenTTL)
 	defaultKeyPath    = mustAbsPath("../fixtures/server.key.insecure")
-	verifyJWTOnlyAuth = fmt.Sprintf("jwt,pub-key=%s,sign-method=RS256,ttl=%s",
-		mustAbsPath("../fixtures/server.crt"), tokenTTL)
+	verifyJWTOnlyAuth = fmt.Sprintf("jwt,pub-key=%s,sign-method=%s,ttl=%s",
+		mustAbsPath("../fixtures/server.crt"), defaultSignMethod, tokenTTL)
 )
 
 const (
 	PermissionDenied      = "etcdserver: permission denied"
 	AuthenticationFailed  = "etcdserver: authentication failed, invalid user ID or password"
 	InvalidAuthManagement = "etcdserver: invalid auth management"
+	InvalidAuthToken      = "etcdserver: invalid auth token"
 
 	testPeerURL = "http://localhost:20011"
 )
@@ -923,10 +925,50 @@ func TestAuthJWTOnly(t *testing.T) {
 		authRev, err := setupAuthAndGetRevision(cc, []authRole{testRole}, []authUser{rootUser, testUser})
 		require.NoErrorf(t, err, "failed to enable auth")
 
-		token, err := createSignedJWT(defaultKeyPath, "RS256", testUserName, authRev)
+		token, err := createSignedJWT(defaultKeyPath, defaultSignMethod, testUserName, authRev, 0)
 		require.NoErrorf(t, err, "failed to create test user JWT")
 
 		testUserAuthClient := testutils.MustClient(clus.Client(WithAuthToken(token)))
+		_, err = testUserAuthClient.Put(ctx, "foo", "bar", config.PutOptions{})
+		require.NoError(t, err)
+	})
+}
+
+func TestAuthJWTOnlyUpdateExpired(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: verifyJWTOnlyAuth}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		authRev, err := setupAuthAndGetRevision(cc, []authRole{testRole}, []authUser{rootUser, testUser})
+		require.NoErrorf(t, err, "failed to enable auth")
+
+		// create token expiring in 5 seconds
+		tokenExpires := time.Now().Add(5 * time.Second).Unix()
+		token, err := createSignedJWT(defaultKeyPath, defaultSignMethod, testUserName, authRev, tokenExpires)
+		require.NoErrorf(t, err, "failed to create test user JWT")
+
+		// use token before it expires
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuthToken(token)))
+		_, err = testUserAuthClient.Put(ctx, "foo", "bar", config.PutOptions{})
+		require.NoError(t, err)
+
+		// let token expire
+		<-time.After(6 * time.Second)
+
+		// token is expired now, the next request should fail with InvalidAuthToken error
+		_, err = testUserAuthClient.Put(ctx, "foo", "bar", config.PutOptions{})
+		require.ErrorContains(t, err, InvalidAuthToken)
+
+		// refresh token
+		tokenExpires = time.Now().Add(5 * time.Second).Unix()
+		token, err = createSignedJWT(defaultKeyPath, defaultSignMethod, testUserName, authRev, tokenExpires)
+		require.NoErrorf(t, err, "failed to create new test user JWT")
+
+		// update client to use the new token
+		testUserAuthClient.UpdateAuthToken(token)
 		_, err = testUserAuthClient.Put(ctx, "foo", "bar", config.PutOptions{})
 		require.NoError(t, err)
 	})
@@ -946,7 +988,7 @@ func TestAuthJWTOnlySkipRevision(t *testing.T) {
 		require.Greaterf(t, authRev, uint64(1), "expected current auth revision %d to be greater than 1", authRev)
 
 		// get root token with (stale) auth revision 1
-		rootToken, err := createSignedJWT(defaultKeyPath, "RS256", rootUserName, 1)
+		rootToken, err := createSignedJWT(defaultKeyPath, defaultSignMethod, rootUserName, 1, 0)
 		require.NoErrorf(t, err, "failed to create root user JWT")
 		rootAuthClient := testutils.MustClient(clus.Client(WithAuthToken(rootToken)))
 
@@ -963,7 +1005,7 @@ func TestAuthJWTOnlySkipRevision(t *testing.T) {
 		authRev = fetchAuthRevision(authRev)
 
 		// get testUser token with (stale) auth revision 1
-		testUserToken, err := createSignedJWT(defaultKeyPath, "RS256", testUserName, 1)
+		testUserToken, err := createSignedJWT(defaultKeyPath, defaultSignMethod, testUserName, 1, 0)
 		require.NoErrorf(t, err, "failed to create test user JWT")
 		testUserAuthClient := testutils.MustClient(clus.Client(WithAuthToken(testUserToken)))
 
