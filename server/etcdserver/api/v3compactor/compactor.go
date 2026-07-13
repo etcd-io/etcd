@@ -28,6 +28,10 @@ import (
 const (
 	ModePeriodic = "periodic"
 	ModeRevision = "revision"
+	// ModeAutoPeriodic samples the backend growth rate and compacts proactively,
+	// timing each compaction so the size never approaches the quota. See
+	// autoperiodic.go.
+	ModeAutoPeriodic = "auto-periodic"
 )
 
 // Compactor purges old log from the storage periodically.
@@ -51,13 +55,29 @@ type RevGetter interface {
 	Rev() int64
 }
 
+// SizeGetter reports the current backend size (used by the auto-periodic
+// compactor).
+type SizeGetter interface {
+	Size() int64
+}
+
 // New returns a new Compactor based on given "mode".
+//
+// sg/maxBytes are only consulted by the auto-periodic mode; the periodic and
+// revision compactors ignore them.
+//
+// Like the periodic and revision modes, the auto-periodic mode only compacts; it
+// never defrags. Reclaiming physical disk space is left to a separate,
+// operator-initiated defrag, matching etcd's long-standing separation of routine
+// compaction from disruptive defragmentation.
 func New(
 	lg *zap.Logger,
 	mode string,
 	retention time.Duration,
 	rg RevGetter,
 	c Compactable,
+	sg SizeGetter,
+	maxBytes int64,
 ) (Compactor, error) {
 	if lg == nil {
 		lg = zap.NewNop()
@@ -67,6 +87,8 @@ func New(
 		return newPeriodic(lg, clockwork.NewRealClock(), retention, rg, c), nil
 	case ModeRevision:
 		return newRevision(lg, clockwork.NewRealClock(), int64(retention), rg, c), nil
+	case ModeAutoPeriodic:
+		return newAutoPeriodic(lg, clockwork.NewRealClock(), int64(retention), rg, c, sg, maxBytes), nil
 	default:
 		return nil, fmt.Errorf("unsupported compaction mode %s", mode)
 	}
