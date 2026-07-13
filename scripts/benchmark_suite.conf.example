@@ -1,0 +1,58 @@
+# Example benchmark suite load configuration.
+#
+# Copy and edit for your environment:
+#   cp scripts/benchmark_suite.conf.example ~/my-etcd-load.conf
+#   ./scripts/benchmark_suite.sh --config ~/my-etcd-load.conf --endpoints http://127.0.0.1:2379
+#
+# Precedence (highest to lowest):
+#   1. Command-line flags (--clients, --put-total, ...)
+#   2. Environment variables (CLIENTS=100 ./scripts/benchmark_suite.sh)
+#   3. Config file (--config)
+#   4. Profile (--profile quick|heavy)
+#   5. Built-in defaults
+#
+# Lines starting with # are ignored. Use KEY=value syntax.
+
+# Cluster connection (can also be passed with --endpoints)
+# ENDPOINTS=http://127.0.0.1:2379
+
+# Client settings
+CLIENTS=100
+CONNS=10
+
+# Payload sizes (bytes)
+KEY_SIZE=32
+VAL_SIZE=512
+
+# Write workloads
+PUT_TOTAL=3000000
+STM_TOTAL=1500000
+TXN_MIXED_TOTAL=1000000
+TXN_PUT_TOTAL=2000000
+LEASE_KEEPALIVE_TOTAL=10000
+
+# Range workload
+RANGE_TOTAL=1500000
+RANGE_LIMIT=100
+RANGE_KEY_START=1
+RANGE_KEY_END=1000
+
+# Watch workloads (run last in the default suite)
+WATCH_STREAMS=200
+WATCH_PER_STREAM=2000
+WATCHED_KEYS_TOTAL=1000000
+WATCH_PUT_RATE=200
+
+# Runtime controls
+TIMEOUT_DURATION=900
+PROFILE_DURATION=120
+ENABLE_PPROF=false
+
+# Optional: run a subset of benchmarks (comma-separated)
+# OPERATIONS=put,range,txn-put,watch-latency
+
+# Optional TLS/auth passthrough to benchmark and etcdctl
+# TLS_CERT=/path/to/cert.pem
+# TLS_KEY=/path/to/key.pem
+# TLS_CACERT=/path/to/ca.pem
+# BENCHMARK_USER=user:password
