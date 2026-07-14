@@ -548,6 +548,31 @@ func TestClusterAddMemberAsLearner(t *testing.T) {
 	})
 }
 
+func TestIsLocalMemberLearner(t *testing.T) {
+	// localID present, member is a learner
+	c := newTestCluster(t, nil)
+	c.localID = types.ID(1)
+	c.AddMember(newTestMemberAsLearner(1, []string{}, "node1", []string{"http://node1"}), true)
+	if !c.IsLocalMemberLearner() {
+		t.Error("expected local member to be learner")
+	}
+
+	// localID present, member is a voter
+	c2 := newTestCluster(t, nil)
+	c2.localID = types.ID(2)
+	c2.AddMember(newTestMember(2, []string{}, "node2", []string{"http://node2"}), true)
+	if c2.IsLocalMemberLearner() {
+		t.Error("expected local voter member to not be learner")
+	}
+
+	// localID absent (concurrent removal window): must return false without panicking
+	c3 := newTestCluster(t, nil)
+	c3.localID = types.ID(99)
+	if c3.IsLocalMemberLearner() {
+		t.Error("expected absent local member to report non-learner")
+	}
+}
+
 func TestClusterMembers(t *testing.T) {
 	cls := newTestCluster(t, []*Member{
 		{ID: 1},
