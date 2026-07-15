@@ -139,10 +139,15 @@ func isClientCtxErr(ctxErr error, err error) bool {
 	return false
 }
 
-// in v3.4, learner is allowed to serve serializable read and endpoint status
+// in v3.4, learner is allowed to serve serializable read and endpoint status.
+// Defragmentation is also permitted because it is a purely local maintenance
+// operation that reclaims disk space in the BoltDB file without any Raft
+// consensus involvement, making it safe to run on learner members.
 func isRPCSupportedForLearner(req any) bool {
 	switch r := req.(type) {
 	case *pb.StatusRequest:
+		return true
+	case *pb.DefragmentRequest:
 		return true
 	case *pb.RangeRequest:
 		return r.Serializable
