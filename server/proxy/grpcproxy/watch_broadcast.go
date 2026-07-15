@@ -97,6 +97,12 @@ func (wb *watchBroadcast) bcast(wr clientv3.WatchResponse) {
 func (wb *watchBroadcast) add(w *watcher) bool {
 	wb.mu.Lock()
 	defer wb.mu.Unlock()
+	// Reject watchers if the broadcast's goroutine has already exited.
+	select {
+	case <-wb.donec:
+		return false
+	default:
+	}
 	if wb.nextrev > w.nextrev || (wb.nextrev == 0 && w.nextrev != 0) {
 		// wb is too far ahead, w will miss events
 		// or wb is being established with a current watcher
