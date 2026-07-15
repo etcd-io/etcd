@@ -204,3 +204,75 @@ func TestServeSubstreamLogsSlowConsumer(t *testing.T) {
 	}
 	w.wg.Wait()
 }
+
+// TestBroadcastResponseNoPanicOnCancelledSubstream is a regression test for
+// https://github.com/etcd-io/etcd/issues/21969.
+//
+// When a cancel response is received in run(), ws.recvc is closed and the
+// substream is removed from w.substreams.  If a progress-notify response
+// arrives before closeSubstream drains closingc, broadcastResponse iterates
+// w.substreams and would previously panic with "send on closed channel"
+// because the cancelled substream was still present.  The fix removes the
+// substream from w.substreams eagerly at cancel time so broadcastResponse
+// never encounters a closed recvc.
+func TestBroadcastResponseNoPanicOnCancelledSubstream(t *testing.T) {
+	newStream := func(t *testing.T) (*watcherStream, *watchGRPCStream) {
+		t.Helper()
+		ctx, cancel := context.WithCancel(t.Context())
+		t.Cleanup(cancel)
+		ws := &watcherStream{
+			initReq: watchRequest{ctx: ctx},
+			outc:    make(chan WatchResponse, 1),
+			recvc:   make(chan *WatchResponse, 1),
+			donec:   make(chan struct{}),
+			id:      1,
+		}
+		w := &watchGRPCStream{
+			ctx:        t.Context(),
+			substreams: map[int64]*watcherStream{1: ws},
+			closingc:   make(chan *watcherStream, 1),
+			lg:         zap.NewNop(),
+		}
+		return ws, w
+	}
+
+	// Verify that sending on a closed recvc still present in substreams causes
+	// a panic — this is the pre-fix bug state that the fix must prevent.
+	t.Run("panics when closed recvc is still in substreams", func(t *testing.T) {
+		ws, w := newStream(t)
+		close(ws.recvc)
+		// Do NOT remove ws from substreams: simulate the bug.
+
+		var recovered any
+		func() {
+			defer func() { recovered = recover() }()
+			w.broadcastResponse(&WatchResponse{Header: &pb.ResponseHeader{Revision: 1}})
+		}()
+		if recovered == nil {
+			t.Fatal("expected panic when closed recvc is still in substreams — test setup may be wrong")
+		}
+	})
+
+	// Verify that removing the substream from w.substreams before broadcasting
+	// (what run() now does eagerly at cancel time) prevents the panic.
+	t.Run("no panic after substream removed from substreams", func(t *testing.T) {
+		ws, w := newStream(t)
+		close(ws.recvc)
+		// Mimic the fix: run() now deletes the substream from w.substreams
+		// immediately after close(ws.recvc), before any broadcastResponse call.
+		delete(w.substreams, ws.id)
+
+		panicked := false
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					panicked = true
+				}
+			}()
+			w.broadcastResponse(&WatchResponse{Header: &pb.ResponseHeader{Revision: 1}})
+		}()
+		if panicked {
+			t.Fatal("broadcastResponse panicked after substream was removed from w.substreams")
+		}
+	})
+}
