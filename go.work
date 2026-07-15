@@ -15,6 +15,7 @@ use (
 	./pkg
 	./server
 	./tests
+	./tests/antithesis/pkg
 	./tools/mod
 	./tools/rw-heatmaps
 	./tools/testgrid-analysis
