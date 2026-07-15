@@ -485,6 +485,21 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 		return
 	}
 
+	// Enforce HTTP request body size limit for /v3/ gRPC-gateway endpoints to
+	// prevent unauthenticated memory exhaustion via oversized JSON/base64 bodies.
+	// Use 4x MaxRequestBytes to account for base64 and JSON encoding overhead
+	// (base64 expands binary payloads by ~4/3; JSON field names add further
+	// overhead), ensuring legitimate maximum-size requests are not rejected.
+	// WebSocket upgrade requests have no body so this limit is a no-op for them.
+	if strings.HasPrefix(req.URL.Path, "/v3/") && req.Body != nil {
+		maxBodyBytes := int64(ac.s.Cfg.MaxRequestBytes) * 4
+		if req.ContentLength > maxBodyBytes {
+			http.Error(rw, "request body too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+		req.Body = http.MaxBytesReader(rw, req.Body, maxBodyBytes)
+	}
+
 	ac.mux.ServeHTTP(rw, req)
 }
 
