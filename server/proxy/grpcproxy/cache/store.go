@@ -60,15 +60,14 @@ func keyFunc(req *pb.RangeRequest, authKey string) string {
 	if err != nil {
 		panic(err)
 	}
-	if authKey == "" {
-		return string(b)
-	}
 	// Pre-size the buffer to avoid repeated allocation while appending.
-	// Guard against overflow: proto.Marshal output is bounded by
-	// MaxRequestBytes (typically 1.5 MiB) and authKey is a bounded user
-	// identifier, so the sum cannot overflow on any supported platform.
-	if len(authKey) > math.MaxInt-len(b)-1 {
-		panic("authKey too large")
+	// proto.Marshal output is bounded by MaxRequestBytes (typically
+	// 1.5 MiB) and authKey is a bounded user identifier, so the sum
+	// cannot overflow on any supported platform. The explicit guard
+	// documents that invariant and silences CodeQL's allocation-size
+	// overflow heuristic.
+	if len(b) > math.MaxInt-len(authKey)-1 {
+		panic("request too large")
 	}
 	out := make([]byte, 0, len(b)+1+len(authKey))
 	out = append(out, b...)
