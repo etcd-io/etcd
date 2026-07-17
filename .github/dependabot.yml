@@ -15,7 +15,7 @@ updates:
     schedule:
       interval: weekly
     allow:
-      - dependency-type: all
+      - dependency-type: direct
 
   - package-ecosystem: gomod
     directory: /tools/mod # Not linked from /go.mod
