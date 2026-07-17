@@ -69,7 +69,7 @@ func ToGRPC(c *clientv3.Client) GRPCAPI {
 	lp, lpch := grpcproxy.NewLeaseProxy(ctx, c)
 	mp := grpcproxy.NewMaintenanceProxy(c)
 	clp, _ := grpcproxy.NewClusterProxy(lg, c, "", "") // without registering proxy URLs
-	authp := grpcproxy.NewAuthProxy(c)
+	authp := grpcproxy.NewAuthProxy(c, kvp.(*grpcproxy.KvProxy))
 	lockp := grpcproxy.NewLockProxy(c)
 	electp := grpcproxy.NewElectionProxy(c)
 

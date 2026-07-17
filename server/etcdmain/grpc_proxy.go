@@ -498,7 +498,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	leasep, _ := grpcproxy.NewLeaseProxy(client.Ctx(), client)
 
 	mainp := grpcproxy.NewMaintenanceProxy(client)
-	authp := grpcproxy.NewAuthProxy(client)
+	authp := grpcproxy.NewAuthProxy(client, kvp.(*grpcproxy.KvProxy))
 	electionp := grpcproxy.NewElectionProxy(client)
 	lockp := grpcproxy.NewLockProxy(client)
 
