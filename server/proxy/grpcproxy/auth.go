@@ -30,12 +30,16 @@ type AuthProxy struct {
 }
 
 // NewAuthProxy returns an AuthServer that forwards auth RPCs to the backend.
-// kvp may be nil; when non-nil, any auth-mutating RPC flushes the KV proxy
-// cache so no caller can keep reading data cached under stale permissions.
-func NewAuthProxy(c *clientv3.Client, kvp *kvProxy) pb.AuthServer {
+// cache may be nil; when non-nil, any auth-mutating RPC flushes the cache so
+// no caller can keep reading data cached under stale permissions.
+//
+// Note: the proxy only observes auth changes that pass through it. Permission
+// changes applied directly against the backend will not flush the cache,
+// leaving a same-token stale-read window until eviction.
+func NewAuthProxy(c *clientv3.Client, cache cache.Cache) pb.AuthServer {
 	ap := &AuthProxy{authClient: pb.NewAuthClient(c.ActiveConnection())}
-	if kvp != nil {
-		ap.cache = kvp.cache
+	if cache != nil {
+		ap.cache = cache
 	}
 	return ap
 }

@@ -60,7 +60,8 @@ func TestCacheAuthKeyIsolation(t *testing.T) {
 	if _, err = c.Get(req, ""); err != nil {
 		t.Fatalf("expected cache hit for empty identity, got %v", err)
 	}
-	// "alice" and "" share the same key when authKey is empty (no-auth requests share one cache)
+	// "alice" hits because her earlier Add(req,resp,"alice") entry is still
+	// resident, not because "" collides with a named identity.
 	if _, err = c.Get(req, "alice"); err != nil {
 		t.Fatalf("expected cache hit for alice after empty-identity add (same key), got %v", err)
 	}

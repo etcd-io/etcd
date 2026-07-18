@@ -30,6 +30,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
+	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
@@ -308,7 +309,7 @@ func TestKVProxyCacheClearedOnAuthMutation(t *testing.T) {
 	defer backendClient.Close()
 
 	kvp, _ := grpcproxy.NewKvProxy(backendClient)
-	authp := grpcproxy.NewAuthProxy(backendClient, kvp.(*grpcproxy.KvProxy))
+	authp := grpcproxy.NewAuthProxy(backendClient, kvp.(interface{ Cache() cache.Cache }).Cache())
 
 	// Facade server: stamps a fixed token into incoming metadata, like real clients.
 	mkFacade := func(token string, kvs pb.KVServer, as pb.AuthServer) (pb.KVClient, pb.AuthClient, func()) {

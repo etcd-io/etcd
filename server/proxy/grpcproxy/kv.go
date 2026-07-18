@@ -51,6 +51,20 @@ func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {
 	return kv, donec
 }
 
+// NewKvProxyWithCache returns a KV proxy backed by the given cache instance.
+// Useful when the caller needs to share the cache with another proxy (e.g.
+// the auth proxy for flush-on-mutation) without type-asserting the concrete
+// implementation.
+func NewKvProxyWithCache(c *clientv3.Client, cache cache.Cache) (pb.KVServer, <-chan struct{}) {
+	kv := &kvProxy{
+		kv:    c.KV,
+		cache: cache,
+	}
+	donec := make(chan struct{})
+	close(donec)
+	return kv, donec
+}
+
 // Cache returns the underlying cache instance. Exposed for tests and for
 // wiring the auth proxy to the same cache.
 func (p *kvProxy) Cache() cache.Cache {
