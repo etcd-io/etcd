@@ -44,6 +44,15 @@ jobs:
       - name: Checkout the code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
+      - name: Validate etcd_ref input
+        env:
+          ETCD_REF: ${{ inputs.etcd_ref }}
+        run: |
+          if [[ -n "$ETCD_REF" && ! "$ETCD_REF" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::Invalid etcd_ref '$ETCD_REF': only alphanumeric characters, '.', '_', '-', and '/' are allowed"
+            exit 1
+          fi
+
       - name: Login to Antithesis Docker Registry
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
@@ -53,27 +62,34 @@ jobs:
 
       - name: Build and push config image
         working-directory: ./tests/antithesis
+        env:
+          ETCD_REF: ${{ inputs.etcd_ref || 'main' }}
         run: |
-          make antithesis-build-config-image IMAGE_TAG=${{ inputs.etcd_ref || 'main' }}_${{ github.sha }}
-          export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-config:${{ inputs.etcd_ref || 'main' }}_${{ github.sha }}"
-          docker tag etcd-config:latest $IMAGE
-          docker push $IMAGE
+          IMAGE_TAG="${ETCD_REF}_${{ github.sha }}"
+          make antithesis-build-config-image IMAGE_TAG="$IMAGE_TAG"
+          IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-config:${IMAGE_TAG}"
+          docker tag etcd-config:latest "$IMAGE"
+          docker push "$IMAGE"
 
       - name: Build and push client image
         working-directory: ./tests/antithesis
+        env:
+          ETCD_REF: ${{ inputs.etcd_ref || 'main' }}
         run: |
           make antithesis-build-client-docker-image
-          export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-client:${{ inputs.etcd_ref || 'main' }}_${{ github.sha }}"
-          docker tag etcd-client:latest $IMAGE
-          docker push $IMAGE
+          IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-client:${ETCD_REF}_${{ github.sha }}"
+          docker tag etcd-client:latest "$IMAGE"
+          docker push "$IMAGE"
 
       - name: Build and push etcd image
         working-directory: ./tests/antithesis
+        env:
+          ETCD_REF: ${{ inputs.etcd_ref || 'main' }}
         run: |
-          make antithesis-build-etcd-image REF=${{ inputs.etcd_ref || 'main' }}
-          export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-server:${{ inputs.etcd_ref || 'main' }}_${{ github.sha }}"
-          docker tag etcd-server:latest $IMAGE
-          docker push $IMAGE
+          make antithesis-build-etcd-image REF="$ETCD_REF"
+          IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-server:${ETCD_REF}_${{ github.sha }}"
+          docker tag etcd-server:latest "$IMAGE"
+          docker push "$IMAGE"
 
       - name: Run Antithesis Tests
         uses: antithesishq/antithesis-trigger-action@80a5e9be591d303bf3c83e3ecbdc00102ad9de90 # v0.12
