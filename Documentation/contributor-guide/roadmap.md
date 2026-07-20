@@ -23,29 +23,34 @@ For a full list of tasks in `v3.6.0`, please see [milestone etcd-v3.6](https://g
 | [Deprecate grpc-gateway or bump it](https://github.com/etcd-io/etcd/issues/14499)                                  | priority/important-longterm | Completed   | It isn't guaranteed to be resolved in 3.6, and might be postponed to 3.7 depending on the effort and risk.   |
 | [bbolt: Add logger into bbolt](https://github.com/etcd-io/bbolt/issues/509)                                        | priority/important-longterm | Completed   | It's important to diagnose bbolt issues                                                                      |
 | [bbolt: Add surgery commands](https://github.com/etcd-io/bbolt/issues/370)                                         | priority/important-longterm | Completed   | Surgery commands are important for fixing corrupted db files                                                 |
+| [Refactor lease: Lease might be revoked by mistake by old leader](https://github.com/etcd-io/etcd/issues/15247)    | priority/important-longterm | Completed   |                                                                                                              |
 | [Evaluate and (Gradulate or deprecate/remove) experimental features](https://github.com/etcd-io/etcd/issues/16292) | priority/backlog            | Not started | This task will be covered in both 3.6 and 3.7.                                                               |
 
 ## v3.7.0
 
 For a full list of tasks in `v3.7.0`, please see [milestone etcd-v3.7](https://github.com/etcd-io/etcd/milestone/39).
 
-| Title                                                                                                             | Priority | Note                                                                              |
-|-------------------------------------------------------------------------------------------------------------------|----------|-----------------------------------------------------------------------------------|
-| [StoreV2 deprecation](https://github.com/etcd-io/etcd/issues/12913)                                               | P0       | Finish the remaining tasks 3.7.                                                   |
-| [Support range stream](https://github.com/etcd-io/etcd/issues/12342)                                              | P0       | to be investigated & discussed.                                                   |
-| [Refactor lease: Lease might be revoked by mistake by old leader](https://github.com/etcd-io/etcd/issues/15247)   | P1       | to be investigated & discussed                                                    |
-| [Integrate raft's new feature (async write) into etcd](https://github.com/etcd-io/etcd/issues/16291)              | P1       | It should improve the performance                                                 |
-| [bbolt: Support customizing the bbolt rebalance threshold](https://github.com/etcd-io/bbolt/issues/422)           | P2       | It may get rid of etcd's defragmentation. Both bbolt and etcd need to be changed. |
-| [Evaluate and (graduate or deprecate/remove) experimental features](https://github.com/etcd-io/etcd/issues/16292) | P2       | Finish the remaining tasks 3.7.                                                   |
+| Title                                                                                                    | Priority | Note      |
+|----------------------------------------------------------------------------------------------------------|----------|-----------|
+| [Bootstrap etcdserver from v3store](https://github.com/etcd-io/etcd/issues/20187)                        | P0       | Completed |
+| [Support range stream](https://github.com/etcd-io/etcd/issues/12342)                                     | P0       | Completed |
+| [Protobuf: cleanup both golang/protobuf and gogo/protobuf](https://github.com/etcd-io/etcd/issues/14533) | P0       | Completed |
+| [bbolt: Migrate all commands to cobra style commands](https://github.com/etcd-io/bbolt/issues/472)       | P1       | Completed |
+
+## v3.8.0
+
+| Title                                                                                                     | Priority | Note                                            |
+|-----------------------------------------------------------------------------------------------------------|----------|-------------------------------------------------|
+| [Stop generating v2 snapshots and cleanup up existing ones](https://github.com/etcd-io/etcd/issues/20187) | P0       |                                                 |
+| [Define an official performance validation suite for etcd](https://github.com/etcd-io/etcd/issues/16467)  | P1       |                                                 |
+| [Integrate raft's new feature (async write) into etcd](https://github.com/etcd-io/etcd/issues/16291)      | P1       | This is still tentative, and to be investigated |
+| [Evaluate and potentially replace cmux](https://github.com/etcd-io/etcd/issues/18032)                     | P1       |                                                 |
 
 ## Backlog (future releases)
 
 | Title                                                                                                    | Priority | Note |
 |----------------------------------------------------------------------------------------------------------|----------|------|
-| [Remove the dependency on grpc-go's experimental API](https://github.com/etcd-io/etcd/issues/15145)      |          |      |
-| [Protobuf: cleanup both golang/protobuf and gogo/protobuf](https://github.com/etcd-io/etcd/issues/14533) |          |      |
 | [Proposals should include a merkle root](https://github.com/etcd-io/etcd/issues/13839)                   |          |      |
 | [Add Distributed Tracing using OpenTelemetry](https://github.com/etcd-io/etcd/issues/12460)              |          |      |
 | [Support CA rotation](https://github.com/etcd-io/etcd/issues/11555)                                      |          |      |
-| [bbolt: Migrate all commands to cobra style commands](https://github.com/etcd-io/bbolt/issues/472)       |          |      |
 | [raft: enhance the configuration change validation](https://github.com/etcd-io/raft/issues/80)           |          |      |
