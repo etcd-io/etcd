@@ -62,6 +62,9 @@ var (
 	RaftBeforeSaveSleep                       Failpoint = gofailSleepAndDeactivate{"raftBeforeSave", time.Second}
 	RaftAfterSaveSleep                        Failpoint = gofailSleepAndDeactivate{"raftAfterSave", time.Second}
 	SleepBeforeSendWatchResponse              Failpoint = gofailSleepAndDeactivate{"beforeSendWatchResponse", time.Second}
+	SleepBeforeSyncWatchers                   Failpoint = gofailSleepAndDeactivate{"beforeSyncWatchers", time.Second}
+	SleepBeforeMoveVictims                    Failpoint = gofailSleepAndDeactivate{"beforeMoveVictims", time.Second}
+	SleepBeforeProgressIfSync                 Failpoint = gofailSleepAndDeactivate{"beforeProgressIfSync", time.Second}
 )
 
 type goPanicFailpoint struct {
