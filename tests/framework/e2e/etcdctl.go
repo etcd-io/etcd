@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/authpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
@@ -126,6 +127,19 @@ func (ctl *Etcdctl) UserAdd(name, password string) (*clientv3.AuthUserAddRespons
 
 	var resp clientv3.AuthUserAddResponse
 	err := ctl.spawnJsonCmd(&resp, args...)
+	return &resp, err
+}
+
+func (ctl *Etcdctl) RoleAdd(name string) (*clientv3.AuthRoleAddResponse, error) {
+	var resp clientv3.AuthRoleAddResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "add", name)
+	return &resp, err
+}
+
+func (ctl *Etcdctl) RoleGrantPermission(name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error) {
+	permissionType := authpb.Permission_Type_name[int32(permType)]
+	var resp clientv3.AuthRoleGrantPermissionResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "grant-permission", name, permissionType, key, rangeEnd)
 	return &resp, err
 }
 
