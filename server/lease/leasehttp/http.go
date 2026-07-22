@@ -19,7 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -35,6 +35,13 @@ var (
 	applyTimeout        = time.Second
 	ErrLeaseHTTPTimeout = errors.New("waiting for node to catch up its applied index has timed out")
 )
+
+// maxLeaseHTTPRequestSize bounds how much of a request body ServeHTTP will
+// read into memory. Legitimate LeaseKeepAliveRequest and LeaseInternalRequest
+// messages only carry a lease ID (and a bool flag), so this is generous
+// headroom, not a realistic size. Matches connReadLimitByte in
+// server/etcdserver/api/rafthttp/http.go for consistency.
+const maxLeaseHTTPRequestSize = 64 * 1024
 
 // NewHandler returns an http Handler for lease renewals
 func NewHandler(l lease.Lessor, waitch func() <-chan struct{}) http.Handler {
@@ -53,8 +60,13 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxLeaseHTTPRequestSize))
 	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
+			return
+		}
 		http.Error(w, "error reading body", http.StatusBadRequest)
 		return
 	}
@@ -262,8 +274,24 @@ func TimeToLiveHTTP(ctx context.Context, id lease.LeaseID, keys bool, url string
 	return lresp, nil
 }
 
+// maxLeaseHTTPResponseSize bounds how much of a lease HTTP response body
+// readResponse will read into memory. Unlike requests, a legitimate
+// LeaseInternalResponse can carry every key attached to a lease, so this
+// ceiling is deliberately generous -- it only guards against a misbehaving
+// or compromised peer forcing unbounded memory growth, not against large but
+// legitimate responses.
+const maxLeaseHTTPResponseSize = 100 * 1024 * 1024
+
 func readResponse(resp *http.Response) (b []byte, err error) {
-	b, err = ioutil.ReadAll(resp.Body)
+	b, err = io.ReadAll(io.LimitReader(resp.Body, maxLeaseHTTPResponseSize+1))
+	if err != nil {
+		httputil.GracefulClose(resp)
+		return nil, err
+	}
+	if len(b) > maxLeaseHTTPResponseSize {
+		resp.Body.Close()
+		return nil, fmt.Errorf("lease: response body exceeds %d bytes limit", maxLeaseHTTPResponseSize)
+	}
 	httputil.GracefulClose(resp)
-	return
+	return b, nil
 }
