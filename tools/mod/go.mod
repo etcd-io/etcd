@@ -222,14 +222,14 @@ require (
 	github.com/ultraware/whitespace v0.2.0 // indirect
 	github.com/uudashr/gocognit v1.2.1 // indirect
 	github.com/uudashr/iface v1.4.2 // indirect
-	github.com/weppos/publicsuffix-go v0.30.3-0.20240510084413-5f1d03393b3d // indirect
+	github.com/weppos/publicsuffix-go v0.50.4-0.20260507075217-1bd47f85b3da // indirect
 	github.com/xen0n/gosmopolitan v1.3.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yagipy/maintidx v1.0.0 // indirect
 	github.com/yeya24/promlinter v0.3.0 // indirect
 	github.com/ykadowak/zerologlint v0.1.5 // indirect
-	github.com/zmap/zcrypto v0.0.0-20231219022726-a1f61fb1661c // indirect
-	github.com/zmap/zlint/v3 v3.6.0 // indirect
+	github.com/zmap/zcrypto v0.0.0-20260514033604-a1159eb3cad9 // indirect
+	github.com/zmap/zlint/v3 v3.7.1 // indirect
 	gitlab.com/bosi/decorder v0.4.2 // indirect
 	go-simpler.org/musttag v0.14.0 // indirect
 	go-simpler.org/sloglint v0.12.0 // indirect
