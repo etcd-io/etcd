@@ -239,19 +239,21 @@ func (r *report) sprintLatencies() string {
 	return s
 }
 
-func (r *report) histogram() string {
-	bc := 10
-	buckets := make([]float64, bc+1)
-	counts := make([]int, bc+1)
-	bs := (r.stats.Slowest - r.stats.Fastest) / float64(bc)
+// bucketLatencies partitions s.Lats into bc equal-width buckets between
+// s.Fastest and s.Slowest, returning the bucket upper bounds, per-bucket
+// counts, and the largest count (used for bar-chart normalization).
+func bucketLatencies(s Stats, bc int) (buckets []float64, counts []int, max int) {
+	buckets = make([]float64, bc+1)
+	counts = make([]int, bc+1)
+	bs := (s.Slowest - s.Fastest) / float64(bc)
 	for i := 0; i < bc; i++ {
-		buckets[i] = r.stats.Fastest + bs*float64(i)
+		buckets[i] = s.Fastest + bs*float64(i)
 	}
-	buckets[bc] = r.stats.Slowest
+	buckets[bc] = s.Slowest
+
 	var bi int
-	var max int
-	for i := 0; i < len(r.stats.Lats); {
-		if r.stats.Lats[i] <= buckets[bi] {
+	for i := 0; i < len(s.Lats); {
+		if s.Lats[i] <= buckets[bi] {
 			i++
 			counts[bi]++
 			if max < counts[bi] {
@@ -261,6 +263,11 @@ func (r *report) histogram() string {
 			bi++
 		}
 	}
+	return buckets, counts, max
+}
+
+func (r *report) histogram() string {
+	buckets, counts, max := bucketLatencies(r.stats, 10)
 	s := "\nResponse time histogram:\n"
 	for i := 0; i < len(buckets); i++ {
 		// Normalize bar lengths.
@@ -321,22 +328,7 @@ func FormatJSON(s Stats) (string, error) {
 	}
 
 	bc := 10
-	buckets := make([]float64, bc+1)
-	counts := make([]int, bc+1)
-	bs := (s.Slowest - s.Fastest) / float64(bc)
-	for i := 0; i < bc; i++ {
-		buckets[i] = s.Fastest + bs*float64(i)
-	}
-	buckets[bc] = s.Slowest
-	var bi int
-	for i := 0; i < len(s.Lats); {
-		if s.Lats[i] <= buckets[bi] {
-			i++
-			counts[bi]++
-		} else if bi < len(buckets)-1 {
-			bi++
-		}
-	}
+	buckets, counts, _ := bucketLatencies(s, bc)
 	jsonBuckets := make([]JSONBucket, bc+1)
 	for i := range jsonBuckets {
 		jsonBuckets[i] = JSONBucket{UpperBoundSecs: buckets[i], Count: counts[i]}

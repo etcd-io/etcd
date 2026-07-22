@@ -11,31 +11,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package cmd
-
 import (
 	"fmt"
 	"os"
-
 	"go.etcd.io/etcd/pkg/v3/report"
 )
-
 var outputFormat string
-
 func init() {
 	RootCmd.PersistentFlags().StringVar(&outputFormat, "output-format", "text",
 		`Output format for benchmark results. One of: "text" (default) or "json".`)
 }
-
 // printReport writes benchmark statistics to stdout in the format chosen by
 // --output-format. All sub-commands should call this function instead of
 // printing report.Run() output directly so that JSON support is automatic.
-func printReport(r report.Report, prefixes ...string) func() {
-	prefix := ""
-	if len(prefixes) > 0 {
-		prefix = prefixes[0]
-	}
+func printReport(r report.Report) func() {
 	switch outputFormat {
 	case "json":
 		rc := r.Stats()
@@ -51,7 +41,7 @@ func printReport(r report.Report, prefixes ...string) func() {
 	default:
 		rc := r.Run()
 		return func() {
-			fmt.Printf("%s%s", prefix, <-rc)
+			fmt.Print(<-rc)
 		}
 	}
 }
