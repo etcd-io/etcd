@@ -38,9 +38,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/server/v3/config"
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -574,18 +572,6 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 
 	confState := &raftpb.ConfState{
 		Voters: nodeIDs,
-	}
-	raftSnap := raftpb.Snapshot{
-		Data: etcdserver.GetMembershipInfoInV2Format(s.lg, s.cl),
-		Metadata: &raftpb.SnapshotMetadata{
-			Index:     new(commit),
-			Term:      new(term),
-			ConfState: confState,
-		},
-	}
-	sn := snap.New(s.lg, s.snapDir)
-	if err := sn.SaveSnap(&raftSnap); err != nil {
-		return nil, err
 	}
 	snapshot := walpb.Snapshot{Index: new(commit), Term: new(term), ConfState: confState}
 	return &hardState, w.SaveSnapshot(&snapshot)
