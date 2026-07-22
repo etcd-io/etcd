@@ -17,10 +17,45 @@ else
 	@echo "benchmark tool already installed..."
 endif
 
+# Benchmark make targets extend scripts/benchmark_test.sh (see #16467).
+# Override defaults with ARGS, e.g.:
+#   make bench-put ARGS='--total=100000 --clients=100'
+#   make bench-range ARGS='foo --total=50000 --consistency=s'
+
 .PHONY: bench-put
 bench-put: build install-benchmark
 	@echo "Running benchmark: put $(ARGS)"
 	./scripts/benchmark_test.sh put $(ARGS)
+
+.PHONY: bench-range
+bench-range: build install-benchmark
+	@echo "Running benchmark: range $(ARGS)"
+	./scripts/benchmark_test.sh range foo $(ARGS)
+
+.PHONY: bench-txn-put
+bench-txn-put: build install-benchmark
+	@echo "Running benchmark: txn-put $(ARGS)"
+	./scripts/benchmark_test.sh txn-put $(ARGS)
+
+.PHONY: bench-stm
+bench-stm: build install-benchmark
+	@echo "Running benchmark: stm $(ARGS)"
+	./scripts/benchmark_test.sh stm $(ARGS)
+
+.PHONY: bench-lease-keepalive
+bench-lease-keepalive: build install-benchmark
+	@echo "Running benchmark: lease-keepalive $(ARGS)"
+	./scripts/benchmark_test.sh lease-keepalive $(ARGS)
+
+.PHONY: bench-watch
+bench-watch: build install-benchmark
+	@echo "Running benchmark: watch $(ARGS)"
+	./scripts/benchmark_test.sh watch $(ARGS)
+
+.PHONY: bench-watch-latency
+bench-watch-latency: build install-benchmark
+	@echo "Running benchmark: watch-latency $(ARGS)"
+	./scripts/benchmark_test.sh watch-latency $(ARGS)
 
 PLATFORMS=linux-amd64 linux-386 linux-arm linux-arm64 linux-ppc64le linux-s390x darwin-amd64 darwin-arm64 windows-amd64 windows-arm64
 

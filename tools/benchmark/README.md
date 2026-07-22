@@ -22,6 +22,37 @@ Alternatively, instead of installing the tool, you can use it by simply running 
   $ go run ./tools/benchmark
 ```
 
+## Running via make (local etcd)
+
+From the repository root, use the `bench-*` make targets. Each target builds etcd,
+installs the benchmark tool if needed, starts a temporary local etcd process, runs
+the named workload with `--report-perfdash`, then tears the server down
+(see `scripts/benchmark_test.sh` and [#16467](https://github.com/etcd-io/etcd/issues/16467)).
+
+```
+  $ make bench-put
+  $ make bench-range
+  $ make bench-txn-put
+  $ make bench-stm
+  $ make bench-lease-keepalive
+  $ make bench-watch
+  $ make bench-watch-latency
+```
+
+Pass extra flags through `ARGS`:
+
+```
+  $ make bench-put ARGS='--total=100000 --clients=100 --conns=10'
+  $ make bench-range ARGS='--total=50000 --consistency=s --limit=100'
+```
+
+`bench-range` uses a default key of `foo`. For custom range bounds, call the
+script directly:
+
+```
+  $ ./scripts/benchmark_test.sh range mykey myend --total=10000
+```
+
 ## Usage
 
 The following command should output the usage per the latest development.
