@@ -509,6 +509,7 @@ func TestV3LeaseRenewStress(t *testing.T) {
 // TestV3LeaseRenewStressWithClusterClient is similar to TestV3LeaseRenewStress,
 // but it uses a cluster client instead of a specific member's client.
 // The related issue is https://github.com/etcd-io/etcd/issues/13675.
+// no-op
 func TestV3LeaseRenewStressWithClusterClient(t *testing.T) {
 	testLeaseStress(t, stressLeaseRenew, true)
 }
