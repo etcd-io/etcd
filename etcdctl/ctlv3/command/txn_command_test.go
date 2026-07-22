@@ -79,11 +79,13 @@ func TestParseCompare(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, []byte("foo1"), cmp.Key)
-			require.Equal(t, pb.Compare_LEASE, cmp.Target)
-			require.Equal(t, tt.wantResult, cmp.Result)
 
-			leaseCmp, ok := cmp.TargetUnion.(*pb.Compare_Lease)
+			pbCmp := cmp.GetCompare()
+			require.Equal(t, []byte("foo1"), pbCmp.Key)
+			require.Equal(t, pb.Compare_LEASE, pbCmp.Target)
+			require.Equal(t, tt.wantResult, pbCmp.Result)
+
+			leaseCmp, ok := pbCmp.TargetUnion.(*pb.Compare_Lease)
 			require.True(t, ok)
 			require.Equal(t, tt.wantLease, leaseCmp.Lease)
 		})
