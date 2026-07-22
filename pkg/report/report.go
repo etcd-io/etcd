@@ -40,10 +40,14 @@ type Result struct {
 
 func (res *Result) Duration() time.Duration { return res.End.Sub(res.Start) }
 
+type MetricSummary struct {
+	Name string
+	Max  float64
+}
+
 type Options struct {
 	GeneratePerfReport bool
-	MetricsURL         string
-	Metrics            []string
+	MetricSummaries    func() []MetricSummary
 }
 
 type report struct {
@@ -125,29 +129,12 @@ func (r *report) Run() <-chan string {
 	donec := make(chan string, 1)
 	go func() {
 		defer close(donec)
-		var sampler *metricSampler
-		if r.opts.MetricsURL != "" && len(r.opts.Metrics) > 0 {
-			sampler = newMetricSampler(r.opts.MetricsURL, r.opts.Metrics)
-			sampler.start()
-			defer func() {
-				if sampler != nil {
-					sampler.stop()
-				}
-			}()
-		}
 		r.processResults()
-		var summaries []MetricSummary
-		var samples []MetricSample
-		if sampler != nil {
-			summaries, samples = sampler.stop()
-			sampler = nil
-			r.metricSummaries = summaries
+		if r.opts.MetricSummaries != nil {
+			r.metricSummaries = r.opts.MetricSummaries()
 		}
 		if r.opts.GeneratePerfReport {
-			r.writePerfDashReport(r.benchmarkOp, summaries)
-		}
-		if len(samples) > 0 {
-			writeTimeSeriesReport(r.benchmarkOp, "resource", samples)
+			r.writePerfDashReport(r.benchmarkOp, r.metricSummaries)
 		}
 		donec <- r.String()
 	}()

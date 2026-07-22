@@ -116,11 +116,17 @@ func newReport(benchmarkOp string) report.Report {
 	if precise {
 		p = "%g"
 	}
-	opts := reportOptions()
+	opts, sampler := reportOptions(benchmarkOp)
+	var r report.Report
 	if sample {
-		return report.NewReportSampleWithOptions(p, benchmarkOp, opts)
+		r = report.NewReportSampleWithOptions(p, benchmarkOp, opts)
+	} else {
+		r = report.NewReportWithOptions(p, benchmarkOp, opts)
 	}
-	return report.NewReportWithOptions(p, benchmarkOp, opts)
+	if sampler != nil {
+		return newBenchmarkReport(r, sampler)
+	}
+	return r
 }
 
 func newWeightedReport(benchmarkOp string) report.Report {
@@ -128,19 +134,35 @@ func newWeightedReport(benchmarkOp string) report.Report {
 	if precise {
 		p = "%g"
 	}
-	opts := reportOptions()
+	opts, sampler := reportOptions(benchmarkOp)
+	var r report.Report
 	if sample {
-		return report.NewReportSampleWithOptions(p, benchmarkOp, opts)
+		r = report.NewReportSampleWithOptions(p, benchmarkOp, opts)
+	} else {
+		base := report.NewReportWithOptions(p, benchmarkOp, opts)
+		r = report.NewWeightedReport(base, p, benchmarkOp, generatePerfReport)
 	}
-	return report.NewWeightedReportWithOptions(report.NewReportWithOptions(p, benchmarkOp, opts), p, benchmarkOp, opts)
+	if sampler != nil {
+		return newBenchmarkReport(r, sampler)
+	}
+	return r
 }
 
-func reportOptions() report.Options {
-	return report.Options{
-		GeneratePerfReport: generatePerfReport,
-		MetricsURL:         metricsEndpointURL(),
-		Metrics:            metrics,
+func reportOptions(benchmarkOp string) (report.Options, *metricSampler) {
+	opts := report.Options{GeneratePerfReport: generatePerfReport}
+	metricsURL := metricsEndpointURL()
+	if metricsURL == "" || len(metrics) == 0 {
+		return opts, nil
 	}
+	sampler := newMetricSampler(metricsURL, metrics)
+	opts.MetricSummaries = func() []report.MetricSummary {
+		summaries, timeSeries := sampler.stop()
+		if len(timeSeries) > 0 {
+			writeTimeSeriesReport(benchmarkOp, "resource", timeSeries)
+		}
+		return summaries
+	}
+	return opts, sampler
 }
 
 func metricsEndpointURL() string {

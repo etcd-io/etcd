@@ -12,30 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package report
+package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
+
+	"go.etcd.io/etcd/pkg/v3/report"
 )
 
 const defaultMetricsSampleInterval = time.Second
 
-type MetricSummary struct {
-	Name string
-	Max  float64
-}
-
-// MetricSample contains one scrape result from the Prometheus /metrics endpoint.
-type MetricSample struct {
+// metricSample contains one scrape result from the Prometheus /metrics endpoint.
+type metricSample struct {
 	Timestamp time.Time          `json:"timestamp"`
 	Values    map[string]float64 `json:"values"`
 }
@@ -48,7 +49,7 @@ type metricSampler struct {
 
 	mu                sync.Mutex
 	valuesByMetric    map[string][]float64
-	timeSeriesSamples []MetricSample
+	timeSeriesSamples []metricSample
 
 	cancel context.CancelFunc
 	donec  chan struct{}
@@ -86,7 +87,7 @@ func (s *metricSampler) start() {
 	}()
 }
 
-func (s *metricSampler) stop() ([]MetricSummary, []MetricSample) {
+func (s *metricSampler) stop() ([]report.MetricSummary, []metricSample) {
 	if s.cancel != nil {
 		s.cancel()
 		<-s.donec
@@ -102,7 +103,7 @@ func (s *metricSampler) collect(ctx context.Context) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.timeSeriesSamples = append(s.timeSeriesSamples, MetricSample{
+	s.timeSeriesSamples = append(s.timeSeriesSamples, metricSample{
 		Timestamp: time.Now().UTC(),
 		Values:    values,
 	})
@@ -111,17 +112,17 @@ func (s *metricSampler) collect(ctx context.Context) {
 	}
 }
 
-func (s *metricSampler) summaries() []MetricSummary {
+func (s *metricSampler) summaries() []report.MetricSummary {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	summaries := make([]MetricSummary, 0, len(s.metrics))
+	summaries := make([]report.MetricSummary, 0, len(s.metrics))
 	for _, name := range s.metrics {
 		values := s.valuesByMetric[name]
 		if len(values) == 0 {
 			continue
 		}
-		summary := MetricSummary{
+		summary := report.MetricSummary{
 			Name: name,
 			Max:  math.Inf(-1),
 		}
@@ -133,11 +134,11 @@ func (s *metricSampler) summaries() []MetricSummary {
 	return summaries
 }
 
-func (s *metricSampler) timeSeries() []MetricSample {
+func (s *metricSampler) timeSeries() []metricSample {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	series := make([]MetricSample, len(s.timeSeriesSamples))
+	series := make([]metricSample, len(s.timeSeriesSamples))
 	copy(series, s.timeSeriesSamples)
 	return series
 }
@@ -194,4 +195,55 @@ func metricValue(metric *dto.Metric) (float64, bool) {
 	default:
 		return 0, false
 	}
+}
+
+type benchmarkReport struct {
+	report.Report
+	sampler *metricSampler
+}
+
+func newBenchmarkReport(base report.Report, sampler *metricSampler) report.Report {
+	return &benchmarkReport{
+		Report:  base,
+		sampler: sampler,
+	}
+}
+
+func (r *benchmarkReport) Run() <-chan string {
+	r.sampler.start()
+	return r.Report.Run()
+}
+
+type timeSeriesReport struct {
+	Version   string         `json:"version"`
+	Operation string         `json:"operation"`
+	Metric    string         `json:"metric"`
+	Samples   []metricSample `json:"samples"`
+}
+
+func writeTimeSeriesReport(benchmarkOp, metric string, samples []metricSample) {
+	report := timeSeriesReport{
+		Version:   "v1",
+		Operation: strings.ToUpper(benchmarkOp),
+		Metric:    metric,
+		Samples:   samples,
+	}
+	reportB, _ := json.MarshalIndent(report, "", "  ")
+
+	artifactsDir := os.Getenv("ARTIFACTS")
+	if artifactsDir == "" {
+		artifactsDir = "./_artifacts"
+	}
+
+	fileName := fmt.Sprintf("EtcdResourceMetrics_benchmark_%s_%s.json", benchmarkOp, time.Now().UTC().Format(time.RFC3339))
+	err := os.MkdirAll(artifactsDir, 0o755)
+	if err != nil {
+		fmt.Println("Error creating artifacts directory:", err)
+	}
+	destPath := filepath.Join(artifactsDir, fileName)
+	err = os.WriteFile(destPath, reportB, 0o644)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+	}
+	fmt.Println("Successfully created a JSON resource metrics report at", destPath)
 }

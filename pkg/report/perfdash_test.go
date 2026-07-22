@@ -80,32 +80,3 @@ func TestWritePerfDashReportIncludesMetricSummaries(t *testing.T) {
 	_, err = time.Parse(time.RFC3339, filepath.Base(matches[0])[len("EtcdAPI_benchmark_put_"):len(filepath.Base(matches[0]))-len(".json")])
 	require.NoError(t, err)
 }
-
-func TestWriteMetricTimeSeriesReport(t *testing.T) {
-	artifactsDir := t.TempDir()
-	t.Setenv("ARTIFACTS", artifactsDir)
-
-	writeTimeSeriesReport("put", "resource", []MetricSample{
-		{
-			Timestamp: time.Date(2026, 5, 15, 1, 2, 3, 0, time.UTC),
-			Values: map[string]float64{
-				"process_resident_memory_bytes": 123,
-			},
-		},
-	})
-
-	matches, err := filepath.Glob(filepath.Join(artifactsDir, "EtcdResourceMetrics_benchmark_put_*.json"))
-	require.NoError(t, err)
-	require.Len(t, matches, 1)
-
-	data, err := os.ReadFile(matches[0])
-	require.NoError(t, err)
-
-	var report timeSeriesReport
-	require.NoError(t, json.Unmarshal(data, &report))
-	require.Equal(t, "v1", report.Version)
-	require.Equal(t, "PUT", report.Operation)
-	require.Equal(t, "resource", report.Metric)
-	require.Len(t, report.Samples, 1)
-	require.Equal(t, float64(123), report.Samples[0].Values["process_resident_memory_bytes"])
-}

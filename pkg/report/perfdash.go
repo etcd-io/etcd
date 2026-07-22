@@ -91,40 +91,6 @@ func (r *report) writePerfDashReport(benchmarkOp string, metricSummaries []Metri
 	fmt.Println("Successfully created a JSON perf report at", destPath)
 }
 
-type timeSeriesReport struct {
-	Version   string         `json:"version"`
-	Operation string         `json:"operation"`
-	Metric    string         `json:"metric"`
-	Samples   []MetricSample `json:"samples"`
-}
-
-func writeTimeSeriesReport(benchmarkOp, metric string, samples []MetricSample) {
-	report := timeSeriesReport{
-		Version:   "v1",
-		Operation: strings.ToUpper(benchmarkOp),
-		Metric:    metric,
-		Samples:   samples,
-	}
-	reportB, _ := json.MarshalIndent(report, "", "  ")
-
-	artifactsDir := os.Getenv("ARTIFACTS")
-	if artifactsDir == "" {
-		artifactsDir = "./_artifacts"
-	}
-
-	fileName := fmt.Sprintf("EtcdResourceMetrics_benchmark_%s_%s.json", benchmarkOp, time.Now().UTC().Format(time.RFC3339))
-	err := os.MkdirAll(artifactsDir, 0o755)
-	if err != nil {
-		fmt.Println("Error creating artifacts directory:", err)
-	}
-	destPath := filepath.Join(artifactsDir, fileName)
-	err = os.WriteFile(destPath, reportB, 0o644)
-	if err != nil {
-		fmt.Println("Error writing to file:", err)
-	}
-	fmt.Println("Successfully created a JSON resource metrics report at", destPath)
-}
-
 func metricUnit(name string) string {
 	if strings.HasSuffix(name, "_bytes") || strings.HasSuffix(name, "_in_bytes") {
 		return "bytes"
