@@ -41,7 +41,7 @@ require (
 	go.etcd.io/etcd/server/v3 v3.7.0-beta.0
 	go.etcd.io/gofail v0.2.0
 	go.etcd.io/raft/v3 v3.7.0
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.69.0
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/sdk v1.44.0
 	go.opentelemetry.io/proto/otlp v1.10.0
