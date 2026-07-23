@@ -20,7 +20,7 @@ endif
 # Benchmark make targets extend scripts/benchmark_test.sh (see #16467).
 # Override defaults with ARGS, e.g.:
 #   make bench-put ARGS='--total=100000 --clients=100'
-#   make bench-range ARGS='foo --total=50000 --consistency=s'
+#   make bench-range ARGS='--total=50000 --consistency=s'
 
 .PHONY: bench-put
 bench-put: build install-benchmark
