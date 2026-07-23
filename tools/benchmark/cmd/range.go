@@ -144,6 +144,7 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 	}
 
 	r := newReport(cmd.Name())
+	finish := printReport(r)
 	for i := range clients {
 		wg.Add(1)
 		go func(c *v3.Client) {
@@ -177,11 +178,10 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		close(requests)
 	}()
 
-	rc := r.Run()
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()
-	fmt.Printf("%s", <-rc)
+	finish()
 }
 
 func paginatedRange(c *v3.Client, key string, pageSize int64, baseOpts []v3.OpOption) error {

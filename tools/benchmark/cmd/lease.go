@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/cheggaaa/pb/v3"
@@ -48,6 +47,7 @@ func leaseKeepaliveFunc(cmd *cobra.Command, _ []string) {
 	bar.Start()
 
 	r := newReport(cmd.Name())
+	finish := printReport(r)
 	for i := range clients {
 		wg.Add(1)
 		go func(c v3.Lease) {
@@ -72,9 +72,8 @@ func leaseKeepaliveFunc(cmd *cobra.Command, _ []string) {
 		close(requests)
 	})
 
-	rc := r.Run()
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()
-	fmt.Printf("%s", <-rc)
+	finish()
 }

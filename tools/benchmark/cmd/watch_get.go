@@ -76,6 +76,7 @@ func watchGetFunc(cmd *cobra.Command, _ []string) {
 
 	// report from trying to do serialized gets with concurrent watchers
 	r := newReport(cmd.Name())
+	finish := printReport(r)
 	ctx, cancel := context.WithCancel(context.TODO())
 	f := func() {
 		defer close(r.Results())
@@ -94,11 +95,10 @@ func watchGetFunc(cmd *cobra.Command, _ []string) {
 		go doUnsyncWatch(streams[i%len(streams)], watchRev, f)
 	}
 
-	rc := r.Run()
 	wg.Wait()
 	cancel()
 	bar.Finish()
-	fmt.Printf("Get during watch summary:\n%s", <-rc)
+	finish()
 }
 
 func doUnsyncWatch(stream v3.Watcher, rev int64, f func()) {
