@@ -15,9 +15,9 @@ Bumping the etcd version in Kubernetes consists of two steps.
 
 ## Bump etcd client SDK
 
-> Reference: [link](https://github.com/kubernetes/kubernetes/pull/131103)
+> Reference: [etcd client SDK bump PR](https://github.com/kubernetes/kubernetes/pull/131103)
 
-You can refer to the guide [here](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/vendor.md) under the **Adding or updating a dependency** section.
+You can refer to the guide [vendor update guide](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/vendor.md) under the **Adding or updating a dependency** section.
 
 1. Get all the etcd modules used in Kubernetes.
 
@@ -53,7 +53,11 @@ You can refer to the guide [here](https://github.com/kubernetes/community/blob/m
 
 ### Build etcd image
 
-> Reference: [link 1](https://github.com/kubernetes/kubernetes/pull/131105) [link 2](https://github.com/kubernetes/kubernetes/pull/131126)
+> **Deprecated**: Since Kubernetes now uses the officially released etcd image, building the etcd image via `cluster/images/etcd` is no longer necessary.
+> This section is kept for historical reference and will be removed when `cluster/images/etcd` is removed from the Kubernetes repository.
+> Refer to the [Publish etcd image](#publish-etcd-image) section below for the current workflow.
+>
+> Reference: [etcd image build PR](https://github.com/kubernetes/kubernetes/pull/131105) [etcd image bump PR](https://github.com/kubernetes/kubernetes/pull/131126)
 
 1. In `build/dependencies.yaml`, update the `version` of `etcd-image` to the new version. Update `golang: etcd release version` if necessary.
 
@@ -94,7 +98,7 @@ You can refer to the guide [here](https://github.com/kubernetes/community/blob/m
 
 ### Publish etcd image
 
-> Reference: [link](https://github.com/kubernetes/k8s.io/pull/7957)
+> Reference: [etcd image staging PR](https://github.com/kubernetes/k8s.io/pull/7957)
 
 1. When the previous step is merged, a post-commit job will run to build the image. You can find the newly built image in the [registry](https://gcr.io/k8s-staging-etcd/etcd).
 
@@ -110,7 +114,7 @@ You can refer to the guide [here](https://github.com/kubernetes/community/blob/m
 
 ### Update to use the new etcd image
 
-> Reference: [link](https://github.com/kubernetes/kubernetes/pull/131144)
+> Reference: [etcd image update PR](https://github.com/kubernetes/kubernetes/pull/131144)
 
 1. In `build/dependencies.yaml`, change the `version` of `etcd` to the new version.
 
