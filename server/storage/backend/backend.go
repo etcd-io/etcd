@@ -54,6 +54,8 @@ type Backend interface {
 	ConcurrentReadTx() ReadTx
 
 	Snapshot() Snapshot
+	// SnapshotDefragmented returns a point-in-time snapshot that has been defragmented (free pages removed).
+	SnapshotDefragmented() (Snapshot, error)
 	Hash(ignores func(bucketName, keyName []byte) bool) (uint32, error)
 	// Size returns the current size of the backend physically allocated.
 	// The backend can hold DB space that is not utilized at the moment,
@@ -366,6 +368,11 @@ func (b *backend) Snapshot() Snapshot {
 		b.lg.Fatal("failed to begin tx", zap.Error(err))
 	}
 
+	s := newSnapshot(b.lg, tx)
+	return &s
+}
+
+func newSnapshot(lg *zap.Logger, tx *bolt.Tx) snapshot {
 	stopc, donec := make(chan struct{}), make(chan struct{})
 	dbBytes := tx.Size()
 	go func() {
@@ -383,7 +390,7 @@ func (b *backend) Snapshot() Snapshot {
 		for {
 			select {
 			case <-ticker.C:
-				b.lg.Warn(
+				lg.Warn(
 					"snapshotting taking too long to transfer",
 					zap.Duration("taking", time.Since(start)),
 					zap.Int64("bytes", dbBytes),
@@ -396,8 +403,82 @@ func (b *backend) Snapshot() Snapshot {
 			}
 		}
 	}()
+	return snapshot{Tx: tx, stopc: stopc, donec: donec}
+}
 
-	return &snapshot{tx, stopc, donec}
+func (b *backend) SnapshotDefragmented() (Snapshot, error) {
+	return b.snapshotDefragmented(snapshotCompactTxMaxBytes)
+}
+
+// snapshotCompactTxMaxBytes bounds the size of the in-flight write transaction
+// used by bbolt.Compact when producing a defragmented snapshot.
+// Smaller values reduce peak memory at the cost of more intermediate commits.
+// At the time of writing, 16MB gives acceptable performance with db sizes from 256MB to 8GB.
+const snapshotCompactTxMaxBytes int64 = 16 * 1024 * 1024
+
+func (b *backend) snapshotDefragmented(defragTxMaxBytes int64) (Snapshot, error) {
+	b.batchTx.Commit()
+
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	// Snapshotter.cleanupSnapdir cleans up any of these that are found during startup.
+	dir := filepath.Dir(b.db.Path())
+	temp, err := os.CreateTemp(dir, "db.tmp.snap.*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp snapshot file: %w", err)
+	}
+	tdbp := temp.Name()
+
+	removeTemp := func() {
+		temp.Close()
+		if rmErr := os.Remove(tdbp); rmErr != nil {
+			b.lg.Warn("failed to remove temp defragmented snapshot file",
+				zap.String("path", tdbp),
+				zap.Error(rmErr),
+			)
+		}
+	}
+
+	options := bolt.Options{}
+	if boltOpenOptions != nil {
+		options = *boltOpenOptions
+	}
+	options.OpenFile = func(_ string, _ int, _ os.FileMode) (*os.File, error) {
+		return temp, nil
+	}
+	// Don't mlock the temp db — it's short-lived and only read once.
+	options.Mlock = false
+
+	tmpdb, err := bolt.Open(tdbp, 0o600, &options)
+	if err != nil {
+		removeTemp()
+		return nil, fmt.Errorf("failed to open temp snapshot db: %w", err)
+	}
+
+	closer := func() {
+		if err := tmpdb.Close(); err != nil {
+			b.lg.Warn("failed to close defragmented snapshot db", zap.Error(err))
+		}
+		removeTemp()
+	}
+
+	err = bolt.Compact(tmpdb, b.db, defragTxMaxBytes)
+	if err != nil {
+		closer()
+		return nil, fmt.Errorf("failed to defragment snapshot: %w", err)
+	}
+
+	tx, err := tmpdb.Begin(false)
+	if err != nil {
+		closer()
+		return nil, fmt.Errorf("failed to begin tx on defragmented snapshot: %w", err)
+	}
+
+	return &defragmentedSnapshot{
+		snapshot: newSnapshot(b.lg, tx),
+		closer:   closer,
+	}, nil
 }
 
 func (b *backend) Hash(ignores func(bucketName, keyName []byte) bool) (uint32, error) {
@@ -714,6 +795,16 @@ func (s *snapshot) Close() error {
 	close(s.stopc)
 	<-s.donec
 	return s.Tx.Rollback()
+}
+
+type defragmentedSnapshot struct {
+	snapshot
+	closer func()
+}
+
+func (s *defragmentedSnapshot) Close() error {
+	defer s.closer()
+	return s.snapshot.Close()
 }
 
 func newBoltLoggerZap(bcfg BackendConfig) bolt.Logger {

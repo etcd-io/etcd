@@ -169,6 +169,11 @@ type ClusterConfig struct {
 	LeaseCheckpointInterval time.Duration
 	LeaseCheckpointPersist  bool
 
+	// ServerFeatureGates is a comma-separated list of feature=bool pairs
+	// applied to every member's server feature gate, in addition to the
+	// gates derived from other ClusterConfig fields (e.g. EnableLeaseCheckpoint).
+	ServerFeatureGates string
+
 	WatchProgressNotifyInterval time.Duration
 	MaxLearners                 int
 	DisableStrictReconfigCheck  bool
@@ -282,6 +287,7 @@ func (c *Cluster) MustNewMember(t testutil.TB) *Member {
 			EnableLeaseCheckpoint:       c.Cfg.EnableLeaseCheckpoint,
 			LeaseCheckpointInterval:     c.Cfg.LeaseCheckpointInterval,
 			LeaseCheckpointPersist:      c.Cfg.LeaseCheckpointPersist,
+			ServerFeatureGates:          c.Cfg.ServerFeatureGates,
 			WatchProgressNotifyInterval: c.Cfg.WatchProgressNotifyInterval,
 			MaxLearners:                 c.Cfg.MaxLearners,
 			DisableStrictReconfigCheck:  c.Cfg.DisableStrictReconfigCheck,
@@ -612,6 +618,7 @@ type MemberConfig struct {
 	EnableLeaseCheckpoint       bool
 	LeaseCheckpointInterval     time.Duration
 	LeaseCheckpointPersist      bool
+	ServerFeatureGates          string
 	WatchProgressNotifyInterval time.Duration
 	MaxLearners                 int
 	DisableStrictReconfigCheck  bool
@@ -736,6 +743,9 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
 	m.ServerFeatureGate = features.NewDefaultServerFeatureGate(m.Name, m.Logger)
 	featureGates := fmt.Sprintf("LeaseCheckpoint=%v,LeaseCheckpointPersist=%v", mcfg.EnableLeaseCheckpoint, mcfg.LeaseCheckpointPersist)
+	if mcfg.ServerFeatureGates != "" {
+		featureGates += "," + mcfg.ServerFeatureGates
+	}
 	if err := m.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(featureGates); err != nil {
 		t.Fatalf("Set FeatureGate FAILED: %v", err)
 	}
