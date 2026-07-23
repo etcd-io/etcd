@@ -31,6 +31,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/protobuf/testing/protocmp"
 
@@ -1123,6 +1124,53 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 	_, err = ValidSnapshotEntries(zaptest.NewLogger(t), p)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestValidSnapshotEntriesRetryOnTransientNotExist(t *testing.T) {
+	p := t.TempDir()
+	snap1 := walpb.Snapshot{Index: new(uint64(1)), Term: new(uint64(1)), ConfState: &confState}
+	state1 := raftpb.HardState{Commit: new(uint64(1)), Term: new(uint64(1))}
+	snap2 := walpb.Snapshot{Index: new(uint64(2)), Term: new(uint64(1)), ConfState: &confState}
+	state2 := raftpb.HardState{Commit: new(uint64(2)), Term: new(uint64(1))}
+
+	func() {
+		w, err := Create(zaptest.NewLogger(t), p, nil)
+		require.NoError(t, err)
+		defer w.Close()
+
+		err = w.SaveSnapshot(&snap1)
+		require.NoError(t, err)
+		err = w.Save(&state1, nil)
+		require.NoError(t, err)
+		err = w.SaveSnapshot(&snap2)
+		require.NoError(t, err)
+		err = w.Save(&state2, nil)
+		require.NoError(t, err)
+	}()
+
+	expected, err := ValidSnapshotEntries(zaptest.NewLogger(t), p)
+	require.NoError(t, err)
+
+	originalOpen := openWALFilesFn
+	t.Cleanup(func() {
+		openWALFilesFn = originalOpen
+	})
+
+	injected := false
+	openWALFilesFn = func(lg *zap.Logger, dirpath string, names []string, nameIndex int, write bool) ([]fileutil.FileReader, []*fileutil.LockedFile, func() error, error) {
+		if !injected {
+			injected = true
+			return nil, nil, nil, &os.PathError{Op: "open", Path: filepath.Join(dirpath, names[nameIndex]), Err: os.ErrNotExist}
+		}
+		return originalOpen(lg, dirpath, names, nameIndex, write)
+	}
+
+	got, err := ValidSnapshotEntries(zaptest.NewLogger(t), p)
+	require.NoError(t, err)
+
+	if diff := cmp.Diff(expected, got, protocmp.Transform()); diff != "" {
+		t.Errorf("walSnaps mismatch (-want +got):\n%s", diff)
 	}
 }
 
