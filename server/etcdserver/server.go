@@ -377,7 +377,14 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}()
 	if num := cfg.AutoCompactionRetention; num != 0 {
-		srv.compactor, err = v3compactor.New(cfg.Logger, cfg.AutoCompactionMode, num, srv.kv, srv)
+		// The auto-periodic compactor keys off the effective backend quota
+		// (the storage default of 2 GiB when unset); the periodic and revision
+		// modes ignore it.
+		quotaBytes := cfg.QuotaBackendBytes
+		if quotaBytes <= 0 {
+			quotaBytes = serverstorage.DefaultQuotaBytes
+		}
+		srv.compactor, err = v3compactor.New(cfg.Logger, cfg.AutoCompactionMode, num, srv.kv, srv, srv.be, quotaBytes)
 		if err != nil {
 			return nil, err
 		}
