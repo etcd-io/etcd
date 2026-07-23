@@ -113,9 +113,7 @@ func (tc hashTestCase) Defrag(ctx context.Context) error {
 }
 
 func (tc hashTestCase) Compact(ctx context.Context, rev int64) error {
-	_, err := tc.Client.Compact(ctx, rev)
-	// Wait for compaction to be compacted
-	time.Sleep(50 * time.Millisecond)
+	_, err := tc.Client.Compact(ctx, rev, clientv3.WithCompactPhysical())
 	return err
 }
 
