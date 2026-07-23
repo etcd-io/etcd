@@ -49,7 +49,13 @@ sed "${sed_no_backup[@]}" '1i\
 # Include all submodules from the repository.
 # Use while-read loop for portability (dirname -z is GNU-specific, not available on macOS)
 git ls-files -z ':(glob)**/go.mod' | while IFS= read -r -d '' modfile; do
-    go work edit -use "$(dirname "$modfile")"
+    moddir=$(dirname "$modfile")
+    # tools/sbom is intentionally outside the workspace: syft pulls in deps
+    # that conflict with the workspace-wide versions enforced by verify-dep.
+    if [ "$moddir" = "tools/sbom" ]; then
+        continue
+    fi
+    go work edit -use "$moddir"
 done
 
 go work edit -toolchain "go$(cat .go-version)"
