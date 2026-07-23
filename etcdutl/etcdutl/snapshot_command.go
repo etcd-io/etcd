@@ -22,6 +22,7 @@ import (
 
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 )
@@ -75,7 +76,7 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&restoreDataDir, "data-dir", "", "Path to the output data directory")
 	cmd.Flags().StringVar(&restoreWALDir, "wal-dir", "", "Path to the WAL directory (use --data-dir if none given)")
 	cmd.Flags().StringVar(&restoreCluster, "initial-cluster", initialClusterFromName(defaultName), "Initial cluster configuration for restore bootstrap")
-	cmd.Flags().StringVar(&restoreClusterToken, "initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during restore bootstrap")
+	cmd.Flags().StringVar(&restoreClusterToken, "initial-cluster-token", embed.DefaultInitialClusterToken, "Initial cluster token for the etcd cluster during restore bootstrap")
 	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster")
 	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member")
 	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
