@@ -15,7 +15,7 @@ updates:
     schedule:
       interval: weekly
     allow:
-      - dependency-type: all
+      - dependency-type: direct
 
   - package-ecosystem: gomod
     directory: /tools/mod # Not linked from /go.mod
@@ -31,12 +31,6 @@ updates:
 
   - package-ecosystem: docker
     directory: /
-    target-branch: "release-3.4"
-    schedule:
-      interval: monthly
-
-  - package-ecosystem: docker
-    directory: /
     target-branch: "release-3.5"
     schedule:
       interval: monthly
@@ -44,6 +38,12 @@ updates:
   - package-ecosystem: docker
     directory: /
     target-branch: "release-3.6"
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /
+    target-branch: "release-3.7"
     schedule:
       interval: monthly
 
