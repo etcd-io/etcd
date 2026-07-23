@@ -362,6 +362,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	mvccStoreConfig := mvcc.StoreConfig{
 		CompactionBatchLimit:    cfg.CompactionBatchLimit,
 		CompactionSleepInterval: cfg.CompactionSleepInterval,
+		IndexDrivenCompaction:   cfg.ServerFeatureGate.Enabled(features.IndexDrivenCompaction),
 	}
 	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvccStoreConfig)
 	srv.corruptionChecker = newCorruptionChecker(cfg.Logger, srv, srv.kv.HashStorage())

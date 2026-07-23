@@ -15,14 +15,20 @@
 package mvcc
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
@@ -104,6 +110,184 @@ func TestScheduleCompaction(t *testing.T) {
 
 		cleanup(s, b)
 	}
+}
+
+// TestScheduleCompactionIndexDriven verifies that index-driven compaction leaves
+// exactly the same key bucket as the standard compaction for the same data and
+// compaction revision. This is the data-consistency check between the two
+// implementations, and in particular exercises deletion of tombstone-marked
+// revisions, whose backend keys differ in length from normal revisions.
+func TestScheduleCompactionIndexDriven(t *testing.T) {
+	tcs := []struct {
+		name string
+		ops  func(s *store)
+		rev  int64
+	}{
+		{
+			name: "overwrites only",
+			ops: func(s *store) {
+				s.Put([]byte("foo"), []byte("bar0"), lease.NoLease) // rev 2
+				s.Put([]byte("foo"), []byte("bar1"), lease.NoLease) // rev 3
+				s.Put([]byte("foo"), []byte("bar2"), lease.NoLease) // rev 4
+			},
+			rev: 3,
+		},
+		{
+			name: "keep tombstone",
+			ops: func(s *store) {
+				s.Put([]byte("foo"), []byte("bar0"), lease.NoLease) // rev 2
+				s.Put([]byte("foo"), []byte("bar1"), lease.NoLease) // rev 3
+				s.DeleteRange([]byte("foo"), nil)                   // rev 4 (tombstone)
+			},
+			rev: 4,
+		},
+		{
+			name: "drop key including tombstone",
+			ops: func(s *store) {
+				s.Put([]byte("foo"), []byte("bar0"), lease.NoLease) // rev 2
+				s.DeleteRange([]byte("foo"), nil)                   // rev 3 (tombstone)
+				s.Put([]byte("other"), []byte("v"), lease.NoLease)  // rev 4
+			},
+			rev: 4,
+		},
+		{
+			name: "delete tombstone across generations",
+			ops: func(s *store) {
+				s.Put([]byte("k"), []byte("1"), lease.NoLease) // rev 2
+				s.DeleteRange([]byte("k"), nil)                // rev 3 (tombstone)
+				s.Put([]byte("k"), []byte("2"), lease.NoLease) // rev 4
+				s.DeleteRange([]byte("k"), nil)                // rev 5 (tombstone)
+				s.Put([]byte("k"), []byte("3"), lease.NoLease) // rev 6
+			},
+			rev: 5,
+		},
+		{
+			name: "multiple keys mixed",
+			ops: func(s *store) {
+				s.Put([]byte("a"), []byte("1"), lease.NoLease) // rev 2
+				s.Put([]byte("b"), []byte("1"), lease.NoLease) // rev 3
+				s.Put([]byte("a"), []byte("2"), lease.NoLease) // rev 4
+				s.DeleteRange([]byte("b"), nil)                // rev 5 (tombstone)
+				s.Put([]byte("c"), []byte("1"), lease.NoLease) // rev 6
+				s.Put([]byte("a"), []byte("3"), lease.NoLease) // rev 7
+			},
+			rev: 6,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			standard := compactKeyBucket(t, tc.ops, tc.rev, false)
+			indexDriven := compactKeyBucket(t, tc.ops, tc.rev, true)
+			require.Equal(t, standard, indexDriven, "index-driven compaction diverged from standard")
+		})
+	}
+}
+
+func BenchmarkScheduleCompaction(b *testing.B) {
+	for _, tc := range []struct {
+		name string
+		opts compactBenchmarkOptions
+	}{
+		{
+			name: "single-key-overwrites",
+			opts: compactBenchmarkOptions{keys: 1, revisions: 10000, compactRev: 10000},
+		},
+		{
+			name: "many-key-overwrites",
+			opts: compactBenchmarkOptions{keys: 1000, revisions: 10000, compactRev: 10000},
+		},
+		{
+			name: "mostly-live",
+			opts: compactBenchmarkOptions{keys: 10000, revisions: 10000, compactRev: 10000},
+		},
+	} {
+		b.Run(tc.name+"/standard", func(b *testing.B) {
+			benchmarkScheduleCompaction(b, tc.opts, false)
+		})
+		b.Run(tc.name+"/index-driven", func(b *testing.B) {
+			benchmarkScheduleCompaction(b, tc.opts, true)
+		})
+	}
+}
+
+type compactBenchmarkOptions struct {
+	keys       int
+	revisions  int
+	compactRev int64
+}
+
+func benchmarkScheduleCompaction(b *testing.B, opts compactBenchmarkOptions, indexDriven bool) {
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		be := newBenchmarkBackend(b)
+		s := NewStore(zap.NewNop(), be, &lease.FakeLessor{}, StoreConfig{
+			CompactionBatchLimit: opts.revisions + 1,
+		})
+		for rev := 0; rev < opts.revisions; rev++ {
+			key := []byte(fmt.Sprintf("key-%08d", rev%opts.keys))
+			value := []byte(fmt.Sprintf("value-%08d", rev))
+			s.Put(key, value, lease.NoLease)
+		}
+		b.StartTimer()
+
+		var err error
+		if indexDriven {
+			_, err = s.scheduleCompactionIndexDriven(opts.compactRev, 0)
+		} else {
+			_, err = s.scheduleCompaction(opts.compactRev, 0)
+		}
+
+		b.StopTimer()
+		require.NoError(b, err)
+		cleanup(s, be)
+	}
+}
+
+func newBenchmarkBackend(b *testing.B) backend.Backend {
+	b.Helper()
+	dir, err := os.MkdirTemp(b.TempDir(), "etcd_backend_bench")
+	require.NoError(b, err)
+	cfg := backend.DefaultBackendConfig(zap.NewNop())
+	cfg.Path = filepath.Join(dir, "database")
+	return backend.New(cfg)
+}
+
+// compactKeyBucket builds a store, applies ops, compacts at rev using either
+// the standard or the index-driven path, and returns the remaining key bucket.
+func compactKeyBucket(t *testing.T, ops func(s *store), rev int64, indexDriven bool) map[string]string {
+	t.Helper()
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	ops(s)
+
+	var err error
+	if indexDriven {
+		_, err = s.scheduleCompactionIndexDriven(rev, 0)
+	} else {
+		_, err = s.scheduleCompaction(rev, 0)
+	}
+	require.NoError(t, err)
+
+	return readKeyBucket(t, b)
+}
+
+// readKeyBucket returns all committed key/value pairs in the key bucket.
+func readKeyBucket(t *testing.T, b backend.Backend) map[string]string {
+	t.Helper()
+	b.ForceCommit()
+	got := map[string]string{}
+	tx := b.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	err := tx.UnsafeForEach(schema.Key, func(k, v []byte) error {
+		got[string(k)] = string(v)
+		return nil
+	})
+	require.NoError(t, err)
+	return got
 }
 
 func TestCompactAllAndRestore(t *testing.T) {
