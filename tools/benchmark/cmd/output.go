@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 package cmd
+
 import (
 	"fmt"
-	"os"
 	"go.etcd.io/etcd/pkg/v3/report"
+	"os"
 )
+
 var outputFormat string
+
 func init() {
 	RootCmd.PersistentFlags().StringVar(&outputFormat, "output-format", "text",
 		`Output format for benchmark results. One of: "text" (default) or "json".`)
 }
+
 // printReport writes benchmark statistics to stdout in the format chosen by
 // --output-format. All sub-commands should call this function instead of
 // printing report.Run() output directly so that JSON support is automatic.

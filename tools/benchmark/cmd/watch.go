@@ -150,7 +150,6 @@ func benchMakeWatches(clients []*clientv3.Client, wk *watchedKeys) {
 		}
 	}()
 
-
 	wg.Wait()
 	bar.Finish()
 	close(r.Results())
@@ -229,7 +228,6 @@ func benchPutWatches(clients []*clientv3.Client, wk *watchedKeys) {
 			}
 		}(cc)
 	}
-
 
 	wg.Wait()
 	bar.Finish()

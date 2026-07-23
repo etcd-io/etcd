@@ -95,7 +95,6 @@ func watchGetFunc(cmd *cobra.Command, _ []string) {
 		go doUnsyncWatch(streams[i%len(streams)], watchRev, f)
 	}
 
-
 	wg.Wait()
 	cancel()
 	bar.Finish()

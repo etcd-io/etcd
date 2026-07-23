@@ -72,7 +72,6 @@ func leaseKeepaliveFunc(cmd *cobra.Command, _ []string) {
 		close(requests)
 	})
 
-
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()

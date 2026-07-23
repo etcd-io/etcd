@@ -178,7 +178,6 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		close(requests)
 	}()
 
-
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()
