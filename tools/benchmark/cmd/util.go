@@ -17,6 +17,7 @@ package cmd
 import (
 	"crypto/rand"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -115,10 +116,17 @@ func newReport(benchmarkOp string) report.Report {
 	if precise {
 		p = "%g"
 	}
+	opts, sampler := reportOptions(benchmarkOp)
+	var r report.Report
 	if sample {
-		return report.NewReportSample(p, benchmarkOp, generatePerfReport)
+		r = report.NewReportSampleWithOptions(p, benchmarkOp, opts)
+	} else {
+		r = report.NewReportWithOptions(p, benchmarkOp, opts)
 	}
-	return report.NewReport(p, benchmarkOp, generatePerfReport)
+	if sampler != nil {
+		return newBenchmarkReport(r, sampler)
+	}
+	return r
 }
 
 func newWeightedReport(benchmarkOp string) report.Report {
@@ -126,8 +134,62 @@ func newWeightedReport(benchmarkOp string) report.Report {
 	if precise {
 		p = "%g"
 	}
+	opts, sampler := reportOptions(benchmarkOp)
+	var r report.Report
 	if sample {
-		return report.NewReportSample(p, benchmarkOp, generatePerfReport)
+		r = report.NewReportSampleWithOptions(p, benchmarkOp, opts)
+	} else {
+		base := report.NewReportWithOptions(p, benchmarkOp, opts)
+		r = report.NewWeightedReport(base, p, benchmarkOp, generatePerfReport)
 	}
-	return report.NewWeightedReport(report.NewReport(p, benchmarkOp, generatePerfReport), p, benchmarkOp, generatePerfReport)
+	if sampler != nil {
+		return newBenchmarkReport(r, sampler)
+	}
+	return r
+}
+
+func reportOptions(benchmarkOp string) (report.Options, *metricSampler) {
+	opts := report.Options{GeneratePerfReport: generatePerfReport}
+	metricsURL := metricsEndpointURL()
+	if metricsURL == "" || len(metrics) == 0 {
+		return opts, nil
+	}
+	sampler := newMetricSampler(metricsURL, metrics)
+	opts.MetricSummaries = func() []report.MetricSummary {
+		summaries, timeSeries := sampler.stop()
+		if len(timeSeries) > 0 {
+			writeTimeSeriesReport(benchmarkOp, "resource", timeSeries)
+		}
+		return summaries
+	}
+	return opts, sampler
+}
+
+func metricsEndpointURL() string {
+	if len(endpoints) == 0 {
+		return ""
+	}
+	endpoint := strings.TrimSpace(endpoints[0])
+	if endpoint == "" {
+		return ""
+	}
+	scheme := "http"
+	if !tls.Empty() {
+		scheme = "https"
+	}
+	if strings.Contains(endpoint, "://") {
+		u, err := url.Parse(endpoint)
+		if err != nil {
+			return ""
+		}
+		u.Path = "/metrics"
+		u.RawQuery = ""
+		u.Fragment = ""
+		return u.String()
+	}
+	return (&url.URL{
+		Scheme: scheme,
+		Host:   endpoint,
+		Path:   "/metrics",
+	}).String()
 }
