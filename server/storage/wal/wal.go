@@ -593,6 +593,15 @@ func (w *WAL) ReadAll() (metadata []byte, state *raftpb.HardState, ents []*raftp
 	return metadata, state, ents, err
 }
 
+func (w *WAL) LatestSnapshotEntry() (*walpb.Snapshot, error) {
+	walSnaps, err := ValidSnapshotEntries(w.lg, w.dir)
+	if err != nil || len(walSnaps) == 0 {
+		return &walpb.Snapshot{}, err
+	}
+
+	return walSnaps[len(walSnaps)-1], nil
+}
+
 // ValidSnapshotEntries returns all the valid snapshot entries in the wal logs in the given directory.
 // Snapshot entries are valid if their index is less than or equal to the most recent committed hardstate.
 func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]*walpb.Snapshot, error) {
