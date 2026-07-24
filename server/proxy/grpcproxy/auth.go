@@ -56,6 +56,12 @@ func (ap *AuthProxy) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) 
 	return resp, err
 }
 
+// flushCacheOnMutation drops every cached entry after a successful auth
+// mutation so no principal can keep reading data cached under stale
+// permissions. Note that the proxy only observes auth changes that pass
+// through it: permission changes applied directly against the backend
+// bypass this hook and leave a stale-read window for the same token until
+// the affected entries are evicted.
 func (ap *AuthProxy) flushCacheOnMutation(err error) {
 	if err == nil && ap.cache != nil {
 		ap.cache.Clear()
