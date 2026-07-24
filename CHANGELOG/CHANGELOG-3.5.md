@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.33 (TBC)
+## v3.5.34 (TBC)
+
+---
+
+## v3.5.33 (2026-07-23)
 
 ### etcd server
 
@@ -19,12 +23,13 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### package `client/pkg/v3`
 
-- [Set a tlsHandshakeTimeout for tlsListener](https://github.com/etcd-io/etcd/pull/22160)
+- [Set a tlsHandshakeTimeout for tlsListener](https://github.com/etcd-io/etcd/pull/22160). Refer to [GHSA-6vch-q96h-7gc3](https://github.com/etcd-io/etcd/security/advisories/GHSA-6vch-q96h-7gc3) for more details.
 
 ### Dependencies
 
 - Compile binaries using [go 1.25.12](https://github.com/etcd-io/etcd/pull/22061).
 - [Bump golang.org/x/net to v0.56.0 to address GO-2026-5942 and golang.org/x/text to v0.39.0 to address GO-2026-5970](https://github.com/etcd-io/etcd/pull/22138)
+- [Bump google.golang.org/grpc to 1.82.1 to address GHSA-hrxh-6v49-42gf](https://github.com/etcd-io/etcd/pull/22153)
 
 ---
 
