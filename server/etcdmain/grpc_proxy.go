@@ -54,6 +54,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
+	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache"
 )
 
 var (
@@ -498,7 +499,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	leasep, _ := grpcproxy.NewLeaseProxy(client.Ctx(), client)
 
 	mainp := grpcproxy.NewMaintenanceProxy(client)
-	authp := grpcproxy.NewAuthProxy(client)
+	authp := grpcproxy.NewAuthProxy(client, kvp.(interface{ Cache() cache.Cache }).Cache())
 	electionp := grpcproxy.NewElectionProxy(client)
 	lockp := grpcproxy.NewLockProxy(client)
 

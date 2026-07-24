@@ -16,6 +16,8 @@ package grpcproxy
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 
 	"google.golang.org/grpc/codes"
@@ -34,6 +36,11 @@ type kvProxy struct {
 	pb.UnsafeKVServer
 }
 
+// KvProxy is the concrete KV proxy implementation returned by NewKvProxy.
+// It is exported so that the auth proxy can be wired to the same cache
+// instance (see NewAuthProxy).
+type KvProxy = kvProxy
+
 func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {
 	kv := &kvProxy{
 		kv:    c.KV,
@@ -44,9 +51,43 @@ func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {
 	return kv, donec
 }
 
+// NewKvProxyWithCache returns a KV proxy backed by the given cache instance.
+// Useful when the caller needs to share the cache with another proxy (e.g.
+// the auth proxy for flush-on-mutation) without type-asserting the concrete
+// implementation.
+func NewKvProxyWithCache(c *clientv3.Client, cache cache.Cache) (pb.KVServer, <-chan struct{}) {
+	kv := &kvProxy{
+		kv:    c.KV,
+		cache: cache,
+	}
+	donec := make(chan struct{})
+	close(donec)
+	return kv, donec
+}
+
+// Cache returns the underlying cache instance. Exposed for tests and for
+// wiring the auth proxy to the same cache.
+func (p *kvProxy) Cache() cache.Cache {
+	return p.cache
+}
+
+// authCacheKey derives the cache-key identity of the caller from the incoming
+// context. Two different credentials never share a cache entry, so a response
+// cached for one principal can never be replayed to another. The raw token is
+// hashed so the LRU never holds credentials in plaintext.
+func authCacheKey(ctx context.Context) string {
+	token := getAuthTokenFromClient(ctx)
+	if token == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
 func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	authKey := authCacheKey(ctx)
 	if r.Serializable {
-		resp, err := p.cache.Get(r)
+		resp, err := p.cache.Get(r, authKey)
 		switch {
 		case err == nil:
 			cacheHits.Inc()
@@ -69,7 +110,7 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 	req := proto.Clone(r).(*pb.RangeRequest)
 	req.Serializable = true
 	gresp := (*pb.RangeResponse)(resp.Get())
-	p.cache.Add(req, gresp)
+	p.cache.Add(req, gresp, authKey)
 	cacheKeys.Set(float64(p.cache.Size()))
 
 	return gresp, nil
@@ -95,7 +136,7 @@ func (p *kvProxy) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*p
 	return (*pb.DeleteRangeResponse)(resp.Del()), err
 }
 
-func (p *kvProxy) txnToCache(reqs []*pb.RequestOp, resps []*pb.ResponseOp) {
+func (p *kvProxy) txnToCache(reqs []*pb.RequestOp, resps []*pb.ResponseOp, authKey string) {
 	for i := range resps {
 		switch tv := resps[i].Response.(type) {
 		case *pb.ResponseOp_ResponsePut:
@@ -106,7 +147,7 @@ func (p *kvProxy) txnToCache(reqs []*pb.RequestOp, resps []*pb.ResponseOp) {
 		case *pb.ResponseOp_ResponseRange:
 			req := *(reqs[i].GetRequestRange())
 			req.Serializable = true
-			p.cache.Add(&req, tv.ResponseRange)
+			p.cache.Add(&req, tv.ResponseRange, authKey)
 		}
 	}
 }
@@ -124,10 +165,11 @@ func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 		p.cache.Invalidate(cmp.Key, cmp.RangeEnd)
 	}
 	// update any fetched keys
+	authKey := authCacheKey(ctx)
 	if resp.Succeeded {
-		p.txnToCache(r.Success, resp.Responses)
+		p.txnToCache(r.Success, resp.Responses, authKey)
 	} else {
-		p.txnToCache(r.Failure, resp.Responses)
+		p.txnToCache(r.Failure, resp.Responses, authKey)
 	}
 
 	cacheKeys.Set(float64(p.cache.Size()))
