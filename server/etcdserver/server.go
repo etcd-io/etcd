@@ -956,7 +956,12 @@ func (s *EtcdServer) Cleanup() {
 		s.authStore.Close()
 	}
 	if s.be != nil {
+		// Hold the bemu lock so that in-flight readers of the backend
+		// (e.g. StorageVersion) finish before it is closed, and readers
+		// arriving afterwards observe s.stopping as closed.
+		s.bemu.Lock()
 		s.be.Close()
+		s.bemu.Unlock()
 	}
 	if s.compactor != nil {
 		s.compactor.Stop()
@@ -2189,6 +2194,16 @@ func (s *EtcdServer) StorageVersion() *semver.Version {
 	// `applySnapshot` sets a new backend instance, so we need to acquire the bemu lock.
 	s.bemu.RLock()
 	defer s.bemu.RUnlock()
+
+	// Cleanup closes the backend while holding the bemu lock after s.stopping
+	// has been closed, so checking s.stopping under the lock guarantees the
+	// backend is not read after it has been closed. Reading from a closed
+	// backend would panic.
+	select {
+	case <-s.stopping:
+		return nil
+	default:
+	}
 
 	v, err := schema.DetectSchemaVersion(s.lg, s.be.ReadTx())
 	if err != nil {
