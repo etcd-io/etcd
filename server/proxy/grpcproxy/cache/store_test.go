@@ -16,6 +16,7 @@ package cache
 
 import (
 	"testing"
+	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -115,5 +116,58 @@ func TestKeyFuncDeterministic(t *testing.T) {
 	}
 	if k1 == k4 {
 		t.Fatal("identity vs no-identity must produce different keys")
+	}
+}
+
+func TestCacheEntryExpiry(t *testing.T) {
+	// Create a cache with a very short TTL for testing
+	c := NewCacheWithTTL(10, 50*time.Millisecond)
+	defer c.Close()
+
+	req := &pb.RangeRequest{Key: []byte("k"), Serializable: true}
+	resp := &pb.RangeResponse{Header: &pb.ResponseHeader{Revision: 1}}
+
+	c.Add(req, resp, "alice")
+
+	// Entry should be available immediately
+	if _, err := c.Get(req, "alice"); err != nil {
+		t.Fatalf("expected cache hit before expiry, got %v", err)
+	}
+
+	// Wait for entry to expire
+	time.Sleep(60 * time.Millisecond)
+
+	// Entry should now be expired
+	_, err := c.Get(req, "alice")
+	if err == nil {
+		t.Fatal("expected cache miss after expiry")
+	}
+	if err.Error() != "entry expired" {
+		t.Fatalf("expected 'entry expired' error, got %v", err)
+	}
+
+	// Cache should still accept new entries
+	c.Add(req, resp, "alice")
+	if _, err := c.Get(req, "alice"); err != nil {
+		t.Fatalf("expected cache hit after re-Add, got %v", err)
+	}
+}
+
+func TestCacheNoExpiryWhenTTLZero(t *testing.T) {
+	// Create a cache with no TTL (0 means no expiry)
+	c := NewCacheWithTTL(10, 0)
+	defer c.Close()
+
+	req := &pb.RangeRequest{Key: []byte("k"), Serializable: true}
+	resp := &pb.RangeResponse{Header: &pb.ResponseHeader{Revision: 1}}
+
+	c.Add(req, resp, "alice")
+
+	// Wait a bit
+	time.Sleep(60 * time.Millisecond)
+
+	// Entry should still be available (no expiry)
+	if _, err := c.Get(req, "alice"); err != nil {
+		t.Fatalf("expected cache hit with no TTL, got %v", err)
 	}
 }

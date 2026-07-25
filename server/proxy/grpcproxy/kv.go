@@ -19,6 +19,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -45,6 +46,19 @@ func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {
 	kv := &kvProxy{
 		kv:    c.KV,
 		cache: cache.NewCache(cache.DefaultMaxEntries),
+	}
+	donec := make(chan struct{})
+	close(donec)
+	return kv, donec
+}
+
+// NewKvProxyWithTTL returns a KV proxy with a cache that expires entries
+// after the given TTL. The TTL should match or be slightly less than the
+// backend auth token TTL to prevent serving stale reads after token expiry.
+func NewKvProxyWithTTL(c *clientv3.Client, ttl time.Duration) (pb.KVServer, <-chan struct{}) {
+	kv := &kvProxy{
+		kv:    c.KV,
+		cache: cache.NewCacheWithTTL(cache.DefaultMaxEntries, ttl),
 	}
 	donec := make(chan struct{})
 	close(donec)
