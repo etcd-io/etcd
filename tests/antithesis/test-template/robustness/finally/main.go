@@ -74,6 +74,10 @@ func assertResult(result validate.Result, name string) {
 	case validate.Success, validate.Failure:
 		assert.Always(result.Status == validate.Success, name, map[string]any{"msg": result.Message})
 	default:
-		assert.Unreachable(name, map[string]any{"error": result.Error().Error()})
+		details := map[string]any{"status": result.Status, "msg": result.Message}
+		if err := result.Error(); err != nil {
+			details["error"] = err.Error()
+		}
+		assert.Unreachable(name, details)
 	}
 }
