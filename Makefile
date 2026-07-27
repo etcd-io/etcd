@@ -197,6 +197,10 @@ bin/trivy: bin/trivy-$(TRIVY_VERSION)
 bin/trivy-$(TRIVY_VERSION):
 	curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b ./bin/trivy-$(TRIVY_VERSION) $(TRIVY_VERSION)
 
+.PHONY: run-trivy-image-scan
+run-trivy-image-scan: install-trivy
+	./scripts/run_trivy_image_scan.sh $(VERSION)
+
 .PHONY: install-lazyfs
 install-lazyfs: bin/lazyfs
 bin/lazyfs:
