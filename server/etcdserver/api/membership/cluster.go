@@ -16,6 +16,7 @@ package membership
 
 import (
 	"context"
+	"crypto/fips140"
 	"crypto/sha1"
 	"encoding/binary"
 	"encoding/json"
@@ -234,7 +235,14 @@ func (c *RaftCluster) genID() {
 	for i, id := range mIDs {
 		binary.BigEndian.PutUint64(b[8*i:], uint64(id))
 	}
-	hash := sha1.Sum(b)
+	// SHA-1 here is used only to derive a numeric cluster ID from the set of
+	// member IDs, not for any cryptographic (auth/integrity/confidentiality)
+	// purpose, so it is exempt from FIPS 140-only enforcement. Swapping the
+	// hash would also change cluster IDs for existing deployments.
+	var hash [20]byte
+	fips140.WithoutEnforcement(func() {
+		hash = sha1.Sum(b)
+	})
 	c.cid = types.ID(binary.BigEndian.Uint64(hash[:8]))
 }
 

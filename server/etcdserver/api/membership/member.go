@@ -15,6 +15,7 @@
 package membership
 
 import (
+	"crypto/fips140"
 	"crypto/sha1"
 	"encoding/binary"
 	"fmt"
@@ -71,7 +72,15 @@ func computeMemberID(peerURLs types.URLs, clusterName string, now *time.Time) ty
 		b = append(b, []byte(fmt.Sprintf("%d", now.Unix()))...)
 	}
 
-	hash := sha1.Sum(b)
+	// SHA-1 here is used only to derive a numeric member ID from the peer
+	// URLs/cluster name/timestamp, not for any cryptographic (auth/integrity/
+	// confidentiality) purpose, so it is exempt from FIPS 140-only
+	// enforcement. Swapping the hash would also change member IDs for
+	// existing deployments.
+	var hash [20]byte
+	fips140.WithoutEnforcement(func() {
+		hash = sha1.Sum(b)
+	})
 	return types.ID(binary.BigEndian.Uint64(hash[:8]))
 }
 
