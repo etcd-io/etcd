@@ -189,6 +189,14 @@ run-govulncheck:
 install-golangci-lint:
 	./scripts/verify_golangci-lint_version.sh
 
+TRIVY_VERSION = $(shell cut -d: -f2 tools/container-images/trivy/Dockerfile | sed 's/^/v/')
+.PHONY: install-trivy
+install-trivy: bin/trivy
+bin/trivy: bin/trivy-$(TRIVY_VERSION)
+	cd bin && ln -sf ./trivy-$(TRIVY_VERSION)/trivy
+bin/trivy-$(TRIVY_VERSION):
+	curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b ./bin/trivy-$(TRIVY_VERSION) $(TRIVY_VERSION)
+
 .PHONY: install-lazyfs
 install-lazyfs: bin/lazyfs
 bin/lazyfs:
