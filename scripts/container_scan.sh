@@ -17,9 +17,13 @@ set -euo pipefail
 
 ETCD_ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-LATEST_TAG=$(git -C "${ETCD_ROOT_DIR}" describe --tags --abbrev=0 --match 'v*')
+BRANCH=${1:-HEAD}
+FORMAT=${2:-table}
+OUTPUT=${3:-}
+
+LATEST_TAG=$(git -C "${ETCD_ROOT_DIR}" describe --tags --abbrev=0 --match 'v*' "${BRANCH}")
 if [ -z "${LATEST_TAG}" ]; then
-  echo "error: Could not extract latest tag" >&2
+  echo "error: Could not extract latest tag for ${BRANCH}" >&2
   exit 1
 fi
 IMAGE="quay.io/coreos/etcd:${LATEST_TAG}"
@@ -32,8 +36,6 @@ else
   TRIVY=trivy
 fi
 
-FORMAT=${1:-table}
-OUTPUT=${2:-}
 
 ARGS=(--severity CRITICAL,HIGH --exit-code 1 --format "${FORMAT}")
 if [ -n "${OUTPUT}" ]; then
