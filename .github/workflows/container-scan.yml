@@ -16,14 +16,6 @@
 name: Container image CVE scan
 
 on:
-  push:
-    branches: [main, release-3.4, release-3.5, release-3.6]
-    paths:
-      - Dockerfile
-  pull_request:
-    branches: [main]
-    paths:
-      - Dockerfile
   schedule:
     - cron: '20 14 * * 5'
   workflow_dispatch:
@@ -32,7 +24,7 @@ permissions: read-all
 
 jobs:
   scan:
-    name: Scan container base image for OS-level CVEs
+    name: Scan released container image for CVEs
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -40,8 +32,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
-      - name: Scan base image with Trivy
+      - name: Scan released image with Trivy
         run: |
           ./scripts/container_scan.sh sarif trivy-results.sarif
 

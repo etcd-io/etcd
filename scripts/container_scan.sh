@@ -17,11 +17,12 @@ set -euo pipefail
 
 ETCD_ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-BASE_IMAGE=$(sed -n 's/^FROM --platform=linux\/${ARCH} //p' "${ETCD_ROOT_DIR}/Dockerfile")
-if [ -z "${BASE_IMAGE}" ]; then
-  echo "error: Could not extract base image reference from Dockerfile" >&2
+LATEST_TAG=$(git -C "${ETCD_ROOT_DIR}" describe --tags --abbrev=0 --match 'v*')
+if [ -z "${LATEST_TAG}" ]; then
+  echo "error: Could not extract latest tag" >&2
   exit 1
 fi
+IMAGE="quay.io/coreos/etcd:${LATEST_TAG}"
 
 if ! command -v trivy &>/dev/null; then
   echo "Installing trivy..." >&2
@@ -39,4 +40,4 @@ if [ -n "${OUTPUT}" ]; then
   ARGS+=(--output "${OUTPUT}")
 fi
 
-exec "${TRIVY}" image "${ARGS[@]}" "${BASE_IMAGE}"
+exec "${TRIVY}" image "${ARGS[@]}" "${IMAGE}"
