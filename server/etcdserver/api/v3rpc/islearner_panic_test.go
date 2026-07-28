@@ -22,3 +22,5 @@ func TestIsLearner_PanicsWhenLocalMemberMissing(t *testing.T) {
     // "failed to find local ID in cluster members".
     _ = c.IsLocalMemberLearner()
 }
+
+// trigger
