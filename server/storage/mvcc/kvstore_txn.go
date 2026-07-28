@@ -93,6 +93,14 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 		if len(keys) == 0 {
 			return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
 		}
+		// The lessor only tracks the current lease attachment for a key, not its
+		// value at past revisions, so only fill in Lease for reads of the latest
+		// revision. Historical reads (rev < curRev) keep Lease unset, as before.
+		// Note: unlike the other fields here, GetLease reads live lessor state
+		// rather than a revision-pinned snapshot, so a concurrent attach/detach
+		// on the same key can race with this read and return a Lease reflecting
+		// a revision just ahead of ModRevision/CreateRevision/Version.
+		fillLease := tr.s.le != nil && rev == curRev
 		kvs := make([]*mvccpb.KeyValue, len(keys))
 		for i := range len(kvs) {
 			kvs[i] = &mvccpb.KeyValue{
@@ -100,6 +108,11 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 				ModRevision:    modifies[i].Main,
 				CreateRevision: creates[i].Main,
 				Version:        versions[i],
+			}
+			if fillLease {
+				if leaseID := tr.s.le.GetLease(lease.LeaseItem{Key: string(keys[i])}); leaseID != lease.NoLease {
+					kvs[i].Lease = int64(leaseID)
+				}
 			}
 		}
 		return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
