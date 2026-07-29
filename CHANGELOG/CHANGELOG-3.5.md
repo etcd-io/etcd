@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.34 (TBC)
 
+### etcdctl
+
+- [Fix duplicate `RaftTerm` field in the `endpoint status` output when using `--write-out=fields`](https://github.com/etcd-io/etcd/pull/22219)
+
 ---
 
 ## v3.5.33 (2026-07-23)
