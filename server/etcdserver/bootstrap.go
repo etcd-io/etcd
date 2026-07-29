@@ -41,6 +41,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	servererrors "go.etcd.io/etcd/server/v3/etcdserver/errors"
+	"go.etcd.io/etcd/server/v3/features"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -539,15 +540,16 @@ func bootstrapRaftFromWAL(cfg config.ServerConfig, bwal *bootstrappedWAL) *boots
 
 func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft.Config {
 	return &raft.Config{
-		ID:              id,
-		ElectionTick:    cfg.ElectionTicks,
-		HeartbeatTick:   1,
-		Storage:         s,
-		MaxSizePerMsg:   maxSizePerMsg,
-		MaxInflightMsgs: maxInflightMsgs,
-		CheckQuorum:     true,
-		PreVote:         cfg.PreVote,
-		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
+		ID:                 id,
+		ElectionTick:       cfg.ElectionTicks,
+		HeartbeatTick:      1,
+		Storage:            s,
+		MaxSizePerMsg:      maxSizePerMsg,
+		MaxInflightMsgs:    maxInflightMsgs,
+		CheckQuorum:        true,
+		PreVote:            cfg.PreVote,
+		AsyncStorageWrites: cfg.ServerFeatureGate.Enabled(features.RaftAsyncStorageWrites),
+		Logger:             NewRaftLoggerZap(cfg.Logger.Named("raft")),
 	}
 }
 
@@ -563,12 +565,14 @@ func (b *bootstrappedRaft) newRaftNode(ss *snap.Snapshotter, wal *wal.WAL, cl *m
 	raftStatusMu.Unlock()
 	return newRaftNode(
 		raftNodeConfig{
-			lg:          b.lg,
-			isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
-			Node:        n,
-			heartbeat:   b.heartbeat,
-			raftStorage: b.storage,
-			storage:     serverstorage.NewStorage(b.lg, wal, ss),
+			lg:                 b.lg,
+			isIDRemoved:        func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
+			Node:               n,
+			localID:            b.config.ID,
+			asyncStorageWrites: b.config.AsyncStorageWrites,
+			heartbeat:          b.heartbeat,
+			raftStorage:        b.storage,
+			storage:            serverstorage.NewStorage(b.lg, wal, ss),
 		},
 	)
 }

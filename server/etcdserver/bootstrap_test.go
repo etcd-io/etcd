@@ -34,16 +34,38 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/server/v3/features"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 )
+
+func TestRaftConfigAsyncStorageWritesFeatureGate(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	fg := features.NewDefaultServerFeatureGate("test", lg)
+	cfg := config.ServerConfig{
+		Logger:            lg,
+		ElectionTicks:     10,
+		ServerFeatureGate: fg,
+	}
+	if got := raftConfig(cfg, 1, raft.NewMemoryStorage()).AsyncStorageWrites; got {
+		t.Fatal("asynchronous storage writes enabled by default")
+	}
+
+	err := fg.(featuregate.MutableFeatureGate).Set("RaftAsyncStorageWrites=true")
+	require.NoError(t, err)
+	if got := raftConfig(cfg, 1, raft.NewMemoryStorage()).AsyncStorageWrites; !got {
+		t.Fatal("asynchronous storage writes disabled when feature gate is enabled")
+	}
+}
 
 func TestBootstrapExistingClusterNoWALMaxLearner(t *testing.T) {
 	tests := []struct {

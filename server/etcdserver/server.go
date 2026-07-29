@@ -982,6 +982,10 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	// storage, since the raft routine might be slower than toApply routine.
 	<-apply.notifyc
 
+	if apply.onApplied != nil {
+		apply.onApplied()
+	}
+
 	s.snapshotIfNeededAndCompactRaftLog(ep)
 	select {
 	// snapshot requested via send()
