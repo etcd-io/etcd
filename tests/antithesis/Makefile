@@ -4,6 +4,7 @@ USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
 ARCH ?= $(shell go env GOARCH)
 REF = main
+IMAGE_REPOSITORY = ""
 IMAGE_TAG = latest
 
 CFG_NODE_COUNT ?= 3
@@ -48,6 +49,7 @@ antithesis-build-etcd-image-main: antithesis-build-etcd-image
 .PHONY: antithesis-build-config-image
 antithesis-build-config-image:
 	docker build -f config/Dockerfile config -t etcd-config:latest \
+		--build-arg IMAGE_REPOSITORY=$(IMAGE_REPOSITORY) \
 		--build-arg IMAGE_TAG=$(IMAGE_TAG)
 
 .PHONY: antithesis-k8s-up

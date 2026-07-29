@@ -66,8 +66,9 @@ jobs:
           ETCD_REF: ${{ inputs.etcd_ref || 'main' }}
         run: |
           IMAGE_TAG="${ETCD_REF}_${{ github.sha }}"
-          make antithesis-build-config-image IMAGE_TAG="$IMAGE_TAG"
-          IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-config:${IMAGE_TAG}"
+          IMAGE_REPOSITORY="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/"
+          IMAGE="${IMAGE_REPOSITORY}etcd-config:${IMAGE_TAG}"
+          make antithesis-build-config-image IMAGE_REPOSITORY="$IMAGE_REPOSITORY" IMAGE_TAG="$IMAGE_TAG"
           docker tag etcd-config:latest "$IMAGE"
           docker push "$IMAGE"
 
