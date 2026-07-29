@@ -5,6 +5,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       codeql:
         patterns:
@@ -14,6 +16,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     allow:
       - dependency-type: direct
 
@@ -21,6 +25,8 @@ updates:
     directory: /tools/mod # Not linked from /go.mod
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     allow:
       - dependency-type: direct
 
@@ -28,26 +34,36 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: docker
     directory: /
     target-branch: "release-3.5"
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: docker
     directory: /
     target-branch: "release-3.6"
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: docker
     directory: /
     target-branch: "release-3.7"
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: docker
     directory: /tools/container-images/devcontainer
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
