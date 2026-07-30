@@ -29,6 +29,7 @@ jobs:
 
       - name: Build etcd-server and etcd-client images
         run: |
+          make -C tests/antithesis antithesis-build-config-image
           make -C tests/antithesis antithesis-build-etcd-image
           make -C tests/antithesis antithesis-build-client-docker-image
 
