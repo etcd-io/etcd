@@ -56,14 +56,14 @@ func TestRaftConfigAsyncStorageWritesFeatureGate(t *testing.T) {
 		ElectionTicks:     10,
 		ServerFeatureGate: fg,
 	}
-	if got := raftConfig(cfg, 1, raft.NewMemoryStorage()).AsyncStorageWrites; got {
-		t.Fatal("asynchronous storage writes enabled by default")
+	if got := raftConfig(cfg, 1, raft.NewMemoryStorage()).AsyncStorageWrites; !got {
+		t.Fatal("asynchronous storage writes disabled by default")
 	}
 
-	err := fg.(featuregate.MutableFeatureGate).Set("RaftAsyncStorageWrites=true")
+	err := fg.(featuregate.MutableFeatureGate).Set("RaftAsyncStorageWrites=false")
 	require.NoError(t, err)
-	if got := raftConfig(cfg, 1, raft.NewMemoryStorage()).AsyncStorageWrites; !got {
-		t.Fatal("asynchronous storage writes disabled when feature gate is enabled")
+	if got := raftConfig(cfg, 1, raft.NewMemoryStorage()).AsyncStorageWrites; got {
+		t.Fatal("asynchronous storage writes enabled when feature gate is disabled")
 	}
 }
 
