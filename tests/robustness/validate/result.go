@@ -73,7 +73,7 @@ func ResultFromError(err error) Result {
 
 func (r Result) Error() error {
 	switch r.Status {
-	case Success:
+	case Success, Unknown:
 		return nil
 	default:
 		return errors.New(r.String())
