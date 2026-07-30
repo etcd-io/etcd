@@ -63,19 +63,30 @@ func init() {
 	}))
 }
 
-// toApply contains entries, snapshot to be applied. Once
-// an toApply is consumed, the entries will be persisted to
-// raft storage concurrently; the application must read
-// notifyc before assuming the raft messages are stable.
+// toApply contains entries and a snapshot to apply, together with the
+// synchronization points between Raft storage and the state machine.
 type toApply struct {
 	entries  []*raftpb.Entry
 	snapshot *raftpb.Snapshot
-	// notifyc synchronizes etcd server applies with the raft node
-	notifyc chan struct{}
+	// snapshotPersistedC is closed after an incoming snapshot and its WAL
+	// metadata are durable. applySnapshot waits for it before opening the
+	// snapshot backend.
+	snapshotPersistedC <-chan struct{}
+	// raftStorageReadyC is closed after all corresponding Raft storage work,
+	// including in-memory storage updates and WAL release, is complete.
+	raftStorageReadyC <-chan struct{}
+	// applyCompletedC is closed after the state machine work and corresponding
+	// Raft storage work are both complete. The Ready loop uses it to order
+	// follower configuration-change messages after application.
+	applyCompletedC chan struct{}
 	// raftAdvancedC notifies EtcdServer.apply that
 	// 'raftLog.applied' has advanced by r.Advance
 	// it should be used only when entries contain raftpb.EntryConfChange
 	raftAdvancedC <-chan struct{}
+}
+
+func (ap *toApply) notifyApplyCompleted() {
+	close(ap.applyCompletedC)
 }
 
 type raftNode struct {
@@ -216,14 +227,18 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					}
 				}
 				committedEntries := rd.CommittedEntries
-				notifyc := make(chan struct{}, 1)
+				snapshotPersistedC := make(chan struct{})
+				raftStorageReadyC := make(chan struct{})
+				applyCompletedC := make(chan struct{})
 				raftAdvancedC := make(chan struct{}, 1)
 				raftSnap := proto.Clone(rd.Snapshot).(*raftpb.Snapshot)
 				ap := toApply{
-					entries:       committedEntries,
-					snapshot:      proto.Clone(rd.Snapshot).(*raftpb.Snapshot),
-					notifyc:       notifyc,
-					raftAdvancedC: raftAdvancedC,
+					entries:            committedEntries,
+					snapshot:           proto.Clone(rd.Snapshot).(*raftpb.Snapshot),
+					snapshotPersistedC: snapshotPersistedC,
+					raftStorageReadyC:  raftStorageReadyC,
+					applyCompletedC:    applyCompletedC,
+					raftAdvancedC:      raftAdvancedC,
 				}
 
 				updateCommittedIndex(&ap, rh)
@@ -270,8 +285,8 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 						r.lg.Fatal("failed to sync Raft snapshot", zap.Error(err))
 					}
 
-					// etcdserver now claim the snapshot has been persisted onto the disk
-					notifyc <- struct{}{}
+					// etcdserver now claims the snapshot has been persisted onto the disk.
+					close(snapshotPersistedC)
 
 					// gofail: var raftBeforeApplySnap struct{}
 					r.raftStorage.ApplySnapshot(raftSnap)
@@ -295,11 +310,13 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				}
 
 				if !islead {
-					// finish processing incoming messages before we signal notifyc chan
+					// Finish processing incoming messages before signaling that
+					// the corresponding Raft storage work is complete.
 					msgs := r.processMessages(rd.Messages)
 
-					// now unblocks 'applyAll' that waits on Raft log disk writes before triggering snapshots
-					notifyc <- struct{}{}
+					// Unblock applyAll, which waits for Raft storage before
+					// triggering local snapshots.
+					close(raftStorageReadyC)
 
 					// Candidate or follower needs to wait for all pending configuration
 					// changes to be applied before sending messages.
@@ -310,11 +327,8 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// We might improve this later on if it causes unnecessary long blocking issues.
 
 					if confChanged {
-						// blocks until 'applyAll' calls 'applyWait.Trigger'
-						// to be in sync with scheduled config-change job
-						// (assume notifyc has cap of 1)
 						select {
-						case notifyc <- struct{}{}:
+						case <-applyCompletedC:
 						case <-r.stopped:
 							return
 						}
@@ -323,8 +337,8 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// gofail: var raftBeforeFollowerSend struct{}
 					r.transport.Send(msgs)
 				} else {
-					// leader already processed 'MsgSnap' and signaled
-					notifyc <- struct{}{}
+					// The leader already processed MsgSnap.
+					close(raftStorageReadyC)
 				}
 
 				// gofail: var raftBeforeAdvance struct{}
