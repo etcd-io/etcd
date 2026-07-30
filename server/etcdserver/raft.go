@@ -15,6 +15,7 @@
 package etcdserver
 
 import (
+	"context"
 	"expvar"
 	"fmt"
 	"log"
@@ -39,6 +40,10 @@ const (
 	// Never overflow the rafthttp buffer, which is 4096.
 	// TODO: a better const?
 	maxInflightMsgs = 4096 / 8
+	// Bound the number of append messages accepted ahead of stable storage.
+	// The append worker coalesces compatible messages into a single WAL sync.
+	// This is a performance tuning value, not a Raft protocol limit.
+	asyncAppendQueueSize = 64
 )
 
 var (
@@ -75,18 +80,30 @@ type toApply struct {
 	// raftStorageReadyC is closed after all corresponding Raft storage work,
 	// including in-memory storage updates and WAL release, is complete.
 	raftStorageReadyC <-chan struct{}
+	// waitForStorageBeforeApply requires the state machine to wait for
+	// raftStorageReadyC before applying entries. Asynchronous storage writes
+	// use this to keep the durable backend consistent index from advancing
+	// beyond the durable WAL HardState commit.
+	waitForStorageBeforeApply bool
 	// applyCompletedC is closed after the state machine work and corresponding
-	// Raft storage work are both complete. The Ready loop uses it to order
-	// follower configuration-change messages after application.
+	// Raft storage work are both complete. The legacy Ready path uses it to
+	// order follower configuration-change messages after application.
 	applyCompletedC chan struct{}
-	// raftAdvancedC notifies EtcdServer.apply that
-	// 'raftLog.applied' has advanced by r.Advance
+	// raftAdvancedC notifies EtcdServer.apply that raftLog.applied has advanced
+	// through either r.Advance or a MsgStorageApplyResp.
 	// it should be used only when entries contain raftpb.EntryConfChange
 	raftAdvancedC <-chan struct{}
+	// onApplyCompleted is called immediately before applyCompletedC is closed.
+	onApplyCompleted func()
 }
 
 func (ap *toApply) notifyApplyCompleted() {
-	close(ap.applyCompletedC)
+	if ap.onApplyCompleted != nil {
+		ap.onApplyCompleted()
+	}
+	if ap.applyCompletedC != nil {
+		close(ap.applyCompletedC)
+	}
 }
 
 type raftNode struct {
@@ -102,6 +119,16 @@ type raftNode struct {
 
 	// a chan to send out apply
 	applyc chan toApply
+	// appendc carries the reliable FIFO stream of MsgStorageAppend work and
+	// apply durability barriers when asynchronous storage writes are enabled.
+	appendc chan asyncAppendWork
+	// asyncStopc stops asynchronous storage work before Raft storage is closed.
+	asyncStopc       chan struct{}
+	asyncAppendDonec chan struct{}
+	// storageResponseCtx is canceled when the Raft node stops, allowing
+	// in-flight local storage responses to stop blocking shutdown.
+	storageResponseCtx     context.Context
+	cancelStorageResponses context.CancelFunc
 
 	// a chan to send out readState
 	readStateC chan raft.ReadState
@@ -115,15 +142,22 @@ type raftNode struct {
 	done    chan struct{}
 }
 
+type asyncAppendWork struct {
+	message  *raftpb.Message
+	barrierC chan struct{}
+}
+
 type raftNodeConfig struct {
 	lg *zap.Logger
 
 	// to check if msg receiver is removed from cluster
 	isIDRemoved func(id uint64) bool
 	raft.Node
-	raftStorage *raft.MemoryStorage
-	storage     serverstorage.Storage
-	heartbeat   time.Duration // for logging
+	localID            uint64
+	asyncStorageWrites bool
+	raftStorage        *raft.MemoryStorage
+	storage            serverstorage.Storage
+	heartbeat          time.Duration // for logging
 	// transport specifies the transport to send and receive msgs to members.
 	// Sending messages MUST NOT block. It is okay to drop messages, since
 	// clients should timeout and reissue their messages.
@@ -144,19 +178,25 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 		}
 	}
 	raft.SetLogger(lg)
+	storageResponseCtx, cancelStorageResponses := context.WithCancel(context.Background())
 	r := &raftNode{
-		lg:             cfg.lg,
-		tickMu:         new(sync.RWMutex),
-		raftNodeConfig: cfg,
-		latestTickTs:   time.Now(),
+		lg:                     cfg.lg,
+		tickMu:                 new(sync.RWMutex),
+		raftNodeConfig:         cfg,
+		latestTickTs:           time.Now(),
+		storageResponseCtx:     storageResponseCtx,
+		cancelStorageResponses: cancelStorageResponses,
 		// set up contention detectors for raft heartbeat message.
 		// expect to send a heartbeat within 2 heartbeat intervals.
-		td:         contention.NewTimeoutDetector(2 * cfg.heartbeat),
-		readStateC: make(chan raft.ReadState, 1),
-		msgSnapC:   make(chan *raftpb.Message, maxInFlightMsgSnap),
-		applyc:     make(chan toApply),
-		stopped:    make(chan struct{}),
-		done:       make(chan struct{}),
+		td:               contention.NewTimeoutDetector(2 * cfg.heartbeat),
+		readStateC:       make(chan raft.ReadState, 1),
+		msgSnapC:         make(chan *raftpb.Message, maxInFlightMsgSnap),
+		applyc:           make(chan toApply),
+		appendc:          make(chan asyncAppendWork, asyncAppendQueueSize),
+		asyncStopc:       make(chan struct{}),
+		asyncAppendDonec: make(chan struct{}),
+		stopped:          make(chan struct{}),
+		done:             make(chan struct{}),
 	}
 	if r.heartbeat == 0 {
 		r.ticker = &time.Ticker{}
@@ -185,8 +225,20 @@ func (r *raftNode) getLatestTickTs() time.Time {
 func (r *raftNode) start(rh *raftReadyHandler) {
 	internalTimeout := time.Second
 
+	if r.asyncStorageWrites {
+		go r.runAsyncAppend()
+	}
 	go func() {
-		defer r.onStop()
+		defer func() {
+			if r.asyncStorageWrites {
+				close(r.asyncStopc)
+			}
+			r.cancelStorageResponses()
+			if r.asyncStorageWrites {
+				<-r.asyncAppendDonec
+			}
+			r.onStop()
+		}()
 		islead := false
 
 		for {
@@ -226,6 +278,12 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 						return
 					}
 				}
+				if r.asyncStorageWrites {
+					if !r.processAsyncReady(rd, rh) {
+						return
+					}
+					continue
+				}
 				committedEntries := rd.CommittedEntries
 				snapshotPersistedC := make(chan struct{})
 				raftStorageReadyC := make(chan struct{})
@@ -257,49 +315,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					r.transport.Send(r.processMessages(rd.Messages))
 				}
 
-				// Must save the snapshot file and WAL snapshot entry before saving any other entries or hardstate to
-				// ensure that recovery after a snapshot restore is possible.
-				if !raft.IsEmptySnap(raftSnap) {
-					// gofail: var raftBeforeSaveSnap struct{}
-					if err := r.storage.SaveSnap(raftSnap); err != nil {
-						r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
-					}
-					// gofail: var raftAfterSaveSnap struct{}
-				}
-
-				// gofail: var raftBeforeSave struct{}
-				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
-					r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
-				}
-				if !raft.IsEmptyHardState(rd.HardState) {
-					proposalsCommitted.Set(float64(rd.HardState.GetCommit()))
-				}
-				// gofail: var raftAfterSave struct{}
-
-				if !raft.IsEmptySnap(raftSnap) {
-					// Force WAL to fsync its hard state before Release() releases
-					// old data from the WAL. Otherwise could get an error like:
-					// panic: tocommit(107) is out of range [lastIndex(84)]. Was the raft log corrupted, truncated, or lost?
-					// See https://github.com/etcd-io/etcd/issues/10219 for more details.
-					if err := r.storage.Sync(); err != nil {
-						r.lg.Fatal("failed to sync Raft snapshot", zap.Error(err))
-					}
-
-					// etcdserver now claims the snapshot has been persisted onto the disk.
-					close(snapshotPersistedC)
-
-					// gofail: var raftBeforeApplySnap struct{}
-					r.raftStorage.ApplySnapshot(raftSnap)
-					r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", raftSnap.Metadata.GetIndex()))
-					// gofail: var raftAfterApplySnap struct{}
-
-					if err := r.storage.Release(raftSnap); err != nil {
-						r.lg.Fatal("failed to release Raft wal", zap.Error(err))
-					}
-					// gofail: var raftAfterWALRelease struct{}
-				}
-
-				r.raftStorage.Append(rd.Entries)
+				r.persistRaftData(rd.HardState, rd.Entries, raftSnap, snapshotPersistedC)
 
 				confChanged := false
 				for _, ent := range rd.CommittedEntries {
@@ -353,6 +369,314 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 			}
 		}
 	}()
+}
+
+// processAsyncReady dispatches Raft's local storage messages to two reliable
+// FIFO lanes. All other messages are safe to send immediately; messages whose
+// delivery depends on a storage write are carried as responses on the local
+// storage messages instead.
+func (r *raftNode) processAsyncReady(rd raft.Ready, rh *raftReadyHandler) bool {
+	var messages []*raftpb.Message
+	sendMessages := func() {
+		if len(messages) == 0 {
+			return
+		}
+		r.transport.Send(r.processMessages(messages))
+		messages = nil
+	}
+	for _, m := range rd.Messages {
+		switch m.GetTo() {
+		case raft.LocalAppendThread:
+			if m.GetType() != raftpb.MsgStorageAppend {
+				r.lg.Panic("unexpected message to Raft append thread", zap.Stringer("message-type", m.GetType()))
+			}
+			if snap := m.GetSnapshot(); !raft.IsEmptySnap(snap) && rh != nil {
+				updateCommittedIndex(&toApply{snapshot: snap}, rh)
+			}
+			sendMessages()
+			select {
+			case r.appendc <- asyncAppendWork{message: m}:
+			case <-r.stopped:
+				return false
+			}
+		case raft.LocalApplyThread:
+			if m.GetType() != raftpb.MsgStorageApply {
+				r.lg.Panic("unexpected message to Raft apply thread", zap.Stringer("message-type", m.GetType()))
+			}
+			raftStorageReadyC := make(chan struct{})
+			raftAdvancedC := make(chan struct{}, 1)
+			responses := m.GetResponses()
+			ap := toApply{
+				entries:                   m.GetEntries(),
+				snapshot:                  raftpb.EnsureSnapshot(nil),
+				raftStorageReadyC:         raftStorageReadyC,
+				waitForStorageBeforeApply: true,
+				raftAdvancedC:             raftAdvancedC,
+				onApplyCompleted: func() {
+					r.sendStorageResponses(responses)
+					raftAdvancedC <- struct{}{}
+				},
+			}
+			if rh != nil {
+				updateCommittedIndex(&ap, rh)
+			}
+			sendMessages()
+			// MsgStorageAppend is ordered before MsgStorageApply within a
+			// Ready. Put a barrier on the append FIFO so the state machine
+			// cannot durably apply committed entries before their HardState
+			// commit has reached the WAL.
+			select {
+			case r.appendc <- asyncAppendWork{barrierC: raftStorageReadyC}:
+			case <-r.stopped:
+				return false
+			}
+			select {
+			case r.applyc <- ap:
+			case <-r.stopped:
+				return false
+			}
+		default:
+			if raft.IsLocalMsgTarget(m.GetTo()) {
+				r.lg.Panic(
+					"unexpected message to local Raft storage thread",
+					zap.Stringer("message-type", m.GetType()),
+					zap.Uint64("message-to", m.GetTo()),
+				)
+			}
+			messages = append(messages, m)
+		}
+	}
+	sendMessages()
+	return true
+}
+
+func (r *raftNode) runAsyncAppend() {
+	defer close(r.asyncAppendDonec)
+	for {
+		select {
+		case <-r.asyncStopc:
+			return
+		default:
+		}
+		var work asyncAppendWork
+		select {
+		case work = <-r.appendc:
+		case <-r.asyncStopc:
+			return
+		}
+		if work.barrierC != nil {
+			close(work.barrierC)
+			continue
+		}
+
+		messages := []*raftpb.Message{work.message}
+		var barrierC chan struct{}
+		draining := true
+		for draining && len(messages) < asyncAppendQueueSize {
+			select {
+			case work = <-r.appendc:
+				if work.barrierC != nil {
+					barrierC = work.barrierC
+					draining = false
+				} else {
+					messages = append(messages, work.message)
+				}
+			default:
+				draining = false
+			}
+		}
+		r.processStorageAppends(messages)
+		if barrierC != nil {
+			close(barrierC)
+		}
+	}
+}
+
+func (r *raftNode) processStorageAppends(messages []*raftpb.Message) {
+	for len(messages) > 0 {
+		if !raft.IsEmptySnap(messages[0].GetSnapshot()) {
+			r.processStorageAppend(messages[0])
+			messages = messages[1:]
+			continue
+		}
+
+		end := 1
+		var entries []*raftpb.Entry
+		entries = append(entries, messages[0].GetEntries()...)
+		for end < len(messages) && raft.IsEmptySnap(messages[end].GetSnapshot()) && canBatchStorageAppend(entries, messages[end].GetEntries()) {
+			entries = append(entries, messages[end].GetEntries()...)
+			end++
+		}
+		r.processStorageAppendBatch(messages[:end], entries)
+		messages = messages[end:]
+	}
+}
+
+func canBatchStorageAppend(entries, next []*raftpb.Entry) bool {
+	return len(entries) == 0 || len(next) == 0 || next[0].GetIndex() == entries[len(entries)-1].GetIndex()+1
+}
+
+func (r *raftNode) processStorageAppendBatch(messages []*raftpb.Message, entries []*raftpb.Entry) {
+	var hardState *raftpb.HardState
+	var responses []*raftpb.Message
+	for _, m := range messages {
+		if m.GetType() != raftpb.MsgStorageAppend {
+			r.lg.Panic("unexpected Raft append work", zap.Stringer("message-type", m.GetType()))
+		}
+		if state := hardStateFromAppendMessage(r.lg, m); state != nil {
+			hardState = state
+		}
+		responses = append(responses, m.GetResponses()...)
+	}
+	// A later HardState supersedes an earlier one, and processStorageAppends
+	// only combines entry ranges that form one contiguous append. Persisting
+	// that final state is therefore equivalent to persisting each message in
+	// order. All responses remain blocked until the combined save is durable.
+	r.persistRaftData(hardState, entries, raftpb.EnsureSnapshot(nil), nil)
+	r.sendStorageResponses(responses)
+}
+
+func (r *raftNode) processStorageAppend(m *raftpb.Message) {
+	if m.GetType() != raftpb.MsgStorageAppend {
+		r.lg.Panic("unexpected Raft append work", zap.Stringer("message-type", m.GetType()))
+	}
+
+	hardState := hardStateFromAppendMessage(r.lg, m)
+
+	var raftSnap *raftpb.Snapshot
+	var applySnap *raftpb.Snapshot
+	if !raft.IsEmptySnap(m.GetSnapshot()) {
+		raftSnap = proto.Clone(m.GetSnapshot()).(*raftpb.Snapshot)
+		applySnap = proto.Clone(m.GetSnapshot()).(*raftpb.Snapshot)
+	} else {
+		raftSnap = raftpb.EnsureSnapshot(nil)
+	}
+
+	var snapshotPersistedC chan struct{}
+	var raftStorageReadyC chan struct{}
+	var applyCompletedC chan struct{}
+	if !raft.IsEmptySnap(raftSnap) {
+		snapshotPersistedC = make(chan struct{})
+		raftStorageReadyC = make(chan struct{})
+		applyCompletedC = make(chan struct{})
+		responses := m.GetResponses()
+		ap := toApply{
+			snapshot:           applySnap,
+			snapshotPersistedC: snapshotPersistedC,
+			raftStorageReadyC:  raftStorageReadyC,
+			applyCompletedC:    applyCompletedC,
+			raftAdvancedC:      make(chan struct{}),
+			onApplyCompleted: func() {
+				r.sendStorageResponses(responses)
+			},
+		}
+		select {
+		case r.applyc <- ap:
+		case <-r.asyncStopc:
+			return
+		}
+	}
+
+	r.persistRaftData(hardState, m.GetEntries(), raftSnap, snapshotPersistedC)
+	if raft.IsEmptySnap(raftSnap) {
+		r.sendStorageResponses(m.GetResponses())
+		return
+	}
+
+	close(raftStorageReadyC)
+	select {
+	case <-applyCompletedC:
+	case <-r.asyncStopc:
+	}
+}
+
+func hardStateFromAppendMessage(lg *zap.Logger, m *raftpb.Message) *raftpb.HardState {
+	if m.Term == nil && m.Vote == nil && m.Commit == nil {
+		return nil
+	}
+	if m.Term == nil || m.Vote == nil || m.Commit == nil {
+		lg.Panic("incomplete hard state on Raft append work")
+	}
+	return &raftpb.HardState{
+		Term:   m.Term,
+		Vote:   m.Vote,
+		Commit: m.Commit,
+	}
+}
+
+// persistRaftData preserves etcd's crash-recovery ordering for both the
+// Ready/Advance and asynchronous storage-write interfaces.
+func (r *raftNode) persistRaftData(
+	hardState *raftpb.HardState,
+	entries []*raftpb.Entry,
+	raftSnap *raftpb.Snapshot,
+	snapshotPersistedC chan<- struct{},
+) {
+	// Must save the snapshot file and WAL snapshot entry before saving any other entries or hardstate to
+	// ensure that recovery after a snapshot restore is possible.
+	if !raft.IsEmptySnap(raftSnap) {
+		// gofail: var raftBeforeSaveSnap struct{}
+		if err := r.storage.SaveSnap(raftSnap); err != nil {
+			r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
+		}
+		// gofail: var raftAfterSaveSnap struct{}
+	}
+
+	// gofail: var raftBeforeSave struct{}
+	if err := r.storage.Save(hardState, entries); err != nil {
+		r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
+	}
+	if !raft.IsEmptyHardState(hardState) {
+		proposalsCommitted.Set(float64(hardState.GetCommit()))
+	}
+	// gofail: var raftAfterSave struct{}
+
+	if !raft.IsEmptySnap(raftSnap) {
+		// Force WAL to fsync its hard state before Release() releases
+		// old data from the WAL. Otherwise could get an error like:
+		// panic: tocommit(107) is out of range [lastIndex(84)]. Was the raft log corrupted, truncated, or lost?
+		// See https://github.com/etcd-io/etcd/issues/10219 for more details.
+		if err := r.storage.Sync(); err != nil {
+			r.lg.Fatal("failed to sync Raft snapshot", zap.Error(err))
+		}
+
+		// etcdserver now claims the snapshot has been persisted onto the disk.
+		close(snapshotPersistedC)
+
+		// gofail: var raftBeforeApplySnap struct{}
+		r.raftStorage.ApplySnapshot(raftSnap)
+		r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", raftSnap.Metadata.GetIndex()))
+		// gofail: var raftAfterApplySnap struct{}
+
+		if err := r.storage.Release(raftSnap); err != nil {
+			r.lg.Fatal("failed to release Raft wal", zap.Error(err))
+		}
+		// gofail: var raftAfterWALRelease struct{}
+	}
+
+	r.raftStorage.Append(entries)
+}
+
+func (r *raftNode) sendStorageResponses(responses []*raftpb.Message) {
+	var messages []*raftpb.Message
+	sendMessages := func() {
+		if len(messages) == 0 {
+			return
+		}
+		r.transport.Send(r.processMessages(messages))
+		messages = nil
+	}
+	for _, m := range responses {
+		if m.GetTo() == r.localID {
+			sendMessages()
+			if err := r.Step(r.storageResponseCtx, m); err != nil {
+				r.lg.Warn("failed to deliver local Raft storage response", zap.Stringer("message-type", m.GetType()), zap.Error(err))
+			}
+			continue
+		}
+		messages = append(messages, m)
+	}
+	sendMessages()
 }
 
 func updateCommittedIndex(ap *toApply, rh *raftReadyHandler) {
