@@ -250,7 +250,8 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 	}
 
 	// finish toApply, unblock raft routine
-	<-ap.notifyc
+	<-ap.raftStorageReadyC
+	ap.notifyApplyCompleted()
 
 	select {
 	case <-ap.raftAdvancedC:
