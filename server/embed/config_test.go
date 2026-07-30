@@ -113,6 +113,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.LeaseCheckpointPersist:       false,
 				features.FastLeaseKeepAlive:           true,
 				features.NonBlockingDefrag:            true,
+				features.RaftAsyncStorageWrites:       true, // TODO(mjlshen): Temporary to validate this in CI
 			},
 		},
 		{
@@ -123,6 +124,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           true,
 				features.NonBlockingDefrag:            true,
+				features.RaftAsyncStorageWrites:       true, // TODO(mjlshen): Temporary to validate this in CI
 			},
 		},
 		{
@@ -133,6 +135,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           true,
 				features.NonBlockingDefrag:            true,
+				features.RaftAsyncStorageWrites:       true, // TODO(mjlshen): Temporary to validate this in CI
 			},
 		},
 		{
@@ -143,6 +146,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           true,
 				features.NonBlockingDefrag:            true,
+				features.RaftAsyncStorageWrites:       true, // TODO(mjlshen): Temporary to validate this in CI
 			},
 		},
 		{
@@ -152,6 +156,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           true,
 				features.NonBlockingDefrag:            true,
+				features.RaftAsyncStorageWrites:       true, // TODO(mjlshen): Temporary to validate this in CI
 			},
 		},
 		{
@@ -161,6 +166,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.TxnModeWriteWithSharedBuffer: false,
 				features.FastLeaseKeepAlive:           true,
 				features.NonBlockingDefrag:            true,
+				features.RaftAsyncStorageWrites:       true, // TODO(mjlshen): Temporary to validate this in CI
 			},
 		},
 		{
@@ -171,6 +177,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           true,
 				features.NonBlockingDefrag:            true,
+				features.RaftAsyncStorageWrites:       true, // TODO(mjlshen): Temporary to validate this in CI
 			},
 		},
 		{
@@ -182,6 +189,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.LeaseCheckpointPersist:       true,
 				features.FastLeaseKeepAlive:           true,
 				features.NonBlockingDefrag:            true,
+				features.RaftAsyncStorageWrites:       true, // TODO(mjlshen): Temporary to validate this in CI
 			},
 		},
 		{
@@ -191,6 +199,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           false,
 				features.NonBlockingDefrag:            true,
+				features.RaftAsyncStorageWrites:       true, // TODO(mjlshen): Temporary to validate this in CI
 			},
 		},
 	}

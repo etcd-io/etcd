@@ -113,7 +113,8 @@ var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	FastLeaseKeepAlive:           {Default: true, PreRelease: featuregate.Beta},
 	PriorityRequest:              {Default: false, PreRelease: featuregate.Alpha},
 	NonBlockingDefrag:            {Default: true, PreRelease: featuregate.Beta},
-	RaftAsyncStorageWrites:       {Default: false, PreRelease: featuregate.Alpha},
+	// TODO(mjlshen): Default to true to validate this in CI, should default to false
+	RaftAsyncStorageWrites: {Default: true, PreRelease: featuregate.Alpha},
 }
 
 func NewDefaultServerFeatureGate(name string, lg *zap.Logger) featuregate.FeatureGate {
