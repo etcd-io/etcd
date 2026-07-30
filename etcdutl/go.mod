@@ -13,7 +13,7 @@ replace (
 )
 
 require (
-	github.com/coreos/go-semver v0.3.1
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/olekukonko/tablewriter v1.1.4
 	github.com/spf13/cobra v1.10.2
