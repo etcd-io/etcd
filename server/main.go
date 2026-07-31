@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdmain"
 )
 
+// test
 func main() {
 	etcdmain.Main(os.Args)
 }
