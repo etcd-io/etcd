@@ -74,7 +74,7 @@ The boundaries above apply to the **etcd server binary**, the official client li
 
 The following components are best-effort and are not covered by the security-response process:
 
-- `grpc-proxy` and the embedded gRPC gateway
+- `grpc-proxy`
 - the `cache` package
 - everything under `contrib/`
 
@@ -84,14 +84,15 @@ Defects in these components are handled as normal issues and pull requests, with
 
 ## Non-Default & Test-Only Configuration
 
-Diagnostic facilities are **disabled by default** and intended for trusted debugging contexts only:
+Diagnostic facilities are intended for trusted debugging contexts only:
 
 - pprof endpoints (`--enable-pprof`)
 - the expvar endpoint (`/debug/vars`)
 - verbose logging (`--log-level=debug`), which also exposes gRPC tracing
 - distributed tracing (`--enable-distributed-tracing`)
 
-Enabling them is an explicit operator decision that knowingly expands the attack surface.
+Except for `/debug/vars`, these facilities are **disabled by default**. Enabling them is an explicit operator decision that knowingly expands the attack surface. The `/debug/vars` endpoint is protected by mTLS like other client APIs, and does not expose sensitive information.
+
 Reports predicated on a non-default flag, or on a documented operator-overridable default, are configuration hardening.
 Listener schemes that exist to support etcd's test suites (`unix://`, `unixs://`) are not production configurations and are out of scope.
 
