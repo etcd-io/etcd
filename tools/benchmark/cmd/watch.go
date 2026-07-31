@@ -118,7 +118,7 @@ func benchMakeWatches(clients []*clientv3.Client, wk *watchedKeys) {
 	bar.Start()
 
 	r := newReport("watch-make")
-	finish := printReport(r, "Watch creation summary:\n")
+	finish := printReport(r, "watch-make")
 	rch := r.Results()
 
 	wg.Add(len(streams) + 1)
@@ -190,7 +190,7 @@ func benchPutWatches(clients []*clientv3.Client, wk *watchedKeys) {
 	bar.Start()
 
 	r := newReport("watch-put")
-	finish := printReport(r, "Watch events summary:\n")
+	finish := printReport(r, "watch-put")
 
 	wg.Add(len(wk.watches))
 	nrRxed := int32(eventsTotal)

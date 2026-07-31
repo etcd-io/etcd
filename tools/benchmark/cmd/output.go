@@ -31,16 +31,17 @@ func init() {
 // printReport writes benchmark statistics to stdout in the format chosen by
 // --output-format. All sub-commands should call this function instead of
 // printing report.Run() output directly so that JSON support is automatic.
-// prefix, if non-empty, is printed before the text-mode report output only
-// (it is ignored for JSON output) -- use it to label a report when a
-// sub-command prints more than one report (e.g. watch.go).
-func printReport(r report.Report, prefix string) func() {
+// label, if non-empty, identifies the report -- it is printed as a heading
+// in text mode and included as the "label" field in JSON mode. Use it when
+// a sub-command prints more than one report (e.g. watch.go); pass "" when
+// a sub-command only prints a single report.
+func printReport(r report.Report, label string) func() {
 	switch outputFormat {
 	case "json":
 		rc := r.Stats()
 		return func() {
 			s := <-rc
-			out, err := report.FormatJSON(s)
+			out, err := report.FormatJSON(s, label)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "benchmark: JSON encode error: %v\n", err)
 				os.Exit(1)
@@ -50,7 +51,11 @@ func printReport(r report.Report, prefix string) func() {
 	default:
 		rc := r.Run()
 		return func() {
-			fmt.Printf("%s%s", prefix, <-rc)
+			if label != "" {
+				fmt.Printf("%s:\n%s", label, <-rc)
+			} else {
+				fmt.Print(<-rc)
+			}
 		}
 	}
 }

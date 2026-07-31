@@ -295,6 +295,7 @@ func (r *report) errors() string {
 // JSONReport is the JSON-serialisable form of a benchmark run's statistics.
 // Field names use snake_case so the output is friendly to jq, Python, etc.
 type JSONReport struct {
+	Label          string             `json:"label,omitempty"`
 	TotalSecs      float64            `json:"total_secs"`
 	SlowestSecs    float64            `json:"slowest_secs"`
 	FastestSecs    float64            `json:"fastest_secs"`
@@ -319,7 +320,7 @@ type JSONError struct {
 }
 
 // FormatJSON serialises Stats as indented JSON and returns the string.
-func FormatJSON(s Stats) (string, error) {
+func FormatJSON(s Stats, label string) (string, error) {
 	pcs, vals := Percentiles(s.Lats)
 	pctMap := make(map[string]float64, len(pcs))
 	for i, p := range pcs {
@@ -345,6 +346,7 @@ func FormatJSON(s Stats) (string, error) {
 	}
 
 	jr := JSONReport{
+		Label:          label,
 		TotalSecs:      s.Total.Seconds(),
 		SlowestSecs:    s.Slowest,
 		FastestSecs:    s.Fastest,
