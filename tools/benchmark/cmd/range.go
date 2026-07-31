@@ -144,7 +144,7 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 	}
 
 	r := newReport(cmd.Name())
-	finish := printReport(r)
+	finish := printReport(r, "")
 	for i := range clients {
 		wg.Add(1)
 		go func(c *v3.Client) {

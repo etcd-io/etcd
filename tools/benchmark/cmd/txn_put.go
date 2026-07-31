@@ -79,7 +79,7 @@ func txnPutFunc(cmd *cobra.Command, _ []string) {
 	bar.Start()
 
 	r := newReport(cmd.Name())
-	finish := printReport(r)
+	finish := printReport(r, "")
 	for i := range clients {
 		wg.Add(1)
 		go func(c *v3.Client) {

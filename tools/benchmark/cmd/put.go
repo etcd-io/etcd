@@ -125,7 +125,7 @@ func putFunc(cmd *cobra.Command, _ []string) {
 		}()
 	}
 
-	finish := printReport(r)
+	finish := printReport(r, "")
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()
