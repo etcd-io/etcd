@@ -83,23 +83,27 @@ func testKVGet(t *testing.T, stream bool) {
 				t.Skip("RangeStream is not supported by this cluster")
 			}
 
+			const noLease = 0
+			lease, err := cc.Grant(ctx, 100)
+			require.NoError(t, err)
+
 			testutils.ExecuteUntil(ctx, t, func() {
 				resp, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 				require.NoError(t, err)
 				firstRev := resp.Header.Revision
 
-				kvA := createKV("a", "aa1", firstRev+1, firstRev+1, 1)
-				kvB := createKV("b", "a", firstRev+2, firstRev+2, 1)
-				kvCV1 := createKV("c", "ac1", firstRev+3, firstRev+3, 1)
-				kvCV2 := createKV("c", "ac2", firstRev+3, firstRev+4, 2)
-				kvC := createKV("c", "aac", firstRev+3, firstRev+5, 3)
-				kvFoo := createKV("foo", "bar", firstRev+6, firstRev+6, 1)
-				kvFooAbc := createKV("foo/abc", "0", firstRev+7, firstRev+7, 1)
-				kvFop := createKV("fop", "s", firstRev+8, firstRev+8, 1)
+				kvA := createKV("a", "aa1", firstRev+1, firstRev+1, 1, noLease)
+				kvB := createKV("b", "a", firstRev+2, firstRev+2, 1, noLease)
+				kvCV1 := createKV("c", "ac1", firstRev+3, firstRev+3, 1, noLease)
+				kvCV2 := createKV("c", "ac2", firstRev+3, firstRev+4, 2, noLease)
+				kvC := createKV("c", "aac", firstRev+3, firstRev+5, 3, noLease)
+				kvFoo := createKV("foo", "bar", firstRev+6, firstRev+6, 1, noLease)
+				kvFooAbc := createKV("foo/abc", "0", firstRev+7, firstRev+7, 1, noLease)
+				kvFop := createKV("fop", "s", firstRev+8, firstRev+8, 1, int64(lease.ID))
 
 				inputs := []*mvccpb.KeyValue{kvA, kvB, kvCV1, kvCV2, kvC, kvFoo, kvFooAbc, kvFop}
 				for i := range inputs {
-					_, putError := cc.Put(ctx, string(inputs[i].Key), string(inputs[i].Value), config.PutOptions{})
+					_, putError := cc.Put(ctx, string(inputs[i].Key), string(inputs[i].Value), config.PutOptions{LeaseID: clientv3.LeaseID(inputs[i].Lease)})
 					require.NoErrorf(t, putError, "count not put key value %q", inputs[i])
 				}
 
@@ -191,13 +195,14 @@ func testKVGet(t *testing.T, stream bool) {
 	}
 }
 
-func createKV(key, val string, createRev, modRev, ver int64) *mvccpb.KeyValue {
+func createKV(key, val string, createRev, modRev, ver, lease int64) *mvccpb.KeyValue {
 	return &mvccpb.KeyValue{
 		Key:            []byte(key),
 		Value:          []byte(val),
 		CreateRevision: createRev,
 		ModRevision:    modRev,
 		Version:        ver,
+		Lease:          lease,
 	}
 }
 
