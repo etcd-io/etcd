@@ -112,6 +112,12 @@ func TestServerVersion(t *testing.T) {
 			http.Header{"X-Server-Version": []string{"2.1.0-alpha.0+git"}},
 			semver.Must(semver.NewVersion("2.1.0-alpha.0+git")),
 		},
+		// a malformed peer-supplied value falls back to the 2.0 default
+		// instead of panicking
+		{
+			http.Header{"X-Server-Version": []string{"not-a-version"}},
+			semver.Must(semver.NewVersion("2.0.0")),
+		},
 	}
 	for i, tt := range tests {
 		v := serverVersion(tt.h)
@@ -138,6 +144,12 @@ func TestMinClusterVersion(t *testing.T) {
 		{
 			http.Header{"X-Min-Cluster-Version": []string{"2.1.0-alpha.0+git"}},
 			semver.Must(semver.NewVersion("2.1.0-alpha.0+git")),
+		},
+		// a malformed peer-supplied value falls back to the 2.0 default
+		// instead of panicking
+		{
+			http.Header{"X-Min-Cluster-Version": []string{"not-a-version"}},
+			semver.Must(semver.NewVersion("2.0.0")),
 		},
 	}
 	for i, tt := range tests {
