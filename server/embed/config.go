@@ -127,6 +127,7 @@ var (
 
 	DefaultInitialAdvertisePeerURLs = "http://localhost:2380"
 	DefaultAdvertiseClientURLs      = "http://localhost:2379"
+	DefaultInitialClusterToken      = "etcd-cluster"
 
 	defaultHostname   string
 	defaultHostStatus error
@@ -540,7 +541,7 @@ func NewConfig() *Config {
 		AdvertiseClientUrls: []url.URL{*acurl},
 
 		ClusterState:        ClusterStateFlagNew,
-		InitialClusterToken: "etcd-cluster",
+		InitialClusterToken: DefaultInitialClusterToken,
 
 		StrictReconfigCheck: DefaultStrictReconfigCheck,
 		Metrics:             "basic",
