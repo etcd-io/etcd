@@ -17,6 +17,8 @@ package etcdhttp
 import (
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -24,6 +26,14 @@ const (
 	PathMetrics      = "/metrics"
 	PathProxyMetrics = "/proxy/metrics"
 )
+
+func init() {
+	if prometheus.Unregister(collectors.NewGoCollector()) {
+		prometheus.MustRegister(collectors.NewGoCollector(
+			collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll),
+		))
+	}
+}
 
 // HandleMetrics registers prometheus handler on '/metrics'.
 func HandleMetrics(mux *http.ServeMux) {
