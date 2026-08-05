@@ -7,3 +7,7 @@ Previous change logs can be found at [CHANGELOG-3.7](https://github.com/etcd-io/
 ### Dependencies
 
 - Compile binaries using [go 1.26.5](https://github.com/etcd-io/etcd/pull/22062).
+
+### etcdutl
+
+- [Add bbolt subcommand](https://github.com/etcd-io/etcd/pull/20162) to etcdutl
