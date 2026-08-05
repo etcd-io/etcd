@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
@@ -27,10 +27,10 @@ import (
 )
 
 func TestMustDetectDowngrade(t *testing.T) {
-	lv := semver.Must(semver.NewVersion(version.Version))
-	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
-	oneMinorHigher := &semver.Version{Major: lv.Major, Minor: lv.Minor + 1}
-	oneMinorLower := &semver.Version{Major: lv.Major, Minor: lv.Minor - 1}
+	lv := semver.MustParse(version.Version)
+	lv = semver.New(lv.Major(), lv.Minor(), 0, "", "")
+	oneMinorHigher := semver.New(lv.Major(), lv.Minor()+1, 0, "", "")
+	oneMinorLower := semver.New(lv.Major(), lv.Minor()-1, 0, "", "")
 
 	tests := []struct {
 		name           string
@@ -67,7 +67,7 @@ func TestMustDetectDowngrade(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
-			sv := semver.Must(semver.NewVersion(version.Version))
+			sv := semver.MustParse(version.Version)
 			err := tryMustDetectDowngrade(lg, sv, tt.clusterVersion)
 
 			if tt.success != (err == nil) {
@@ -112,7 +112,7 @@ func TestIsValidDowngrade(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			res := isValidDowngrade(
-				semver.Must(semver.NewVersion(tt.verFrom)), semver.Must(semver.NewVersion(tt.verTo)))
+				semver.MustParse(tt.verFrom), semver.MustParse(tt.verTo))
 			if res != tt.result {
 				t.Errorf("Expected downgrade valid is %v; Got %v", tt.result, res)
 			}
@@ -179,8 +179,8 @@ func TestIsVersionChangable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			verFrom := semver.Must(semver.NewVersion(tt.verFrom))
-			verTo := semver.Must(semver.NewVersion(tt.verTo))
+			verFrom := semver.MustParse(tt.verFrom)
+			verTo := semver.MustParse(tt.verTo)
 			ret := IsValidClusterVersionChange(verFrom, verTo)
 			assert.Equal(t, tt.expectedResult, ret)
 		})

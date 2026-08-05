@@ -157,7 +157,7 @@ main() {
     local source_version
     source_version=$(grep -E "\s+Version\s*=" api/version/version.go | sed -e "s/.*\"\(.*\)\".*/\1/g")
     if [[ "${source_version}" != "${VERSION}" ]]; then
-      source_minor_version=$(echo "${source_version}" | cut -d. -f 1-2)
+      source_minor_version=$(echo "${source_version}" | cut -d. -f 1-2 | sed 's/^v//')
       if [[ "${source_minor_version}" != "${MINOR_VERSION}" ]]; then
         log_error "Wrong etcd minor version in api/version/version.go. Expected ${MINOR_VERSION} but got ${source_minor_version}. Aborting."
         exit 1
