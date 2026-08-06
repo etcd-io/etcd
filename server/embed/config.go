@@ -150,6 +150,12 @@ var (
 	// revision 5000 when the current revision is 6000.
 	// This runs every 5-minute if enough of logs have proceeded.
 	CompactorModeRevision = v3compactor.ModeRevision
+
+	// CompactorModeAutoPeriodic samples the backend growth rate and compacts
+	// proactively (keeping the last "AutoCompactionRetention" revisions), timing
+	// each compaction from the measured workload so the size stays well below
+	// "QuotaBackendBytes".
+	CompactorModeAutoPeriodic = v3compactor.ModeAutoPeriodic
 )
 
 func init() {
@@ -728,7 +734,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&cfg.LogRotationConfigJSON, "log-rotation-config-json", DefaultLogRotationConfig, "Configures log rotation if enabled with a JSON logger config. Default: MaxSize=100(MB), MaxAge=0(days,no limit), MaxBackups=0(no limit), LocalTime=false(UTC), Compress=false(gzip)")
 
 	fs.StringVar(&cfg.AutoCompactionRetention, "auto-compaction-retention", "0", "Auto compaction retention for mvcc key value store. 0 means disable auto compaction.")
-	fs.StringVar(&cfg.AutoCompactionMode, "auto-compaction-mode", "periodic", "interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.")
+	fs.StringVar(&cfg.AutoCompactionMode, "auto-compaction-mode", "periodic", "interpret 'auto-compaction-retention' one of: periodic|revision|auto-periodic. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention. 'auto-periodic' samples the growth rate and compacts proactively (keeping the last 'auto-compaction-retention' revisions) to keep the size well below quota.")
 
 	// pprof profiler via HTTP
 	fs.BoolVar(&cfg.EnablePprof, "enable-pprof", false, "Enable runtime profiling data via HTTP server. Address is at client URL + \"/debug/pprof/\"")
@@ -1013,7 +1019,7 @@ func (cfg *Config) Validate() error {
 	}
 
 	switch cfg.AutoCompactionMode {
-	case CompactorModeRevision, CompactorModePeriodic:
+	case CompactorModeRevision, CompactorModePeriodic, CompactorModeAutoPeriodic:
 	case "":
 		return errors.New("undefined auto-compaction-mode")
 	default:
