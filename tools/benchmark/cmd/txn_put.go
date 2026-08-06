@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/cheggaaa/pb/v3"
@@ -39,9 +41,10 @@ var txnPutCmd = &cobra.Command{
 }
 
 var (
-	txnPutTotal     int
-	txnPutRate      int
-	txnPutOpsPerTxn int
+	txnPutTotal          int
+	txnPutRate           int
+	txnPutOpsPerTxn      int
+	txnPutReportInterval int
 )
 
 func init() {
@@ -53,6 +56,7 @@ func init() {
 
 	txnPutCmd.Flags().IntVar(&txnPutTotal, "total", 10000, "Total number of txn requests")
 	txnPutCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
+	txnPutCmd.Flags().IntVar(&txnPutReportInterval, "report-interval", -1, "Print live JSON metrics every N seconds (min=1, -1 to disable)")
 }
 
 func txnPutFunc(cmd *cobra.Command, _ []string) {
@@ -67,6 +71,11 @@ func txnPutFunc(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	if txnPutReportInterval < -1 || txnPutReportInterval == 0 {
+		fmt.Fprintf(os.Stderr, "--report-interval must be >=1 or -1 to disable\n")
+		os.Exit(1)
+	}
+
 	requests := make(chan []v3.Op, totalClients)
 	if txnPutRate == 0 {
 		txnPutRate = math.MaxInt32
@@ -76,7 +85,33 @@ func txnPutFunc(cmd *cobra.Command, _ []string) {
 	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
 
 	bar = pb.New(txnPutTotal)
+	// when live reporting is active, use stderr for the progress bar
+	// to keep stdout as a clean stream for JSON metrics
+	if txnPutReportInterval > 0 {
+		bar.SetWriter(os.Stderr)
+	}
 	bar.Start()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+	defer signal.Stop(sigCh)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		select {
+		case <-sigCh:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	tracker := newIntervalTracker()
+	var stopLive chan struct{}
+	if txnPutReportInterval > 0 {
+		stopLive = startSingleLiveReporter(txnPutReportInterval, tracker)
+	}
 
 	r := newReport(cmd.Name())
 	for i := range clients {
@@ -84,30 +119,53 @@ func txnPutFunc(cmd *cobra.Command, _ []string) {
 		go func(c *v3.Client) {
 			defer wg.Done()
 			for ops := range requests {
-				limit.Wait(context.Background())
+				if err := limit.Wait(ctx); err != nil {
+					return
+				}
 				st := time.Now()
 				_, err := c.Txn(context.TODO()).Then(ops...).Commit()
+				dur := time.Since(st)
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
+				tracker.add(dur)
 				bar.Increment()
 			}
 		}(clients[i])
 	}
 
 	go func() {
+		defer close(requests)
 		for i := 0; i < txnPutTotal; i++ {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			ops := make([]v3.Op, txnPutOpsPerTxn)
 			for j := 0; j < txnPutOpsPerTxn; j++ {
 				binary.PutVarint(k, int64(((i*txnPutOpsPerTxn)+j)%keySpaceSize))
 				ops[j] = v3.OpPut(string(k), v)
 			}
-			requests <- ops
+			select {
+			case requests <- ops:
+			case <-ctx.Done():
+				return
+			}
 		}
-		close(requests)
 	}()
 
 	rc := r.Run()
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()
-	fmt.Println(<-rc)
+	if stopLive != nil {
+		close(stopLive)
+	}
+
+	summaryOut := os.Stdout
+	// direct final summary to stderr if report interval is enabled,
+	// to separate it from live JSON snapshots in stdout
+	if txnPutReportInterval > 0 {
+		summaryOut = os.Stderr
+	}
+	fmt.Fprintln(summaryOut, <-rc)
 }
