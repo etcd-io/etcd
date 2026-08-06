@@ -843,6 +843,13 @@ func (s *EtcdServer) run() {
 		case ap := <-s.r.apply():
 			f := schedule.NewJob("server_applyAll", func(context.Context) { s.applyAll(&ep, &ap) })
 			sched.Schedule(f)
+		case m := <-s.r.msgSnapC:
+			snapshotMessage := m
+			f := schedule.NewJob("server_sendMergedSnapshot", func(context.Context) {
+				merged := s.createMergedSnapshotMessage(snapshotMessage, ep.appliedt, ep.appliedi, ep.confState)
+				s.sendMergedSnap(merged)
+			})
+			sched.Schedule(f)
 		case leases := <-expiredLeaseC:
 			s.revokeExpiredLeases(leases)
 		case err := <-s.errorc:
@@ -970,6 +977,10 @@ func (s *EtcdServer) Defragment() error {
 }
 
 func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
+	if apply.waitForStorageBeforeApply {
+		<-apply.raftStorageReadyC
+	}
+
 	s.applySnapshot(ep, apply)
 	s.applyEntries(ep, apply)
 	backend.VerifyBackendConsistency(s.Backend(), s.Logger(), true, schema.AllBuckets...)
@@ -977,19 +988,15 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	proposalsApplied.Set(float64(ep.appliedi))
 	s.applyWait.Trigger(ep.appliedi)
 
-	// wait for the raft routine to finish the disk writes before triggering a
-	// snapshot. or applied index might be greater than the last index in raft
-	// storage, since the raft routine might be slower than toApply routine.
-	<-apply.notifyc
+	// Wait for the raft routine to finish the storage work before triggering a
+	// snapshot. Otherwise, the applied index might be greater than the last
+	// index in Raft storage.
+	if !apply.waitForStorageBeforeApply {
+		<-apply.raftStorageReadyC
+	}
+	apply.notifyApplyCompleted()
 
 	s.snapshotIfNeededAndCompactRaftLog(ep)
-	select {
-	// snapshot requested via send()
-	case m := <-s.r.msgSnapC:
-		merged := s.createMergedSnapshotMessage(m, ep.appliedt, ep.appliedi, ep.confState)
-		s.sendMergedSnap(merged)
-	default:
-	}
 }
 
 func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
@@ -1027,8 +1034,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 		)
 	}
 
-	// wait for raftNode to persist snapshot onto the disk
-	<-toApply.notifyc
+	// Wait for raftNode to persist the snapshot onto disk.
+	<-toApply.snapshotPersistedC
 
 	bemuUnlocked := false
 	s.bemu.Lock()

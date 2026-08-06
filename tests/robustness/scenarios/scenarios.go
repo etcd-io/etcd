@@ -85,6 +85,27 @@ type TestScenario struct {
 	Profile   traffic.Profile
 }
 
+func RaftAsyncStorageWrites() TestScenario {
+	return TestScenario{
+		Name:      "RaftAsyncStorageWrites",
+		Failpoint: failpoint.RaftBeforeSavePanic,
+		Traffic:   traffic.EtcdPut,
+		Profile: traffic.Profile{
+			KeyValue:   &traffic.KeyValueHigh,
+			Watch:      &traffic.WatchDefault,
+			Compaction: &traffic.CompactionDefault,
+		},
+		Cluster: *e2e.NewConfig(
+			e2e.WithClusterSize(3),
+			e2e.WithGoFailEnabled(true),
+			e2e.WithIsPeerTLS(true),
+			e2e.WithPeerProxy(true),
+			e2e.WithSnapshotCount(100),
+			e2e.WithServerFeatureGate("RaftAsyncStorageWrites", true),
+		),
+	}
+}
+
 func Exploratory(_ *testing.T) []TestScenario {
 	randomizableOptions := []e2e.EPClusterOption{
 		options.WithClusterOptionGroups(

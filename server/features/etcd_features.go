@@ -84,6 +84,12 @@ const (
 	// alpha: v3.7
 	// main PR: https://github.com/etcd-io/etcd/pull/20492
 	PriorityRequest featuregate.Feature = "PriorityRequest"
+	// RaftAsyncStorageWrites enables Raft log persistence and state machine application
+	// through Raft's asynchronous storage write message interface.
+	// owner: @mjlshen
+	// issue: https://github.com/etcd-io/etcd/issues/16291
+	// alpha: v3.8
+	RaftAsyncStorageWrites featuregate.Feature = "RaftAsyncStorageWrites"
 )
 
 var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
@@ -96,6 +102,8 @@ var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	SetMemberLocalAddr:           {Default: false, PreRelease: featuregate.Alpha},
 	FastLeaseKeepAlive:           {Default: true, PreRelease: featuregate.Beta},
 	PriorityRequest:              {Default: false, PreRelease: featuregate.Alpha},
+	// TODO(mjlshen): Default to true to validate this in CI, should default to false
+	RaftAsyncStorageWrites: {Default: true, PreRelease: featuregate.Alpha},
 }
 
 func NewDefaultServerFeatureGate(name string, lg *zap.Logger) featuregate.FeatureGate {
