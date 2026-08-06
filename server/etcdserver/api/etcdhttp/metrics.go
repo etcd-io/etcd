@@ -16,10 +16,12 @@ package etcdhttp
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 )
 
 const (
@@ -27,12 +29,23 @@ const (
 	PathProxyMetrics = "/proxy/metrics"
 )
 
-func init() {
-	if prometheus.Unregister(collectors.NewGoCollector()) {
-		prometheus.MustRegister(collectors.NewGoCollector(
+var enableAllRuntimeMetricsOnce sync.Once
+
+// EnableAllRuntimeMetrics swaps client_golang's default Go collector for one
+// exposing the full runtime/metrics set (scheduler latency, mutex contention,
+// GC CPU share).
+func EnableAllRuntimeMetrics(lg *zap.Logger) {
+	enableAllRuntimeMetricsOnce.Do(func() {
+		if !prometheus.Unregister(collectors.NewGoCollector()) {
+			lg.Warn("failed to unregister the default Go collector, all runtime metrics will not be exposed")
+			return
+		}
+		if err := prometheus.Register(collectors.NewGoCollector(
 			collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll),
-		))
-	}
+		)); err != nil {
+			lg.Warn("failed to register the Go collector with all runtime metrics", zap.Error(err))
+		}
+	})
 }
 
 // HandleMetrics registers prometheus handler on '/metrics'.

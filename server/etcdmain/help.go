@@ -244,7 +244,7 @@ Profiling and Monitoring:
   --enable-pprof 'false'
     Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
   --metrics 'basic'
-    Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics.
+    Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics and the full Go runtime metrics set.
   --listen-metrics-urls ''
     List of URLs to listen on for the /metrics and /health endpoints. For https, the client URL TLS info is used.
 

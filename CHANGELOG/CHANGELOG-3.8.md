@@ -16,4 +16,4 @@ Previous change logs can be found at [CHANGELOG-3.7](https://github.com/etcd-io/
 
 See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
 
-- Expose the full set of Go `runtime/metrics` on `/metrics`, adding 108 metric families including `go_sched_latencies_seconds`, `go_sync_mutex_wait_total_seconds_total`, `go_cpu_classes_*` and `go_memory_classes_*`.
+- Expose the full set of Go `runtime/metrics` on `/metrics` when `--metrics extensive` is set.
