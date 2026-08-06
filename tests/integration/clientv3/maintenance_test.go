@@ -33,6 +33,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -409,6 +410,73 @@ func TestMaintenanceSnapshotContentDigest(t *testing.T) {
 	// compare the checksum
 	actualChecksum := hashWriter.Sum(nil)
 	require.Equal(t, checksumInBytes, actualChecksum)
+}
+
+// TestMaintenanceSnapshotDefragmented verifies that when the
+// DefragmentedSnapshot server feature gate is enabled, the Snapshot RPC
+// returns a defragmented bbolt blob that is (a) smaller than the raw
+// snapshot taken from a DB with the same content but freed pages and
+// (b) still a valid bbolt database.
+func TestMaintenanceSnapshotDefragmented(t *testing.T) {
+	integration.BeforeTest(t)
+
+	rawSize := snapshotSizeWithFeatureGates(t, "")
+	defragSize := snapshotSizeWithFeatureGates(t, "DefragmentedSnapshot=true")
+
+	if defragSize >= rawSize {
+		t.Errorf("defragmented snapshot size = %d, want < raw size = %d", defragSize, rawSize)
+	}
+}
+
+// snapshotSizeWithFeatureGates spins up a single-member cluster with the
+// given feature-gate string, populates it and then deletes most keys (to
+// create freed pages), takes a Snapshot, writes it to disk, verifies it is
+// a valid bbolt DB, and returns the on-wire size of the snapshot body.
+func snapshotSizeWithFeatureGates(t *testing.T, featureGates string) int64 {
+	t.Helper()
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:               1,
+		ServerFeatureGates: featureGates,
+	})
+	defer clus.Terminate(t)
+
+	cli := clus.RandClient()
+	ctx := t.Context()
+
+	populateDataIntoCluster(t, clus, 200, 64*1024)
+	for i := 0; i < 180; i++ {
+		_, err := cli.Delete(ctx, fmt.Sprintf("%s-%v", t.Name(), i))
+		require.NoError(t, err)
+	}
+	// mvcc-compact (but do NOT physically defragment) so the bbolt file has
+	// tombstoned key/value pages that bbolt has freed but not reclaimed —
+	// exactly the state the DefragmentedSnapshot feature gate is meant to
+	// make smaller.
+	getResp, err := cli.Get(ctx, "anykey")
+	require.NoError(t, err)
+	_, err = cli.Compact(ctx, getResp.Header.Revision)
+	require.NoError(t, err)
+
+	resp, err := cli.SnapshotWithVersion(ctx)
+	require.NoError(t, err)
+	defer resp.Snapshot.Close()
+
+	f, err := os.CreateTemp(t.TempDir(), "snap_*.db")
+	require.NoError(t, err)
+	defer f.Close()
+
+	n, err := io.Copy(f, resp.Snapshot)
+	require.NoError(t, err)
+
+	// Trim the appended sha256 digest so bbolt.Open accepts the file.
+	require.NoError(t, f.Truncate(n-int64(sha256.Size)))
+	require.NoError(t, f.Sync())
+
+	db, err := bolt.Open(f.Name(), 0o600, &bolt.Options{ReadOnly: true})
+	require.NoError(t, err, "snapshot file must be a valid bbolt DB (feature-gates=%q)", featureGates)
+	require.NoError(t, db.Close())
+
+	return n - int64(sha256.Size)
 }
 
 func TestMaintenanceStatus(t *testing.T) {
