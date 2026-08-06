@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -54,6 +55,16 @@ var (
 type Snapshotter struct {
 	lg  *zap.Logger
 	dir string
+
+	// pendingDBsMu protects pendingDBs.
+	pendingDBsMu sync.Mutex
+	// pendingDBs tracks the indices of snapshot database files that were
+	// saved on receipt but have not been applied yet. ReleaseSnapDBs must
+	// not delete these files: a newer snapshot can arrive before an older
+	// one has been applied, and deleting the older file while its apply is
+	// pending makes the apply panic with "failed to open snapshot backend".
+	// See https://github.com/etcd-io/etcd/issues/18055.
+	pendingDBs map[uint64]struct{}
 }
 
 func New(lg *zap.Logger, dir string) *Snapshotter {
@@ -61,8 +72,9 @@ func New(lg *zap.Logger, dir string) *Snapshotter {
 		lg = zap.NewNop()
 	}
 	return &Snapshotter{
-		lg:  lg,
-		dir: dir,
+		lg:         lg,
+		dir:        dir,
+		pendingDBs: make(map[uint64]struct{}),
 	}
 }
 
@@ -273,6 +285,10 @@ func (s *Snapshotter) ReleaseSnapDBs(snap *raftpb.Snapshot) error {
 				continue
 			}
 			if index < snap.Metadata.GetIndex() {
+				if s.isPendingDB(index) {
+					s.lg.Info("skipping deletion of .snap.db file pending apply", zap.String("path", filename))
+					continue
+				}
 				s.lg.Info("found orphaned .snap.db file; deleting", zap.String("path", filename))
 				if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
 					s.lg.Error("failed to remove orphaned .snap.db file", zap.String("path", filename), zap.String("error", rmErr.Error()))
