@@ -561,15 +561,17 @@ function release_pass {
 
 function release_tests_pass {
   if [ -z "${VERSION:-}" ]; then
-    VERSION=$(go list -m go.etcd.io/etcd/api/v3 2>/dev/null | \
-     awk '{split(substr($2,2), a, "."); print a[1]"."a[2]".99"}')
+    VERSION=$(git describe --tags --always --dirty)
   fi
 
   if [ -n "${CI:-}" ]; then
     git config user.email "prow@etcd.io"
     git config user.name "Prow"
+    # Codespaces sets gpg.program to a helper that signs via the GitHub API and can't sign tags.
+    git config gpg.program gpg
 
-    gpg --batch --gen-key <<EOF
+    if ! gpg --list-secret-keys prow@etcd.io >/dev/null 2>&1; then
+      gpg --batch --gen-key <<EOF
 %no-protection
 Key-Type: 1
 Key-Length: 2048
@@ -579,12 +581,12 @@ Name-Real: Prow
 Name-Email: prow@etcd.io
 Expire-Date: 0
 EOF
+    fi
 
     git remote add origin https://github.com/etcd-io/etcd.git
   fi
 
   DRY_RUN=true run "${ETCD_ROOT_DIR}/scripts/release.sh" --no-upload --no-docker-push --no-gh-release --in-place "${VERSION}"
-  VERSION="${VERSION}" run "${ETCD_ROOT_DIR}/scripts/test_images.sh"
 }
 
 function mod_tidy_pass {

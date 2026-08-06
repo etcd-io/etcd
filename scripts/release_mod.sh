@@ -19,9 +19,9 @@
 #
 # % DRY_RUN=false TARGET_VERSION="v3.5.13" ./scripts/release_mod.sh update_versions
 
-# Tag latest commit with current version number for all the modules and push upstream:
+# Tag latest commit with given version number for all the modules and push upstream:
 #
-# % DRY_RUN=false REMOTE_REPO="origin" ./scripts/release_mod.sh push_mod_tags
+# % DRY_RUN=false REMOTE_REPO="origin" RELEASE_VERSION="v3.5.13" ./scripts/release_mod.sh push_mod_tags
 
 set -euo pipefail
 
@@ -34,7 +34,7 @@ function _cmd() {
   log_error "Command required: ${0} [cmd]"
   log_info "Available commands:"
   log_info "  - update_versions  - Updates all cross-module versions to \${TARGET_VERSION} in the local client."
-  log_info "  - push_mod_tags    - Tags HEAD with all modules versions tags and pushes it to \${REMOTE_REPO}."
+  log_info "  - push_mod_tags    - Tags HEAD with \${RELEASE_VERSION} for all modules and pushes it to \${REMOTE_REPO}."
 }
 
 # update_module_version [v2version] [v3version]
@@ -91,7 +91,7 @@ function update_versions_cmd() {
 
 function get_gpg_key {
   gitemail=$(git config --get user.email)
-  keyid=$(run gpg --list-keys --with-colons "${gitemail}" | awk -F: '/^pub:/ { print $5 }')
+  keyid=$(run gpg --list-keys --with-colons "${gitemail}" | awk -F: '/^pub:/ { print $5 }' | head -n 1)
   if [[ -z "${keyid}" ]]; then
     log_error "Failed to load gpg key. Is gpg set up correctly for etcd releases?"
     return 2
@@ -106,27 +106,29 @@ function push_mod_tags_cmd {
     log_error "REMOTE_REPO environment variable not set"
     return 2
   fi
-  log_info "REMOTE_REPO:  ${REMOTE_REPO}"
+  if [ -z "${RELEASE_VERSION:-}" ]; then
+    log_error "RELEASE_VERSION environment variable not set. Set it to e.g. v3.5.13"
+    return 2
+  fi
+  log_info "REMOTE_REPO:     ${REMOTE_REPO}"
+  log_info "RELEASE_VERSION: ${RELEASE_VERSION}"
 
-  # Any module ccan be used for this
-  local main_version
-  main_version=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${ROOT_MODULE}"'/api/v3") | .Version')
+  local version="${RELEASE_VERSION}"
   local tags=()
 
   keyid=$(get_gpg_key) || return 2
 
   for module in $(modules); do
-    local version
-    version=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${module}"'") | .Version')
-    local path
-    path=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${module}"'") | .Path')
-    local subdir="${path//${ROOT_MODULE}\//}"
+    # e.g. go.etcd.io/etcd/client/v3 --> client/v3, go.etcd.io/etcd/v3 --> v3
+    local subdir="${module//${ROOT_MODULE}\//}"
+    # strip the major version suffix, as it is not part of the tag path
+    local prefix="${subdir%/v[23]}"
     local tag
-    if [ -z "${version}" ]; then
-      tag="${main_version}"
-      version="${main_version}"
+    if [ "${prefix}" == "${subdir}" ]; then
+      # the root module is tagged with the bare version
+      tag="${version}"
     else
-      tag="${subdir///v[23]/}/${version}"
+      tag="${prefix}/${version}"
     fi
 
     log_info "Tags for: ${module} version:${version} tag:${tag}"
