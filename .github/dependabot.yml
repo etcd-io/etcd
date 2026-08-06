@@ -24,6 +24,13 @@ updates:
     allow:
       - dependency-type: direct
 
+  - package-ecosystem: gomod
+    directory: /tools/sbom # syft, kept outside the go workspace
+    schedule:
+      interval: weekly
+    allow:
+      - dependency-type: direct
+
   - package-ecosystem: docker
     directory: /
     schedule:
