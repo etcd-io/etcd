@@ -17,7 +17,6 @@ package main
 import (
 	"bufio"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -35,7 +34,6 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
@@ -50,7 +48,6 @@ const (
 )
 
 func main() {
-	snapfile := flag.String("start-snap", "", "The base name of snapshot file to start dumping")
 	waldir := flag.String("wal-dir", "", "If set, dumps WAL from the informed path, rather than following the standard 'data_dir/member/wal/' location")
 	startIndex := flag.Uint64("start-index", 0, "The index to start dumping (inclusive). If unspecified, dumps from the index of the last snapshot.")
 	endIndex := flag.Uint64("end-index", math.MaxUint64, "The index to stop dumping (exclusive)")
@@ -72,10 +69,6 @@ and output a hex encoded line of binary for each input line`)
 	}
 	dataDir := flag.Args()[0]
 
-	if *snapfile != "" && *startIndex != 0 {
-		log.Fatal("start-snap and start-index flags cannot be used together.")
-	}
-
 	startFromIndex := false
 	flag.Visit(func(f *flag.Flag) {
 		if f.Name == "start-index" {
@@ -84,7 +77,7 @@ and output a hex encoded line of binary for each input line`)
 	})
 
 	if !*raw {
-		ents := readUsingReadAll(lg, startFromIndex, startIndex, endIndex, snapfile, dataDir, waldir)
+		ents := readUsingReadAll(lg, startFromIndex, startIndex, endIndex, dataDir, waldir)
 
 		fmt.Printf("WAL entries: %d\n", len(ents))
 		if len(ents) > 0 {
@@ -99,8 +92,7 @@ and output a hex encoded line of binary for each input line`)
 
 		listEntriesType(*entrytype, *streamdecoder, ents)
 	} else {
-		if *snapfile != "" ||
-			*entrytype != defaultEntryTypes ||
+		if *entrytype != defaultEntryTypes ||
 			*streamdecoder != "" {
 			log.Fatalf("Flags --entry-type, --stream-decoder, --entrytype not supported in the RAW mode.")
 		}
@@ -113,12 +105,16 @@ and output a hex encoded line of binary for each input line`)
 	}
 }
 
-func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, endIndex *uint64, snapfile *string, dataDir string, waldir *string) []*raftpb.Entry {
+func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, endIndex *uint64, dataDir string, waldir *string) []*raftpb.Entry {
 	var (
-		walsnap  walpb.Snapshot
-		snapshot *raftpb.Snapshot
-		err      error
+		walsnap = &walpb.Snapshot{}
+		err     error
 	)
+
+	wd := *waldir
+	if wd == "" {
+		wd = walDir(dataDir)
+	}
 
 	endAtIndex := *endIndex < math.MaxUint64
 	if startFromIndex {
@@ -130,38 +126,20 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		index := *startIndex
 		walsnap.Index = &index
 	} else {
-		if *snapfile == "" {
-			ss := snap.New(lg, snapDir(dataDir))
-			snapshot, err = ss.Load()
-		} else {
-			snapshot, err = snap.Read(lg, filepath.Join(snapDir(dataDir), *snapfile))
+		walsnap, err = latestSnapshot(lg, wd)
+		if err != nil {
+			log.Fatalf("Failed reading latest WAL snapshot entry: %v", err)
 		}
 
-		switch {
-		case err == nil:
-			walsnap.Index, walsnap.Term = new(snapshot.Metadata.GetIndex()), new(snapshot.Metadata.GetTerm())
-			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
-
-			confStateJSON, merr := json.Marshal(snapshot.Metadata.ConfState)
-			if merr != nil {
-				confStateJSON = []byte(fmt.Sprintf("confstate err: %v", merr))
-			}
-			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s confstate=%s\n",
-				walsnap.Term, walsnap.Index, nodes, confStateJSON)
-		case errors.Is(err, snap.ErrNoSnapshot):
+		if walsnap.GetIndex() == 0 && walsnap.GetTerm() == 0 {
 			fmt.Print("Snapshot:\nempty\n")
-		default:
-			log.Fatalf("Failed loading snapshot: %v", err)
+		} else {
+			fmt.Printf("Snapshot:\nterm=%d index=%d\n", walsnap.Term, walsnap.Index)
 		}
 		fmt.Println("Start dumping log entries from snapshot.")
 	}
 
-	wd := *waldir
-	if wd == "" {
-		wd = walDir(dataDir)
-	}
-
-	w, err := wal.OpenForRead(zap.NewExample(), wd, &walsnap)
+	w, err := wal.OpenForRead(zap.NewExample(), wd, walsnap)
 	if err != nil {
 		log.Fatalf("Failed opening WAL: %v", err)
 	}
@@ -176,7 +154,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		log.Printf("Failed reading all WAL: %v", err)
 	}
 	id, cid := parseWALMetadata(wmetadata)
-	vid := types.ID(*state.Vote)
+	vid := types.ID(state.GetVote())
 	fmt.Printf("WAL metadata:\nnodeID=%s clusterID=%s term=%d commitIndex=%d vote=%s\n",
 		id, cid, state.Term, state.Commit, vid)
 	if endAtIndex {
@@ -194,6 +172,14 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 	return ents
 }
 
+func latestSnapshot(lg *zap.Logger, walDir string) (walsnap *walpb.Snapshot, err error) {
+	walSnaps, err := wal.ValidSnapshotEntries(lg, walDir)
+	if err != nil || len(walSnaps) == 0 {
+		return &walpb.Snapshot{}, err
+	}
+	return walSnaps[len(walSnaps)-1], nil
+}
+
 func walDir(dataDir string) string { return filepath.Join(dataDir, "member", "wal") }
 
 func snapDir(dataDir string) string { return filepath.Join(dataDir, "member", "snap") }
@@ -206,75 +192,67 @@ func parseWALMetadata(b []byte) (id, cid types.ID) {
 	return id, cid
 }
 
-func genIDSlice(a []uint64) []types.ID {
-	ids := make([]types.ID, len(a))
-	for i, id := range a {
-		ids[i] = types.ID(id)
-	}
-	return ids
-}
-
 type EntryFilter func(e *raftpb.Entry) (bool, string)
 
 // The 9 pass functions below takes the raftpb.Entry and return if the entry should be printed and the type of entry,
 // the type of the entry will used in the following print function
 func passConfChange(entry *raftpb.Entry) (bool, string) {
-	return *entry.Type == raftpb.EntryConfChange, "ConfigChange"
+	return entry.GetType() == raftpb.EntryConfChange, "ConfigChange"
 }
 
 func passInternalRaftRequest(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil, "InternalRaftRequest"
+	return entry.GetType() == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil, "InternalRaftRequest"
 }
 
 func passUnknownNormal(entry *raftpb.Entry) (bool, string) {
 	var rr2 etcdserverpb.InternalRaftRequest
-	return (*entry.Type == raftpb.EntryNormal) && proto.Unmarshal(entry.Data, &rr2) != nil, "UnknownNormal"
+	return (entry.GetType() == raftpb.EntryNormal) && proto.Unmarshal(entry.Data, &rr2) != nil, "UnknownNormal"
 }
 
 func passIRRRange(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Range != nil, "InternalRaftRequest"
+	return entry.GetType() == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Range != nil, "InternalRaftRequest"
 }
 
 func passIRRPut(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Put != nil, "InternalRaftRequest"
+	return entry.GetType() == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Put != nil, "InternalRaftRequest"
 }
 
 func passIRRDeleteRange(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.DeleteRange != nil, "InternalRaftRequest"
+	return entry.GetType() == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.DeleteRange != nil, "InternalRaftRequest"
 }
 
 func passIRRTxn(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Txn != nil, "InternalRaftRequest"
+	return entry.GetType() == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Txn != nil, "InternalRaftRequest"
 }
 
 func passIRRCompaction(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Compaction != nil, "InternalRaftRequest"
+	return entry.GetType() == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.Compaction != nil, "InternalRaftRequest"
 }
 
 func passIRRLeaseGrant(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseGrant != nil, "InternalRaftRequest"
+	return entry.GetType() == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseGrant != nil, "InternalRaftRequest"
 }
 
 func passIRRLeaseRevoke(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseRevoke != nil, "InternalRaftRequest"
+	return entry.GetType() == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseRevoke != nil, "InternalRaftRequest"
 }
 
 func passIRRLeaseCheckpoint(entry *raftpb.Entry) (bool, string) {
 	var rr etcdserverpb.InternalRaftRequest
-	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseCheckpoint != nil, "InternalRaftRequest"
+	return entry.GetType() == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr) == nil && rr.LeaseCheckpoint != nil, "InternalRaftRequest"
 }
 
 func passRequest(entry *raftpb.Entry) (bool, string) {
 	var rr2 etcdserverpb.InternalRaftRequest
-	return *entry.Type == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr2) != nil, "Request"
+	return entry.GetType() == raftpb.EntryNormal && proto.Unmarshal(entry.Data, &rr2) != nil, "Request"
 }
 
 type EntryPrinter func(e *raftpb.Entry)
@@ -307,6 +285,11 @@ func printConfChange(entry *raftpb.Entry) {
 	} else {
 		fmt.Printf("\tmethod=%s id=%s", *r.Type, types.ID(*r.NodeId))
 	}
+}
+
+// printRequest prints the legacy v2 request, which we don't support anymore.
+func printRequest(entry *raftpb.Entry) {
+	fmt.Printf("%4d\t%10d\tnorm\tv2 request", entry.Term, entry.Index)
 }
 
 // evaluateEntrytypeFlag evaluates entry-type flag and choose proper filter/filters to filter entries
@@ -351,6 +334,7 @@ func listEntriesType(entrytype string, streamdecoder string, ents []*raftpb.Entr
 	entryFilters := evaluateEntrytypeFlag(entrytype)
 	printerMap := map[string]EntryPrinter{
 		"InternalRaftRequest": printInternalRaftRequest,
+		"Request":             printRequest,
 		"ConfigChange":        printConfChange,
 		"UnknownNormal":       printUnknownNormal,
 	}
