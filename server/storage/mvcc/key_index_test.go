@@ -60,7 +60,7 @@ func TestRestoreTombstone(t *testing.T) {
 	require.Equal(t, []Revision{{16, 0}, {17, 0}, {18, 0}}, revs)
 
 	// compaction should remove restored tombstone
-	ki.compact(lg, 17, map[Revision]struct{}{})
+	ki.compact(lg, 17, map[Revision]struct{}{}, nil)
 	require.Len(t, ki.generations, 1)
 	require.Equal(t, []Revision{{17, 0}, {18, 0}}, ki.generations[0].revs)
 }
@@ -74,7 +74,7 @@ func TestKeyIndexGet(t *testing.T) {
 	//    {{8, 0}[1], {10, 0}[2], {12, 0}(t)[3]}
 	//    {{2, 0}[1], {4, 0}[2], {6, 0}(t)[3]}
 	ki := newTestKeyIndex(zaptest.NewLogger(t))
-	ki.compact(zaptest.NewLogger(t), 4, make(map[Revision]struct{}))
+	ki.compact(zaptest.NewLogger(t), 4, make(map[Revision]struct{}), nil)
 
 	tests := []struct {
 		rev int64
@@ -132,7 +132,7 @@ func TestKeyIndexGet(t *testing.T) {
 
 func TestKeyIndexSince(t *testing.T) {
 	ki := newTestKeyIndex(zaptest.NewLogger(t))
-	ki.compact(zaptest.NewLogger(t), 4, make(map[Revision]struct{}))
+	ki.compact(zaptest.NewLogger(t), 4, make(map[Revision]struct{}), nil)
 
 	allRevs := []Revision{
 		{Main: 4},
@@ -547,7 +547,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		}
 
 		am = make(map[Revision]struct{})
-		ki.compact(zaptest.NewLogger(t), tt.compact, am)
+		ki.compact(zaptest.NewLogger(t), tt.compact, am, nil)
 		if !reflect.DeepEqual(ki, tt.wki) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
 		}
@@ -570,7 +570,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
 			}
 			am = make(map[Revision]struct{})
-			ki.compact(zaptest.NewLogger(t), tt.compact, am)
+			ki.compact(zaptest.NewLogger(t), tt.compact, am, nil)
 			if !reflect.DeepEqual(ki, tt.wki) {
 				t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
 			}
@@ -598,7 +598,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		}
 
 		am = make(map[Revision]struct{})
-		ki.compact(zaptest.NewLogger(t), tt.compact, am)
+		ki.compact(zaptest.NewLogger(t), tt.compact, am, nil)
 		if !reflect.DeepEqual(ki, tt.wki) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
 		}
@@ -632,7 +632,7 @@ func TestKeyIndexCompactOnFurtherRev(t *testing.T) {
 	ki.put(zaptest.NewLogger(t), 1, 0)
 	ki.put(zaptest.NewLogger(t), 2, 0)
 	am := make(map[Revision]struct{})
-	ki.compact(zaptest.NewLogger(t), 3, am)
+	ki.compact(zaptest.NewLogger(t), 3, am, nil)
 
 	wki := &keyIndex{
 		key:      []byte("foo"),
