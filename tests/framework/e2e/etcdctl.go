@@ -773,3 +773,7 @@ func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOp
 
 	return ch
 }
+
+func (ctl *EtcdctlV3) UpdateAuthToken(token string) {
+	ctl.authConfig.Token = token
+}
