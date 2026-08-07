@@ -61,14 +61,14 @@ help() {
 }
 
 main() {
-  # Allow to receive the version with the "v" prefix, i.e. v3.6.0.
-  VERSION=${1#v}
-  if [[ ! "${VERSION}" =~ ^[0-9]+.[0-9]+.[0-9]+ ]]; then
-    log_error "Expected 'version' param of the form '<major-version>.<minor-version>.<patch-version>' but got '${VERSION}'"
+  # Normalize the version to always carry the "v" prefix, i.e. v3.6.0.
+  VERSION="v${1#v}"
+  if [[ ! "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+    log_error "Expected 'version' param of the form 'v<major-version>.<minor-version>.<patch-version>' but got '${VERSION}'"
     exit 1
   fi
-  RELEASE_VERSION="v${VERSION}"
-  MINOR_VERSION=$(echo "${VERSION}" | cut -d. -f 1-2)
+  RELEASE_VERSION="${VERSION}"
+  MINOR_VERSION=$(echo "${VERSION#v}" | cut -d. -f 1-2)
 
   if [ "${IN_PLACE}" == 1 ]; then
       # Trigger release in current branch
@@ -153,23 +153,6 @@ main() {
   # If the release tag does not already exist remotely, create it.
   log_callout "Create tag if not present"
   if [ "${remote_tag_exists}" -eq 0 ]; then
-    # Bump version/version.go to release version.
-    local source_version
-    source_version=$(grep -E "\s+Version\s*=" api/version/version.go | sed -e "s/.*\"\(.*\)\".*/\1/g")
-    if [[ "${source_version}" != "${VERSION}" ]]; then
-      source_minor_version=$(echo "${source_version}" | cut -d. -f 1-2 | sed 's/^v//')
-      if [[ "${source_minor_version}" != "${MINOR_VERSION}" ]]; then
-        log_error "Wrong etcd minor version in api/version/version.go. Expected ${MINOR_VERSION} but got ${source_minor_version}. Aborting."
-        exit 1
-      fi
-      log_callout "Updating modules definitions"
-      TARGET_VERSION="v${VERSION}" update_versions_cmd
-
-      log_callout "Updating version from ${source_version} to ${VERSION} in api/version/version.go"
-      sed -i "s/${source_version}/${VERSION}/g" api/version/version.go
-    fi
-
-
     log_callout "Building etcd and checking --version output"
     run ./scripts/build.sh
     local etcd_version
@@ -177,16 +160,6 @@ main() {
     if [[ "${etcd_version}" != "${VERSION}" ]]; then
       log_error "Wrong etcd version in version/version.go. Expected ${etcd_version} but got ${VERSION}. Aborting."
       exit 1
-    fi
-
-    if [[ -n $(git status -s) ]]; then
-      log_callout "Committing mods & api/version/version.go update."
-      run git add api/version/version.go
-      # shellcheck disable=SC2038,SC2046
-      run git add $(find . -name go.mod ! -path './release/*'| xargs)
-      run git diff --staged | cat
-      run git commit --signoff --message "version: bump up to ${VERSION}"
-      run git diff --staged | cat
     fi
 
     # Push the version change if it's not already been pushed.
@@ -201,7 +174,7 @@ main() {
       log_callout "Skipping tag step. git tag ${RELEASE_VERSION} already exists."
     else
       log_callout "Tagging release..."
-      REMOTE_REPO="origin" push_mod_tags_cmd
+      REMOTE_REPO="origin" RELEASE_VERSION="${RELEASE_VERSION}" push_mod_tags_cmd
     fi
 
     if [ "${IN_PLACE}" == 0 ]; then
