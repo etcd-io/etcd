@@ -15,6 +15,7 @@
 package etcdserver
 
 import (
+	"context"
 	"encoding/json"
 	"expvar"
 	"reflect"
@@ -250,7 +251,8 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 	}
 
 	// finish toApply, unblock raft routine
-	<-ap.notifyc
+	<-ap.raftStorageReadyC
+	ap.notifyApplyCompleted()
 
 	select {
 	case <-ap.raftAdvancedC:
@@ -340,5 +342,453 @@ func TestStopRaftNodeMoreThanOnce(t *testing.T) {
 		case <-time.After(time.Second):
 			t.Errorf("*raftNode.stop() is blocked !")
 		}
+	}
+}
+
+func TestAsyncStorageWritesBatchUsesFinalHardState(t *testing.T) {
+	storage := &saveCaptureStorage{Storage: mockstorage.NewStorageRecorder("")}
+	r := newRaftNode(raftNodeConfig{
+		lg:          zaptest.NewLogger(t),
+		Node:        newAsyncReadyNode(),
+		localID:     1,
+		storage:     storage,
+		raftStorage: raft.NewMemoryStorage(),
+		transport:   newNopTransporter(),
+	})
+	first := newStorageAppendMessage(1, 1)
+	first.Term = new(uint64(1))
+	first.Vote = new(uint64(1))
+	first.Commit = new(uint64(1))
+	second := newStorageAppendMessage(2, 2)
+	second.Term = new(uint64(2))
+	second.Vote = new(uint64(2))
+	second.Commit = new(uint64(2))
+
+	r.processStorageAppends([]*raftpb.Message{first, second})
+
+	if storage.saveCount != 1 {
+		t.Fatalf("save count = %d, want 1", storage.saveCount)
+	}
+	if got := storage.hardState.GetTerm(); got != 2 {
+		t.Fatalf("saved hard state term = %d, want 2", got)
+	}
+	if got := storage.hardState.GetVote(); got != 2 {
+		t.Fatalf("saved hard state vote = %d, want 2", got)
+	}
+	if got := storage.hardState.GetCommit(); got != 2 {
+		t.Fatalf("saved hard state commit = %d, want 2", got)
+	}
+	if len(storage.entries) != 2 || storage.entries[0].GetIndex() != 1 || storage.entries[1].GetIndex() != 2 {
+		t.Fatalf("saved entries = %v, want indexes [1 2]", storage.entries)
+	}
+}
+
+func TestAsyncStorageWritesAppendFIFO(t *testing.T) {
+	n := newAsyncReadyNode()
+	saveStartedC := make(chan struct{}, 2)
+	allowSaveC := make(chan struct{})
+	storage := &blockingSaveStorage{
+		Storage:      mockstorage.NewStorageRecorder(""),
+		saveStartedC: saveStartedC,
+		allowSaveC:   allowSaveC,
+	}
+	r := newRaftNode(raftNodeConfig{
+		lg:                 zaptest.NewLogger(t),
+		Node:               n,
+		localID:            1,
+		asyncStorageWrites: true,
+		storage:            storage,
+		raftStorage:        raft.NewMemoryStorage(),
+		transport:          newNopTransporter(),
+	})
+	r.appendc <- asyncAppendWork{message: newStorageAppendMessage(1, 1)}
+	r.appendc <- asyncAppendWork{message: newStorageAppendMessage(2, 2)}
+	r.start(newTestRaftReadyHandler())
+	defer r.stop()
+
+	<-saveStartedC
+	select {
+	case m := <-n.stepc:
+		t.Fatalf("storage response delivered before append was durable: %v", m)
+	default:
+	}
+	allowSaveC <- struct{}{}
+	if got := (<-n.stepc).GetIndex(); got != 1 {
+		t.Fatalf("first response index = %d, want 1", got)
+	}
+	if got := (<-n.stepc).GetIndex(); got != 2 {
+		t.Fatalf("second response index = %d, want 2", got)
+	}
+	select {
+	case <-saveStartedC:
+		t.Fatal("contiguous appends were not coalesced into one storage save")
+	default:
+	}
+
+	lastIndex, err := r.raftStorage.LastIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lastIndex != 2 {
+		t.Fatalf("last index = %d, want 2", lastIndex)
+	}
+	select {
+	case <-n.advancec:
+		t.Fatal("Advance called with asynchronous storage writes enabled")
+	default:
+	}
+}
+
+func TestAsyncStorageWritesDoesNotBatchOverwrites(t *testing.T) {
+	n := newAsyncReadyNode()
+	saveStartedC := make(chan struct{}, 2)
+	allowSaveC := make(chan struct{})
+	storage := &blockingSaveStorage{
+		Storage:      mockstorage.NewStorageRecorder(""),
+		saveStartedC: saveStartedC,
+		allowSaveC:   allowSaveC,
+	}
+	r := newRaftNode(raftNodeConfig{
+		lg:                 zaptest.NewLogger(t),
+		Node:               n,
+		localID:            1,
+		asyncStorageWrites: true,
+		storage:            storage,
+		raftStorage:        raft.NewMemoryStorage(),
+		transport:          newNopTransporter(),
+	})
+	r.appendc <- asyncAppendWork{message: newStorageAppendMessage(1, 1)}
+	r.appendc <- asyncAppendWork{message: newStorageAppendMessage(1, 2)}
+	r.start(newTestRaftReadyHandler())
+	defer r.stop()
+
+	<-saveStartedC
+	allowSaveC <- struct{}{}
+	if got := (<-n.stepc).GetLogTerm(); got != 1 {
+		t.Fatalf("first response term = %d, want 1", got)
+	}
+
+	<-saveStartedC
+	select {
+	case m := <-n.stepc:
+		t.Fatalf("overwrite response delivered before its storage save: %v", m)
+	default:
+	}
+	allowSaveC <- struct{}{}
+	if got := (<-n.stepc).GetLogTerm(); got != 2 {
+		t.Fatalf("second response term = %d, want 2", got)
+	}
+
+	term, err := r.raftStorage.Term(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if term != 2 {
+		t.Fatalf("stored term = %d, want 2", term)
+	}
+}
+
+func TestAsyncStorageWritesStopCancelsBlockedStorageResponse(t *testing.T) {
+	n := newBlockingStepNode()
+	r := newRaftNode(raftNodeConfig{
+		lg:                 zaptest.NewLogger(t),
+		Node:               n,
+		localID:            1,
+		asyncStorageWrites: true,
+		storage:            mockstorage.NewStorageRecorder(""),
+		raftStorage:        raft.NewMemoryStorage(),
+		transport:          newNopTransporter(),
+	})
+	r.appendc <- asyncAppendWork{message: newStorageAppendMessage(1, 1)}
+	r.start(newTestRaftReadyHandler())
+
+	select {
+	case <-n.stepStartedC:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for storage response delivery")
+	}
+
+	stoppedC := make(chan struct{})
+	go func() {
+		r.stop()
+		close(stoppedC)
+	}()
+	select {
+	case <-stoppedC:
+	case <-time.After(time.Second):
+		t.Fatal("raft node stop blocked on storage response delivery")
+	}
+}
+
+func TestAsyncStorageWritesApplyResponseAfterApplication(t *testing.T) {
+	n := newAsyncReadyNode()
+	r := newRaftNode(raftNodeConfig{
+		lg:                 zaptest.NewLogger(t),
+		Node:               n,
+		localID:            1,
+		asyncStorageWrites: true,
+		storage:            mockstorage.NewStorageRecorder(""),
+		raftStorage:        raft.NewMemoryStorage(),
+		transport:          newNopTransporter(),
+	})
+	r.start(newTestRaftReadyHandler())
+	defer r.stop()
+
+	entry := &raftpb.Entry{Index: new(uint64(1)), Term: new(uint64(1))}
+	response := &raftpb.Message{
+		Type:    raftpb.MsgStorageApplyResp.Enum(),
+		To:      new(uint64(1)),
+		From:    new(raft.LocalApplyThread),
+		Entries: []*raftpb.Entry{entry},
+	}
+	n.readyc <- raft.Ready{Messages: []*raftpb.Message{{
+		Type:      raftpb.MsgStorageApply.Enum(),
+		To:        new(raft.LocalApplyThread),
+		From:      new(uint64(1)),
+		Entries:   []*raftpb.Entry{entry},
+		Responses: []*raftpb.Message{response},
+	}}}
+
+	ap := <-r.applyc
+	select {
+	case m := <-n.stepc:
+		t.Fatalf("apply response delivered before application completed: %v", m)
+	default:
+	}
+	<-ap.raftStorageReadyC
+	ap.notifyApplyCompleted()
+
+	if got := <-n.stepc; got.GetType() != raftpb.MsgStorageApplyResp {
+		t.Fatalf("response type = %s, want %s", got.GetType(), raftpb.MsgStorageApplyResp)
+	}
+	select {
+	case <-ap.raftAdvancedC:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for Raft apply advancement")
+	}
+}
+
+func TestAsyncStorageWritesApplyWaitsForPriorAppend(t *testing.T) {
+	n := newAsyncReadyNode()
+	saveStartedC := make(chan struct{}, 1)
+	allowSaveC := make(chan struct{})
+	storage := &blockingSaveStorage{
+		Storage:      mockstorage.NewStorageRecorder(""),
+		saveStartedC: saveStartedC,
+		allowSaveC:   allowSaveC,
+	}
+	r := newRaftNode(raftNodeConfig{
+		lg:                 zaptest.NewLogger(t),
+		Node:               n,
+		localID:            1,
+		asyncStorageWrites: true,
+		storage:            storage,
+		raftStorage:        raft.NewMemoryStorage(),
+		transport:          newNopTransporter(),
+	})
+	r.start(newTestRaftReadyHandler())
+	defer r.stop()
+
+	entry := &raftpb.Entry{Index: new(uint64(1)), Term: new(uint64(1))}
+	appendMessage := newStorageAppendMessage(1, 1)
+	appendMessage.Term = new(uint64(1))
+	appendMessage.Vote = new(uint64(1))
+	appendMessage.Commit = new(uint64(1))
+	applyMessage := &raftpb.Message{
+		Type:    raftpb.MsgStorageApply.Enum(),
+		To:      new(raft.LocalApplyThread),
+		From:    new(uint64(1)),
+		Entries: []*raftpb.Entry{entry},
+		Responses: []*raftpb.Message{{
+			Type:    raftpb.MsgStorageApplyResp.Enum(),
+			To:      new(uint64(1)),
+			From:    new(raft.LocalApplyThread),
+			Entries: []*raftpb.Entry{entry},
+		}},
+	}
+	n.readyc <- raft.Ready{Messages: []*raftpb.Message{appendMessage, applyMessage}}
+
+	<-saveStartedC
+	ap := <-r.applyc
+	if !ap.waitForStorageBeforeApply {
+		t.Fatal("async apply does not require storage durability before application")
+	}
+	select {
+	case <-ap.raftStorageReadyC:
+		t.Fatal("apply storage barrier completed before the WAL save")
+	default:
+	}
+
+	allowSaveC <- struct{}{}
+	select {
+	case <-ap.raftStorageReadyC:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for apply storage barrier")
+	}
+	ap.notifyApplyCompleted()
+}
+
+func TestAsyncStorageWritesSnapshotResponseAfterApplication(t *testing.T) {
+	n := newAsyncReadyNode()
+	storage := mockstorage.NewStorageRecorder("")
+	r := newRaftNode(raftNodeConfig{
+		lg:                 zaptest.NewLogger(t),
+		Node:               n,
+		localID:            1,
+		asyncStorageWrites: true,
+		storage:            storage,
+		raftStorage:        raft.NewMemoryStorage(),
+		transport:          newNopTransporter(),
+	})
+	r.start(newTestRaftReadyHandler())
+	defer r.stop()
+
+	snapshot := raftpb.EnsureSnapshot(nil)
+	snapshot.Metadata.Index = new(uint64(5))
+	snapshot.Metadata.Term = new(uint64(2))
+	snapshot.Metadata.ConfState = &raftpb.ConfState{Voters: []uint64{1}}
+	response := &raftpb.Message{
+		Type:     raftpb.MsgStorageAppendResp.Enum(),
+		To:       new(uint64(1)),
+		From:     new(raft.LocalAppendThread),
+		Snapshot: snapshot,
+	}
+	n.readyc <- raft.Ready{Messages: []*raftpb.Message{{
+		Type:      raftpb.MsgStorageAppend.Enum(),
+		To:        new(raft.LocalAppendThread),
+		From:      new(uint64(1)),
+		Snapshot:  snapshot,
+		Responses: []*raftpb.Message{response},
+	}}}
+
+	ap := <-r.applyc
+	<-ap.snapshotPersistedC
+	<-ap.raftStorageReadyC
+	select {
+	case m := <-n.stepc:
+		t.Fatalf("snapshot response delivered before application completed: %v", m)
+	default:
+	}
+	ap.notifyApplyCompleted()
+
+	if got := <-n.stepc; got.GetType() != raftpb.MsgStorageAppendResp {
+		t.Fatalf("response type = %s, want %s", got.GetType(), raftpb.MsgStorageAppendResp)
+	}
+	storedSnapshot, err := r.raftStorage.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := storedSnapshot.Metadata.GetIndex(); got != 5 {
+		t.Fatalf("snapshot index = %d, want 5", got)
+	}
+	actions, err := storage.Wait(4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantActions := []string{"SaveSnap", "Save", "Sync", "Release"}
+	if len(actions) != len(wantActions) {
+		t.Fatalf("storage actions = %v, want %v", actions, wantActions)
+	}
+	for i, want := range wantActions {
+		if actions[i].Name != want {
+			t.Fatalf("storage action %d = %q, want %q", i, actions[i].Name, want)
+		}
+	}
+}
+
+type asyncReadyNode struct {
+	*readyNode
+	stepc    chan *raftpb.Message
+	advancec chan struct{}
+}
+
+func newAsyncReadyNode() *asyncReadyNode {
+	return &asyncReadyNode{
+		readyNode: newNopReadyNode(),
+		stepc:     make(chan *raftpb.Message, 8),
+		advancec:  make(chan struct{}, 1),
+	}
+}
+
+func (n *asyncReadyNode) Step(_ context.Context, m *raftpb.Message) error {
+	n.stepc <- m
+	return nil
+}
+
+func (n *asyncReadyNode) Advance() {
+	n.advancec <- struct{}{}
+}
+
+type blockingStepNode struct {
+	*asyncReadyNode
+	stepStartedC chan struct{}
+}
+
+func newBlockingStepNode() *blockingStepNode {
+	return &blockingStepNode{
+		asyncReadyNode: newAsyncReadyNode(),
+		stepStartedC:   make(chan struct{}),
+	}
+}
+
+func (n *blockingStepNode) Step(ctx context.Context, _ *raftpb.Message) error {
+	close(n.stepStartedC)
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+type blockingSaveStorage struct {
+	serverstorage.Storage
+	saveStartedC chan<- struct{}
+	allowSaveC   <-chan struct{}
+}
+
+func (s *blockingSaveStorage) Save(st *raftpb.HardState, entries []*raftpb.Entry) error {
+	s.saveStartedC <- struct{}{}
+	<-s.allowSaveC
+	return s.Storage.Save(st, entries)
+}
+
+type saveCaptureStorage struct {
+	serverstorage.Storage
+	saveCount int
+	hardState *raftpb.HardState
+	entries   []*raftpb.Entry
+}
+
+func (s *saveCaptureStorage) Save(st *raftpb.HardState, entries []*raftpb.Entry) error {
+	s.saveCount++
+	s.hardState = &raftpb.HardState{
+		Term:   new(st.GetTerm()),
+		Vote:   new(st.GetVote()),
+		Commit: new(st.GetCommit()),
+	}
+	s.entries = append([]*raftpb.Entry(nil), entries...)
+	return s.Storage.Save(st, entries)
+}
+
+func newStorageAppendMessage(index, term uint64) *raftpb.Message {
+	entry := &raftpb.Entry{Index: new(index), Term: new(term)}
+	return &raftpb.Message{
+		Type:    raftpb.MsgStorageAppend.Enum(),
+		To:      new(raft.LocalAppendThread),
+		From:    new(uint64(1)),
+		Entries: []*raftpb.Entry{entry},
+		Responses: []*raftpb.Message{{
+			Type:    raftpb.MsgStorageAppendResp.Enum(),
+			To:      new(uint64(1)),
+			From:    new(raft.LocalAppendThread),
+			Index:   new(index),
+			LogTerm: new(term),
+		}},
+	}
+}
+
+func newTestRaftReadyHandler() *raftReadyHandler {
+	return &raftReadyHandler{
+		getLead:              func() uint64 { return 0 },
+		updateLead:           func(uint64) {},
+		updateLeadership:     func(bool) {},
+		updateCommittedIndex: func(uint64) {},
 	}
 }
