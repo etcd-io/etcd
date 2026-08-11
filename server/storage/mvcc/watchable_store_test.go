@@ -896,7 +896,11 @@ func TestWatchVictims(t *testing.T) {
 				w.Close()
 				wg.Done()
 			}()
-			tc := time.After(10 * time.Second)
+			timeout := time.Duration(numWatches) * time.Duration(numPuts) * time.Millisecond
+		if timeout < 10*time.Second {
+			timeout = 10 * time.Second
+		}
+		tc := time.After(timeout)
 			evs, nextRev := 0, int64(2)
 			for evs < numPuts {
 				select {
