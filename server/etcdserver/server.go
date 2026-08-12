@@ -596,11 +596,10 @@ func (s *EtcdServer) start() {
 
 func (s *EtcdServer) purgeFile() {
 	lg := s.Logger()
-	var dberrc, serrc, werrc <-chan error
-	var dbdonec, sdonec, wdonec <-chan struct{}
+	var dberrc, werrc <-chan error
+	var dbdonec, wdonec <-chan struct{}
 	if s.Cfg.MaxSnapFiles > 0 {
 		dbdonec, dberrc = fileutil.PurgeFileWithoutFlock(lg, s.Cfg.SnapDir(), "snap.db", s.Cfg.MaxSnapFiles, purgeFileInterval, s.stopping)
-		sdonec, serrc = fileutil.PurgeFileWithoutFlock(lg, s.Cfg.SnapDir(), "snap", s.Cfg.MaxSnapFiles, purgeFileInterval, s.stopping)
 	}
 	if s.Cfg.MaxWALFiles > 0 {
 		wdonec, werrc = fileutil.PurgeFileWithDoneNotify(lg, s.Cfg.WALDir(), "wal", s.Cfg.MaxWALFiles, purgeFileInterval, s.stopping)
@@ -609,16 +608,11 @@ func (s *EtcdServer) purgeFile() {
 	select {
 	case e := <-dberrc:
 		lg.Fatal("failed to purge snap db file", zap.Error(e))
-	case e := <-serrc:
-		lg.Fatal("failed to purge snap file", zap.Error(e))
 	case e := <-werrc:
 		lg.Fatal("failed to purge wal file", zap.Error(e))
 	case <-s.stopping:
 		if dbdonec != nil {
 			<-dbdonec
-		}
-		if sdonec != nil {
-			<-sdonec
 		}
 		if wdonec != nil {
 			<-wdonec
