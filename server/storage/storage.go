@@ -64,15 +64,8 @@ func (st *storage) SaveSnap(snap *raftpb.Snapshot) error {
 		Term:      snap.Metadata.Term,
 		ConfState: snap.Metadata.GetConfState(),
 	}
-	// save the snapshot file before writing the snapshot to the wal.
-	// This makes it possible for the snapshot file to become orphaned, but prevents
-	// a WAL snapshot entry from having no corresponding snapshot file.
-	err := st.s.SaveSnap(snap)
-	if err != nil {
-		return err
-	}
-	// gofail: var raftBeforeWALSaveSnaphot struct{}
 
+	// gofail: var raftBeforeWALSaveSnaphot struct{}
 	return st.w.SaveSnapshot(&walsnap)
 }
 

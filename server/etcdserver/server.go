@@ -2071,7 +2071,6 @@ func (s *EtcdServer) applyConfChange(cc *raftpb.ConfChange, ep *etcdProgress, sh
 // TODO: non-blocking snapshot
 func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 	lg := s.Logger()
-	d := GetMembershipInfoInV2Format(lg, s.cluster)
 	if toDisk {
 		s.Logger().Info(
 			"triggering snapshot",
@@ -2094,8 +2093,7 @@ func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 		s.KV().Commit()
 	}
 
-	// For backward compatibility, generate v2 snapshot from v3 state.
-	snap, err := s.r.raftStorage.CreateSnapshot(ep.appliedi, ep.confState, d)
+	snap, err := s.r.raftStorage.CreateSnapshot(ep.appliedi, ep.confState, nil)
 	if err != nil {
 		// the snapshot was done asynchronously with the progress of raft.
 		// raft might have already got a newer snapshot.
@@ -2109,7 +2107,7 @@ func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 	verifyConsistentIndexIsLatest(snap, s.consistIndex.ConsistentIndex())
 
 	if toDisk {
-		// SaveSnap saves the snapshot to file and appends the corresponding WAL entry.
+		// SaveSnap appends the corresponding WAL entry.
 		if err = s.r.storage.SaveSnap(snap); err != nil {
 			lg.Panic("failed to save snapshot", zap.Error(err))
 		}

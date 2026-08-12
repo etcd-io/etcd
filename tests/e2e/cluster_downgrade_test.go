@@ -28,13 +28,10 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
+	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -263,9 +260,9 @@ func generateSnapshot(t *testing.T, snapshotCount uint64, cc *e2e.EtcdctlV3) {
 func verifySnapshot(t *testing.T, epc *e2e.EtcdProcessCluster) {
 	for i := range epc.Procs {
 		t.Logf("Verifying snapshot for member %d", i)
-		ss := snap.New(epc.Cfg.Logger, datadir.ToSnapDir(epc.Procs[i].Config().DataDirPath))
-		_, err := ss.Load()
+		walSnaps, err := wal.ValidSnapshotEntries(epc.Cfg.Logger, datadir.ToWALDir(epc.Procs[i].Config().DataDirPath))
 		require.NoError(t, err)
+		require.GreaterOrEqual(t, len(walSnaps), 1)
 	}
 	t.Logf("All members have a valid snapshot")
 }
@@ -273,15 +270,13 @@ func verifySnapshot(t *testing.T, epc *e2e.EtcdProcessCluster) {
 func verifySnapshotMembers(t *testing.T, epc *e2e.EtcdProcessCluster, expectedMembers *clientv3.MemberListResponse) {
 	for i := range epc.Procs {
 		t.Logf("Verifying snapshot for member %d", i)
-		ss := snap.New(epc.Cfg.Logger, datadir.ToSnapDir(epc.Procs[i].Config().DataDirPath))
-		snap, err := ss.Load()
+		walSnaps, err := wal.ValidSnapshotEntries(epc.Cfg.Logger, datadir.ToWALDir(epc.Procs[i].Config().DataDirPath))
 		require.NoError(t, err)
-		st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
-		err = st.Recovery(snap.Data)
-		require.NoError(t, err)
+		require.GreaterOrEqual(t, len(walSnaps), 1)
+		latestSnap := walSnaps[len(walSnaps)-1]
+		voters := latestSnap.GetConfState().GetVoters()
 		for _, m := range expectedMembers.Members {
-			_, err := st.Get(membership.MemberStoreKey(types.ID(m.ID)), true, true)
-			require.NoError(t, err)
+			require.Contains(t, voters, m.ID)
 		}
 		t.Logf("Verifed snapshot for member %d", i)
 	}
