@@ -16,9 +16,11 @@ package etcdserver
 
 import (
 	goruntime "runtime"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
@@ -189,6 +191,25 @@ func init() {
 	currentGoVersion.With(prometheus.Labels{
 		"server_go_version": goruntime.Version(),
 	}).Set(1)
+}
+
+var enableAllRuntimeMetricsOnce sync.Once
+
+// EnableAllRuntimeMetrics swaps client_golang's default Go collector for one
+// exposing the full runtime/metrics set (scheduler latency, mutex contention,
+// GC CPU share).
+func EnableAllRuntimeMetrics(lg *zap.Logger) {
+	enableAllRuntimeMetricsOnce.Do(func() {
+		if !prometheus.Unregister(collectors.NewGoCollector()) {
+			lg.Warn("failed to unregister the default Go collector, all runtime metrics will not be exposed")
+			return
+		}
+		if err := prometheus.Register(collectors.NewGoCollector(
+			collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll),
+		)); err != nil {
+			lg.Warn("failed to register the Go collector with all runtime metrics", zap.Error(err))
+		}
+	})
 }
 
 func monitorFileDescriptor(lg *zap.Logger, done <-chan struct{}) {

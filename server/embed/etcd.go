@@ -128,6 +128,10 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		e = nil
 	}()
 
+	if cfg.Metrics == "extensive" {
+		etcdserver.EnableAllRuntimeMetrics(cfg.logger)
+	}
+
 	if !cfg.SocketOpts.Empty() {
 		cfg.logger.Info(
 			"configuring socket options",
