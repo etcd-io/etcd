@@ -30,8 +30,12 @@ import (
 
 var ErrNoDBSnapshot = errors.New("snap: snapshot file doesn't exist")
 
-// SaveDBFrom saves snapshot of the database from the given reader. It
-// guarantees the save operation is atomic.
+// SaveDBFrom atomically saves a database snapshot from r. Before returning
+// successfully, it syncs both the file and its containing directory so the
+// rename is durable on storage that honors fsync.
+//
+// The snapshot receiver processes the Raft message only after this function
+// returns, so the WAL snapshot record cannot be synced before snap.db.
 func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 	start := time.Now()
 
@@ -54,11 +58,35 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 	fn := s.dbFilePath(id)
 	if fileutil.Exist(fn) {
 		os.Remove(f.Name())
+		// The file came from an earlier SaveDBFrom for the same snapshot id.
+		// If a machine crash interrupted that call between its rename and its
+		// directory fsync, the entry may still be undurable; fsync again so
+		// every successful return keeps the durability guarantee above.
+		if err = s.fsyncDir(s.dir); err != nil {
+			return n, err
+		}
 		return n, nil
 	}
 	err = os.Rename(f.Name(), fn)
 	if err != nil {
 		os.Remove(f.Name())
+		return n, err
+	}
+
+	// gofail: var snapDBRenameBeforeDirSync struct{}
+
+	// A rename is not durable until the containing directory is fsynced.
+	// The file contents are already synced above; this step protects the
+	// directory entry, and without it the crash sequence described on
+	// SaveDBFrom is reachable.
+	// gofail: var snapDBDirSyncError string
+	// return n, errors.New(snapDBDirSyncError)
+	if err = s.fsyncDir(s.dir); err != nil {
+		s.lg.Warn(
+			"failed to fsync snap directory after saving database snapshot",
+			zap.String("path", fn),
+			zap.Error(err),
+		)
 		return n, err
 	}
 
@@ -96,4 +124,16 @@ func (s *Snapshotter) DBFilePath(id uint64) (string, error) {
 
 func (s *Snapshotter) dbFilePath(id uint64) string {
 	return filepath.Join(s.dir, fmt.Sprintf("%016x.snap.db", id))
+}
+
+// fsyncSnapDir syncs the snapshot directory. On Linux, syncing a file does not
+// necessarily persist the directory entry that names it; the directory must
+// also be synced.
+func fsyncSnapDir(dir string) error {
+	d, err := fileutil.OpenDir(dir)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	return fileutil.Fsync(d)
 }
