@@ -116,7 +116,7 @@ On the day of the release:
      v3.7 has the set as pre-release checkbox checked)
    - Then, publish the release
 5. Update the changelog to reflect the correct release date.
-6. Announce the release, see Announcing below.
+6. Announce the release, see [Announcing](#announcing) below.
 7. If this is a minor/major release, update the documentation to remove the "draft" tag from the latest version of the documentation, and create a new docs tree for the next version.
 8. Paste the release link to the issue raised in Step 1 and close the issue.
 9. Raise a follow-up `kubernetes/org` pull request to return the GitHub release team to empty, least privilege state.
