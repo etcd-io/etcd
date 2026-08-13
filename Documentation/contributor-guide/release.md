@@ -147,7 +147,7 @@ etcd releases are announced in different places depending on the content of the 
 
 For patch releases, the text of the blog post and the release email will be the same, and should cover the basics of what's in the patch release and how it affects users; see previous announcements for examples.  Announcements on Slack will be abbreviated versions, with a link to the blog post.
 
-For minor/major releases, the blog post will be extensive and will cover features and contribution stories in detail.  Announcements elsewhere will be shorter, and will link back to this blog post.
+For minor/major releases, the blog post will be extensive and will cover features and contribution stories in detail. Announcements elsewhere will be shorter, and will link back to this blog post.
 
 #### Release known issues
 
