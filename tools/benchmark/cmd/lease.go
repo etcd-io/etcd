@@ -46,8 +46,9 @@ func leaseKeepaliveFunc(cmd *cobra.Command, _ []string) {
 	bar = pb.New(leaseKeepaliveTotal)
 	bar.Start()
 
-	r := newReport(cmd.Name())
-	finish := printReport(r, "")
+	reportName := cmd.Name()
+	r := newReport(reportName)
+	finish := printReport(r, reportName)
 	for i := range clients {
 		wg.Add(1)
 		go func(c v3.Lease) {

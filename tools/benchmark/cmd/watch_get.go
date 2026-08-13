@@ -75,8 +75,9 @@ func watchGetFunc(cmd *cobra.Command, _ []string) {
 	bar.Start()
 
 	// report from trying to do serialized gets with concurrent watchers
-	r := newReport(cmd.Name())
-	finish := printReport(r, "")
+	reportName := cmd.Name()
+	r := newReport(reportName)
+	finish := printReport(r, reportName)
 	ctx, cancel := context.WithCancel(context.TODO())
 	f := func() {
 		defer close(r.Results())

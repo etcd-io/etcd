@@ -143,8 +143,9 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		baseOpts = append(baseOpts, v3.WithRange(end))
 	}
 
-	r := newReport(cmd.Name())
-	finish := printReport(r, "")
+	reportName := cmd.Name()
+	r := newReport(reportName)
+	finish := printReport(r, reportName)
 	for i := range clients {
 		wg.Add(1)
 		go func(c *v3.Client) {
