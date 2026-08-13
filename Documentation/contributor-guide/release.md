@@ -139,7 +139,7 @@ Usually, release announcements are handled by the SIG-etcd docs team, sometimes 
 - Kubernetes dev mailing list
 - Additional Kubernetes Slack channels, such as #announcements
 
-etcd releases are announced in different places depending on the content of the release.  All releases, patch, minor, or major are announced in etcd's slack channel, mailing list, and blog.  Releases which require more awareness are announced additional places:
+etcd releases are announced in different places depending on the content of the release. All releases, patch, minor, or major are announced in etcd's slack channel, mailing list, and blog. Releases which require more awareness are announced additional places:
 
 - Patch releases which fix critical CVEs or data loss bugs that affect Kubernetes users and/or most etcd users: kubernetes dev mailing list, additional Kubernetes Slack channels, possibly social media channels, depending on severity and affected users
 - First beta (or RC if no betas) of a new major/minor release: Kubernetes blog, Kubernetes community social media channels
