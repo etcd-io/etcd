@@ -734,7 +734,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&cfg.EnablePprof, "enable-pprof", false, "Enable runtime profiling data via HTTP server. Address is at client URL + \"/debug/pprof/\"")
 
 	// additional metrics
-	fs.StringVar(&cfg.Metrics, "metrics", cfg.Metrics, "Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics")
+	fs.StringVar(&cfg.Metrics, "metrics", cfg.Metrics, "Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics and the full Go runtime metrics set")
 
 	fs.BoolVar(&cfg.EnableDistributedTracing, "enable-distributed-tracing", false, "Enable distributed tracing using OpenTelemetry Tracing.")
 	fs.StringVar(&cfg.DistributedTracingAddress, "distributed-tracing-address", cfg.DistributedTracingAddress, "Address for distributed tracing used for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag).")
