@@ -15,35 +15,15 @@
 
 set -euo pipefail
 
-if [ "$#" -lt 1 ]; then
-  echo "Usage: $0 VERSION [NO_DOCKER_PUSH]" >&2
-  exit 1
-fi
+source ./scripts/test_lib.sh
 
-VERSION=${1}
+VERSION=${1:-}
 if [ -z "$VERSION" ]; then
-  echo "Usage: ${0} VERSION [NO_DOCKER_PUSH]" >&2
+  echo "Usage: ${0} VERSION" >&2
   exit 1
 fi
-NO_DOCKER_PUSH=${2:-}
 
-PLATFORMS=${PLATFORMS:-"linux/amd64,linux/arm64,linux/ppc64le,linux/s390x"}
-
-BUILDDIR=${BUILDDIR:-release}
-mkdir -p "${BUILDDIR}"
-
-for platform in $(echo "${PLATFORMS}" | tr ',' ' '); do
-  RELEASE="etcd-${VERSION}-linux-${platform#linux/}"
-  if [ ! -d "${BUILDDIR}/${RELEASE}" ]; then
-    TARFILE="${RELEASE}.tar.gz"
-    TARURL="https://github.com/etcd-io/etcd/releases/download/${VERSION}/${TARFILE}"
-    if ! curl -f -L -o "${BUILDDIR}/${TARFILE}" "${TARURL}" ; then
-      echo "Failed to download ${TARURL}."
-      exit 1
-    fi
-    tar -C "${BUILDDIR}" -zvxf "${BUILDDIR}/${TARFILE}"
-  fi
-done
+PLATFORMS=${2:-"linux/amd64,linux/arm64,linux/ppc64le,linux/s390x"}
 
 tag_args=()
 if [ -z "${OCI_REGISTRY:-}" ]; then
@@ -53,25 +33,37 @@ else
   tag_args+=("-t" "${OCI_REGISTRY}/${OCI_PATH:-etcd}:${VERSION}")
 fi
 
-if [ "${NO_DOCKER_PUSH}" == 1 ]; then
-  # Build a single architecture to be tested later.
-  docker build --build-arg="VERSION=${VERSION}" \
-    --build-arg="BUILDDIR=${BUILDDIR}" \
-    --build-arg="TARGETARCH=$(go env GOARCH)" \
-    "${tag_args[@]}" \
-    .
+output_arg=()
+if [ "${NO_DOCKER_PUSH:-0}" == 1 ]; then
+  push_arg+=("--push" "false")
 else
+  output_arg+=("--push")
+fi
+
+if [ "${CI:-}" == "true" ]; then
   docker run --privileged --rm tonistiigi/binfmt --install all
-  docker buildx rm --force multiarch-multiplatform-builder || true
   docker buildx create \
     --name multiarch-multiplatform-builder \
     --driver docker-container \
     --bootstrap --use
+fi
+
+docker buildx build --build-arg="VERSION=${VERSION}" \
+  --build-arg="BUILDDIR=${BUILD_DIR}" \
+  --platform="${PLATFORMS}" \
+  "${output_arg[@]}" \
+  "${tag_args[@]}" \
+  .
+
+# A multi-arch manifest cannot be loaded into the docker daemon, so load a
+# host-arch image (from build cache) for subsequent steps to use.
+if [ "${NO_DOCKER_PUSH:-0}" == 1 ]; then
   docker buildx build --build-arg="VERSION=${VERSION}" \
-    --build-arg="BUILDDIR=${BUILDDIR}" \
-    --platform="${PLATFORMS}" \
-    --push \
+    --build-arg="BUILDDIR=${BUILD_DIR}" \
+    --platform="linux/$(go env GOARCH)" \
+    --load \
     "${tag_args[@]}" \
     .
-  docker buildx stop multiarch-multiplatform-builder
 fi
+
+docker images

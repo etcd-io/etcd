@@ -22,8 +22,7 @@ source ./scripts/test_lib.sh
 
 VERSION=${1:-}
 if [ -z "${VERSION}" ]; then
-  echo "Usage: ${0} VERSION [NO_DOCKER_PUSH]" >> /dev/stderr
-  exit 255
+  VERSION=$(git describe --tags --always --dirty)
 fi
 NO_DOCKER_PUSH=${2:-}
 
@@ -39,5 +38,22 @@ pushd "${ETCD_ROOT}" >/dev/null
   ./scripts/build-binary.sh "${VERSION}"
 
   log_callout "Building Docker images..."
-  OCI_REGISTRY="${OCI_REGISTRY:-}" OCI_PATH="${OCI_PATH:-}" BUILDDIR=release ./scripts/build-docker.sh "${VERSION}" "${NO_DOCKER_PUSH}"
+  OCI_REGISTRY="${OCI_REGISTRY:-}" OCI_PATH="${OCI_PATH:-}" NO_DOCKER_PUSH="${NO_DOCKER_PUSH}" BUILD_DIR=release ./scripts/build-docker.sh "${VERSION}"
+
+  find release -name '*.*' -type f -maxdepth 1 -exec sha256sum {} \; | sed "s~release/~~" > release/SHA256SUMS
+  if [ -n "${PUBLISH_TO_GCS:-}" ]; then
+    # cloudbuild will copy contents of this folder to GCS
+    echo "Copying release artifacts to release/cloudbuild/${VERSION}"
+    mkdir -p "release/cloudbuild/${VERSION}"
+    cp release/SHA256SUMS release/cloudbuild/"${VERSION}"/SHA256SUMS
+    cp release/*.zip release/cloudbuild/"${VERSION}"/ 
+    cp release/*.tar.gz release/cloudbuild/"${VERSION}"/
+    gcloud storage cp --recursive "release/cloudbuild/" "gs://${GCS_LOCATION}"
+
+    if [[ "${VERSION}" =~ ^v[0-9]+.[0-9]+.[0-9]+(-[a-zA-Z]+.[0-9]+)?$ ]]; then
+      echo "Updating latest release artifacts in gs://${GCS_LOCATION}/latest"
+      gcloud storage cp --recursive "gs://${GCS_LOCATION}/${VERSION}/" "gs://${GCS_LOCATION}/latest/"
+    fi
+
+  fi
 popd >/dev/null
