@@ -67,7 +67,7 @@ func init() {
 	mixedTxnCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
 	mixedTxnCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
 	mixedTxnCmd.Flags().Float64Var(&mixedTxnReadWriteRatio, "rw-ratio", 1, "Read/write ops ratio")
-	mixedTxnCmd.Flags().IntVar(&mixedTxnReportInterval, "report-interval", 10, "Print live JSON metrics every N seconds (min=1, -1 to disable)")
+	mixedTxnCmd.Flags().IntVar(&mixedTxnReportInterval, "report-interval", -1, "Print live JSON metrics every N seconds (min=1, -1 to disable)")
 }
 
 type request struct {
