@@ -2,7 +2,7 @@ module go.etcd.io/etcd/cache/v3
 
 go 1.26
 
-toolchain go1.26.5
+toolchain go1.26.6
 
 require (
 	github.com/google/go-cmp v0.7.0
