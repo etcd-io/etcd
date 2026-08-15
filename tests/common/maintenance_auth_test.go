@@ -16,6 +16,7 @@ package common
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -145,9 +146,10 @@ func TestSnapshotWithUserAuth(t *testing.T) {
 	testSnapshotWithAuth(t, false, true, WithAuth("user0", "user0Pass"))
 }
 
-func testSnapshotWithAuth(t *testing.T, _expectConnectionError, _expectOperationError bool, _opts ...config.ClientOption) {
-	// TODO(ahrtr): finish this after we added interface methods `Snapshot` into `Client`
-	t.Skip()
+func testSnapshotWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
+	testMaintenanceOperationWithAuth(t, expectConnectionError, expectOperationError, func(ctx context.Context, cc intf.Client) error {
+		return cc.Snapshot(ctx, filepath.Join(t.TempDir(), "snapshot.db"))
+	}, opts...)
 }
 
 /*
