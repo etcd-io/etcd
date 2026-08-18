@@ -19,6 +19,6 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	golang.org/x/image v0.43.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
 )
