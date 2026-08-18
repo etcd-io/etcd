@@ -317,9 +317,10 @@ func (c *Cache) getWatchLoop() {
 		if err := ctx.Err(); err != nil {
 			return
 		}
-		if err := c.getWatch(); err != nil {
-			fmt.Printf("getWatch failed, will retry after %v: %v\n", backoff, err)
-		}
+		// getWatch blocks until the watch fails or the context is canceled, so
+		// it always returns a non-nil error.
+		err := c.getWatch()
+		fmt.Printf("getWatch failed, will retry after %v: %v\n", backoff, err)
 		select {
 		case <-ctx.Done():
 			return
