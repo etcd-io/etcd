@@ -1571,7 +1571,7 @@
         "DESCEND"
       ],
       "default": "NONE",
-      "title": "- NONE: default, no sorting\n - ASCEND: lowest target value first\n - DESCEND: highest target value first"
+      "description": "- NONE: default, no sorting\n - ASCEND: lowest target value first\n - DESCEND: highest target value first"
     },
     "RangeRequestSortTarget": {
       "type": "string",
@@ -1683,7 +1683,7 @@
         "CORRUPT"
       ],
       "default": "NONE",
-      "title": "- NONE: default, used to query if any alarm is active\n - NOSPACE: space quota is exhausted\n - CORRUPT: kv store corruption detected"
+      "description": "- NONE: default, used to query if any alarm is active\n - NOSPACE: space quota is exhausted\n - CORRUPT: kv store corruption detected"
     },
     "etcdserverpbAuthDisableRequest": {
       "type": "object"

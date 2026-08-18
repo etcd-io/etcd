@@ -6,7 +6,8 @@
   },
   "tags": [
     {
-      "name": "Election"
+      "name": "Election",
+      "description": "The election service exposes client-side election facilities as a gRPC interface."
     }
   ],
   "consumes": [

@@ -6,7 +6,8 @@
   },
   "tags": [
     {
-      "name": "Lock"
+      "name": "Lock",
+      "description": "The lock service exposes client-side locking facilities as a gRPC interface."
     }
   ],
   "consumes": [
