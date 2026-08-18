@@ -9,7 +9,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/etcd/api/v3 v3.8.0-alpha.0
 	go.etcd.io/etcd/client/v3 v3.8.0-alpha.0
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570
 )
 

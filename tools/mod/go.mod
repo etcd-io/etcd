@@ -18,7 +18,7 @@ require (
 	golang.org/x/tools v0.48.0
 	golang.org/x/vuln v1.6.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.2
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12
 	gotest.tools/gotestsum v1.13.0
 	gotest.tools/v3 v3.5.2
 	honnef.co/go/tools v0.7.0
