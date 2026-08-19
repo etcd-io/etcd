@@ -17,6 +17,8 @@ package integration
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -331,6 +333,21 @@ func (c integrationClient) Defragment(ctx context.Context, o config.DefragOption
 		}
 	}
 	return nil
+}
+
+func (c integrationClient) Snapshot(ctx context.Context, outFile string) error {
+	rc, err := c.Client.Snapshot(ctx)
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+	f, err := os.Create(outFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = io.Copy(f, rc)
+	return err
 }
 
 func (c integrationClient) TimeToLive(ctx context.Context, id clientv3.LeaseID, o config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error) {

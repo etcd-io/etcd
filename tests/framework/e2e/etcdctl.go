@@ -92,6 +92,14 @@ func WithDialTimeout(tio time.Duration) config.ClientOption {
 	}
 }
 
+func (ctl *EtcdctlV3) Snapshot(ctx context.Context, outFile string) error {
+	// etcdctl requires the snapshot to be requested from exactly one node.
+	singleEndpointCtl := *ctl
+	singleEndpointCtl.endpoints = []string{ctl.endpoints[0]}
+	_, err := SpawnWithExpectLines(ctx, singleEndpointCtl.cmdArgs("snapshot", "save", outFile), nil, expect.ExpectedResponse{Value: "Snapshot saved at"})
+	return err
+}
+
 func (ctl *EtcdctlV3) DowngradeEnable(ctx context.Context, version string) error {
 	_, err := SpawnWithExpectLines(ctx, ctl.cmdArgs("downgrade", "enable", version), nil, expect.ExpectedResponse{Value: "Downgrade enable success"})
 	return err
