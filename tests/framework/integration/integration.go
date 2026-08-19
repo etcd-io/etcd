@@ -350,6 +350,10 @@ func (c integrationClient) Snapshot(ctx context.Context, outFile string) error {
 	return err
 }
 
+func (c integrationClient) Downgrade(ctx context.Context, action clientv3.DowngradeAction, version string) (*clientv3.DowngradeResponse, error) {
+	return c.Client.Downgrade(ctx, action, version)
+}
+
 func (c integrationClient) TimeToLive(ctx context.Context, id clientv3.LeaseID, o config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error) {
 	var leaseOpts []clientv3.LeaseOption
 	if o.WithAttachedKeys {
