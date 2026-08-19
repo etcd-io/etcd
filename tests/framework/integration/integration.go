@@ -252,6 +252,12 @@ func (c integrationClient) Put(ctx context.Context, key, value string, opts conf
 	if opts.LeaseID != 0 {
 		clientOpts = append(clientOpts, clientv3.WithLease(opts.LeaseID))
 	}
+	if opts.IgnoreValue {
+		clientOpts = append(clientOpts, clientv3.WithIgnoreValue())
+	}
+	if opts.IgnoreLease {
+		clientOpts = append(clientOpts, clientv3.WithIgnoreLease())
+	}
 	return c.Client.Put(ctx, key, value, clientOpts...)
 }
 
