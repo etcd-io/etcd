@@ -26,6 +26,7 @@ import (
 	"go.uber.org/zap"
 
 	bolt "go.etcd.io/bbolt"
+
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/featuregate"
@@ -60,8 +61,7 @@ type ServerConfig struct {
 	// follower to catch up.
 	SnapshotCatchUpEntries uint64
 
-	MaxSnapFiles uint
-	MaxWALFiles  uint
+	MaxWALFiles uint
 
 	// BackendBatchInterval is the maximum time before commit the backend transaction.
 	BackendBatchInterval time.Duration

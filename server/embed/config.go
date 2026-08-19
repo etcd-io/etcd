@@ -59,7 +59,6 @@ const (
 	ClusterStateFlagExisting = "existing"
 
 	DefaultName                        = "default"
-	DefaultMaxSnapshots                = 5
 	DefaultMaxWALs                     = 5
 	DefaultMaxTxnOps                   = uint(128)
 	DefaultWarningApplyDuration        = 100 * time.Millisecond
@@ -180,10 +179,6 @@ type Config struct {
 	// follower to catch up.
 	SnapshotCatchUpEntries uint64 `json:"snapshot-catchup-entries"`
 
-	// MaxSnapFiles is the maximum number of snapshot files.
-	// TODO: remove it in 3.8.
-	// Deprecated: Will be removed in v3.8.
-	MaxSnapFiles uint `json:"max-snapshots"`
 	//revive:disable-next-line:var-naming
 	MaxWalFiles uint `json:"max-wals"`
 
@@ -507,8 +502,7 @@ func NewConfig() *Config {
 	lcurl, _ := url.Parse(DefaultListenClientURLs)
 	acurl, _ := url.Parse(DefaultAdvertiseClientURLs)
 	cfg := &Config{
-		MaxSnapFiles: DefaultMaxSnapshots,
-		MaxWalFiles:  DefaultMaxWALs,
+		MaxWalFiles: DefaultMaxWALs,
 
 		Name: DefaultName,
 
@@ -622,7 +616,6 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 		"listen-metrics-urls",
 		"List of URLs to listen on for the metrics and health endpoints.",
 	)
-	fs.UintVar(&cfg.MaxSnapFiles, "max-snapshots", cfg.MaxSnapFiles, "Maximum number of snapshot files to retain (0 is unlimited). Deprecated in v3.6 and will be decommissioned in v3.8.")
 	fs.UintVar(&cfg.MaxWalFiles, "max-wals", cfg.MaxWalFiles, "Maximum number of wal files to retain (0 is unlimited).")
 	fs.StringVar(&cfg.Name, "name", cfg.Name, "Human-readable name for this member.")
 	fs.Uint64Var(&cfg.SnapshotCount, "snapshot-count", cfg.SnapshotCount, "Number of committed transactions to trigger a snapshot.")
