@@ -10,6 +10,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - [Fix duplicate `RaftTerm` field in the `endpoint status` output when using `--write-out=fields`](https://github.com/etcd-io/etcd/pull/22218)
 
+### Dependencies
+
+- Compile binaries using [go 1.25.13](https://github.com/etcd-io/etcd/pull/22286).
+
 ---
 
 ## v3.6.14 (2026-07-23)
