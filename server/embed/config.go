@@ -45,7 +45,6 @@ import (
 	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/pkg/v3/netutil"
-	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
@@ -447,12 +446,6 @@ type Config struct {
 	// be refined to mlock in-use area of bbolt only.
 	MemoryMlock bool `json:"memory-mlock"`
 
-	// V2Deprecation describes phase of API & Storage V2 support.
-	// Do not set this field for embedded use cases, as it has no effect. However, setting it will not cause any harm.
-	// TODO: Delete in v3.8
-	// Deprecated: The default value is enforced, to be removed in v3.8.
-	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
-
 	// ServerFeatureGate is a server level feature gate
 	ServerFeatureGate featuregate.FeatureGate
 	// FlagsExplicitlySet stores if a flag is explicitly set from the cmd line or config file.
@@ -568,8 +561,6 @@ func NewConfig() *Config {
 		DistributedTracingServiceName: DefaultDistributedTracingServiceName,
 
 		CompactHashCheckTime: DefaultCompactHashCheckTime,
-
-		V2Deprecation: config.V2DeprDefault,
 
 		DiscoveryCfg: v3discovery.DiscoveryConfig{
 			ConfigSpec: clientv3.ConfigSpec{
@@ -1211,13 +1202,6 @@ func (cfg *Config) InferLocalAddr() string {
 
 func (cfg *Config) IsNewCluster() bool { return cfg.ClusterState == ClusterStateFlagNew }
 func (cfg *Config) ElectionTicks() int { return int(cfg.ElectionMs / cfg.TickMs) }
-
-func (cfg *Config) V2DeprecationEffective() config.V2DeprecationEnum {
-	if cfg.V2Deprecation == "" {
-		return config.V2DeprDefault
-	}
-	return cfg.V2Deprecation
-}
 
 func (cfg *Config) defaultPeerHost() bool {
 	return len(cfg.AdvertisePeerUrls) == 1 && cfg.AdvertisePeerUrls[0].String() == DefaultInitialAdvertisePeerURLs

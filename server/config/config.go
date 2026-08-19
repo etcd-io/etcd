@@ -26,7 +26,6 @@ import (
 	"go.uber.org/zap"
 
 	bolt "go.etcd.io/bbolt"
-
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/featuregate"
@@ -192,9 +191,6 @@ type ServerConfig struct {
 
 	// MaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
 	MaxLearners int `json:"max-learners"`
-
-	// V2Deprecation defines a phase of v2store deprecation process.
-	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`
 
 	// LocalAddress is the local IP address to use when communicating with a peer.
 	LocalAddress string `json:"local-address"`

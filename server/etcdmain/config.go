@@ -29,7 +29,6 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/pkg/v3/flags"
-	cconfig "go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 )
@@ -56,10 +55,6 @@ var (
 		"test.coverprofile",
 		"test.outputdir",
 	}
-
-	deprecatedFlags = map[string]string{
-		"v2-deprecation": "--v2-deprecation is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.",
-	}
 )
 
 // config holds the config for a command line invocation of etcd
@@ -76,9 +71,6 @@ type configFlags struct {
 	flagSet      *flag.FlagSet
 	clusterState *flags.SelectiveStringValue
 	fallback     *flags.SelectiveStringValue
-	// Deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
-	// TODO: remove in v3.8.
-	v2deprecation *flags.SelectiveStringsValue
 }
 
 func newConfig() *config {
@@ -96,11 +88,6 @@ func newConfig() *config {
 			fallbackFlagExit,
 			fallbackFlagProxy,
 		),
-		v2deprecation: flags.NewSelectiveStringsValue(
-			string(cconfig.V2Depr1WriteOnly),
-			string(cconfig.V2Depr1WriteOnlySkipCheck),
-			string(cconfig.V2Depr1WriteOnlyDrop),
-			string(cconfig.V2Depr2Gone)),
 	}
 	fs := cfg.cf.flagSet
 	fs.Usage = func() {
@@ -110,7 +97,6 @@ func newConfig() *config {
 	fs.StringVar(&cfg.configFile, "config-file", "", "Path to the server configuration file. Note that if a configuration file is provided, other command line flags and environment variables will be ignored.")
 	fs.Var(cfg.cf.fallback, "discovery-fallback", fmt.Sprintf("Valid values include %q", cfg.cf.fallback.Valids()))
 	fs.Var(cfg.cf.clusterState, "initial-cluster-state", "Initial cluster state ('new' when bootstrapping a new cluster or 'existing' when adding new members to an existing cluster). After successful initialization (bootstrapping or adding), flag is ignored on restarts.")
-	fs.Var(cfg.cf.v2deprecation, "v2-deprecation", fmt.Sprintf("v2store deprecation stage: %q. Deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.", cfg.cf.v2deprecation.Valids()))
 
 	fs.BoolVar(&cfg.printVersion, "version", false, "Print the version and exit.")
 	// ignored
@@ -163,27 +149,7 @@ func (cfg *config) parse(arguments []string) error {
 		err = cfg.configFromCmdLine()
 	}
 
-	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
-	cfg.ec.V2Deprecation = cconfig.V2DeprDefault
-
 	cfg.ec.WarningUnaryRequestDuration = cfg.parseWarningUnaryRequestDuration()
-
-	// Check for deprecated options from both command line and config file
-	var warningsForDeprecatedOpts []string
-	for flagName := range cfg.ec.FlagsExplicitlySet {
-		if msg, ok := deprecatedFlags[flagName]; ok {
-			warningsForDeprecatedOpts = append(warningsForDeprecatedOpts, msg)
-		}
-	}
-
-	// Log warnings if any deprecated options were found
-	if len(warningsForDeprecatedOpts) > 0 {
-		if lg := cfg.ec.GetLogger(); lg != nil {
-			for _, msg := range warningsForDeprecatedOpts {
-				lg.Warn(msg)
-			}
-		}
-	}
 
 	return err
 }
@@ -243,8 +209,6 @@ func (cfg *config) configFromCmdLine() error {
 	cfg.ec.LogOutputs = flags.UniqueStringsFromFlag(cfg.cf.flagSet, "log-outputs")
 
 	cfg.ec.ClusterState = cfg.cf.clusterState.String()
-
-	cfg.ec.V2Deprecation = cconfig.V2DeprecationEnum(cfg.cf.v2deprecation.String())
 
 	// disable default advertise-client-urls if lcurls is set
 	missingAC := flags.IsSet(cfg.cf.flagSet, "listen-client-urls") && !flags.IsSet(cfg.cf.flagSet, "advertise-client-urls")

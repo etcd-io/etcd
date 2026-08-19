@@ -21,7 +21,6 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	cconfig "go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/features"
@@ -169,14 +168,6 @@ Clustering:
     Auto compaction retention length. 0 means disable auto compaction.
   --auto-compaction-mode 'periodic'
     Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
-  --v2-deprecation '` + string(cconfig.V2DeprDefault) + `'
-    Phase of v2store deprecation. Deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
-    Supported values:
-      'not-yet'                // Issues a warning if v2store have meaningful content (default in v3.5)
-      'write-only'             // Custom v2 state is not allowed (default in v3.6)
-      'write-only-skip-check'  // Custom v2 state is not allowed similar to 'write-only', but bypass the v2 content check.
-      'write-only-drop-data'   // Custom v2 state will get DELETED ! (planned default in v3.7)
-      'gone'                   // v2store is not maintained any longer. (planned to cleanup anything related to v2store in v3.8)
 
 Security:
   --cert-file ''

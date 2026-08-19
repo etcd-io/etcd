@@ -24,7 +24,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
@@ -526,65 +525,5 @@ func validateClusteringFlags(t *testing.T, cfg *config) {
 	}
 	if !reflect.DeepEqual(cfg.ec.AdvertiseClientUrls, wcfg.ec.AdvertiseClientUrls) {
 		t.Errorf("advertise-client-urls = %v, want %v", cfg.ec.AdvertiseClientUrls, wcfg.ec.AdvertiseClientUrls)
-	}
-}
-
-func TestConfigFileDeprecatedOptions(t *testing.T) {
-	// Define a minimal config struct with only the fields we need
-	type configFileYAML struct {
-		V2Deprecation string `json:"v2-deprecation,omitempty"`
-	}
-
-	testCases := []struct {
-		name           string
-		configFileYAML configFileYAML
-		expectedFlags  map[string]struct{}
-	}{
-		{
-			name:           "no deprecated options",
-			configFileYAML: configFileYAML{},
-			expectedFlags:  map[string]struct{}{},
-		},
-		{
-			name: "deprecated v2-deprecation option",
-			configFileYAML: configFileYAML{
-				V2Deprecation: "write-only-drop-data",
-			},
-			expectedFlags: map[string]struct{}{
-				"v2-deprecation": {},
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Create config file
-			b, err := yaml.Marshal(&tc.configFileYAML)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			tmpfile := mustCreateCfgFile(t, b)
-			defer os.Remove(tmpfile.Name())
-
-			// Parse config
-			cfg := newConfig()
-			err = cfg.parse([]string{fmt.Sprintf("--config-file=%s", tmpfile.Name())})
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			// Check which flags were set and marked as deprecated
-			foundFlags := make(map[string]struct{})
-			for flagName := range cfg.ec.FlagsExplicitlySet {
-				if _, ok := deprecatedFlags[flagName]; ok {
-					foundFlags[flagName] = struct{}{}
-				}
-			}
-
-			// Compare sets of flags
-			assert.Equalf(t, tc.expectedFlags, foundFlags, "deprecated flags mismatch - expected: %v, got: %v",
-				tc.expectedFlags, foundFlags)
-		})
 	}
 }

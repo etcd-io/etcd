@@ -234,7 +234,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		MemoryMlock:                       cfg.MemoryMlock,
 		BootstrapDefragThresholdMegabytes: cfg.BootstrapDefragThresholdMegabytes,
 		MaxLearners:                       cfg.MaxLearners,
-		V2Deprecation:                     cfg.V2DeprecationEffective(),
 		LocalAddress:                      cfg.InferLocalAddr(),
 		ServerFeatureGate:                 cfg.ServerFeatureGate,
 		Metrics:                           cfg.Metrics,
@@ -382,8 +381,6 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 
 		zap.String("downgrade-check-interval", sc.DowngradeCheckTime.String()),
 		zap.Int("max-learners", sc.MaxLearners),
-
-		zap.String("v2-deprecation", string(ec.V2Deprecation)),
 	)
 }
 
