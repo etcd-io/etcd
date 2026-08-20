@@ -20,8 +20,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
@@ -72,9 +74,16 @@ func TestDowngradeWithUserAuth(t *testing.T) {
 	testDowngradeWithAuth(t, false, true, WithAuth("user0", "user0Pass"))
 }
 
-func testDowngradeWithAuth(t *testing.T, _expectConnectionError, _expectOperationError bool, _opts ...config.ClientOption) {
-	// TODO(ahrtr): finish this after we added interface methods `Downgrade` into `Client`
-	t.Skip()
+func testDowngradeWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
+	currentVersion, err := semver.StrictNewVersion(version.Version)
+	require.NoError(t, err)
+	// downgrade validate only accepts a target of exactly one minor version below the current one
+	targetVersion := semver.New(currentVersion.Major(), currentVersion.Minor()-1, 0, "", "")
+
+	testMaintenanceOperationWithAuth(t, expectConnectionError, expectOperationError, func(ctx context.Context, cc intf.Client) error {
+		_, err := cc.Downgrade(ctx, clientv3.DowngradeValidate, targetVersion.String())
+		return err
+	}, opts...)
 }
 
 /*
