@@ -84,6 +84,12 @@ const (
 	// alpha: v3.7
 	// main PR: https://github.com/etcd-io/etcd/pull/20492
 	PriorityRequest featuregate.Feature = "PriorityRequest"
+	// DefragmentedSnapshot makes the Snapshot RPC of the Maintenance service return a
+	// defragmented copy of the backend database.
+	// owner: @cartermckinnon
+	// alpha: v3.7
+	// main PR: https://github.com/etcd-io/etcd/pull/21776
+	DefragmentedSnapshot featuregate.Feature = "DefragmentedSnapshot"
 )
 
 var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
@@ -96,6 +102,7 @@ var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	SetMemberLocalAddr:           {Default: false, PreRelease: featuregate.Alpha},
 	FastLeaseKeepAlive:           {Default: true, PreRelease: featuregate.Beta},
 	PriorityRequest:              {Default: false, PreRelease: featuregate.Alpha},
+	DefragmentedSnapshot:         {Default: false, PreRelease: featuregate.Alpha},
 }
 
 func NewDefaultServerFeatureGate(name string, lg *zap.Logger) featuregate.FeatureGate {
