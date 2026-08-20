@@ -13,4 +13,14 @@
 // limitations under the License.
 
 // Package v3election provides a v3 election service from an etcdserver.
+//
+// Caution: the gRPC Election service is not recommended for general use.
+// Campaign blocks on the server for as long as the caller is not elected
+// leader, reusing the auth token from the original request for internal
+// calls made while it waits. If that token expires before the call
+// returns, Campaign fails with an auth error even though the caller never
+// did anything wrong (see
+// https://github.com/etcd-io/etcd/issues/17623). Prefer the
+// client/v3/concurrency package directly where a client SDK is available;
+// this service mainly exists for clients without a native SDK equivalent.
 package v3election
