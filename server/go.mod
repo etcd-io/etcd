@@ -2,7 +2,7 @@ module go.etcd.io/etcd/server/v3
 
 go 1.26
 
-toolchain go1.26.6
+toolchain go1.27rc3
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
