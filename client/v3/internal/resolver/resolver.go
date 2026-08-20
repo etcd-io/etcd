@@ -45,13 +45,13 @@ func (r *EtcdManualResolver) Build(target resolver.Target, cc resolver.ClientCon
 	if r.serviceConfig.Err != nil {
 		return nil, r.serviceConfig.Err
 	}
-	res, err := r.Resolver.Build(target, cc, opts)
-	if err != nil {
-		return nil, err
-	}
-	// Populates endpoints stored in r into ClientConn (cc).
-	r.updateState()
-	return res, nil
+	// Seed the initial state before the underlying manual.Resolver is built so
+	// that gRPC receives a single resolver update with both the endpoints and
+	// the round_robin ServiceConfig. Otherwise Build would emit an empty first
+	// update and updateState a second one, forcing gRPC to switch balancers
+	// mid-connection and tear down an in-flight SubConn. See issue #21660.
+	r.InitialState(r.buildState())
+	return r.Resolver.Build(target, cc, opts)
 }
 
 func (r *EtcdManualResolver) SetEndpoints(endpoints []string) {
@@ -61,18 +61,21 @@ func (r *EtcdManualResolver) SetEndpoints(endpoints []string) {
 
 func (r EtcdManualResolver) updateState() {
 	if getCC(r) != nil {
-		eps := make([]resolver.Endpoint, len(r.endpoints))
-		for i, ep := range r.endpoints {
-			addr, serverName := endpoint.Interpret(ep)
-			eps[i] = resolver.Endpoint{Addresses: []resolver.Address{
-				{Addr: addr, ServerName: serverName},
-			}}
-		}
-		state := resolver.State{
-			Endpoints:     eps,
-			ServiceConfig: r.serviceConfig,
-		}
-		r.UpdateState(state)
+		r.UpdateState(r.buildState())
+	}
+}
+
+func (r EtcdManualResolver) buildState() resolver.State {
+	eps := make([]resolver.Endpoint, len(r.endpoints))
+	for i, ep := range r.endpoints {
+		addr, serverName := endpoint.Interpret(ep)
+		eps[i] = resolver.Endpoint{Addresses: []resolver.Address{
+			{Addr: addr, ServerName: serverName},
+		}}
+	}
+	return resolver.State{
+		Endpoints:     eps,
+		ServiceConfig: r.serviceConfig,
 	}
 }
 
