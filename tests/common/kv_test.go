@@ -29,6 +29,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -56,6 +57,71 @@ func TestKVPut(t *testing.T) {
 				assert.Lenf(t, resp.Kvs, 1, "Unexpected length of response, got %d", len(resp.Kvs))
 				assert.Equalf(t, string(resp.Kvs[0].Key), key, "Unexpected key, want %q, got %q", key, resp.Kvs[0].Key)
 				assert.Equalf(t, string(resp.Kvs[0].Value), value, "Unexpected value, want %q, got %q", value, resp.Kvs[0].Value)
+			})
+		})
+	}
+}
+
+func TestKVPutWithIgnoreValue(t *testing.T) {
+	testRunner.BeforeTest(t)
+	for _, tc := range clusterTestCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
+			defer clus.Close()
+			cc := testutils.MustClient(clus.Client())
+
+			testutils.ExecuteUntil(ctx, t, func() {
+				_, err := cc.Put(ctx, "foo", "", config.PutOptions{IgnoreValue: true})
+				require.ErrorContains(t, err, rpctypes.ErrKeyNotFound.Error())
+
+				_, err = cc.Put(ctx, "foo", "bar", config.PutOptions{})
+				require.NoError(t, err)
+
+				_, err = cc.Put(ctx, "foo", "", config.PutOptions{IgnoreValue: true})
+				require.NoError(t, err)
+
+				resp, err := cc.Get(ctx, "foo", config.GetOptions{})
+				require.NoError(t, err)
+				require.Len(t, resp.Kvs, 1)
+				require.Equal(t, "bar", string(resp.Kvs[0].Value))
+			})
+		})
+	}
+}
+
+func TestKVPutWithIgnoreLease(t *testing.T) {
+	testRunner.BeforeTest(t)
+	for _, tc := range clusterTestCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
+			defer clus.Close()
+			cc := testutils.MustClient(clus.Client())
+
+			testutils.ExecuteUntil(ctx, t, func() {
+				grant, err := cc.Grant(ctx, 10)
+				require.NoError(t, err)
+
+				_, err = cc.Put(ctx, "foo", "bar", config.PutOptions{IgnoreLease: true})
+				require.ErrorContains(t, err, rpctypes.ErrKeyNotFound.Error())
+
+				_, err = cc.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: grant.ID})
+				require.NoError(t, err)
+
+				_, err = cc.Put(ctx, "foo", "bar1", config.PutOptions{IgnoreLease: true})
+				require.NoError(t, err)
+
+				resp, err := cc.Get(ctx, "foo", config.GetOptions{})
+				require.NoError(t, err)
+				require.Len(t, resp.Kvs, 1)
+				require.Equal(t, "bar1", string(resp.Kvs[0].Value))
+				require.Equal(t, int64(grant.ID), resp.Kvs[0].Lease)
+
+				_, err = cc.Revoke(ctx, grant.ID)
+				require.NoError(t, err)
 			})
 		})
 	}

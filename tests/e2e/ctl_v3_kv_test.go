@@ -32,9 +32,6 @@ func TestCtlV3PutTimeout(t *testing.T) { testCtl(t, putTest, withDefaultDialTime
 func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
 	testCtl(t, putTest, withCfg(*e2e.NewConfigClientTLS()), withFlagByEnv())
 }
-func TestCtlV3PutIgnoreValue(t *testing.T) { testCtl(t, putTestIgnoreValue) }
-func TestCtlV3PutIgnoreLease(t *testing.T) { testCtl(t, putTestIgnoreLease) }
-
 func TestCtlV3GetTimeout(t *testing.T) { testCtl(t, getTest, withDefaultDialTimeout()) }
 
 func TestCtlV3GetFormat(t *testing.T)             { testCtl(t, getFormatTest) }
@@ -92,38 +89,6 @@ func putTest(cx ctlCtx) {
 		if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 			cx.t.Fatalf("putTest ctlV3Get error (%v)", err)
 		}
-	}
-}
-
-func putTestIgnoreValue(cx ctlCtx) {
-	require.NoError(cx.t, ctlV3Put(cx, "foo", "bar", ""))
-	require.NoError(cx.t, ctlV3Get(cx, []string{"foo"}, kv{"foo", "bar"}))
-	require.NoError(cx.t, ctlV3Put(cx, "foo", "", "", "--ignore-value"))
-	require.NoError(cx.t, ctlV3Get(cx, []string{"foo"}, kv{"foo", "bar"}))
-}
-
-func putTestIgnoreLease(cx ctlCtx) {
-	leaseID, err := ctlV3LeaseGrant(cx, 10)
-	if err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3LeaseGrant error (%v)", err)
-	}
-	if err := ctlV3Put(cx, "foo", "bar", leaseID); err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3Put error (%v)", err)
-	}
-	if err := ctlV3Get(cx, []string{"foo"}, kv{"foo", "bar"}); err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3Get error (%v)", err)
-	}
-	if err := ctlV3Put(cx, "foo", "bar1", "", "--ignore-lease"); err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3Put error (%v)", err)
-	}
-	if err := ctlV3Get(cx, []string{"foo"}, kv{"foo", "bar1"}); err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3Get error (%v)", err)
-	}
-	if err := ctlV3LeaseRevoke(cx, leaseID); err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3LeaseRevok error (%v)", err)
-	}
-	if err := ctlV3Get(cx, []string{"key"}); err != nil { // expect no output
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3Get error (%v)", err)
 	}
 }
 
@@ -338,26 +303,10 @@ func delTest(cx ctlCtx) {
 	}
 }
 
-func ctlV3Put(cx ctlCtx, key, value, leaseID string, flags ...string) error {
-	skipValue := false
-	skipLease := false
-	for _, f := range flags {
-		if f == "--ignore-value" {
-			skipValue = true
-		}
-		if f == "--ignore-lease" {
-			skipLease = true
-		}
-	}
-	cmdArgs := append(cx.PrefixArgs(), "put", key)
-	if !skipValue {
-		cmdArgs = append(cmdArgs, value)
-	}
-	if leaseID != "" && !skipLease {
+func ctlV3Put(cx ctlCtx, key, value, leaseID string) error {
+	cmdArgs := append(cx.PrefixArgs(), "put", key, value)
+	if leaseID != "" {
 		cmdArgs = append(cmdArgs, "--lease", leaseID)
-	}
-	if len(flags) != 0 {
-		cmdArgs = append(cmdArgs, flags...)
 	}
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "OK"})
 }
