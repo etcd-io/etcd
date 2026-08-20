@@ -1073,9 +1073,9 @@ func (i *fakeIndex) RangeSince(key, end []byte, rev int64) []Revision {
 	return r.revs
 }
 
-func (i *fakeIndex) Compact(rev int64) map[Revision]struct{} {
+func (i *fakeIndex) Compact(rev int64) (map[Revision]struct{}, map[BucketKey]struct{}) {
 	i.Recorder.Record(testutil.Action{Name: "compact", Params: []any{rev}})
-	return <-i.indexCompactRespc
+	return <-i.indexCompactRespc, nil
 }
 
 func (i *fakeIndex) Keep(rev int64) map[Revision]struct{} {
