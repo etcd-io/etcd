@@ -513,3 +513,7 @@ func (c integrationClient) MemberList(ctx context.Context, serializable bool) (*
 	}
 	return c.Client.MemberList(ctx)
 }
+
+func (c integrationClient) UpdateAuthToken(token string) {
+	c.Client.UpdateAuthToken(token)
+}
