@@ -93,6 +93,10 @@ const (
 
 	purgeFileInterval = 30 * time.Second
 
+	// maxSnapDBFiles is the maximum number of snap db files to retain.
+	// It's no longer configurable now that --max-snapshots is removed.
+	maxSnapDBFiles = 5
+
 	// max number of in-flight snapshot messages etcdserver allows to have
 	// This number is more than enough for most clusters with 5 machines.
 	maxInFlightMsgSnap = 16
@@ -598,9 +602,7 @@ func (s *EtcdServer) purgeFile() {
 	lg := s.Logger()
 	var dberrc, werrc <-chan error
 	var dbdonec, wdonec <-chan struct{}
-	if s.Cfg.MaxSnapFiles > 0 {
-		dbdonec, dberrc = fileutil.PurgeFileWithoutFlock(lg, s.Cfg.SnapDir(), "snap.db", s.Cfg.MaxSnapFiles, purgeFileInterval, s.stopping)
-	}
+	dbdonec, dberrc = fileutil.PurgeFileWithoutFlock(lg, s.Cfg.SnapDir(), "snap.db", maxSnapDBFiles, purgeFileInterval, s.stopping)
 	if s.Cfg.MaxWALFiles > 0 {
 		wdonec, werrc = fileutil.PurgeFileWithDoneNotify(lg, s.Cfg.WALDir(), "wal", s.Cfg.MaxWALFiles, purgeFileInterval, s.stopping)
 	}

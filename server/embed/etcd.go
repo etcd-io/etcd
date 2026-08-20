@@ -191,7 +191,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		DedicatedWALDir:                   cfg.WalDir,
 		SnapshotCount:                     cfg.SnapshotCount,
 		SnapshotCatchUpEntries:            cfg.SnapshotCatchUpEntries,
-		MaxSnapFiles:                      cfg.MaxSnapFiles,
 		MaxWALFiles:                       cfg.MaxWalFiles,
 		InitialPeerURLsMap:                urlsmap,
 		InitialClusterToken:               token,
@@ -235,7 +234,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		MemoryMlock:                       cfg.MemoryMlock,
 		BootstrapDefragThresholdMegabytes: cfg.BootstrapDefragThresholdMegabytes,
 		MaxLearners:                       cfg.MaxLearners,
-		V2Deprecation:                     cfg.V2DeprecationEffective(),
 		LocalAddress:                      cfg.InferLocalAddr(),
 		ServerFeatureGate:                 cfg.ServerFeatureGate,
 		Metrics:                           cfg.Metrics,
@@ -343,7 +341,6 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.Bool("initial-election-tick-advance", sc.InitialElectionTickAdvance),
 		zap.Uint64("snapshot-count", sc.SnapshotCount),
 		zap.Uint("max-wals", sc.MaxWALFiles),
-		zap.Uint("max-snapshots", sc.MaxSnapFiles),
 		zap.Uint64("snapshot-catchup-entries", sc.SnapshotCatchUpEntries),
 		zap.Strings("initial-advertise-peer-urls", ec.getAdvertisePeerURLs()),
 		zap.Strings("listen-peer-urls", ec.getListenPeerURLs()),
@@ -384,8 +381,6 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 
 		zap.String("downgrade-check-interval", sc.DowngradeCheckTime.String()),
 		zap.Int("max-learners", sc.MaxLearners),
-
-		zap.String("v2-deprecation", string(ec.V2Deprecation)),
 	)
 }
 

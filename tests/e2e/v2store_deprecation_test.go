@@ -26,16 +26,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestV2DeprecationNotYet(t *testing.T) {
-	e2e.BeforeTest(t)
-	t.Log("Verify its infeasible to start etcd with --v2-deprecation=not-yet mode")
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=not-yet"}, nil)
-	require.NoError(t, err)
-
-	_, err = proc.Expect(`invalid value "not-yet" for flag -v2-deprecation: invalid value "not-yet"`)
-	assert.NoError(t, err)
-}
-
 func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	e2e.BeforeTest(t)
 	dataDir := t.TempDir()
