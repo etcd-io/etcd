@@ -5,6 +5,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
     groups:
       codeql:
         patterns:
@@ -14,6 +15,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
     allow:
       - dependency-type: direct
 
@@ -21,6 +23,7 @@ updates:
     directory: /tools/mod # Not linked from /go.mod
     schedule:
       interval: weekly
+      day: monday
     allow:
       - dependency-type: direct
 
@@ -28,6 +31,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
 
   - package-ecosystem: docker
     directory: /
@@ -51,3 +55,4 @@ updates:
     directory: /tools/container-images/devcontainer
     schedule:
       interval: weekly
+      day: monday
