@@ -167,8 +167,8 @@ func (p *routingPicker) Pick(info balancer.PickInfo) (balancer.PickResult, error
 	//
 	// Routing it to the leader removes that proposal copy. In a healthy
 	// three-voter cluster, the payload model predicts roughly 25 percent fewer
-	// peer-sent bytes. The etcd-infra E2E measures that metric; it does not measure
-	// wire bytes or cross-zone cost.
+	// peer-sent bytes. That prediction counts serialized Raft messages; it is
+	// not a wire-byte or cross-zone cost measurement.
 	mutation := mutationFromContext(info.Ctx)
 	if mutation != nil && !mutation.bypassLeader.Load() {
 		if p.leader == nil {
