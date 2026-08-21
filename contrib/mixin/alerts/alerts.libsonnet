@@ -141,7 +141,7 @@
               severity: 'warning',
             },
             annotations: {
-              description: 'etcd cluster "{{ $labels.%s }}": {{ $value }} proposal failures within the last 30 minutes on etcd instance {{ $labels.instance }}.' % $._config.clusterLabel,
+              description: 'etcd cluster "{{ $labels.%s }}": {{ $value }} proposal failures within the last 15 minutes on etcd instance {{ $labels.instance }}.' % $._config.clusterLabel,
               summary: 'etcd cluster has high number of proposal failures.',
             },
           },
