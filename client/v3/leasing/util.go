@@ -108,6 +108,7 @@ func copyHeader(hdr *v3pb.ResponseHeader) *v3pb.ResponseHeader {
 		MemberId:  hdr.GetMemberId(),
 		Revision:  hdr.GetRevision(),
 		RaftTerm:  hdr.GetRaftTerm(),
+		LeaderId:  hdr.GetLeaderId(),
 	}
 }
 

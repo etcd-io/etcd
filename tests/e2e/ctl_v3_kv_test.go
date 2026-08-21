@@ -175,7 +175,7 @@ func getFormatTest(cx ctlCtx) {
 		{"simple", false, "abc"},
 		{"simple", true, "123"},
 		{"json", false, `"kvs":[{"key":"YWJj"`},
-		{"protobuf", false, "\x17\b\x93\xe7\xf6\x93\xd4ņ\xe14\x10\xed"},
+		{"protobuf", false, "\x20\b\x93\xe7\xf6\x93\xd4ņ\xe14\x10\xed"},
 	}
 
 	for i, tt := range tests {
