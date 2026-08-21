@@ -430,8 +430,8 @@ func TestLeaderBalancerEndToEnd(t *testing.T) {
 	// A hint-only update (same endpoints, new hint) must publish a new picker
 	// that routes mutations to the new leader.
 	moved := WithHint(state, "10.0.0.2:2379", 2)
-	if err := b.UpdateClientConnState(balancer.ClientConnState{ResolverState: moved}); err != nil {
-		t.Fatalf("hint-only UpdateClientConnState failed: %v", err)
+	if moveErr := b.UpdateClientConnState(balancer.ClientConnState{ResolverState: moved}); moveErr != nil {
+		t.Fatalf("hint-only UpdateClientConnState failed: %v", moveErr)
 	}
 	picker = cc.lastPicker(t)
 	f2 := &failureRecord{}

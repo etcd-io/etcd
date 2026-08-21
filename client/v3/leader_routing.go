@@ -40,9 +40,9 @@ const (
 //
 // One routing state covers all attempts, so a failed leader attempt sends later
 // attempts to round_robin.
-func (client *Client) leaderUnaryInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-	if isMutationRequest(req) && client.leaderTracker != nil {
-		ctx = leaderbalancer.MarkMutation(ctx, client.leaderTracker.invalidateHint)
+func (c *Client) leaderUnaryInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	if isMutationRequest(req) && c.leaderTracker != nil {
+		ctx = leaderbalancer.MarkMutation(ctx, c.leaderTracker.invalidateHint)
 	}
 	return invoker(ctx, method, req, reply, cc, opts...)
 }
