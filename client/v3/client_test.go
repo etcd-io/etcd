@@ -76,7 +76,7 @@ func TestDialCancel(t *testing.T) {
 	require.NoError(t, err)
 
 	// connect to ipv4 black hole so dial blocks
-	c.SetEndpoints([]string{"http://254.0.0.1:12345"})
+	c.SetEndpoints("http://254.0.0.1:12345")
 
 	// issue Get to force redial attempts
 	getc := make(chan struct{})

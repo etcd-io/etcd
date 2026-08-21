@@ -183,48 +183,18 @@ func (c *Client) endpointSnapshot() ([]string, uint64) {
 	return slices.Clone(c.endpoints), c.endpointGeneration
 }
 
-// SetEndpointsOption customizes SetEndpoints.
-type SetEndpointsOption func(*setEndpointsConfig)
-
-type setEndpointsConfig struct {
-	sort bool
-}
-
-// WithSortedEndpoints canonicalizes endpoint order before the client compares
-// it with the current list.
-//
-// Sync rebuilds its list from MemberList, whose member order is not stable.
-// Without sorting, a pure reordering clears the leader hint and triggers a
-// rediscovery round even though membership did not change. Do not use this
-// option for a caller-ordered list: its first endpoint selects the dial
-// authority and credentials.
-func WithSortedEndpoints() SetEndpointsOption {
-	return func(cfg *setEndpointsConfig) { cfg.sort = true }
-}
-
 // SetEndpoints updates the client's endpoints.
 //
-// A list equal to the current one, after any WithSortedEndpoints
-// canonicalization, is a no-op: it does not advance the generation or publish
-// another resolver state.
-func (c *Client) SetEndpoints(eps []string, opts ...SetEndpointsOption) {
-	var options setEndpointsConfig
-	for _, opt := range opts {
-		opt(&options)
-	}
+// A list equal to the current one is a no-op: it does not advance the
+// endpoint generation or publish another resolver state. gRPC applies every
+// publication, and redundant updates churn balancers and connections; see
+// https://github.com/etcd-io/etcd/issues/21660.
+func (c *Client) SetEndpoints(eps ...string) {
 	// The client and resolver retain this state after SetEndpoints returns.
 	// Neither may share the caller's backing array.
 	eps = slices.Clone(eps)
-	if options.sort {
-		slices.Sort(eps)
-	}
 	c.epMu.Lock()
-	changed := !slices.Equal(c.endpoints, eps)
-	if !changed {
-		// Do not republish unchanged resolver state.
-		//
-		// gRPC applies every publication, and etcd #21660 asks clients to
-		// avoid per-Sync churn.
+	if slices.Equal(c.endpoints, eps) {
 		c.epMu.Unlock()
 		return
 	}
@@ -260,7 +230,13 @@ func (c *Client) Sync(ctx context.Context) error {
 	verify.Verify("empty endpoints returned from etcd cluster", func() (bool, map[string]any) {
 		return len(eps) > 0, nil
 	})
-	c.SetEndpoints(eps, WithSortedEndpoints())
+	// MemberList order is not stable. Sort so that a pure reordering does
+	// not clear the leader hint and schedule a rediscovery round when
+	// membership did not change. Sorting is safe here: unlike a
+	// caller-provided list, this one is membership-derived, and its order
+	// carries no meaning.
+	slices.Sort(eps)
+	c.SetEndpoints(eps...)
 	c.GetLogger().Debug("set etcd endpoints by autoSync", zap.Strings("endpoints", eps))
 	return nil
 }
@@ -533,7 +509,7 @@ func newClient(cfg *Config) (*Client, error) {
 		client.cancel()
 		return nil, errors.New("at least one Endpoint is required in client config")
 	}
-	client.SetEndpoints(cfg.Endpoints)
+	client.SetEndpoints(cfg.Endpoints...)
 
 	// Use a provided endpoint target so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
