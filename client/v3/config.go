@@ -28,7 +28,8 @@ import (
 )
 
 const (
-	// DefaultBalancerName is etcd's resolver policy when no balancer is selected.
+	// DefaultBalancerName is the load-balancing policy the client uses when
+	// Config does not select one.
 	DefaultBalancerName = roundrobin.Name
 
 	// LeaderAwareBalancerName routes eligible RPCs to the ready endpoint most

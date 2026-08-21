@@ -80,9 +80,11 @@ func isMutationRequest(req any) bool {
 		// Every auth administration request is a consensus write, including
 		// Authenticate, which proposes to register the issued token.
 		//
-		// Auth reads (UserGet, UserList, RoleGet, RoleList, AuthStatus) stay on
-		// round_robin. Leader-aware routing keeps the administration rule uniform;
-		// these requests are too rare to save measurable peer bytes.
+		// The auth queries (AuthStatus, UserGet, UserList, RoleGet, RoleList)
+		// stay on round_robin. The server submits them to Raft as well, so
+		// leader routing would save the same proposal copy; they are too rare
+		// for that saving to matter, and routing writes alone keeps the rule
+		// simple.
 		return true
 	case *pb.MoveLeaderRequest:
 		// MoveLeader needs leader-aware routing even though it is not a consensus
@@ -91,9 +93,7 @@ func isMutationRequest(req any) bool {
 		// A follower returns ErrNotLeader instead of forwarding. That error is
 		// FailedPrecondition, which the retry policy does not retry, so a
 		// round_robin attempt to a follower fails immediately. A stale hint fails
-		// once, invalidates itself, and schedules rediscovery. After a successful
-		// transfer, writes sent to the old leader still succeed through forwarding,
-		// so periodic Status refresh corrects the hint.
+		// once, invalidates itself, and schedules rediscovery.
 		return true
 	case *pb.AlarmRequest:
 		// The server submits every Alarm action, including GET, to Raft.
@@ -184,13 +184,17 @@ func newLeaderTracker(client *Client) *leaderTracker {
 	}
 }
 
-// TODO: Propose leader identity in mutation response metadata, analogous to
-// opt-in response data such as PrevKv.
+// TODO: Replace Status polling with response-driven hints. Phase 1 of
+// https://github.com/etcd-io/etcd/issues/22268 proposes returning the leader's
+// member ID in every ResponseHeader, analogous to opt-in response data such as
+// PrevKv.
 //
 // With a stable member-ID-to-endpoint mapping, ordinary responses could refresh
 // the hint. A failed hint could fall back to round_robin and relearn it without
 // periodic Status polling. Until the protocol exposes that identity, polling is
-// the only proactive refresh path.
+// the only proactive refresh path; after a MoveLeader transfer it is also what
+// corrects the hint, because writes sent to the old leader still succeed
+// through forwarding.
 func (tracker *leaderTracker) run() {
 	defer close(tracker.donec)
 	// Reuse the main connection's round_robin SubConns for endpoint Status probes.

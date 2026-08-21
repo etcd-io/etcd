@@ -156,7 +156,9 @@ func (p *routingPicker) Pick(info balancer.PickInfo) (balancer.PickResult, error
 		if endpoint := p.endpoints[address]; endpoint != nil {
 			return endpoint.Pick(info)
 		}
-		// A Status probe must fail rather than run against a different endpoint.
+		// A Status probe must not run against a different endpoint.
+		// ErrNoSubConnAvailable parks the probe until a picker change or its
+		// timeout instead of silently probing the wrong member.
 		return balancer.PickResult{}, balancer.ErrNoSubConnAvailable
 	}
 
