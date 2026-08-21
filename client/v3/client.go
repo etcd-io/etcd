@@ -69,12 +69,12 @@ type Client struct {
 	endpointGeneration uint64
 	// memberIDToEndpoint maps a member ID to its client endpoint. Sync
 	// populates it from MemberList; the leader-aware balancer uses it to
-	// translate a leader ID from a response header into a routable endpoint.
+	// translate a leader ID from a response header into an endpoint.
 	//
 	// TODO: Remove this field when the balancer switches to response-driven
-	// hints. The tracker currently builds its own mapping from Status
-	// responses; once every ResponseHeader carries leader_id, the client
-	// can read the leader from any response and use this mapping instead.
+	// hints. The tracker builds its own mapping from Status responses; once
+	// every ResponseHeader carries leader_id, the client can read the leader
+	// from any response and use this mapping instead.
 	memberIDToEndpoint map[uint64]string
 
 	ctx    context.Context
