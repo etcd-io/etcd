@@ -82,9 +82,9 @@ func isMutationRequest(req any) bool {
 		//
 		// The auth queries (AuthStatus, UserGet, UserList, RoleGet, RoleList)
 		// stay on round_robin. The server submits them to Raft as well, so
-		// leader routing would save the same proposal copy; they are too rare
-		// for that saving to matter, and routing writes alone keeps the rule
-		// simple.
+		// leader routing would save the same proposal copy, but they are too
+		// rare to justify the extra routing logic, and routing writes alone
+		// keeps the rule simple.
 		return true
 	case *pb.MoveLeaderRequest:
 		// MoveLeader needs leader-aware routing even though it is not a consensus
