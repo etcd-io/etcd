@@ -204,11 +204,11 @@ func newLeaderTracker(client *Client) *leaderTracker {
 // through forwarding.
 //
 // The migration path is:
-//  1. Sync already caches a member-ID-to-endpoint mapping in the client.
+//  1. Sync caches a member-ID-to-endpoint mapping in the client.
 //  2. The unary interceptor reads ResponseHeader.LeaderId from every response.
 //  3. publishFromResponse(leaderID) maps the ID to an endpoint and calls
 //     publish() with the current epoch and generation.
-//  4. The tracker goroutine and its periodic Status calls are removed.
+//  4. Remove the tracker goroutine and its periodic Status calls.
 func (tracker *leaderTracker) run() {
 	defer close(tracker.donec)
 	// Reuse the main connection's round_robin SubConns for endpoint Status probes.
