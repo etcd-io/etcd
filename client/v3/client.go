@@ -67,6 +67,15 @@ type Client struct {
 	epMu               *sync.RWMutex
 	endpoints          []string
 	endpointGeneration uint64
+	// memberIDToEndpoint maps a member ID to its client endpoint. Sync
+	// populates it from MemberList; the leader-aware balancer uses it to
+	// translate a leader ID from a response header into a routable endpoint.
+	//
+	// TODO: Remove this field when the balancer switches to response-driven
+	// hints. The tracker currently builds its own mapping from Status
+	// responses; once every ResponseHeader carries leader_id, the client
+	// can read the leader from any response and use this mapping instead.
+	memberIDToEndpoint map[uint64]string
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -220,11 +229,18 @@ func (c *Client) Sync(ctx context.Context) error {
 		return err
 	}
 	var eps []string
+	memberMap := make(map[uint64]string, len(mresp.Members))
 	for _, m := range mresp.Members {
 		if len(m.Name) != 0 && !m.IsLearner {
+			for _, url := range m.ClientURLs {
+				memberMap[uint64(m.ID)] = url
+			}
 			eps = append(eps, m.ClientURLs...)
 		}
 	}
+	c.epMu.Lock()
+	c.memberIDToEndpoint = memberMap
+	c.epMu.Unlock()
 	// The linearizable `MemberList` returned successfully, so the
 	// endpoints shouldn't be empty.
 	verify.Verify("empty endpoints returned from etcd cluster", func() (bool, map[string]any) {
