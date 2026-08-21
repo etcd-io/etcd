@@ -72,7 +72,7 @@ func TestIsMutationRequest(t *testing.T) {
 
 		// Auth administration proposes through Raft, including Authenticate,
 		// which registers the issued token. The auth queries stay on round_robin
-		// because they are too rare for that saving to matter.
+		// because they are too rare to justify the extra routing logic.
 		{"authenticate", &pb.AuthenticateRequest{}, true},
 		{"auth enable", &pb.AuthEnableRequest{}, true},
 		{"auth disable", &pb.AuthDisableRequest{}, true},

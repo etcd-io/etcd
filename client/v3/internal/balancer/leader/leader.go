@@ -44,8 +44,8 @@ func init() {
 	balancer.Register(builder{})
 }
 
-// Compile-time checks that make the gRPC balancer contracts this package
-// implements explicit.
+// Compile-time checks for the gRPC balancer contracts this package
+// implements.
 var (
 	_ balancer.Builder    = (*builder)(nil)
 	_ balancer.Balancer   = (*leaderBalancer)(nil)
