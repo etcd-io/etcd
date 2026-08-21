@@ -155,11 +155,9 @@ func newTestLeaderTracker() *leaderTracker {
 	client.lg.Store(zap.NewNop())
 	client.resolver.SetEndpoints([]string{"http://127.0.0.1:2379"}, 1)
 	return &leaderTracker{
-		client:          client,
-		invalidatec:     make(chan struct{}, 1),
-		donec:           make(chan struct{}),
-		currentRef:      nil,
-		refreshInterval: 30 * time.Second,
+		client:      client,
+		invalidatec: make(chan struct{}, 1),
+		donec:       make(chan struct{}),
 	}
 }
 

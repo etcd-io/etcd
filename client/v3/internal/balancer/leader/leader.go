@@ -87,6 +87,10 @@ func (b *leaderBalancer) ResolverError(err error) {
 	b.child.ResolverError(err)
 }
 
+// UpdateSubConnState is deprecated in the balancer.Balancer contract, which
+// still requires it; children that register StateListeners never receive it.
+//
+//nolint:staticcheck // SA1019: forwarding a required interface method
 func (b *leaderBalancer) UpdateSubConnState(sc balancer.SubConn, state balancer.SubConnState) {
 	b.child.UpdateSubConnState(sc, state)
 }
@@ -101,9 +105,9 @@ func (b *leaderBalancer) ExitIdle() {
 
 func (b *leaderBalancer) updateState(state balancer.State) {
 	b.mu.RLock()
-	leaderHint := b.leaderHint
+	hint := b.leaderHint
 	b.mu.RUnlock()
-	state.Picker = pickerForLeader(state.Picker, leaderHint)
+	state.Picker = pickerForLeader(state.Picker, hint)
 	b.cc.UpdateState(state)
 }
 
@@ -116,11 +120,11 @@ func (cc *childClientConn) UpdateState(state balancer.State) {
 	cc.updateState(state)
 }
 
-func pickerForLeader(roundRobinPicker balancer.Picker, leaderHint leaderHint) balancer.Picker {
+func pickerForLeader(roundRobinPicker balancer.Picker, hint leaderHint) balancer.Picker {
 	picker := &routingPicker{
 		roundRobin:        roundRobinPicker,
-		leaderHintID:      leaderHint.id,
-		leaderHintAddress: leaderHint.address,
+		leaderHintID:      hint.id,
+		leaderHintAddress: hint.address,
 		endpoints:         make(map[string]balancer.Picker),
 	}
 	// Reuse round_robin's endpoint child pickers so it retains SubConn ownership
@@ -135,7 +139,7 @@ func pickerForLeader(roundRobinPicker balancer.Picker, leaderHint leaderHint) ba
 		}
 		for _, address := range child.Endpoint.Addresses {
 			picker.endpoints[address.Addr] = child.State.Picker
-			if address.Addr == leaderHint.address {
+			if address.Addr == hint.address {
 				picker.leader = child.State.Picker
 			}
 		}
