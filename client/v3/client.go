@@ -367,11 +367,12 @@ func (c *Client) dial(creds grpccredentials.TransportCredentials, balancerName s
 		opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
 	}
 
-	// Keep caller options in their upstream position.
+	// Caller options keep the position they have in stock clientv3.
 	//
-	// gRPC applies the default service config only when the resolver provides
-	// none or the caller disables resolver service configs. The etcd resolver's
-	// balancer selection therefore stays authoritative.
+	// The etcd resolver always publishes a service config selecting this
+	// balancer, which gRPC prefers over any default. The default below matters
+	// only when the caller disables resolver service configs: without it, gRPC
+	// would fall back to pick_first instead of the selected balancer.
 	opts = append(opts, c.cfg.DialOptions...)
 	if balancerName != "" {
 		opts = append(opts, grpc.WithDefaultServiceConfig(resolver.BalancerServiceConfig(balancerName)))
