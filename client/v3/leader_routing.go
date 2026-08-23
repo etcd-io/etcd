@@ -40,13 +40,6 @@ const (
 //
 // One routing state covers all attempts, so a failed leader attempt sends later
 // attempts to round_robin.
-//
-// TODO: When every ResponseHeader carries leader_id (Phase 1 of #22268),
-// extend this interceptor to read the leader ID from the response and call
-// leaderTracker.publishFromResponse(leaderID). The client already caches a
-// member-ID-to-endpoint mapping in Sync; publishFromResponse would look up
-// the endpoint and call publish(). This replaces the periodic Status polling
-// in the tracker goroutine.
 func (c *Client) leaderUnaryInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	if isMutationRequest(req) && c.leaderTracker != nil {
 		ctx = leaderbalancer.MarkMutation(ctx, c.leaderTracker.invalidateHint)
@@ -202,13 +195,6 @@ func newLeaderTracker(client *Client) *leaderTracker {
 // the only proactive refresh path; after a MoveLeader transfer it is also what
 // corrects the hint, because writes sent to the old leader still succeed
 // through forwarding.
-//
-// The migration path is:
-//  1. Sync caches a member-ID-to-endpoint mapping in the client.
-//  2. The unary interceptor reads ResponseHeader.LeaderId from every response.
-//  3. publishFromResponse(leaderID) maps the ID to an endpoint and calls
-//     publish() with the current epoch and generation.
-//  4. Remove the tracker goroutine and its periodic Status calls.
 func (tracker *leaderTracker) run() {
 	defer close(tracker.donec)
 	// Reuse the main connection's round_robin SubConns for endpoint Status probes.
@@ -399,31 +385,6 @@ func (tracker *leaderTracker) publish(epoch, generation uint64, leader string) b
 	tracker.currentRef = next
 	tracker.hintEpoch = epoch
 	return changed
-}
-
-// publishFromResponse publishes a leader hint from a response header's
-// leader ID. It maps the ID to an endpoint using the client's cached mapping
-// and calls publish with the current epoch and generation.
-//
-// The interceptor calls this when it reads a nonzero ResponseHeader.LeaderId.
-// A stale or unknown leader ID is ignored: the hint stays unchanged, and the
-// next response or periodic Status round corrects it.
-//
-// TODO: Call this from the unary interceptor when every ResponseHeader
-// carries leader_id. Then remove the Status polling goroutine.
-func (tracker *leaderTracker) publishFromResponse(leaderID uint64) {
-	if leaderID == 0 {
-		return
-	}
-	tracker.client.epMu.RLock()
-	endpoint, ok := tracker.client.memberIDToEndpoint[leaderID]
-	tracker.client.epMu.RUnlock()
-	if !ok {
-		return
-	}
-	epoch := tracker.epoch.Load()
-	_, generation := tracker.client.endpointSnapshot()
-	tracker.publish(epoch, generation, endpoint)
 }
 
 // refresh polls all endpoints concurrently and publishes a leader hint only
