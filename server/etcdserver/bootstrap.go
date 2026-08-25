@@ -225,6 +225,20 @@ func bootstrapSnapshot(cfg config.ServerConfig) *snap.Snapshotter {
 			zap.Error(err),
 		)
 	}
+
+	// TODO: we can remove this code in the next release etcd v3.9
+	if err := fileutil.RemoveMatchFile(cfg.Logger, cfg.SnapDir(), func(fileName string) bool {
+		return strings.HasSuffix(strings.ToLower(fileName), ".snap")
+	}); err != nil {
+		cfg.Logger.Error(
+			"failed to remove v2 snapshot file(s) in snapshot directory",
+			zap.String("path", cfg.SnapDir()),
+			zap.Error(err),
+		)
+	} else {
+		cfg.Logger.Info("cleaned up all legacy v2 snapshot files")
+	}
+
 	return snap.New(cfg.Logger, cfg.SnapDir())
 }
 

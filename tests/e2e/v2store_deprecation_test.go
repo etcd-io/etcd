@@ -16,12 +16,15 @@ package e2e
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -74,4 +77,38 @@ func runEtcdAndCreateSnapshot(tb testing.TB, serverVersion e2e.ClusterVersion, d
 	epc, err := e2e.NewEtcdProcessCluster(tb.Context(), tb, e2e.WithConfig(cfg))
 	assert.NoError(tb, err)
 	return epc
+}
+
+// TestCleanupV2SnapshotOnBootstrap verifis that etcd cleanup the legacy
+// v2 snapshot files on bootstrap.
+// TODO: we can remove this test in the next etcd release v3.9
+func TestCleanupV2SnapshotOnBootstrap(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	t.Log("Create a new single member etcd cluster")
+	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
+		e2e.WithKeepDataDir(true),
+	))
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, epc.Close())
+	}()
+
+	t.Log("Stop the etcd member, and create a legacy v2 snapshot file")
+	require.NoError(t, epc.Procs[0].Stop())
+
+	snapshotDir := datadir.ToSnapDir(epc.Procs[0].Config().DataDirPath)
+	require.NoError(t, os.WriteFile(filepath.Join(snapshotDir, "10.snap"), []byte{}, 0o644))
+
+	names, rerr := fileutil.ReadDir(snapshotDir, fileutil.WithExt(".snap"))
+	require.NoError(t, rerr)
+	require.Len(t, names, 1)
+
+	t.Log("Start the etcd member again, and expect it removes the legacy v2 snapshot file automatically")
+	require.NoError(t, epc.Procs[0].Start(t.Context()))
+
+	names, rerr = fileutil.ReadDir(snapshotDir, fileutil.WithExt(".snap"))
+	require.NoError(t, rerr)
+	require.Empty(t, names)
 }
