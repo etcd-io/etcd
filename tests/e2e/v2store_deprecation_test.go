@@ -79,10 +79,20 @@ func runEtcdAndCreateSnapshot(tb testing.TB, serverVersion e2e.ClusterVersion, d
 	return epc
 }
 
-// TestCleanupV2SnapshotOnBootstrap verifis that etcd cleanup the legacy
+// TestCleanupOrphanedDefragFilesOnBootstrap verifies that etcd cleanup the
+// orphaned defragmentation files on bootstrap.
+func TestCleanupOrphanedDefragFilesOnBootstrap(t *testing.T) {
+	testCleanupCertainFilesOnBootstrap(t, "db.tmp.defrag")
+}
+
+// TestCleanupV2SnapshotOnBootstrap verifies that etcd cleanup the legacy
 // v2 snapshot files on bootstrap.
 // TODO: we can remove this test in the next etcd release v3.9
 func TestCleanupV2SnapshotOnBootstrap(t *testing.T) {
+	testCleanupCertainFilesOnBootstrap(t, "10.snap")
+}
+
+func testCleanupCertainFilesOnBootstrap(t *testing.T, filename string) {
 	e2e.BeforeTest(t)
 
 	t.Log("Create a new single member etcd cluster")
@@ -95,20 +105,21 @@ func TestCleanupV2SnapshotOnBootstrap(t *testing.T) {
 		assert.NoError(t, epc.Close())
 	}()
 
-	t.Log("Stop the etcd member, and create a legacy v2 snapshot file")
+	t.Logf("Stop the etcd member, and create the given file %s under snapshot directory", filename)
 	require.NoError(t, epc.Procs[0].Stop())
 
 	snapshotDir := datadir.ToSnapDir(epc.Procs[0].Config().DataDirPath)
-	require.NoError(t, os.WriteFile(filepath.Join(snapshotDir, "10.snap"), []byte{}, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(snapshotDir, filename), []byte{}, 0o644))
 
-	names, rerr := fileutil.ReadDir(snapshotDir, fileutil.WithExt(".snap"))
+	fileExt := filepath.Ext(filename)
+	names, rerr := fileutil.ReadDir(snapshotDir, fileutil.WithExt(fileExt))
 	require.NoError(t, rerr)
 	require.Len(t, names, 1)
 
-	t.Log("Start the etcd member again, and expect it removes the legacy v2 snapshot file automatically")
+	t.Logf("Start the etcd member again, and expect it removes the given file %s automatically", filename)
 	require.NoError(t, epc.Procs[0].Start(t.Context()))
 
-	names, rerr = fileutil.ReadDir(snapshotDir, fileutil.WithExt(".snap"))
+	names, rerr = fileutil.ReadDir(snapshotDir, fileutil.WithExt(fileExt))
 	require.NoError(t, rerr)
 	require.Empty(t, names)
 }
