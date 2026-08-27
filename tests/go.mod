@@ -1,6 +1,6 @@
 module go.etcd.io/etcd/tests/v3
 
-go 1.26
+go 1.26.0
 
 toolchain go1.26.7
 
@@ -81,7 +81,7 @@ require (
 	github.com/olekukonko/errors v1.2.0 // indirect
 	github.com/olekukonko/ll v0.1.6 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
-	github.com/sirupsen/logrus v1.9.4 // indirect
+	github.com/sirupsen/logrus v1.10.1 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20220101234140-673ab2c3ae75 // indirect
