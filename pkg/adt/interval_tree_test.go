@@ -541,11 +541,11 @@ func TestInt64ComparableCompareExtremes(t *testing.T) {
 	maxV := Int64Comparable(math.MaxInt64)
 	minV := Int64Comparable(math.MinInt64)
 
-	require.Equal(t, 1, maxV.Compare(minV), "MaxInt64 must compare greater than MinInt64")
-	require.Equal(t, -1, minV.Compare(maxV), "MinInt64 must compare less than MaxInt64")
-	require.Equal(t, 1, maxV.Compare(Int64Comparable(-1)), "MaxInt64 must compare greater than -1")
-	require.Equal(t, -1, Int64Comparable(-1).Compare(maxV), "-1 must compare less than MaxInt64")
-	require.Equal(t, 0, maxV.Compare(maxV), "MaxInt64 must compare equal to itself")
+	require.Equalf(t, 1, maxV.Compare(minV), "MaxInt64 must compare greater than MinInt64")
+	require.Equalf(t, -1, minV.Compare(maxV), "MinInt64 must compare less than MaxInt64")
+	require.Equalf(t, 1, maxV.Compare(Int64Comparable(-1)), "MaxInt64 must compare greater than -1")
+	require.Equalf(t, -1, Int64Comparable(-1).Compare(maxV), "-1 must compare less than MaxInt64")
+	require.Equalf(t, 0, maxV.Compare(maxV), "MaxInt64 must compare equal to itself")
 }
 
 // TestNewInt64PointExtremes ensures point intervals keep the Begin <= End
