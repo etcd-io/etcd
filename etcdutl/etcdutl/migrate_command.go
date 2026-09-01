@@ -106,7 +106,7 @@ func (c *migrateConfig) finalize() error {
 	walPath := datadir.ToWALDir(c.dataDir)
 	walSnap, err := getLatestWALSnap(c.lg, c.dataDir)
 	if err != nil {
-		return fmt.Errorf("failed to get the lastest snapshot: %w", err)
+		return fmt.Errorf("failed to get the latest snapshot: %w", err)
 	}
 	w, err := wal.OpenForRead(c.lg, walPath, walSnap)
 	if err != nil {

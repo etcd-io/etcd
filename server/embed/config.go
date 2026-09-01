@@ -171,7 +171,7 @@ type Config struct {
 	// SnapshotCount is the number of committed transactions that trigger a snapshot.
 	SnapshotCount uint64 `json:"snapshot-count"`
 
-	// SnapshotCatchUpEntries is the number of entires for a slow follower
+	// SnapshotCatchUpEntries is the number of entries for a slow follower
 	// to catch-up after compacting the raft storage entries.
 	// We expect the follower has a millisecond level latency with the leader.
 	// The max throughput is around 10K. Keep a 5K entries is enough for helping

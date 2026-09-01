@@ -391,7 +391,7 @@ func (e *Etcd) Config() Config {
 
 // Close gracefully shuts down all servers/listeners.
 // Client requests will be terminated with request timeout.
-// After timeout, enforce remaning requests be closed immediately.
+// After timeout, enforce remaining requests be closed immediately.
 //
 // The rough workflow to shut down etcd:
 //  1. close the `stopc` channel, so that all error handlers (child
