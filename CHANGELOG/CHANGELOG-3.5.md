@@ -13,6 +13,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Dependencies
 
 - Compile binaries using [go 1.25.13](https://github.com/etcd-io/etcd/pull/22285).
+- Bump [github.com/gorilla/websocket to v1.5.3](https://github.com/etcd-io/etcd/pull/22366), to address GHSA-w67g-5rqw-f597.
 
 ---
 
