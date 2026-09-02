@@ -73,8 +73,6 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 
 	// The file is synced above. Sync the directory to make the renamed entry
 	// durable before the snapshot receiver processes the Raft message.
-	// gofail: var snapDBDirSyncError string
-	// return n, errors.New(snapDBDirSyncError)
 	if err = s.fsyncDir(s.dir); err != nil {
 		s.lg.Warn(
 			"failed to fsync snap directory after saving database snapshot",
@@ -123,6 +121,8 @@ func (s *Snapshotter) dbFilePath(id uint64) string {
 // fsyncSnapDir makes a renamed snapshot database durable. On Linux, syncing
 // the file alone does not necessarily persist its containing directory entry.
 func fsyncSnapDir(dir string) error {
+	// gofail: var snapDBDirSyncError string
+	// return errors.New(snapDBDirSyncError)
 	d, err := fileutil.OpenDir(dir)
 	if err != nil {
 		return err
