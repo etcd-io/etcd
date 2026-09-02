@@ -1,8 +1,8 @@
 // This is a generated file. Do not edit directly.
 
-go 1.26
+go 1.27
 
-toolchain go1.26.7
+toolchain go1.27.1
 
 use (
 	.
