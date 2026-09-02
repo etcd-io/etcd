@@ -221,14 +221,14 @@ func monitorFileDescriptor(lg *zap.Logger, done <-chan struct{}) {
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 	for {
-		used, err := runtime.FDUsage()
-		if err != nil {
+		used, err := runtime.FDUsage() //nolint:staticcheck // SA4023: FDUsage always errors on non-linux by design; on linux it can return nil
+		if err != nil {                //nolint:staticcheck // SA4023: FDUsage always errors on non-linux by design; on linux it can return nil
 			lg.Warn("failed to get file descriptor usage", zap.Error(err))
 			return
 		}
 		fdUsed.Set(float64(used))
-		limit, err := runtime.FDLimit()
-		if err != nil {
+		limit, err := runtime.FDLimit() //nolint:staticcheck // SA4023: FDLimit always errors on non-linux by design; on linux it can return nil
+		if err != nil {                 //nolint:staticcheck // SA4023: FDLimit always errors on non-linux by design; on linux it can return nil
 			lg.Warn("failed to get file descriptor limit", zap.Error(err))
 			return
 		}

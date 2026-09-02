@@ -709,7 +709,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		// net.Listener will rewrite ipv4 0.0.0.0 to ipv6 [::], breaking
 		// hosts that disable ipv6. So, use the address given by the user.
 
-		if fdLimit, fderr := runtimeutil.FDLimit(); fderr == nil {
+		if fdLimit, fderr := runtimeutil.FDLimit(); fderr == nil { //nolint:staticcheck // SA4023: FDLimit always errors on non-linux by design; on linux it can return nil
 			if fdLimit <= reservedInternalFDNum {
 				cfg.logger.Fatal(
 					"file descriptor limit of etcd process is too low; please set higher",

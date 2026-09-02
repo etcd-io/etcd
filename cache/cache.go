@@ -317,9 +317,8 @@ func (c *Cache) getWatchLoop() {
 		if err := ctx.Err(); err != nil {
 			return
 		}
-		if err := c.getWatch(); err != nil {
-			fmt.Printf("getWatch failed, will retry after %v: %v\n", backoff, err)
-		}
+		err := c.getWatch()
+		fmt.Printf("getWatch failed, will retry after %v: %v\n", backoff, err)
 		select {
 		case <-ctx.Done():
 			return

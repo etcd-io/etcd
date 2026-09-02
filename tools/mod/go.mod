@@ -21,7 +21,7 @@ require (
 	google.golang.org/protobuf v1.36.12
 	gotest.tools/gotestsum v1.13.0
 	gotest.tools/v3 v3.5.2
-	honnef.co/go/tools v0.7.0
+	honnef.co/go/tools v0.8.1
 )
 
 require (
