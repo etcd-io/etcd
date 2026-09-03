@@ -149,38 +149,37 @@ func testKVGet(t *testing.T, stream bool) {
 				t.Skip("RangeStream is not supported by this cluster")
 			}
 
+			const noLease = 0
+			lease, err := cc.Grant(ctx, 100)
+			require.NoError(t, err)
+
 			testutils.ExecuteUntil(ctx, t, func() {
 				resp, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 				require.NoError(t, err)
 				firstRev := resp.Header.Revision
 
-				kvA := createKV("a", "aa1", firstRev+1, firstRev+1, 1)
-				kvB := createKV("b", "a", firstRev+2, firstRev+2, 1)
-				kvCV1 := createKV("c", "ac1", firstRev+3, firstRev+3, 1)
-				kvCV2 := createKV("c", "ac2", firstRev+3, firstRev+4, 2)
-				kvC := createKV("c", "aac", firstRev+3, firstRev+5, 3)
-				kvFoo := createKV("foo", "bar", firstRev+6, firstRev+6, 1)
-				kvFooAbc := createKV("foo/abc", "0", firstRev+7, firstRev+7, 1)
-				kvFop := createKV("fop", "s", firstRev+8, firstRev+8, 1)
+				kvA := createKV("a", "aa1", firstRev+1, firstRev+1, 1, noLease)
+				kvB := createKV("b", "a", firstRev+2, firstRev+2, 1, noLease)
+				kvCV1 := createKV("c", "ac1", firstRev+3, firstRev+3, 1, noLease)
+				kvCV2 := createKV("c", "ac2", firstRev+3, firstRev+4, 2, noLease)
+				kvC := createKV("c", "aac", firstRev+3, firstRev+5, 3, noLease)
+				kvFoo := createKV("foo", "bar", firstRev+6, firstRev+6, 1, noLease)
+				kvFooAbc := createKV("foo/abc", "0", firstRev+7, firstRev+7, 1, noLease)
+				kvWithLease := createKV("fop", "s", firstRev+8, firstRev+8, 1, int64(lease.ID))
 
-				inputs := []*mvccpb.KeyValue{kvA, kvB, kvCV1, kvCV2, kvC, kvFoo, kvFooAbc, kvFop}
+				inputs := []*mvccpb.KeyValue{kvA, kvB, kvCV1, kvCV2, kvC, kvFoo, kvFooAbc, kvWithLease}
 				for i := range inputs {
-					_, putError := cc.Put(ctx, string(inputs[i].Key), string(inputs[i].Value), config.PutOptions{})
+					_, putError := cc.Put(ctx, string(inputs[i].Key), string(inputs[i].Value), config.PutOptions{LeaseID: clientv3.LeaseID(inputs[i].Lease)})
 					require.NoErrorf(t, putError, "count not put key value %q", inputs[i])
 				}
 
-				allKvs := []*mvccpb.KeyValue{kvA, kvB, kvC, kvFoo, kvFooAbc, kvFop}
-				kvsByVersion := []*mvccpb.KeyValue{kvA, kvB, kvFoo, kvFooAbc, kvFop, kvC}
-				reversedKvs := []*mvccpb.KeyValue{kvFop, kvFooAbc, kvFoo, kvC, kvB, kvA}
-				kvsByValue := []*mvccpb.KeyValue{kvFooAbc, kvB, kvA, kvC, kvFoo, kvFop}
-				kvsByValueDesc := []*mvccpb.KeyValue{kvFop, kvFoo, kvC, kvA, kvB, kvFooAbc}
+				allKvs := []*mvccpb.KeyValue{kvA, kvB, kvC, kvFoo, kvFooAbc, kvWithLease}
+				kvsByVersion := []*mvccpb.KeyValue{kvA, kvB, kvFoo, kvFooAbc, kvWithLease, kvC}
+				reversedKvs := []*mvccpb.KeyValue{kvWithLease, kvFooAbc, kvFoo, kvC, kvB, kvA}
+				kvsByValue := []*mvccpb.KeyValue{kvFooAbc, kvB, kvA, kvC, kvFoo, kvWithLease}
+				kvsByValueDesc := []*mvccpb.KeyValue{kvWithLease, kvFoo, kvC, kvA, kvB, kvFooAbc}
 
-				currentResp, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
-				require.NoError(t, err)
-				currentHeader := &etcdserverpb.ResponseHeader{
-					ClusterId: currentResp.Header.ClusterId,
-					Revision:  currentResp.Header.Revision,
-				}
+				currentHeader := getCurrentHeader(ctx, t, cc)
 
 				type testcase struct {
 					name    string
@@ -204,7 +203,7 @@ func testKVGet(t *testing.T, stream bool) {
 					{name: "all kvs ordered by mod revision ascending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByModRevision}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: allKvs}},
 					{name: "all KVs ordered by version ascending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByVersion}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: kvsByVersion}},
 					{name: "all KVs ordered by key ascending, limit 2", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByKey, Limit: 2}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: []*mvccpb.KeyValue{kvA, kvB}, More: true}},
-					{name: "range [b, z) ordered by key descending, limit 2", begin: "b", options: config.GetOptions{End: "z", Order: clientv3.SortDescend, SortBy: clientv3.SortByKey, Limit: 2}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 5, Kvs: []*mvccpb.KeyValue{kvFop, kvFooAbc}, More: true}},
+					{name: "range [b, z) ordered by key descending, limit 2", begin: "b", options: config.GetOptions{End: "z", Order: clientv3.SortDescend, SortBy: clientv3.SortByKey, Limit: 2}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 5, Kvs: []*mvccpb.KeyValue{kvWithLease, kvFooAbc}, More: true}},
 					{name: "all KVs ordered by create revision, unspecified sort order", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: allKvs}},
 					{name: "all KVs ordered by create revision descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: reversedKvs}},
 					{name: "all KVs ordered by key descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 6, Kvs: reversedKvs}},
@@ -252,18 +251,82 @@ func testKVGet(t *testing.T, stream bool) {
 							"-want, +got")
 					})
 				}
+
+				// Update Leae and test again
+				newLease, err := cc.Grant(ctx, 110)
+				require.NoError(t, err)
+				kvAWithLease := createKV("a", "aa1", firstRev+1, firstRev+9, 2, int64(newLease.ID))
+				kvWithLease.ModRevision, kvWithLease.Lease = firstRev+10, int64(newLease.ID)
+				kvWithLeaseUpdated := createKV("fop", "s", firstRev+8, firstRev+10, 2, int64(newLease.ID))
+
+				updates := []*mvccpb.KeyValue{kvAWithLease, kvWithLeaseUpdated}
+				for i := range updates {
+					_, putError := cc.Put(ctx, string(updates[i].Key), string(inputs[i].Value), config.PutOptions{LeaseID: clientv3.LeaseID(inputs[i].Lease)})
+					require.NoErrorf(t, putError, "count not put key value %q", updates[i])
+				}
+
+				currentHeader = getCurrentHeader(ctx, t, cc)
+				revBeforeUpdate := int(firstRev + 8)
+
+				testsAfterUpdate := []testcase{
+					{name: "Get (a) at the current rev, expect lease", begin: "a", wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 1, Kvs: []*mvccpb.KeyValue{kvAWithLease}}},
+					{name: "Get (a) before the update, expect no lease", begin: "a", options: config.GetOptions{Revision: revBeforeUpdate}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 1, Kvs: []*mvccpb.KeyValue{kvA}}},
+					{name: "Get key with lease at the current rev, expect new lease", begin: "fop", wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 1, Kvs: []*mvccpb.KeyValue{kvWithLeaseUpdated}}},
+					{name: "Get key with lease before the update, expect the original lease", begin: "fop", options: config.GetOptions{Revision: revBeforeUpdate}, wantResponse: &clientv3.GetResponse{Header: currentHeader, Count: 1, Kvs: []*mvccpb.KeyValue{kvWithLease}}},
+				}
+				testsAfterUpdateWithKeysOnly := make([]testcase, 0, len(testsAfterUpdate))
+				for _, otc := range testsAfterUpdate {
+					if otc.options.CountOnly {
+						continue
+					}
+					withKeysOnly := otc
+					withKeysOnly.name = fmt.Sprintf("%s --keys-only", withKeysOnly.name)
+					withKeysOnly.options.KeysOnly = true
+					withKeysOnly.wantResponse = cloneGetResponseWithoutValues(otc.wantResponse)
+					testsAfterUpdateWithKeysOnly = append(testsAfterUpdateWithKeysOnly, withKeysOnly)
+				}
+				for _, tt := range slices.Concat(testsAfterUpdate, testsAfterUpdateWithKeysOnly) {
+					t.Run(tt.name, func(t *testing.T) {
+						if stream && !rangeStreamSupports(tt.options) {
+							t.Skip("options not supported by RangeStream")
+						}
+						opts := tt.options
+						opts.Stream = stream
+						resp, err := cc.Get(ctx, tt.begin, opts)
+						require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
+						resp.Header.MemberId = 0
+						resp.Header.RaftTerm = 0
+						assert.Empty(t,
+							cmp.Diff(
+								(*etcdserverpb.RangeResponse)(tt.wantResponse),
+								(*etcdserverpb.RangeResponse)(resp),
+								protocmp.Transform(),
+							),
+							"-want, +got")
+					})
+				}
 			})
 		})
 	}
 }
 
-func createKV(key, val string, createRev, modRev, ver int64) *mvccpb.KeyValue {
+func getCurrentHeader(ctx context.Context, t *testing.T, cc interfaces.Client) *etcdserverpb.ResponseHeader {
+	currentResp, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
+	require.NoError(t, err)
+	return &etcdserverpb.ResponseHeader{
+		ClusterId: currentResp.Header.ClusterId,
+		Revision:  currentResp.Header.Revision,
+	}
+}
+
+func createKV(key, val string, createRev, modRev, ver, lease int64) *mvccpb.KeyValue {
 	return &mvccpb.KeyValue{
 		Key:            []byte(key),
 		Value:          []byte(val),
 		CreateRevision: createRev,
 		ModRevision:    modRev,
 		Version:        ver,
+		Lease:          lease,
 	}
 }
 
