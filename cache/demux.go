@@ -30,7 +30,7 @@ type demux struct {
 	activeWatchers  map[*watcher]int64
 	laggingWatchers map[*watcher]int64
 	resyncInterval  time.Duration
-	// Range of revisions maintained for demux operations, inclusive. Broader than history as event revision is not contious.
+	// Range of revisions maintained for demux operations, inclusive. Broader than history as event revision is not continuous.
 	// maxRev tracks highest seen revision; minRev sets watcher compaction threshold (updated to evictedRev+1 on history overflow)
 	minRev, maxRev int64
 	// History stores events within [minRev, maxRev].
