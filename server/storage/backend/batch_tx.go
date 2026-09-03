@@ -227,13 +227,13 @@ func (t *batchTx) UnsafeDelete(bucketType Bucket, key []byte) {
 }
 
 // UnsafeForEach must be called holding the lock on the tx.
-func (t *batchTx) UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error {
-	return unsafeForEach(t.tx, bucket, visitor)
+func (t *batchTx) UnsafeForEach(bucketType Bucket, visitor func(k, v []byte) error) error {
+	return unsafeForEach(t.tx.Bucket(bucketType.Name()), visitor)
 }
 
-func unsafeForEach(tx *bolt.Tx, bucket Bucket, visitor func(k, v []byte) error) error {
-	if b := tx.Bucket(bucket.Name()); b != nil {
-		return b.ForEach(visitor)
+func unsafeForEach(bucket *bolt.Bucket, visitor func(k, v []byte) error) error {
+	if bucket != nil {
+		return bucket.ForEach(visitor)
 	}
 	return nil
 }
@@ -365,23 +365,13 @@ func (t *batchTxBuffered) unsafeCommit(stop bool) {
 		// gofail: var commitAfterPreCommitHook struct{}
 	}
 
-	if t.backend.readTx.tx != nil {
-		// wait all store read transactions using the current boltdb tx to finish,
-		// then close the boltdb tx
-		go func(tx *bolt.Tx, wg *sync.WaitGroup) {
-			wg.Wait()
-			if err := tx.Rollback(); err != nil {
-				t.backend.lg.Fatal("failed to rollback tx", zap.Error(err))
-			}
-		}(t.backend.readTx.tx, t.backend.readTx.txWg)
-		t.backend.readTx.reset()
-	}
+	t.backend.readTx.reset(t.backend.lg)
 
 	t.batchTx.commit(stop)
 	t.pendingDeleteOperations = 0
 
 	if !stop {
-		t.backend.readTx.tx = t.backend.begin(false)
+		t.backend.readTx.tx.setTx(t.backend.begin(false))
 	}
 }
 
