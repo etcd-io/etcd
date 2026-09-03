@@ -26,3 +26,4 @@ Previous change logs can be found at [CHANGELOG-3.7](https://github.com/etcd-io/
 See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
 
 - Expose the full set of Go `runtime/metrics` on `/metrics` when `--metrics extensive` is set.
+- Add `etcd_debugging_auth_simple_tokens`; log a warning whenever the in-memory simple token count reaches a multiple of 10000.
