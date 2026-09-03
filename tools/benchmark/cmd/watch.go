@@ -191,21 +191,24 @@ func benchPutWatches(clients []*clientv3.Client, wk *watchedKeys) {
 
 	r := newReport("watch-put")
 
+	timeline := newPutTimeline(watchPutTotal)
+
 	wg.Add(len(wk.watches))
 	nrRxed := int32(eventsTotal)
 	for _, w := range wk.watches {
 		go func(wc clientv3.WatchChan) {
 			defer wg.Done()
-			recvWatchChan(wc, r.Results(), &nrRxed)
+			recvWatchChan(wc, r.Results(), &nrRxed, timeline)
 			wk.cancel()
 		}(w)
 	}
 
-	putreqc := make(chan clientv3.Op, len(clients))
+	putreqc := make(chan watchPutReq, len(clients))
 	go func() {
 		defer close(putreqc)
 		for i := 0; i < watchPutTotal; i++ {
-			putreqc <- clientv3.OpPut(wk.watched[i%(len(wk.watched))], "data")
+			key := wk.watched[i%(len(wk.watched))]
+			putreqc <- watchPutReq{seq: i, op: clientv3.OpPut(key, encodePutSeq(i))}
 		}
 	}()
 
@@ -217,11 +220,14 @@ func benchPutWatches(clients []*clientv3.Client, wk *watchedKeys) {
 	limit := rate.NewLimiter(watchPutLimit, 1)
 	for _, cc := range clients {
 		go func(c *clientv3.Client) {
-			for op := range putreqc {
+			for req := range putreqc {
 				if err := limit.Wait(context.TODO()); err != nil {
 					panic(err)
 				}
-				if _, err := c.Do(context.TODO(), op); err != nil {
+				// Record the issue time before the put is sent: an event can
+				// reach a watcher before Do() returns here.
+				timeline.markIssued(req.seq)
+				if _, err := c.Do(context.TODO(), req.op); err != nil {
 					panic(err)
 				}
 			}
@@ -233,13 +239,87 @@ func benchPutWatches(clients []*clientv3.Client, wk *watchedKeys) {
 	bar.Finish()
 	close(r.Results())
 	fmt.Printf("Watch events received summary:\n%s", <-rc)
+	if n := timeline.unattributed.Load(); n > 0 {
+		fmt.Fprintf(os.Stderr, "warning: %d watch events could not be attributed to a put and are excluded from the summary\n", n)
+	}
 }
 
-func recvWatchChan(wch clientv3.WatchChan, results chan<- report.Result, nrRxed *int32) {
+// watchPutReq pairs a put with its sequence number so the goroutine issuing the
+// put can record when it did so.
+type watchPutReq struct {
+	op  clientv3.Op
+	seq int
+}
+
+// putTimeline records when each put was issued so that a watch event can be
+// timed from the put that caused it, rather than from the moment its
+// WatchResponse had already been received.
+//
+// Times are held as offsets from a single base captured before any put is
+// issued. The base carries a monotonic reading, so base.Add(offset) subtracted
+// from a later time.Now() still uses the monotonic clock.
+type putTimeline struct {
+	base         time.Time
+	issuedAt     []atomic.Int64 // offset from base, 0 means not issued yet
+	unattributed atomic.Int32
+}
+
+func newPutTimeline(puts int) *putTimeline {
+	return &putTimeline{
+		base:     time.Now(),
+		issuedAt: make([]atomic.Int64, puts),
+	}
+}
+
+func (t *putTimeline) markIssued(seq int) {
+	t.issuedAt[seq].Store(int64(time.Since(t.base)))
+}
+
+// issued reports when the put with the given sequence number was issued. It
+// returns false if seq is out of range or the put has not been issued, neither
+// of which is expected for an event this benchmark generated.
+func (t *putTimeline) issued(seq int) (time.Time, bool) {
+	if seq < 0 || seq >= len(t.issuedAt) {
+		return time.Time{}, false
+	}
+	offset := t.issuedAt[seq].Load()
+	if offset <= 0 {
+		return time.Time{}, false
+	}
+	return t.base.Add(time.Duration(offset)), true
+}
+
+// encodePutSeq and decodePutSeq carry a put's sequence number in its value so
+// that a watch event can be matched back to the put that produced it. Matching
+// by position is not possible here: a key may be watched by many watchers and
+// puts are issued concurrently by several clients.
+func encodePutSeq(seq int) string {
+	var b [8]byte
+	binary.BigEndian.PutUint64(b[:], uint64(seq))
+	return string(b[:])
+}
+
+func decodePutSeq(value []byte) (int, bool) {
+	if len(value) != 8 {
+		return 0, false
+	}
+	return int(binary.BigEndian.Uint64(value)), true
+}
+
+func recvWatchChan(wch clientv3.WatchChan, results chan<- report.Result, nrRxed *int32, timeline *putTimeline) {
 	for r := range wch {
-		st := time.Now()
-		for range r.Events {
-			results <- report.Result{Start: st, End: time.Now()}
+		for _, ev := range r.Events {
+			now := time.Now()
+			// Time the event from when its put was issued, so the measurement is
+			// end-to-end delivery latency and does not depend on how many events
+			// the server happened to batch into this response.
+			if seq, ok := decodePutSeq(ev.Kv.Value); !ok {
+				timeline.unattributed.Add(1)
+			} else if st, ok := timeline.issued(seq); !ok {
+				timeline.unattributed.Add(1)
+			} else {
+				results <- report.Result{Start: st, End: now}
+			}
 			bar.Increment()
 			if atomic.AddInt32(nrRxed, -1) <= 0 {
 				return
