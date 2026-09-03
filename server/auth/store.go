@@ -87,6 +87,25 @@ type AuthenticateParamIndex struct{}
 // AuthenticateParamSimpleTokenPrefix is used for a key of context in the parameters of Authenticate()
 type AuthenticateParamSimpleTokenPrefix struct{}
 
+// ClientIPContextKey is the context key for storing client IP address.
+// It is exported so it can be used by the v3rpc interceptor to store the IP.
+type ClientIPContextKey struct{}
+
+// ClientIPFromContext extracts the client IP address from context.
+// It looks for the IP stored by the gRPC logging interceptor.
+// Returns an empty string if not found.
+func ClientIPFromContext(ctx context.Context) string {
+	if ip, ok := ctx.Value(ClientIPContextKey{}).(string); ok {
+		return ip
+	}
+	return ""
+}
+
+// clientIPFromContext is the unexported alias for internal use.
+func clientIPFromContext(ctx context.Context) string {
+	return ClientIPFromContext(ctx)
+}
+
 // AuthStore defines auth storage interface.
 type AuthStore interface {
 	// AuthEnable turns on the authentication feature
@@ -353,7 +372,7 @@ func (as *authStore) Authenticate(ctx context.Context, username, password string
 
 	if ce := as.lg.Check(zap.DebugLevel, "authenticated a user"); ce != nil {
 		tokenFingerprint := redactToken(token)
-		ce.Write(zap.String("user-name", username), zap.String("token-fingerprint", tokenFingerprint))
+		ce.Write(zap.String("user-name", username), zap.String("token-fingerprint", tokenFingerprint), zap.String("remote", clientIPFromContext(ctx)))
 	}
 	return &pb.AuthenticateResponse{Token: token}, nil
 }
@@ -1039,6 +1058,7 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 				zap.String("common-name", ai.Username),
 				zap.String("user-name", ai.Username),
 				zap.Uint64("revision", ai.Revision),
+				zap.String("remote", clientIPFromContext(ctx)),
 			)
 			return nil
 		}
@@ -1047,6 +1067,7 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 			zap.String("common-name", ai.Username),
 			zap.String("user-name", ai.Username),
 			zap.Uint64("revision", ai.Revision),
+			zap.String("remote", clientIPFromContext(ctx)),
 		)
 		break
 	}
@@ -1076,7 +1097,7 @@ func (as *authStore) AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error) {
 	authInfo, uok := as.authInfoFromToken(ctx, token)
 	if !uok {
 		tokenFingerprint := redactToken(token)
-		as.lg.Warn("invalid auth token", zap.String("token-fingerprint", tokenFingerprint))
+		as.lg.Warn("invalid auth token", zap.String("token-fingerprint", tokenFingerprint), zap.String("remote", clientIPFromContext(ctx)))
 		return nil, ErrInvalidAuthToken
 	}
 

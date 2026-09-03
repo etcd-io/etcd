@@ -26,6 +26,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -852,9 +853,14 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 		checkedRevision, err := s.AuthStore().CheckPassword(r.Name, r.Password)
 		if err != nil {
 			if !errorspkg.Is(err, auth.ErrAuthNotEnabled) {
+				clientIP := "unknown"
+				if p, ok := peer.FromContext(ctx); ok {
+					clientIP = p.Addr.String()
+				}
 				lg.Warn(
 					"invalid authentication was requested",
 					zap.String("user", r.Name),
+					zap.String("remote", clientIP),
 					zap.Error(err),
 				)
 			}

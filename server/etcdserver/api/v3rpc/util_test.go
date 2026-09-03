@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
@@ -46,5 +47,21 @@ func TestGRPCError(t *testing.T) {
 			}
 			t.Errorf("#%d: got %v, expected %v", i, err, tt[i].exp)
 		}
+	}
+}
+
+func TestClientIPFromContext(t *testing.T) {
+	// Test with no client IP in context
+	ctx := context.Background()
+	ip := clientIPFromContext(ctx)
+	if ip != "" {
+		t.Errorf("expected empty string, got %q", ip)
+	}
+
+	// Test with client IP set in context using the shared auth key
+	ctx = context.WithValue(ctx, auth.ClientIPContextKey{}, "192.168.1.1:12345")
+	ip = clientIPFromContext(ctx)
+	if ip != "192.168.1.1:12345" {
+		t.Errorf("expected 192.168.1.1:12345, got %q", ip)
 	}
 }
