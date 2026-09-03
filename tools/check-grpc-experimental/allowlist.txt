@@ -10,9 +10,11 @@ resolver.BuildOptions
 resolver.Builder
 resolver.ClientConn
 resolver.Endpoint
+resolver.Endpoints
 resolver.ParseServiceConfig
 resolver.ResolveNowOptions
 resolver.Resolver
+resolver.ServiceConfig
 resolver.State
 resolver.Target
 resolver.URL
