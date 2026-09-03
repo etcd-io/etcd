@@ -309,5 +309,6 @@ func (a *applierV3backend) newHeader() *pb.ResponseHeader {
 		MemberId:  uint64(a.options.RaftStatus.MemberID()),
 		Revision:  a.options.KV.Rev(),
 		RaftTerm:  a.options.RaftStatus.Term(),
+		LeaderId:  uint64(a.options.RaftStatus.Leader()),
 	}
 }

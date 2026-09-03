@@ -429,6 +429,10 @@ message ResponseHeader {
   int64 revision = 3;
   // raft_term is the raft term when the request was applied.
   uint64 raft_term = 4;
+  // leader_id is the member ID of the raft leader that the responding
+  // member believes is the current leader, or 0 if the responding member
+  // does not know who the leader is.
+  uint64 leader_id = 5 [(versionpb.etcd_version_field)="3.8"];
 }
 
 message RangeRequest {

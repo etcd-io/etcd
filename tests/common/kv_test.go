@@ -243,6 +243,7 @@ func testKVGet(t *testing.T, stream bool) {
 						require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
 						resp.Header.MemberId = 0
 						resp.Header.RaftTerm = 0
+						resp.Header.LeaderId = 0
 						assert.Emptyf(t,
 							cmp.Diff(
 								(*etcdserverpb.RangeResponse)(tt.wantResponse),
