@@ -12,6 +12,7 @@ Previous change logs can be found at [CHANGELOG-3.7](https://github.com/etcd-io/
   - [Remove flag `--max-snapshots` and `--v2-deprecation`](https://github.com/etcd-io/etcd/pull/22306)
   - [Cleanup the legacy v2 snapshot files on bootstrap](https://github.com/etcd-io/etcd/pull/22336)
   - [Cleanup the legacy v2 snapshot source code and cleanup orphaned defragmentation files on bootstrap](https://github.com/etcd-io/etcd/pull/22341)
+- Fix [compaction deleting the live value of a key that was deleted and re-created in the compacted revision](https://github.com/etcd-io/etcd/pull/22377), which caused a `range failed to find revision pair` fatal and an empty keyspace after the restart.
 
 ### Dependencies
 
