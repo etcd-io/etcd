@@ -6,12 +6,17 @@ FROM golang:$GO_IMAGE_TAG AS build
 # cloning etcd
 ARG REF=main
 RUN git clone --depth=1 https://github.com/etcd-io/etcd.git --branch=${REF} /etcd
-RUN go env -w GOTOOLCHAIN="go$(cat .go-version)"
 
 # Replacing math/rand with etcd's antithesis-sdk-go/random wrapper
 # See https://antithesis.com/docs/configuration/the_antithesis_environment/?sid=8fce.35&sterm=random&marks=Random#random-devices
 WORKDIR /etcd
 COPY pkg /etcd/tests/antithesis/pkg
+# Sync go.work and all go.mod versions to match the copied pkg module,
+# since the cloned branch may be behind the copied pkg module requirements.
+RUN eval $(grep -E '^(go|toolchain) ' tests/antithesis/pkg/go.mod | awk '{print toupper($1)"="$2}') && \
+    go work edit -go=${GO} -toolchain=${TOOLCHAIN} && \
+    find . -name 'go.mod' -not -path './tests/antithesis/*' -exec \
+        go mod edit -go=${GO} -toolchain=${TOOLCHAIN} {} \;
 RUN find . -path "./tests/antithesis" -prune -type f -o -name 'go.mod' -type f -execdir go mod edit -replace=math/rand=$(git rev-parse --show-toplevel)/tests/antithesis/pkg/rand \;
 RUN find . -path "./tests/antithesis" -prune -type f -o -name 'go.mod' -type f -execdir go mod edit -replace=math/rand/v2=$(git rev-parse --show-toplevel)/tests/antithesis/pkg/rand/v2 \;
 RUN find . -name 'go.mod' -type f -execdir go mod tidy \;
