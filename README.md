@@ -5,7 +5,7 @@
 [![Tests](https://github.com/etcd-io/etcd/actions/workflows/tests.yaml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/tests.yaml)
 [![codeql-analysis](https://github.com/etcd-io/etcd/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/codeql-analysis.yml)
 [![Docs](https://img.shields.io/badge/docs-latest-green.svg)](https://etcd.io/docs)
-[![Godoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godocs.io/go.etcd.io/etcd/v3)
+[![Godoc](https://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godocs.io/go.etcd.io/etcd/v3)
 [![Releases](https://img.shields.io/github/release/etcd-io/etcd/all.svg?style=flat-square)](https://github.com/etcd-io/etcd/releases)
 [![LICENSE](https://img.shields.io/github/license/etcd-io/etcd.svg?style=flat-square)](https://github.com/etcd-io/etcd/blob/main/LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/etcd-io/etcd/badge)](https://scorecard.dev/viewer/?uri=github.com/etcd-io/etcd)
@@ -36,7 +36,7 @@ See [etcdctl][etcdctl] for a simple command line client.
 <sub>Original image credited to  xkcd.com/2347, alterations by Josh Berkus.</sub>
 
 [raft]: https://raft.github.io/
-[k8s]: http://kubernetes.io/
+[k8s]: https://kubernetes.io/
 [doorman]: https://github.com/youtube/doorman
 [locksmith]: https://github.com/coreos/locksmith
 [vulcand]: https://github.com/vulcand/vulcand
@@ -64,7 +64,7 @@ The most common API documentation you'll need can be found here:
 
 The easiest way to get etcd is to use one of the pre-built release binaries which are available for OSX, Linux, Windows, and Docker on the [release page][github-release].
 
-For more installation guides, please check out [play.etcd.io](http://play.etcd.io) and [operating etcd](https://etcd.io/docs/latest/op-guide).
+For more installation guides, please check out [play.etcd.io](https://play.etcd.io) and [operating etcd](https://etcd.io/docs/latest/op-guide).
 
 [github-release]: https://github.com/etcd-io/etcd/releases
 
@@ -96,7 +96,7 @@ etcdctl get mykey
 
 etcd is now running and serving client requests. For more, please check out:
 
-* [Interactive etcd playground](http://play.etcd.io)
+* [Interactive etcd playground](https://play.etcd.io)
 * [Animated quick demo](https://etcd.io/docs/latest/demo)
 
 ### etcd TCP ports
