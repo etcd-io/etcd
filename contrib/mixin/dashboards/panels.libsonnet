@@ -38,7 +38,14 @@ local g = import 'g.libsonnet';
       self.base(title, targets),
     dbSize(title, targets):
       self.base(title, targets)
-      + timeSeries.standardOptions.withUnit('bytes'),
+      + timeSeries.standardOptions.withUnit('bytes')
+      + timeSeries.panelOptions.withDescription(
+        |||
+          - `DB size` is the total allocated backend size on disk (etcd_mvcc_db_total_size_in_bytes).
+          - `DB size in use` is the space actually used by live data (etcd_mvcc_db_total_size_in_use_in_bytes).
+          A large gap between them indicates fragmentation; consider running etcd defrag when the in-use ratio is low.
+        |||
+      ),
     diskSync(title, targets):
       self.base(title, targets)
       + timeSeries.standardOptions.withUnit('s'),

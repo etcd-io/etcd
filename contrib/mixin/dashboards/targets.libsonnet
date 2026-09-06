@@ -41,6 +41,12 @@ function(variables, config) {
       'etcd_mvcc_db_total_size_in_bytes{%s, %s="$cluster"}' % [config.etcd_selector, config.clusterLabel],
     )
     + prometheusQuery.withLegendFormat('{{instance}} DB size'),
+  dbSizeInUse:
+    prometheusQuery.new(
+      '$' + variables.datasource.name,
+      'etcd_mvcc_db_total_size_in_use_in_bytes{%s, %s="$cluster"}' % [config.etcd_selector, config.clusterLabel],
+    )
+    + prometheusQuery.withLegendFormat('{{instance}} DB size in use'),
   walFsync:
     prometheusQuery.new(
       '$' + variables.datasource.name,
