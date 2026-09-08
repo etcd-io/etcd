@@ -215,6 +215,11 @@
           "type": "string",
           "format": "uint64",
           "description": "raft_term is the raft term when the request was applied."
+        },
+        "leader_id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "leader_id is the member ID of the raft leader that the responding\nmember believes is the current leader, or 0 if the responding member\ndoes not know who the leader is."
         }
       }
     },
