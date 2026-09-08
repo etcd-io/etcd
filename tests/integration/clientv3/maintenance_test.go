@@ -479,3 +479,28 @@ func TestMaintenanceStatus(t *testing.T) {
 		})
 	}
 }
+
+// TestMaintenanceDefragmentResponseHeader verifies that Defragment populates
+// the response header on every member, not just the leader.
+func TestMaintenanceDefragmentResponseHeader(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	leaderIdx := clus.WaitLeader(t)
+	leaderID := uint64(clus.Members[leaderIdx].ID())
+
+	// hit each member directly, so the header is the serving member's own view
+	for i := 0; i < 3; i++ {
+		cli := clus.Client(i)
+		resp, err := cli.Defragment(t.Context(), clus.Members[i].GRPCURL)
+		require.NoErrorf(t, err, "failed to defragment member %d", i)
+		require.NotNilf(t, resp.Header, "defragment response from member %d should carry a header", i)
+		require.Equalf(t, uint64(clus.Members[i].ID()), resp.Header.MemberId,
+			"defragment should be served by the addressed member")
+		require.NotZerof(t, resp.Header.RaftTerm, "defragment header should carry the raft term")
+		require.Equalf(t, leaderID, resp.Header.LeaderId,
+			"defragment header.leader_id should report the cluster leader")
+	}
+}
