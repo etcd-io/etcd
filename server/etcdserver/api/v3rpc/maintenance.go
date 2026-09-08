@@ -126,7 +126,12 @@ func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRe
 		return nil, togRPCError(err)
 	}
 	ms.lg.Info("finished defragment")
-	return &pb.DefragmentResponse{}, nil
+	// fill the header after the defrag returns: a defrag can take long enough
+	// for leadership to move, and callers read header.leader_id to decide
+	// whether they still need to transfer leadership before restarting a member.
+	resp := &pb.DefragmentResponse{Header: &pb.ResponseHeader{}}
+	ms.hdr.fill(resp.Header)
+	return resp, nil
 }
 
 // big enough size to hold >1 OS pages in the buffer
