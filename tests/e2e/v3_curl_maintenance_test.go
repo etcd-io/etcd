@@ -68,7 +68,9 @@ func testCurlV3MaintenanceDefragment(cx ctlCtx) {
 		Endpoint: "/v3/maintenance/defragment",
 		Value:    "{}",
 		Expected: expect.ExpectedResponse{
-			Value: "{}",
+			// DefragmentResponse carries a populated response header
+			// (including leader_id), so the body is no longer "{}".
+			Value: `"leader_id"`,
 		},
 	}), "failed post maintenance defragment request")
 }
