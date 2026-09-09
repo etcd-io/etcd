@@ -30,11 +30,20 @@ import (
 
 // TestIssue20271 reproduces the issue: https://github.com/etcd-io/etcd/issues/20271.
 func TestIssue20271(t *testing.T) {
+	const (
+		snapCount = 10
+		// keyCount must be greater than maxInflightMsgs (server/etcdserver/raft.go).
+		// SIGSTOP only freezes the process, the kernel keeps accepting packets for
+		// it, so every MsgApp the leader sends in Step 3 is buffered for the paused
+		// member and replayed on resume. Writing more entries than the leader's
+		// inflight window can hold makes it stop replicating to that member, so it
+		// cannot catch up by itself and the new leader is forced to send a snapshot.
+		keyCount = 1024
+	)
+
 	e2e.BeforeTest(t)
 
 	ctx := t.Context()
-
-	snapCount := 10
 
 	cfg := e2e.NewConfig(
 		e2e.WithSnapshotCount(uint64(snapCount)),
@@ -51,13 +60,12 @@ func TestIssue20271(t *testing.T) {
 	defer func() {
 		require.NoError(t, epc.Close())
 	}()
+	cli := newClient(t, epc.Procs[0].EndpointsGRPC(), e2e.ClientConfig{})
 
 	t.Log("Step 1: Write some data to the cluster")
-	for i := 0; i < snapCount*5; i++ {
-		require.NoError(t, epc.Procs[0].Etcdctl().Put(ctx,
-			fmt.Sprintf("foo%d", i),
-			strings.Repeat("Oops", 1024),
-			config.PutOptions{}))
+	for i := 0; i < keyCount; i++ {
+		_, err = cli.Put(ctx, fmt.Sprintf("foo%d", i), strings.Repeat("Oops", 1024))
+		require.NoError(t, err)
 	}
 
 	t.Log(`Step 2: Config the third member to sleep 15s after OpenSnapshotBackend and use SIGSTOP to pause it.`)
@@ -65,8 +73,8 @@ func TestIssue20271(t *testing.T) {
 	epc.Procs[2].Pause()
 
 	t.Log("Step 3: Delete some key values to trigger new snapshot on the first two members")
-	for i := 0; i < snapCount+20; i++ {
-		_, err = epc.Procs[0].Etcdctl().Delete(ctx, fmt.Sprintf("foo%d", i), config.DeleteOptions{})
+	for i := 0; i < keyCount; i++ {
+		_, err = cli.Delete(ctx, fmt.Sprintf("foo%d", i))
 		require.NoError(t, err)
 	}
 
