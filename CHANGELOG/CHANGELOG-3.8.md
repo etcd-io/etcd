@@ -13,6 +13,10 @@ Previous change logs can be found at [CHANGELOG-3.7](https://github.com/etcd-io/
   - [Cleanup the legacy v2 snapshot files on bootstrap](https://github.com/etcd-io/etcd/pull/22336)
   - [Cleanup the legacy v2 snapshot source code and cleanup orphaned defragmentation files on bootstrap](https://github.com/etcd-io/etcd/pull/22341)
 
+### Package `clientv3`
+
+- [Emit a single resolver update in EtcdManualResolver.Build](https://github.com/etcd-io/etcd/pull/22133) to avoid spurious "operation was canceled" dial warnings.
+
 ### Dependencies
 
 - Compile binaries using [go 1.26.5](https://github.com/etcd-io/etcd/pull/22062).
