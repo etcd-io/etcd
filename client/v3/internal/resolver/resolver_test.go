@@ -261,3 +261,15 @@ func TestGetCCBeforeBuildReturnsNil(t *testing.T) {
 	// CC() panics before Build; getCC must recover and return nil.
 	assert.Nil(t, getCC(*r))
 }
+
+func TestState(t *testing.T) {
+	sc := &serviceconfig.ParseResult{}
+	r := New("http://127.0.0.1:2379", "unix:///tmp/etcd.sock")
+	r.serviceConfig = sc
+
+	want := wantState(sc,
+		addr("127.0.0.1:2379", "127.0.0.1:2379"),
+		addr("unix:///tmp/etcd.sock", "etcd.sock"),
+	)
+	assert.Equal(t, want, r.state())
+}
