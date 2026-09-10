@@ -269,7 +269,16 @@ func (ki *keyIndex) doCompact(atRev int64, available map[Revision]struct{}) (gen
 	genIdx, g := 0, &ki.generations[0]
 	// find first generation includes atRev or created after atRev
 	for genIdx < len(ki.generations)-1 {
-		if tomb := g.revs[len(g.revs)-1].Main; tomb >= atRev {
+		tomb := g.revs[len(g.revs)-1].Main
+		if tomb > atRev {
+			break
+		}
+		// A tombstone at exactly atRev is kept, so this generation is the one
+		// to compact into -- unless the key was re-created within the same main
+		// revision, in which case the higher sub revision supersedes the
+		// tombstone and the key is alive at the end of atRev. Its live revision
+		// lives in the next generation and must survive the compaction.
+		if tomb == atRev && !ki.generations[genIdx+1].isRecreatedAt(atRev) {
 			break
 		}
 		genIdx++
@@ -350,6 +359,12 @@ type generation struct {
 }
 
 func (g *generation) isEmpty() bool { return g == nil || len(g.revs) == 0 }
+
+// isRecreatedAt reports whether this generation was created by a put in main
+// revision rev, i.e. the key was deleted and re-created within that revision.
+func (g *generation) isRecreatedAt(rev int64) bool {
+	return !g.isEmpty() && g.revs[0].Main == rev
+}
 
 // walk walks through the revisions in the generation in descending order.
 // It passes the revision to the given function.

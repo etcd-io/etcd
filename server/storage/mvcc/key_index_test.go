@@ -608,6 +608,129 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 	}
 }
 
+// TestKeyIndexCompactAndKeepOnRecreatedRev covers keys that are deleted and
+// re-created within a single main revision (a DeleteRange followed by a Put in
+// one transaction) and are then compacted at exactly that revision. The later
+// sub revision supersedes the tombstone, so the key is alive at the end of the
+// revision and its live revision must survive the compaction.
+func TestKeyIndexCompactAndKeepOnRecreatedRev(t *testing.T) {
+	tests := []struct {
+		name    string
+		build   func(lg *zap.Logger) *keyIndex
+		compact int64
+
+		wki      *keyIndex
+		wcompact map[Revision]struct{}
+		wkeep    map[Revision]struct{}
+	}{
+		{
+			name: "deleted and re-created in the compacted revision",
+			build: func(lg *zap.Logger) *keyIndex {
+				ki := &keyIndex{key: []byte("foo")}
+				ki.put(lg, 3, 89)
+				require.NoError(t, ki.tombstone(lg, 4, 0))
+				ki.put(lg, 4, 145)
+				return ki
+			},
+			compact: 4,
+			wki: &keyIndex{
+				key:      []byte("foo"),
+				modified: Revision{Main: 4, Sub: 145},
+				generations: []generation{
+					{created: Revision{Main: 4, Sub: 145}, ver: 1, revs: []Revision{{Main: 4, Sub: 145}}},
+				},
+			},
+			wcompact: map[Revision]struct{}{{Main: 4, Sub: 145}: {}},
+			wkeep:    map[Revision]struct{}{{Main: 4, Sub: 145}: {}},
+		},
+		{
+			name: "deleted, re-created and deleted again in the compacted revision",
+			build: func(lg *zap.Logger) *keyIndex {
+				ki := &keyIndex{key: []byte("foo")}
+				ki.put(lg, 1, 0)
+				require.NoError(t, ki.tombstone(lg, 2, 0))
+				ki.put(lg, 2, 1)
+				require.NoError(t, ki.tombstone(lg, 2, 2))
+				return ki
+			},
+			compact: 2,
+			wki: &keyIndex{
+				key:      []byte("foo"),
+				modified: Revision{Main: 2, Sub: 2},
+				generations: []generation{
+					{created: Revision{Main: 2, Sub: 1}, ver: 2, revs: []Revision{{Main: 2, Sub: 2}}},
+					{},
+				},
+			},
+			// the last tombstone of the revision is kept, the superseded one is not
+			wcompact: map[Revision]struct{}{{Main: 2, Sub: 2}: {}},
+			wkeep:    map[Revision]struct{}{},
+		},
+		{
+			// regression guard for #18274
+			name: "tombstone at the compacted revision is kept",
+			build: func(lg *zap.Logger) *keyIndex {
+				ki := &keyIndex{key: []byte("foo")}
+				ki.put(lg, 2, 0)
+				ki.put(lg, 3, 0)
+				require.NoError(t, ki.tombstone(lg, 4, 0))
+				return ki
+			},
+			compact: 4,
+			wki: &keyIndex{
+				key:      []byte("foo"),
+				modified: Revision{Main: 4},
+				generations: []generation{
+					{created: Revision{Main: 2}, ver: 3, revs: []Revision{{Main: 4}}},
+					{},
+				},
+			},
+			wcompact: map[Revision]struct{}{{Main: 4}: {}},
+			wkeep:    map[Revision]struct{}{},
+		},
+		{
+			name: "re-created in a later revision keeps the tombstone",
+			build: func(lg *zap.Logger) *keyIndex {
+				ki := &keyIndex{key: []byte("foo")}
+				ki.put(lg, 1, 0)
+				require.NoError(t, ki.tombstone(lg, 2, 0))
+				ki.put(lg, 3, 0)
+				return ki
+			},
+			compact: 2,
+			wki: &keyIndex{
+				key:      []byte("foo"),
+				modified: Revision{Main: 3},
+				generations: []generation{
+					{created: Revision{Main: 1}, ver: 2, revs: []Revision{{Main: 2}}},
+					{created: Revision{Main: 3}, ver: 1, revs: []Revision{{Main: 3}}},
+				},
+			},
+			wcompact: map[Revision]struct{}{{Main: 2}: {}},
+			wkeep:    map[Revision]struct{}{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+
+			ki := tt.build(lg)
+			kiClone := cloneKeyIndex(ki)
+			keep := make(map[Revision]struct{})
+			ki.keep(tt.compact, keep)
+			require.Equalf(t, kiClone, ki, "keep must not modify the keyIndex for %q", tt.name)
+			require.Equal(t, tt.wkeep, keep)
+
+			ki = tt.build(lg)
+			am := make(map[Revision]struct{})
+			ki.compact(lg, tt.compact, am)
+			require.Equal(t, tt.wcompact, am)
+			require.Equal(t, tt.wki, ki)
+		})
+	}
+}
+
 func cloneKeyIndex(ki *keyIndex) *keyIndex {
 	generations := make([]generation, len(ki.generations))
 	for i, gen := range ki.generations {

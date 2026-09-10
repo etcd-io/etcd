@@ -30,7 +30,9 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -369,6 +371,59 @@ func TestStoreCompact(t *testing.T) {
 	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
 	}
+}
+
+// TestStoreCompactRecreatedKeyInSameRevision writes a key, then deletes and
+// re-creates it in a single transaction, and compacts at that revision. The
+// live value must survive the compaction: before the fix its backend row was
+// deleted while the index kept pointing at it, so the next range over the key
+// hit the "range failed to find revision pair" fatal, and a restart rebuilt an
+// empty keyspace from the backend.
+func TestStoreCompactRecreatedKeyInSameRevision(t *testing.T) {
+	// turn the fatal in rangeKeys into a recoverable panic
+	lg := zaptest.NewLogger(t, zaptest.WrapOptions(zap.WithFatalHook(zapcore.WriteThenPanic)))
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := NewStore(lg, b, &lease.FakeLessor{}, StoreConfig{})
+	defer func() {
+		s.Close()
+		b.Close()
+	}()
+
+	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+	s.Put([]byte("foo2"), []byte("bar2"), lease.NoLease)
+
+	// one transaction rewriting the whole keyspace: every key gets a tombstone
+	// and its re-creation in the same main revision, at different sub revisions
+	tw := s.Write(traceutil.TODO())
+	tw.DeleteRange([]byte("foo"), []byte("fop"))
+	tw.Put([]byte("foo"), []byte("bar-new"), lease.NoLease)
+	tw.Put([]byte("foo2"), []byte("bar2-new"), lease.NoLease)
+	tw.End()
+
+	rev := s.Rev()
+	ch, err := s.Compact(traceutil.TODO(), rev)
+	require.NoError(t, err)
+	<-ch
+
+	assertRange := func(t *testing.T, s KV) {
+		t.Helper()
+		tr := s.Read(ConcurrentReadTxMode, traceutil.TODO())
+		defer tr.End()
+		r, err := tr.Range(t.Context(), []byte("foo"), []byte("fop"), RangeOptions{})
+		require.NoError(t, err)
+		require.Len(t, r.KVs, 2)
+		require.Equal(t, []byte("bar-new"), r.KVs[0].Value)
+		require.Equal(t, []byte("bar2-new"), r.KVs[1].Value)
+	}
+
+	assertRange(t, s)
+
+	// the backend must still be able to rebuild the index, i.e. a restart does
+	// not come back with an empty keyspace
+	s.Close()
+	s = NewStore(lg, b, &lease.FakeLessor{}, StoreConfig{})
+	require.Equal(t, rev, s.Rev())
+	assertRange(t, s)
 }
 
 func TestStoreRestore(t *testing.T) {
