@@ -32,6 +32,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
+	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -138,7 +139,21 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 	if ver != nil {
 		storageVersion = ver.String()
 	}
-	snap := ms.bg.Backend().Snapshot()
+
+	defragmented := ms.cg.Config().ServerFeatureGate.Enabled(features.DefragmentedSnapshot)
+	var snap backend.Snapshot
+	if defragmented {
+		ms.lg.Info("preparing defragmented database snapshot")
+		s, err := ms.bg.Backend().SnapshotDefragmented()
+		if err != nil {
+			ms.lg.Warn("failed to prepare defragmented snapshot", zap.Error(err))
+			return togRPCError(err)
+		}
+		snap = s
+	} else {
+		snap = ms.bg.Backend().Snapshot()
+	}
+
 	pr, pw := io.Pipe()
 
 	defer pr.Close()
@@ -164,6 +179,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		zap.Int64("total-bytes", total),
 		zap.String("size", size),
 		zap.String("storage-version", storageVersion),
+		zap.Bool("defragmented", defragmented),
 	)
 	for total-sent > 0 {
 		// buffer just holds read bytes from stream

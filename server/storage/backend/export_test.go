@@ -27,3 +27,16 @@ func DefragLimitForTest() int {
 func CommitsForTest(b Backend) int64 {
 	return b.(*backend).Commits()
 }
+
+// SnapshotDefragmentedWithTxMaxBytesForTest invokes SnapshotDefragmented with
+// a caller-specified bbolt.Compact txMaxSize, instead of the package default.
+// Intended for benchmarks that tune snapshotCompactTxMaxBytes.
+func SnapshotDefragmentedWithTxMaxBytesForTest(b Backend, txMaxBytes int64) (Snapshot, error) {
+	return b.(*backend).snapshotDefragmented(txMaxBytes)
+}
+
+// DefaultSnapshotCompactTxMaxBytesForTest returns the package default for
+// bbolt.Compact's txMaxSize.
+func DefaultSnapshotCompactTxMaxBytesForTest() int64 {
+	return snapshotCompactTxMaxBytes
+}
