@@ -12,7 +12,7 @@ Previous change logs can be found at [CHANGELOG-3.7](https://github.com/etcd-io/
   - [Remove flag `--max-snapshots` and `--v2-deprecation`](https://github.com/etcd-io/etcd/pull/22306)
   - [Cleanup the legacy v2 snapshot files on bootstrap](https://github.com/etcd-io/etcd/pull/22336)
   - [Cleanup the legacy v2 snapshot source code and cleanup orphaned defragmentation files on bootstrap](https://github.com/etcd-io/etcd/pull/22341)
-- [Add `leader_id` field to the `ResponseHeader` and populate it in the defragment API response](https://github.com/etcd-io/etcd/pull/22327)
+- [Add `LeaderId` (`leader_id`) to `ResponseHeader` and populate it in every response, including `DefragmentResponse`](https://github.com/etcd-io/etcd/pull/22327)
 
 ### Dependencies
 
