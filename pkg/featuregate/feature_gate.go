@@ -249,8 +249,15 @@ func (f *featureGate) SetFromMap(m map[string]bool) error {
 
 // String returns a string containing all enabled feature gates, formatted as "key1=value1,key2=value2,...".
 func (f *featureGate) String() string {
+	enabled := f.enabled.Load()
+	// guards against nil pointer dereference if the feature gate is not initialized
+	// before calling String() e.g. z.Interface().(Value).String() in flag.go
+	if enabled == nil {
+		return ""
+	}
+
 	pairs := []string{}
-	for k, v := range f.enabled.Load().(map[Feature]bool) {
+	for k, v := range enabled.(map[Feature]bool) {
 		pairs = append(pairs, fmt.Sprintf("%s=%t", k, v))
 	}
 	sort.Strings(pairs)

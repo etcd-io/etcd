@@ -408,6 +408,13 @@ func TestFeatureGateMetrics(t *testing.T) {
 	// TODO(henrybear327): Add tests once feature gate metrics are added.
 }
 
+func TestFeatureGateStringZeroValue(t *testing.T) {
+	var f featureGate
+	// guards against nil pointer dereference if the feature gate is not initialized
+	// before calling String() e.g. z.Interface().(Value).String() in flag.go
+	assert.Empty(t, f.String())
+}
+
 func TestFeatureGateString(t *testing.T) {
 	// gates for testing
 	const testAlphaGate Feature = "TestAlpha"
