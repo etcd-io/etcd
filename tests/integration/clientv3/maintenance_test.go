@@ -155,7 +155,7 @@ func TestMaintenanceSnapshotResponseHeader(t *testing.T) {
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
-	populateDataIntoCluster(t, clus, 3, 64*1024)
+	populateDataIntoCluster(t, clus, 64*1024)
 	leaderID := uint64(clus.Members[clus.WaitLeader(t)].ID())
 
 	for i, member := range clus.Members {
@@ -200,7 +200,7 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 	// And the initialized cluster has 20KiB snapshot, which can be
 	// pre-read by underlayer. We should increase the snapshot's size here,
 	// just in case that io.Copy won't return the canceled error.
-	populateDataIntoCluster(t, clus, 3, 1024*1024)
+	populateDataIntoCluster(t, clus, 1024*1024)
 
 	rc1, err := clus.RandClient().Snapshot(ctx)
 	require.NoError(t, err)
@@ -277,7 +277,7 @@ func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context,
 	// And the initialized cluster has 20KiB snapshot, which can be
 	// pre-read by underlayer. We should increase the snapshot's size here,
 	// just in case that io.Copy won't return the timeout error.
-	populateDataIntoCluster(t, clus, 3, 1024*1024)
+	populateDataIntoCluster(t, clus, 1024*1024)
 
 	rc2, err := snapshot(ctx, clus.RandClient())
 	require.NoError(t, err)
@@ -407,7 +407,7 @@ func TestMaintenanceSnapshotContentDigest(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	populateDataIntoCluster(t, clus, 3, 1024*1024)
+	populateDataIntoCluster(t, clus, 1024*1024)
 
 	// reading snapshot with canceled context should error out
 	resp, err := clus.RandClient().SnapshotWithVersion(t.Context())
