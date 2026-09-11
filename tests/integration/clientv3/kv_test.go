@@ -472,6 +472,58 @@ func TestKVGetKeysOnlyWithCountOnly(t *testing.T) {
 	}
 }
 
+// TestKVGetKeysOnlyWithLease ensures that a Range request with KeysOnly set
+// still returns the Lease field for keys attached to a lease.
+// Regression test for https://github.com/etcd-io/etcd/issues/22209.
+func TestKVGetKeysOnlyWithLease(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clus.RandClient()
+	ctx := t.Context()
+
+	key := "hello"
+	putResp, err := kv.Put(ctx, key, "world")
+	if err != nil {
+		t.Fatalf("couldn't put %q (%v)", key, err)
+	}
+	unleasedRev := putResp.Header.Revision
+
+	lresp, err := kv.Grant(ctx, 100)
+	if err != nil {
+		t.Fatalf("failed to create lease %v", err)
+	}
+	if _, err = kv.Put(ctx, key, "world2", clientv3.WithLease(lresp.ID)); err != nil {
+		t.Fatalf("couldn't put %q (%v)", key, err)
+	}
+
+	resp, err := kv.Get(ctx, key, clientv3.WithKeysOnly())
+	if err != nil {
+		t.Fatalf("couldn't get key (%v)", err)
+	}
+	if len(resp.Kvs) != 1 {
+		t.Fatalf("expected 1 key, got %d", len(resp.Kvs))
+	}
+	if lresp.ID != clientv3.LeaseID(resp.Kvs[0].Lease) {
+		t.Errorf("lease = %d, want %d", resp.Kvs[0].Lease, lresp.ID)
+	}
+
+	// A keys-only range at a historical revision predating the lease attach
+	// must not report the key's current (not-yet-attached) lease.
+	histResp, err := kv.Get(ctx, key, clientv3.WithKeysOnly(), clientv3.WithRev(unleasedRev))
+	if err != nil {
+		t.Fatalf("couldn't get key at historical revision (%v)", err)
+	}
+	if len(histResp.Kvs) != 1 {
+		t.Fatalf("expected 1 key, got %d", len(histResp.Kvs))
+	}
+	if histResp.Kvs[0].Lease != 0 {
+		t.Errorf("historical lease = %d, want 0", histResp.Kvs[0].Lease)
+	}
+}
+
 // TestKVGetRetry ensures get will retry on disconnect.
 func TestKVGetRetry(t *testing.T) {
 	integration.BeforeTest(t)
