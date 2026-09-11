@@ -12,7 +12,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ### Dependencies
 
-- Compile binaries using [go 1.25.13](https://github.com/etcd-io/etcd/pull/22286).
+- Compile binaries using [go 1.26.8](https://github.com/etcd-io/etcd/pull/22414).
 - Bump [golang.org/x/text to v0.39.0](https://github.com/etcd-io/etcd/pull/22365), to address CVE-2026-56852.
 - Bump [github.com/gorilla/websocket to v1.5.3], to address GHSA-w67g-5rqw-f597.
 
