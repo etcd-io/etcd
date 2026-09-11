@@ -1,8 +1,8 @@
 module go.etcd.io/etcd/etcdutl/v3
 
-go 1.25.0
+go 1.26
 
-toolchain go1.25.14
+toolchain go1.26.8
 
 replace (
 	go.etcd.io/etcd/api/v3 => ../api
@@ -65,7 +65,7 @@ require (
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
