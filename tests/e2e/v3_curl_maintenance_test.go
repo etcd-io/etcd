@@ -126,7 +126,8 @@ func testCurlV3MaintenanceSnapshot(cx ctlCtx) {
 		Endpoint: "/v3/maintenance/snapshot",
 		Value:    "{}",
 		Expected: expect.ExpectedResponse{
-			Value: `"result":{"blob":`,
+			Value:         `"result":\{"header":\{[^}]*"leader_id":"[1-9][0-9]*"[^}]*\},"blob":`,
+			IsRegularExpr: true,
 		},
 	}), "failed post maintenance snapshot request")
 }
