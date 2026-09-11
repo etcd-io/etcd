@@ -19,24 +19,53 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache"
 )
 
 type AuthProxy struct {
 	authClient pb.AuthClient
+	cache      cache.Cache
 	// we want compile errors if new methods are added
 	pb.UnsafeAuthServer
 }
 
-func NewAuthProxy(c *clientv3.Client) pb.AuthServer {
-	return &AuthProxy{authClient: pb.NewAuthClient(c.ActiveConnection())}
+// NewAuthProxy returns an AuthServer that forwards auth RPCs to the backend.
+// cache may be nil; when non-nil, any auth-mutating RPC flushes the cache so
+// no caller can keep reading data cached under stale permissions.
+//
+// Note: the proxy only observes auth changes that pass through it. Permission
+// changes applied directly against the backend will not flush the cache,
+// leaving a same-token stale-read window until eviction.
+func NewAuthProxy(c *clientv3.Client, cache cache.Cache) pb.AuthServer {
+	ap := &AuthProxy{authClient: pb.NewAuthClient(c.ActiveConnection())}
+	if cache != nil {
+		ap.cache = cache
+	}
+	return ap
 }
 
 func (ap *AuthProxy) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
-	return ap.authClient.AuthEnable(ctx, r)
+	resp, err := ap.authClient.AuthEnable(ctx, r)
+	ap.flushCacheOnMutation(err)
+	return resp, err
 }
 
 func (ap *AuthProxy) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error) {
-	return ap.authClient.AuthDisable(ctx, r)
+	resp, err := ap.authClient.AuthDisable(ctx, r)
+	ap.flushCacheOnMutation(err)
+	return resp, err
+}
+
+// flushCacheOnMutation drops every cached entry after a successful auth
+// mutation so no principal can keep reading data cached under stale
+// permissions. Note that the proxy only observes auth changes that pass
+// through it: permission changes applied directly against the backend
+// bypass this hook and leave a stale-read window for the same token until
+// the affected entries are evicted.
+func (ap *AuthProxy) flushCacheOnMutation(err error) {
+	if err == nil && ap.cache != nil {
+		ap.cache.Clear()
+	}
 }
 
 func (ap *AuthProxy) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*pb.AuthStatusResponse, error) {
@@ -48,11 +77,15 @@ func (ap *AuthProxy) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 }
 
 func (ap *AuthProxy) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
-	return ap.authClient.RoleAdd(ctx, r)
+	resp, err := ap.authClient.RoleAdd(ctx, r)
+	ap.flushCacheOnMutation(err)
+	return resp, err
 }
 
 func (ap *AuthProxy) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
-	return ap.authClient.RoleDelete(ctx, r)
+	resp, err := ap.authClient.RoleDelete(ctx, r)
+	ap.flushCacheOnMutation(err)
+	return resp, err
 }
 
 func (ap *AuthProxy) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error) {
@@ -64,19 +97,27 @@ func (ap *AuthProxy) RoleList(ctx context.Context, r *pb.AuthRoleListRequest) (*
 }
 
 func (ap *AuthProxy) RoleRevokePermission(ctx context.Context, r *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error) {
-	return ap.authClient.RoleRevokePermission(ctx, r)
+	resp, err := ap.authClient.RoleRevokePermission(ctx, r)
+	ap.flushCacheOnMutation(err)
+	return resp, err
 }
 
 func (ap *AuthProxy) RoleGrantPermission(ctx context.Context, r *pb.AuthRoleGrantPermissionRequest) (*pb.AuthRoleGrantPermissionResponse, error) {
-	return ap.authClient.RoleGrantPermission(ctx, r)
+	resp, err := ap.authClient.RoleGrantPermission(ctx, r)
+	ap.flushCacheOnMutation(err)
+	return resp, err
 }
 
 func (ap *AuthProxy) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
-	return ap.authClient.UserAdd(ctx, r)
+	resp, err := ap.authClient.UserAdd(ctx, r)
+	ap.flushCacheOnMutation(err)
+	return resp, err
 }
 
 func (ap *AuthProxy) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
-	return ap.authClient.UserDelete(ctx, r)
+	resp, err := ap.authClient.UserDelete(ctx, r)
+	ap.flushCacheOnMutation(err)
+	return resp, err
 }
 
 func (ap *AuthProxy) UserGet(ctx context.Context, r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
@@ -88,13 +129,19 @@ func (ap *AuthProxy) UserList(ctx context.Context, r *pb.AuthUserListRequest) (*
 }
 
 func (ap *AuthProxy) UserGrantRole(ctx context.Context, r *pb.AuthUserGrantRoleRequest) (*pb.AuthUserGrantRoleResponse, error) {
-	return ap.authClient.UserGrantRole(ctx, r)
+	resp, err := ap.authClient.UserGrantRole(ctx, r)
+	ap.flushCacheOnMutation(err)
+	return resp, err
 }
 
 func (ap *AuthProxy) UserRevokeRole(ctx context.Context, r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
-	return ap.authClient.UserRevokeRole(ctx, r)
+	resp, err := ap.authClient.UserRevokeRole(ctx, r)
+	ap.flushCacheOnMutation(err)
+	return resp, err
 }
 
 func (ap *AuthProxy) UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
-	return ap.authClient.UserChangePassword(ctx, r)
+	resp, err := ap.authClient.UserChangePassword(ctx, r)
+	ap.flushCacheOnMutation(err)
+	return resp, err
 }

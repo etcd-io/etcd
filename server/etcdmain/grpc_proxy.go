@@ -54,6 +54,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
+	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache"
 )
 
 var (
@@ -103,6 +104,11 @@ var (
 	grpcProxyEnableLogging  bool
 
 	grpcProxyDebug bool
+
+	// grpcProxyCacheTTL is the maximum lifetime of a cache entry in the KV
+	// proxy cache. Should be set to match or slightly less than the backend
+	// auth token TTL to prevent serving stale reads after token expiry.
+	grpcProxyCacheTTL time.Duration
 
 	// GRPC keep alive related options.
 	grpcKeepAliveMinTime  time.Duration
@@ -183,6 +189,9 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&grpcProxyDebug, "debug", false, "Enable debug-level logging for grpc-proxy.")
 
 	cmd.Flags().Uint32Var(&maxConcurrentStreams, "max-concurrent-streams", math.MaxUint32, "Maximum concurrent streams that each client can open at a time.")
+
+	// cache flags
+	cmd.Flags().DurationVar(&grpcProxyCacheTTL, "cache-ttl", 0, "Maximum lifetime of a cache entry in the KV proxy cache. Should be set to match or slightly less than the backend auth token TTL (default 0, no time-based expiry).")
 
 	return &cmd
 }
@@ -489,7 +498,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 		client.KV, _, _ = leasing.NewKV(client, grpcProxyLeasing)
 	}
 
-	kvp, _ := grpcproxy.NewKvProxy(client)
+	kvp, _ := grpcproxy.NewKvProxyWithTTL(client, grpcProxyCacheTTL)
 	watchp, _ := grpcproxy.NewWatchProxy(client.Ctx(), lg, client)
 	if grpcProxyResolverPrefix != "" {
 		grpcproxy.Register(lg, client, grpcProxyResolverPrefix, grpcProxyAdvertiseClientURL, grpcProxyResolverTTL)
@@ -498,7 +507,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	leasep, _ := grpcproxy.NewLeaseProxy(client.Ctx(), client)
 
 	mainp := grpcproxy.NewMaintenanceProxy(client)
-	authp := grpcproxy.NewAuthProxy(client)
+	authp := grpcproxy.NewAuthProxy(client, kvp.(interface{ Cache() cache.Cache }).Cache())
 	electionp := grpcproxy.NewElectionProxy(client)
 	lockp := grpcproxy.NewLockProxy(client)
 
