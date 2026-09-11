@@ -21,6 +21,8 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/cheggaaa/pb/v3"
@@ -47,13 +49,14 @@ var (
 	stmIsolation string
 	stmIso       v3sync.Isolation
 
-	stmTotal        int
-	stmKeysPerTxn   int
-	stmKeyCount     int
-	stmValSize      int
-	stmWritePercent int
-	stmLocker       string
-	stmRate         int
+	stmTotal          int
+	stmKeysPerTxn     int
+	stmKeyCount       int
+	stmValSize        int
+	stmWritePercent   int
+	stmLocker         string
+	stmRate           int
+	stmReportInterval int
 )
 
 func init() {
@@ -67,6 +70,7 @@ func init() {
 	stmCmd.Flags().StringVar(&stmLocker, "stm-locker", "stm", "Wrap STM transaction with a custom locking mechanism (stm, lock-client, lock-rpc)")
 	stmCmd.Flags().IntVar(&stmValSize, "val-size", 8, "Value size of each STM put request")
 	stmCmd.Flags().IntVar(&stmRate, "rate", 0, "Maximum STM transactions per second (0 is no limit)")
+	stmCmd.Flags().IntVar(&stmReportInterval, "report-interval", -1, "Print live JSON metrics every N seconds (min=1, -1 to disable)")
 }
 
 func stmFunc(cmd *cobra.Command, _ []string) {
@@ -82,6 +86,11 @@ func stmFunc(cmd *cobra.Command, _ []string) {
 
 	if stmKeysPerTxn < 0 || stmKeysPerTxn > stmKeyCount {
 		fmt.Fprintf(os.Stderr, "expected --keys-per-txn between 0 and %v, got (%v)", stmKeyCount, stmKeysPerTxn)
+		os.Exit(1)
+	}
+
+	if stmReportInterval < -1 || stmReportInterval == 0 {
+		fmt.Fprintf(os.Stderr, "--report-interval must be >=1 or -1 to disable\n")
 		os.Exit(1)
 	}
 
@@ -108,16 +117,48 @@ func stmFunc(cmd *cobra.Command, _ []string) {
 	clients := mustCreateClients(totalClients, totalConns)
 
 	bar = pb.New(stmTotal)
+	// when live reporting is active, use stderr for the progress bar
+	// to keep stdout as a clean stream for JSON metrics
+	if stmReportInterval > 0 {
+		bar.SetWriter(os.Stderr)
+	}
 	bar.Start()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+	defer signal.Stop(sigCh)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		select {
+		case <-sigCh:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	tracker := newIntervalTracker()
+	var stopLive chan struct{}
+	if stmReportInterval > 0 {
+		stopLive = startSingleLiveReporter(stmReportInterval, tracker)
+	}
 
 	r := newReport(cmd.Name())
 	for i := range clients {
 		wg.Add(1)
-		go doSTM(clients[i], requests, r.Results())
+		go doSTM(ctx, clients[i], requests, r.Results(), tracker)
 	}
 
 	go func() {
+		defer close(requests)
 		for i := 0; i < stmTotal; i++ {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			kset := make(map[string]struct{})
 			for len(kset) != stmKeysPerTxn {
 				k := make([]byte, 16)
@@ -139,19 +180,32 @@ func stmFunc(cmd *cobra.Command, _ []string) {
 				return nil
 			}
 
-			requests <- applyf
+			select {
+			case requests <- applyf:
+			case <-ctx.Done():
+				return
+			}
 		}
-		close(requests)
 	}()
 
 	rc := r.Run()
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()
-	fmt.Printf("%s", <-rc)
+	if stopLive != nil {
+		close(stopLive)
+	}
+
+	summaryOut := os.Stdout
+	// direct final summary to stderr if report interval is enabled,
+	// to separate it from live JSON snapshots in stdout
+	if stmReportInterval > 0 {
+		summaryOut = os.Stderr
+	}
+	fmt.Fprintf(summaryOut, "%s", <-rc)
 }
 
-func doSTM(client *v3.Client, requests <-chan stmApply, results chan<- report.Result) {
+func doSTM(_ context.Context, client *v3.Client, requests <-chan stmApply, results chan<- report.Result, tracker *intervalTracker) {
 	defer wg.Done()
 
 	lock, unlock := func() error { return nil }, func() error { return nil }
@@ -201,7 +255,11 @@ func doSTM(client *v3.Client, requests <-chan stmApply, results chan<- report.Re
 		if lerr := unlock(); lerr != nil {
 			panic(lerr)
 		}
+		dur := time.Since(st)
 		results <- report.Result{Err: err, Start: st, End: time.Now()}
+		if tracker != nil {
+			tracker.add(dur)
+		}
 		bar.Increment()
 	}
 }
