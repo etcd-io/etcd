@@ -58,23 +58,55 @@ var trafficProfiles = []TrafficProfile{
 		},
 	},
 	{
-		Name:    "KubernetesHighTraffic",
-		Traffic: traffic.Kubernetes,
-		Profile: traffic.Profile{
-			KeyValue:   &traffic.KeyValueHigh,
-			Watch:      &traffic.WatchDefault,
-			Compaction: &traffic.CompactionDefault,
-		},
-	},
-	{
-		Name:    "KubernetesLowTraffic",
-		Traffic: traffic.Kubernetes,
+		// Non-recursive (single-key) watch coverage. Lives in the generic etcd
+		// profile because Kubernetes does not issue non-recursive watches to etcd.
+		Name:    "EtcdSingleKeyWatch",
+		Traffic: traffic.EtcdPutSingleKeyWatch,
 		Profile: traffic.Profile{
 			KeyValue:   &traffic.KeyValueMedium,
 			Watch:      &traffic.WatchDefault,
 			Compaction: &traffic.CompactionDefault,
 		},
 	},
+	{
+		Name:    "KubernetesHighTraffic",
+		Traffic: traffic.Kubernetes,
+		Profile: kubernetesProfile(&traffic.KeyValueHigh, nil),
+	},
+	{
+		Name:    "KubernetesLowTraffic",
+		Traffic: traffic.Kubernetes,
+		Profile: kubernetesProfile(&traffic.KeyValueMedium, nil),
+	},
+	{
+		// events are not served from the watch cache, so they exercise the
+		// direct watch path (ProgressNotify=false).
+		Name:    "KubernetesEventsTraffic",
+		Traffic: traffic.KubernetesEvents,
+		Profile: kubernetesProfile(&traffic.KeyValueMedium, nil),
+	},
+	{
+		// Shared gRPC stream models the events resource: events bypass the watch
+		// cache, so a single apiserver holds many direct watches at once, all
+		// multiplexed onto its one client's stream (WatchesPerInstance). Cached
+		// resources (pods) have a single cacher watch and are not modeled this way.
+		Name:    "KubernetesEventsSharedStream",
+		Traffic: traffic.KubernetesEvents,
+		Profile: kubernetesProfile(&traffic.KeyValueMedium, &traffic.SharedStream{InstanceCount: 3, WatchesPerInstance: 10}),
+	},
+}
+
+// kubernetesProfile builds a Kubernetes traffic profile with the standard watch and
+// compaction settings. Pass a non-nil shared to multiplex all loops onto a single
+// gRPC stream (one client per simulated apiserver instance); nil keeps the default
+// separate-client behavior.
+func kubernetesProfile(kv *traffic.KeyValue, shared *traffic.SharedStream) traffic.Profile {
+	return traffic.Profile{
+		KeyValue:     kv,
+		Watch:        &traffic.WatchDefault,
+		Compaction:   &traffic.CompactionDefault,
+		SharedStream: shared,
+	}
 }
 
 type TestScenario struct {
