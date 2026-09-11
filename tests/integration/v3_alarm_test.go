@@ -23,8 +23,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/mvcc"
@@ -135,6 +138,85 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	if _, err := kvc1.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
 		t.Fatalf("alarmed instance should reject put after reset")
 	}
+}
+
+// TestV3NoSpaceAlarmAuthBypass ensures RBAC is still enforced while a NOSPACE
+// alarm is raised. applierV3backend.Alarm wraps the bare backend instead of the
+// chain from newApplierV3, so authApplierV3 is dropped until the alarm clears
+// and neither needAdminPermission nor the per-key checks run. Reads are
+// unaffected because EtcdServer.Range checks permission itself and applies
+// through applyV3Base.
+func TestV3NoSpaceAlarmAuthBypass(t *testing.T) {
+	BeforeTest(t)
+
+	// secretKey is outside the tenant's grant
+	const secretKey = "/secret/key"
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1, UseBridge: true})
+	defer clus.Terminate(t)
+
+	ctx := t.Context()
+
+	// grant the tenant readwrite on ["/tenant/", "/tenant0") only, then set up root
+	authAPI := toGRPC(clus.Client(0)).Auth
+	authSetupUsers(t, authAPI, []user{{
+		name: "tenant", password: "tenant-123", role: "tenant-role",
+		perm: "readwrite", key: "/tenant/", end: "/tenant0",
+	}})
+	authSetupRoot(t, authAPI)
+
+	rootc, err := NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(), Username: "root", Password: "123"})
+	require.NoError(t, err)
+	defer rootc.Close()
+	_, err = rootc.Put(ctx, secretKey, "topsecret")
+	require.NoError(t, err)
+
+	// set a small quota on the member so NOSPACE is cheap to trigger
+	clus.Members[0].QuotaBackendBytes = int64(16 * os.Getpagesize())
+	clus.Members[0].Stop(t)
+	clus.Members[0].Restart(t)
+	clus.waitLeader(t, clus.Members)
+
+	tenantc, err := NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(), Username: "tenant", Password: "tenant-123"})
+	require.NoError(t, err)
+	defer tenantc.Close()
+
+	// AuthDisable runs last; it would mask the get and delete results
+	probe := func(tag string) (get, del, authOff error) {
+		_, get = tenantc.Get(ctx, secretKey)
+		_, del = tenantc.Delete(ctx, secretKey)
+		_, authOff = tenantc.AuthDisable(ctx)
+		t.Logf("%s: get=%v delete=%v auth-disable=%v", tag, get, del, authOff)
+		return get, del, authOff
+	}
+
+	get, del, authOff := probe("before alarm")
+	require.Error(t, get, "tenant must not read outside its grant")
+	require.Error(t, del, "tenant must not delete outside its grant")
+	require.Error(t, authOff, "tenant must not disable auth")
+
+	// fill the tenant's own prefix; every put keeps its own revision, so
+	// rewriting one key grows the backend just as well as writing many
+	val := string(make([]byte, 8<<10))
+	for i := 0; i < 64; i++ {
+		if _, perr := tenantc.Put(ctx, "/tenant/fill", val); perr != nil {
+			t.Logf("quota reached after %d puts: %v", i, perr)
+			break
+		}
+	}
+
+	// the failing put already applied the alarm: quotaAlarmer.check raises it
+	// through raft before returning ErrNoSpace to the client
+	resp, err := clus.Members[0].s.Alarm(ctx, &pb.AlarmRequest{Action: pb.AlarmRequest_GET})
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.Alarms, "NOSPACE alarm was not raised")
+
+	get, del, authOff = probe("after alarm")
+	assert.Error(t, get, "tenant read a key outside its grant")
+	assert.Error(t, del, "tenant deleted a key outside its grant")
+	assert.Error(t, authOff, "tenant disabled cluster auth")
 }
 
 // TestV3AlarmDeactivate ensures that space alarms can be deactivated so puts go through.
