@@ -41,11 +41,13 @@ func (h *HexResponseHeader) MarshalJSON() ([]byte, error) {
 		MemberID  string `json:"member_id"`
 		Revision  int64  `json:"revision,omitempty"`
 		RaftTerm  uint64 `json:"raft_term,omitempty"`
+		LeaderID  string `json:"leader_id"`
 	}{
 		ClusterID: fmt.Sprintf("%x", h.ClusterId),
 		MemberID:  fmt.Sprintf("%x", h.MemberId),
 		Revision:  h.Revision,
 		RaftTerm:  h.RaftTerm,
+		LeaderID:  fmt.Sprintf("%x", h.LeaderId),
 	})
 }
 

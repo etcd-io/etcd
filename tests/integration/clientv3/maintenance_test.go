@@ -33,6 +33,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -134,13 +135,50 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 	}
 
 	cli = clus.Client(oldLeadIdx)
-	_, err = cli.MoveLeader(t.Context(), target)
+	resp, err := cli.MoveLeader(t.Context(), target)
 	require.NoError(t, err)
+	require.NotNil(t, resp.Header)
+	assert.Equal(t, uint64(clus.Members[oldLeadIdx].Server.Cluster().ID()), resp.Header.ClusterId)
+	assert.Equal(t, uint64(clus.Members[oldLeadIdx].ID()), resp.Header.MemberId)
+	assert.NotZero(t, resp.Header.RaftTerm)
+	assert.Equal(t, target, resp.Header.LeaderId)
 
 	leadIdx := clus.WaitLeader(t)
 	lead := uint64(clus.Members[leadIdx].ID())
 	if target != lead {
 		t.Fatalf("new leader expected %d, got %d", target, lead)
+	}
+}
+
+func TestMaintenanceSnapshotResponseHeader(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+	populateDataIntoCluster(t, clus, 3, 64*1024)
+	leaderID := uint64(clus.Members[clus.WaitLeader(t)].ID())
+
+	for i, member := range clus.Members {
+		stream, err := pb.NewMaintenanceClient(clus.Client(i).ActiveConnection()).Snapshot(t.Context(), &pb.SnapshotRequest{})
+		require.NoError(t, err)
+		var blobs [][]byte
+		for {
+			resp, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			require.NoError(t, err)
+			require.NotNil(t, resp.Header)
+			assert.Equal(t, uint64(member.Server.Cluster().ID()), resp.Header.ClusterId)
+			assert.Equal(t, uint64(member.ID()), resp.Header.MemberId)
+			assert.Equal(t, leaderID, resp.Header.LeaderId)
+			assert.NotZero(t, resp.Header.RaftTerm)
+			assert.Zero(t, resp.Header.Revision)
+			blobs = append(blobs, resp.Blob)
+		}
+		require.Greaterf(t, len(blobs), 2, "expected multiple data chunks and a checksum")
+		digest := sha256.Sum256(bytes.Join(blobs[:len(blobs)-1], nil))
+		assert.Equal(t, digest[:], blobs[len(blobs)-1])
 	}
 }
 
