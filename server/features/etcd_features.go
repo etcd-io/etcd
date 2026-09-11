@@ -84,6 +84,13 @@ const (
 	// alpha: v3.7
 	// main PR: https://github.com/etcd-io/etcd/pull/20492
 	PriorityRequest featuregate.Feature = "PriorityRequest"
+	// IndexDrivenCompaction lets the index directly compute the revisions to be
+	// deleted during compaction, so the store deletes them in place instead of
+	// traversing the whole keyspace. This greatly reduces compaction I/O on
+	// large databases.
+	// alpha: v3.7
+	// issue: https://github.com/etcd-io/etcd/issues/21284
+	IndexDrivenCompaction featuregate.Feature = "IndexDrivenCompaction"
 )
 
 var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
@@ -96,6 +103,7 @@ var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	SetMemberLocalAddr:           {Default: false, PreRelease: featuregate.Alpha},
 	FastLeaseKeepAlive:           {Default: true, PreRelease: featuregate.Beta},
 	PriorityRequest:              {Default: false, PreRelease: featuregate.Alpha},
+	IndexDrivenCompaction:        {Default: false, PreRelease: featuregate.Alpha},
 }
 
 func NewDefaultServerFeatureGate(name string, lg *zap.Logger) featuregate.FeatureGate {
