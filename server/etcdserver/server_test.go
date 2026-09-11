@@ -1248,6 +1248,57 @@ func TestStopNotify(t *testing.T) {
 	}
 }
 
+// TestStorageVersionDuringStop ensures that StorageVersion (e.g. reached via a
+// concurrent Maintenance Status RPC) does not panic when it races with server
+// shutdown closing the backend.
+func TestStorageVersionDuringStop(t *testing.T) {
+	newStoppingServer := func(t *testing.T) *EtcdServer {
+		be, _ := betesting.NewDefaultTmpBackend(t)
+		return &EtcdServer{
+			lgMu:     new(sync.RWMutex),
+			lg:       zaptest.NewLogger(t),
+			be:       be,
+			stopping: make(chan struct{}, 1),
+		}
+	}
+
+	t.Run("AfterCleanup", func(t *testing.T) {
+		s := newStoppingServer(t)
+		// Mirror the shutdown sequence in the run goroutine's defer:
+		// stopping is closed first, then Cleanup closes the backend.
+		close(s.stopping)
+		s.Cleanup()
+
+		assert.NotPanics(t, func() {
+			assert.Nil(t, s.StorageVersion())
+		})
+	})
+
+	t.Run("ConcurrentWithCleanup", func(t *testing.T) {
+		s := newStoppingServer(t)
+
+		var wg sync.WaitGroup
+		for range 8 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer func() {
+					if r := recover(); r != nil {
+						t.Errorf("StorageVersion panicked: %v", r)
+					}
+				}()
+				for range 100 {
+					s.StorageVersion()
+				}
+			}()
+		}
+
+		close(s.stopping)
+		s.Cleanup()
+		wg.Wait()
+	})
+}
+
 func TestGetOtherPeerURLs(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	tests := []struct {
