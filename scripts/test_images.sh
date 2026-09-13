@@ -92,6 +92,27 @@ function put_get_check {
   fi
 }
 
+# Wait until the running container reports a healthy status.
+function wait_healthy_check {
+  local container_name=$1
+  local attempts=0
+  local status="starting"
+
+  log_callout "Waiting for container to become healthy."
+  while [ "${status}" != "healthy" ]; do
+    if [ "${attempts}" -ge 24 ]; then
+      log_error "Error: container '${container_name}' never became healthy (last status: '${status}')."
+      docker inspect --format='{{json .State.Health}}' "${container_name}" || true
+      exit 1
+    fi
+    sleep 5
+    attempts=$((attempts + 1))
+    status=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${container_name}")
+  done
+
+  log_success "Container is healthy."
+}
+
 function main {
   local version="$1"
   local repository=${REPOSITORY:-"gcr.io/etcd-development/etcd"}
@@ -115,6 +136,7 @@ function main {
   # stop container
   trap 'docker stop '"${container_name}" EXIT
   put_get_check "${container_name}"
+  wait_healthy_check "${container_name}"
   log_success "Successfully tested etcd local image ${tag}."
 }
 

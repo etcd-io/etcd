@@ -13,5 +13,8 @@ WORKDIR /var/lib/etcd/
 
 EXPOSE 2379 2380
 
+# Container health check that works in the distroless base image.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 CMD ["/usr/local/bin/etcdctl", "endpoint", "health"]
+
 # Define default command.
 CMD ["/usr/local/bin/etcd"]
