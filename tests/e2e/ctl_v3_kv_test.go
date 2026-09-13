@@ -15,11 +15,9 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,11 +32,7 @@ func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
 }
 func TestCtlV3GetTimeout(t *testing.T) { testCtl(t, getTest, withDefaultDialTimeout()) }
 
-func TestCtlV3GetFormat(t *testing.T)             { testCtl(t, getFormatTest) }
-func TestCtlV3GetRev(t *testing.T)                { testCtl(t, getRevTest) }
-func TestCtlV3GetMinMaxCreateModRev(t *testing.T) { testCtl(t, getMinMaxCreateModRevTest) }
-func TestCtlV3GetKeysOnly(t *testing.T)           { testCtl(t, getKeysOnlyTest) }
-func TestCtlV3GetCountOnly(t *testing.T)          { testCtl(t, getCountOnlyTest) }
+func TestCtlV3GetFormat(t *testing.T) { testCtl(t, getFormatTest) }
 
 func TestCtlV3DelTimeout(t *testing.T) { testCtl(t, delTest, withDefaultDialTimeout()) }
 
@@ -156,98 +150,6 @@ func getFormatTest(cx ctlCtx) {
 		}
 		assert.Contains(cx.t, strings.Join(lines, "\n"), tt.wstr)
 	}
-}
-
-func getRevTest(cx ctlCtx) {
-	kvs := []kv{{"key", "val1"}, {"key", "val2"}, {"key", "val3"}}
-	for i := range kvs {
-		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
-			cx.t.Fatalf("getRevTest #%d: ctlV3Put error (%v)", i, err)
-		}
-	}
-
-	tests := []struct {
-		args []string
-
-		wkv []kv
-	}{
-		{[]string{"key", "--rev", "2"}, kvs[:1]},
-		{[]string{"key", "--rev", "3"}, kvs[1:2]},
-		{[]string{"key", "--rev", "4"}, kvs[2:]},
-	}
-
-	for i, tt := range tests {
-		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
-			cx.t.Errorf("getTest #%d: ctlV3Get error (%v)", i, err)
-		}
-	}
-}
-
-func getMinMaxCreateModRevTest(cx ctlCtx) {
-	kvs := []kv{ //     revision:   store | key create | key modify
-		{"key1", "val1"}, //     2         2           2
-		{"key2", "val2"}, //     3         3           3
-		{"key1", "val3"}, //     4         2           4
-		{"key4", "val4"}, //     5         5           5
-	}
-	for i := range kvs {
-		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
-			cx.t.Fatalf("getRevTest #%d: ctlV3Put error (%v)", i, err)
-		}
-	}
-
-	tests := []struct {
-		args []string
-
-		wkv []kv
-	}{
-		{[]string{"key", "--prefix", "--max-create-rev", "3"}, []kv{kvs[1], kvs[2]}},
-		{[]string{"key", "--prefix", "--min-create-rev", "3"}, []kv{kvs[1], kvs[3]}},
-		{[]string{"key", "--prefix", "--max-mod-rev", "3"}, []kv{kvs[1]}},
-		{[]string{"key", "--prefix", "--min-mod-rev", "4"}, kvs[2:]},
-	}
-
-	for i, tt := range tests {
-		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
-			cx.t.Errorf("getMinModRevTest #%d: ctlV3Get error (%v)", i, err)
-		}
-	}
-}
-
-func getKeysOnlyTest(cx ctlCtx) {
-	require.NoError(cx.t, ctlV3Put(cx, "key", "val", ""))
-	cmdArgs := append(cx.PrefixArgs(), []string{"get", "--keys-only", "key"}...)
-	require.NoError(cx.t, e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "key"}))
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	lines, err := e2e.SpawnWithExpectLines(ctx, cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "key"})
-	require.NoError(cx.t, err)
-	require.NotContainsf(cx.t, lines, "val", "got value but passed --keys-only")
-}
-
-func getCountOnlyTest(cx ctlCtx) {
-	cmdArgs := append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	require.NoError(cx.t, e2e.SpawnWithExpects(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "\"Count\" : 0"}))
-	require.NoError(cx.t, ctlV3Put(cx, "key", "val", ""))
-	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	require.NoError(cx.t, e2e.SpawnWithExpects(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "\"Count\" : 1"}))
-	require.NoError(cx.t, ctlV3Put(cx, "key1", "val", ""))
-	require.NoError(cx.t, ctlV3Put(cx, "key1", "val", ""))
-	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	require.NoError(cx.t, e2e.SpawnWithExpects(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "\"Count\" : 2"}))
-	require.NoError(cx.t, ctlV3Put(cx, "key2", "val", ""))
-	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	require.NoError(cx.t, e2e.SpawnWithExpects(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "\"Count\" : 3"}))
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key3", "--prefix", "--write-out=fields"}...)
-	lines, err := e2e.SpawnWithExpectLines(ctx, cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "\"Count\""})
-	require.NoError(cx.t, err)
-	require.NotContains(cx.t, lines, "\"Count\" : 3")
 }
 
 func delTest(cx ctlCtx) {
