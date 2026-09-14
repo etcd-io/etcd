@@ -203,6 +203,7 @@ func Regression(t *testing.T) []TestScenario {
 		Cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
+			e2e.WithServerFeatureGate("NonBlockingDefrag", false),
 		),
 	})
 	scenarios = append(scenarios, TestScenario{

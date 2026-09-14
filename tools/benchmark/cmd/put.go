@@ -71,6 +71,8 @@ func init() {
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
 	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "'true' to check hashkv")
+	putCmd.Flags().BoolVar(&defrag, "defrag", false, "'true' to trigger a one-time defragmentation at approximately --defrag-trigger-percent of --total requests")
+	putCmd.Flags().IntVar(&defragTriggerPercent, "defrag-trigger-percent", 40, "Percentage of --total requests at which --defrag triggers defragmentation")
 }
 
 func putFunc(cmd *cobra.Command, _ []string) {
@@ -114,6 +116,7 @@ func putFunc(cmd *cobra.Command, _ []string) {
 				binary.PutVarint(k, int64(rand.Intn(keySpaceSize)))
 			}
 			requests <- v3.OpPut(prefix+string(k), v)
+			maybeTriggerDefrag(clients, i, putTotal)
 		}
 		close(requests)
 	}()
@@ -132,6 +135,7 @@ func putFunc(cmd *cobra.Command, _ []string) {
 	close(r.Results())
 	bar.Finish()
 	fmt.Println(<-rc)
+	printDefragDuration()
 
 	if checkHashkv {
 		hashKV(cmd, clients)

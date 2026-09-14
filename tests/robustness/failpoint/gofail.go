@@ -24,6 +24,8 @@ import (
 
 	"go.uber.org/zap"
 
+	"go.etcd.io/etcd/pkg/v3/featuregate"
+	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
@@ -31,7 +33,9 @@ import (
 )
 
 var (
-	DefragBeforeCopyPanic                     Failpoint = goPanicFailpoint{"defragBeforeCopy", triggerDefrag{}, AnyMember}
+	DefragBeforeCopyPanic                     Failpoint = featureGatedFailpoint{goPanicFailpoint{"defragBeforeCopy", triggerDefrag{}, AnyMember}, features.NonBlockingDefrag, false}
+	DefragNonBlockBeforeCopyPanic             Failpoint = featureGatedFailpoint{goPanicFailpoint{"defragNonBlockBeforeCopy", triggerDefrag{}, AnyMember}, features.NonBlockingDefrag, true}
+	DefragNonBlockBeforeCatchup               Failpoint = featureGatedFailpoint{goPanicFailpoint{"defragNonBlockBeforeCatchup", triggerDefrag{}, AnyMember}, features.NonBlockingDefrag, true}
 	DefragBeforeRenamePanic                   Failpoint = goPanicFailpoint{"defragBeforeRename", triggerDefrag{}, AnyMember}
 	BeforeCommitPanic                         Failpoint = goPanicFailpoint{"beforeCommit", nil, AnyMember}
 	AfterCommitPanic                          Failpoint = goPanicFailpoint{"afterCommit", nil, AnyMember}
@@ -80,6 +84,21 @@ const (
 	Leader    failpointTarget = "Leader"
 	Follower  failpointTarget = "Follower"
 )
+
+// featureGatedFailpoint wraps a Failpoint so it's only reported as available on clusters
+// where the given feature gate's state matches enabled.
+type featureGatedFailpoint struct {
+	Failpoint
+	feature featuregate.Feature
+	enabled bool
+}
+
+func (f featureGatedFailpoint) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess, profile traffic.Profile) bool {
+	if config.ServerConfig.ServerFeatureGate.Enabled(f.feature) != f.enabled {
+		return false
+	}
+	return f.Failpoint.Available(config, member, profile)
+}
 
 func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) (reports []report.ClientReport, err error) {
 	member := f.pickMember(t, clus)
