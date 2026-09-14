@@ -37,7 +37,8 @@ const (
 
 var allFailpoints = []Failpoint{
 	KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic, RaftAfterSavePanic,
-	DefragBeforeCopyPanic, DefragBeforeRenamePanic, BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
+	DefragBeforeCopyPanic, DefragNonBlockBeforeCopyPanic, DefragNonBlockBeforeCatchup, DefragBeforeRenamePanic,
+	BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
 	BackendBeforeStartDBTxnPanic, BackendAfterStartDBTxnPanic, BackendBeforeWritebackBufPanic,
 	BackendAfterWritebackBufPanic, CompactBeforeCommitScheduledCompactPanic, CompactAfterCommitScheduledCompactPanic,
 	CompactBeforeSetFinishedCompactPanic, CompactAfterSetFinishedCompactPanic, CompactBeforeCommitBatchPanic,

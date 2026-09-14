@@ -13,6 +13,7 @@ Previous change logs can be found at [CHANGELOG-3.7](https://github.com/etcd-io/
   - [Cleanup the legacy v2 snapshot files on bootstrap](https://github.com/etcd-io/etcd/pull/22336)
   - [Cleanup the legacy v2 snapshot source code and cleanup orphaned defragmentation files on bootstrap](https://github.com/etcd-io/etcd/pull/22341)
 - [Add `LeaderId` (`leader_id`) to `ResponseHeader`, including headers for `DefragmentResponse`, `SnapshotResponse`, and `MoveLeaderResponse`](https://github.com/etcd-io/etcd/pull/22327).
+- [Add `NonBlockingDefrag` feature gate to enable non-blocking backend defragmentation](https://github.com/etcd-io/etcd/pull/22425)
 
 ### Package `clientv3`
 
@@ -31,3 +32,4 @@ Previous change logs can be found at [CHANGELOG-3.7](https://github.com/etcd-io/
 See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
 
 - Expose the full set of Go `runtime/metrics` on `/metrics` when `--metrics extensive` is set.
+- Add [`etcd_disk_backend_defrag_blocking_duration_seconds`](https://github.com/etcd-io/etcd/pull/22425)

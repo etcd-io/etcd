@@ -952,7 +952,9 @@ func (s *EtcdServer) Cleanup() {
 		s.authStore.Close()
 	}
 	if s.be != nil {
+		s.bemu.Lock()
 		s.be.Close()
+		s.bemu.Unlock()
 	}
 	if s.compactor != nil {
 		s.compactor.Stop()
@@ -960,8 +962,16 @@ func (s *EtcdServer) Cleanup() {
 }
 
 func (s *EtcdServer) Defragment() error {
-	s.bemu.Lock()
-	defer s.bemu.Unlock()
+	// Hold bemu as a reader, not a writer, for the whole call. This still excludes a
+	// concurrent backend swap (applySnapshot takes bemu.Lock()), so a non-blocking
+	// Defrag() can never run against a backend that's being replaced out from under it.
+	// But unlike Lock(), RLock() lets it run alongside the many other RLock() holders
+	// -- notably Backend(), which applyAll() calls on every batch of applied raft
+	// entries via VerifyBackendConsistency(). Taking bemu.Lock() here would serialize
+	// the single-threaded apply pipeline behind the entire Defrag() call (bulk-copy
+	// phase included), turning a non-blocking defrag back into a fully blocking one.
+	s.bemu.RLock()
+	defer s.bemu.RUnlock()
 	return s.be.Defrag()
 }
 

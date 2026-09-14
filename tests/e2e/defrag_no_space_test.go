@@ -27,9 +27,10 @@ import (
 
 func TestDefragNoSpace(t *testing.T) {
 	tests := []struct {
-		name      string
-		failpoint string
-		err       string
+		name              string
+		nonBlockingDefrag bool
+		failpoint         string
+		err               string
 	}{
 		{
 			name:      "no space (#18810) - can't open/create new bbolt db",
@@ -37,9 +38,16 @@ func TestDefragNoSpace(t *testing.T) {
 			err:       "no space",
 		},
 		{
-			name:      "defragdb failure",
-			failpoint: "defragdbFail",
-			err:       "some random error",
+			name:              "defragdb failure (blocking defrag)",
+			nonBlockingDefrag: false,
+			failpoint:         "defragdbFail",
+			err:               "some random error",
+		},
+		{
+			name:              "defragdb failure (non-blocking defrag)",
+			nonBlockingDefrag: true,
+			failpoint:         "defragdbNonBlockFail",
+			err:               "some random error",
 		},
 	}
 
@@ -50,6 +58,7 @@ func TestDefragNoSpace(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 				e2e.WithClusterSize(1),
 				e2e.WithGoFailEnabled(true),
+				e2e.WithServerFeatureGate("NonBlockingDefrag", tc.nonBlockingDefrag),
 			)
 			require.NoError(t, err)
 			t.Cleanup(func() { clus.Stop() })
