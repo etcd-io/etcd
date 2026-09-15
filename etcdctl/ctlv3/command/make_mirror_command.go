@@ -161,15 +161,17 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 
 	s := mirror.NewSyncer(c, mmprefix, startRev)
 
+	// Preserve the source prefix for incremental syncs unless the caller explicitly
+	// requested a destination prefix or root-level mirroring.
+	if !mmnodestprefix && len(mmdestprefix) == 0 {
+		mmdestprefix = mmprefix
+	}
+
 	// If a rev is provided, then do not sync the whole key space.
 	// Instead, just start watching the key space starting from the rev
 	if startRev == 0 {
 		rc, errc := s.SyncBase(ctx)
 
-		// if remove destination prefix is false and destination prefix is empty set the value of destination prefix same as prefix
-		if !mmnodestprefix && len(mmdestprefix) == 0 {
-			mmdestprefix = mmprefix
-		}
 
 		for r := range rc {
 			for _, kv := range r.Kvs {
