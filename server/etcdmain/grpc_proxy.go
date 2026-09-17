@@ -36,7 +36,6 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapgrpc"
-	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/keepalive"
@@ -577,10 +576,12 @@ func mustHTTPServer(lg *zap.Logger, tlsinfo *transport.TLSInfo, httpClient *http
 		Handler:  httpmux,
 		ErrorLog: log.New(io.Discard, "net/http", 0),
 	}
-	if err := http2.ConfigureServer(srvhttp, &http2.Server{
-		MaxConcurrentStreams: maxConcurrentStreams,
-	}); err != nil {
-		lg.Fatal("Failed to configure the http server", zap.Error(err))
+
+	// net/http replaces any MaxConcurrentStreams above math.MaxInt32 with its
+	// default (250), so clamp the uint32 value (default math.MaxUint32) to keep
+	// it effectively unlimited.
+	srvhttp.HTTP2 = &http.HTTP2Config{
+		MaxConcurrentStreams: int(min(maxConcurrentStreams, math.MaxInt32)),
 	}
 
 	if tlsinfo == nil {
