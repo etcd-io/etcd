@@ -429,7 +429,7 @@ func TestSaveWithCut(t *testing.T) {
 	}
 	for _, oneent := range entries {
 		if !bytes.Equal(oneent.Data, bigData) {
-			t.Errorf("the saved data does not match at Index %d : found: %s , want :%s", oneent.Index, oneent.Data, bigData)
+			t.Errorf("the saved data does not match at Index %d : found: %s , want :%s", oneent.GetIndex(), oneent.Data, bigData)
 		}
 	}
 }
