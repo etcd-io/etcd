@@ -81,7 +81,7 @@ and output a hex encoded line of binary for each input line`)
 
 		fmt.Printf("WAL entries: %d\n", len(ents))
 		if len(ents) > 0 {
-			fmt.Printf("lastIndex=%d\n", ents[len(ents)-1].Index)
+			fmt.Printf("lastIndex=%d\n", ents[len(ents)-1].GetIndex())
 		}
 
 		fmt.Printf("%4s\t%10s\ttype\tdata", "term", "index")
@@ -134,7 +134,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		if walsnap.GetIndex() == 0 && walsnap.GetTerm() == 0 {
 			fmt.Print("Snapshot:\nempty\n")
 		} else {
-			fmt.Printf("Snapshot:\nterm=%d index=%d\n", walsnap.Term, walsnap.Index)
+			fmt.Printf("Snapshot:\nterm=%d index=%d\n", walsnap.GetTerm(), walsnap.GetIndex())
 		}
 		fmt.Println("Start dumping log entries from snapshot.")
 	}
@@ -156,7 +156,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 	id, cid := parseWALMetadata(wmetadata)
 	vid := types.ID(state.GetVote())
 	fmt.Printf("WAL metadata:\nnodeID=%s clusterID=%s term=%d commitIndex=%d vote=%s\n",
-		id, cid, state.Term, state.Commit, vid)
+		id, cid, state.GetTerm(), state.GetCommit(), vid)
 	if endAtIndex {
 		entries := make([]*raftpb.Entry, 0)
 		for _, e := range ents {
@@ -268,16 +268,16 @@ func printInternalRaftRequest(entry *raftpb.Entry) {
 		if rr.AuthUserChangePassword != nil && rr.AuthUserChangePassword.Password != "" {
 			rr.AuthUserChangePassword.Password = "<value removed>"
 		}
-		fmt.Printf("%4d\t%10d\tnorm\t%s", entry.Term, entry.Index, rr.String())
+		fmt.Printf("%4d\t%10d\tnorm\t%s", entry.GetTerm(), entry.GetIndex(), rr.String())
 	}
 }
 
 func printUnknownNormal(entry *raftpb.Entry) {
-	fmt.Printf("%4d\t%10d\tnorm\t???", entry.Term, entry.Index)
+	fmt.Printf("%4d\t%10d\tnorm\t???", entry.GetTerm(), entry.GetIndex())
 }
 
 func printConfChange(entry *raftpb.Entry) {
-	fmt.Printf("%4d\t%10d", entry.Term, entry.Index)
+	fmt.Printf("%4d\t%10d", entry.GetTerm(), entry.GetIndex())
 	fmt.Print("\tconf")
 	var r raftpb.ConfChange
 	if err := proto.Unmarshal(entry.Data, &r); err != nil {
@@ -289,7 +289,7 @@ func printConfChange(entry *raftpb.Entry) {
 
 // printRequest prints the legacy v2 request, which we don't support anymore.
 func printRequest(entry *raftpb.Entry) {
-	fmt.Printf("%4d\t%10d\tnorm\tv2 request", entry.Term, entry.Index)
+	fmt.Printf("%4d\t%10d\tnorm\tv2 request", entry.GetTerm(), entry.GetIndex())
 }
 
 // evaluateEntrytypeFlag evaluates entry-type flag and choose proper filter/filters to filter entries

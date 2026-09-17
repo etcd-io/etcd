@@ -197,7 +197,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 	i := new(int)
 	keyf := func() []byte {
 		*i++
-		return []byte(fmt.Sprintf("key-%d", i))
+		return []byte(fmt.Sprintf("key-%d", *i))
 	}
 
 	addCompareOps := func(txn *pb.TxnRequest) {

@@ -535,7 +535,7 @@ func (w *WAL) ReadAll() (metadata []byte, state *raftpb.HardState, ents []*raftp
 
 		default:
 			state.Reset()
-			return nil, state, nil, fmt.Errorf("unexpected block type %d", rec.Type)
+			return nil, state, nil, fmt.Errorf("unexpected block type %d", rec.GetType())
 		}
 	}
 
@@ -762,7 +762,7 @@ func Verify(lg *zap.Logger, walDir string, snap *walpb.Snapshot) (*raftpb.HardSt
 		case StateType:
 			pbutil.MustUnmarshalMessage(state, rec.Data)
 		default:
-			return nil, fmt.Errorf("unexpected block type %d", rec.Type)
+			return nil, fmt.Errorf("unexpected block type %d", rec.GetType())
 		}
 	}
 
