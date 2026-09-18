@@ -247,10 +247,14 @@ func checkIntervals(reqs []*pb.RequestOp) (map[string]struct{}, adt.IntervalTree
 			continue
 		}
 		var iv adt.Interval
-		if len(dreq.RangeEnd) != 0 {
-			iv = adt.NewStringAffineInterval(string(dreq.Key), string(dreq.RangeEnd))
-		} else {
+		switch {
+		case len(dreq.RangeEnd) == 0:
 			iv = adt.NewStringAffinePoint(string(dreq.Key))
+		case len(dreq.RangeEnd) == 1 && dreq.RangeEnd[0] == 0:
+			// RangeEnd of a single 0 byte means "to the end of the keyspace"; "" is its affine encoding.
+			iv = adt.NewStringAffineInterval(string(dreq.Key), "")
+		default:
+			iv = adt.NewStringAffineInterval(string(dreq.Key), string(dreq.RangeEnd))
 		}
 		dels.Insert(iv, struct{}{})
 	}

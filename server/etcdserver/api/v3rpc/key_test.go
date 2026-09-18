@@ -66,3 +66,37 @@ func getError(err error) string {
 
 	return err.Error()
 }
+
+func TestCheckIntervals(t *testing.T) {
+	del := func(key, rangeEnd string) *pb.RequestOp {
+		return &pb.RequestOp{Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{Key: []byte(key), RangeEnd: []byte(rangeEnd)},
+		}}
+	}
+	put := func(key string) *pb.RequestOp {
+		return &pb.RequestOp{Request: &pb.RequestOp_RequestPut{
+			RequestPut: &pb.PutRequest{Key: []byte(key), Value: []byte("v")},
+		}}
+	}
+
+	tests := []struct {
+		name         string
+		reqs         []*pb.RequestOp
+		wantConflict bool
+	}{
+		{"from-key delete overlaps put", []*pb.RequestOp{del("a", "\x00"), put("b")}, true},
+		{"from-key delete before put", []*pb.RequestOp{del("m", "\x00"), put("a")}, false},
+		{"explicit range overlaps put", []*pb.RequestOp{del("a", "c"), put("b")}, true},
+		{"explicit range excludes end", []*pb.RequestOp{del("a", "c"), put("c")}, false},
+		{"point delete overlaps put", []*pb.RequestOp{del("a", ""), put("a")}, true},
+		{"point delete distinct put", []*pb.RequestOp{del("a", ""), put("b")}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := checkIntervals(tt.reqs)
+			if gotConflict := err != nil; gotConflict != tt.wantConflict {
+				t.Errorf("checkIntervals conflict = %v, want %v (err=%v)", gotConflict, tt.wantConflict, err)
+			}
+		})
+	}
+}
