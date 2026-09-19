@@ -101,6 +101,32 @@ func TestBuildPublishesEndpoints(t *testing.T) {
 	}
 }
 
+func TestBuildConcurrentWithSetLeader(t *testing.T) {
+	r := NewWithBalancer(leaderbalancer.Name, "http://a:2379")
+	cc := build(t, r)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for range 1000 {
+			if _, err := r.Build(resolver.Target{}, cc, resolver.BuildOptions{}); err != nil {
+				t.Error(err)
+				return
+			}
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := range 1000 {
+			r.SetLeader("http://a:2379", 0, uint64(i+1))
+		}
+	}()
+	wg.Wait()
+	if !cc.lastState(t).Attributes.Equal(r.state().Attributes) {
+		t.Fatal("rebuild overwrote the latest leader hint")
+	}
+}
+
 func TestSetLeaderFencing(t *testing.T) {
 	r := NewWithBalancer(leaderbalancer.Name, "http://a:2379")
 	cc := build(t, r)

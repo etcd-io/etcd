@@ -74,6 +74,10 @@ func BalancerServiceConfig(name string) string {
 
 // Build returns itself for Resolver, because it's both a builder and a resolver.
 func (r *ManualResolver) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
+	// Rebuilds after channel idleness must not race with hint or endpoint
+	// publication: manual.Resolver.InitialState does not lock its state.
+	r.publishMu.Lock()
+	defer r.publishMu.Unlock()
 	r.mu.RLock()
 	balancerName := r.balancerName
 	r.mu.RUnlock()
