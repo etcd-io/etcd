@@ -228,23 +228,23 @@ func TestPublishFencing(t *testing.T) {
 
 	t.Run("publishes and deduplicates", func(t *testing.T) {
 		tracker := newTestLeaderTracker()
-		if !tracker.publish(0, 1, leader) {
+		if !tracker.publish(0, 1, leader, 1) {
 			t.Fatal("first publish was not a change")
 		}
 		if tracker.hintID != 1 || tracker.hintAddress != leader {
 			t.Fatalf("hint = %d at %q, want 1 at %q", tracker.hintID, tracker.hintAddress, leader)
 		}
-		if tracker.current.Load() == nil {
-			t.Fatal("publish did not store the hint identity")
+		if hint := tracker.current.Load(); hint == nil || hint.memberID != 1 {
+			t.Fatal("publish did not store the leader member ID")
 		}
-		if tracker.publish(0, 1, leader) {
+		if tracker.publish(0, 1, leader, 1) {
 			t.Fatal("republishing the same leader reported a change")
 		}
 	})
 
 	t.Run("rejects a stale endpoint generation and rolls back", func(t *testing.T) {
 		tracker := newTestLeaderTracker()
-		if tracker.publish(0, 2, leader) {
+		if tracker.publish(0, 2, leader, 1) {
 			t.Fatal("publish accepted a generation the resolver does not have")
 		}
 		if tracker.current.Load() != nil {
@@ -258,7 +258,7 @@ func TestPublishFencing(t *testing.T) {
 	t.Run("refuses to publish over a pending invalidation", func(t *testing.T) {
 		tracker := newTestLeaderTracker()
 		tracker.signalInvalidation()
-		if tracker.publish(tracker.epoch.Load(), 1, leader) {
+		if tracker.publish(tracker.epoch.Load(), 1, leader, 1) {
 			t.Fatal("publish succeeded with a pending invalidation")
 		}
 		if !tracker.consumeInvalidation() {
@@ -267,14 +267,14 @@ func TestPublishFencing(t *testing.T) {
 		if tracker.hintAddress != "" {
 			t.Fatalf("consumeInvalidation left hint %q", tracker.hintAddress)
 		}
-		if !tracker.publish(tracker.epoch.Load(), 1, leader) {
+		if !tracker.publish(tracker.epoch.Load(), 1, leader, 1) {
 			t.Fatal("publish after consuming the invalidation was rejected")
 		}
 	})
 
 	t.Run("clear after invalidation removes the published hint", func(t *testing.T) {
 		tracker := newTestLeaderTracker()
-		if !tracker.publish(0, 1, leader) {
+		if !tracker.publish(0, 1, leader, 1) {
 			t.Fatal("first publish was not a change")
 		}
 		tracker.invalidate()
@@ -289,7 +289,7 @@ func TestPublishFencing(t *testing.T) {
 		}
 		// The resolver hint was cleared for the current generation, so a
 		// late publish from the pre-invalidation epoch stays rejected.
-		if tracker.publish(0, 1, leader) {
+		if tracker.publish(0, 1, leader, 1) {
 			t.Fatal("publish from the pre-invalidation epoch succeeded")
 		}
 	})

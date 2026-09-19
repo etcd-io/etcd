@@ -36,15 +36,34 @@ const (
 	leaderRefreshJitterFraction   = 0.10
 )
 
-// leaderUnaryInterceptor marks mutations before retrying.
+// leaderUnaryInterceptor marks mutations before retrying and uses response
+// headers to detect stale leader hints.
 //
 // One routing state covers all attempts, so a failed leader attempt sends later
 // attempts to round_robin.
 func (c *Client) leaderUnaryInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-	if isMutationRequest(req) && c.leaderTracker != nil {
-		ctx = leaderbalancer.MarkMutation(ctx, c.leaderTracker.invalidateHint)
+	tracker := c.leaderTracker
+	if tracker == nil {
+		return invoker(ctx, method, req, reply, cc, opts...)
 	}
-	return invoker(ctx, method, req, reply, cc, opts...)
+	hint := tracker.current.Load()
+	if isMutationRequest(req) {
+		ctx = leaderbalancer.MarkMutation(ctx, tracker.invalidateHint)
+	}
+	err := invoker(ctx, method, req, reply, cc, opts...)
+	if err == nil && hint != nil {
+		if response, ok := reply.(interface{ GetHeader() *pb.ResponseHeader }); ok {
+			leaderID := response.GetHeader().GetLeaderId()
+			if leaderID != 0 && leaderID != hint.memberID {
+				// The header is advisory, not an atomic (term, leader) pair.
+				// Rediscover through Status rather than publishing it directly.
+				// An empty address prevents a late response from invalidating a
+				// newer hint, even if it points to the same endpoint.
+				tracker.invalidateHint(hint.id, "")
+			}
+		}
+	}
+	return err
 }
 
 // isMutationRequest reports whether req uses leader-aware routing.
@@ -155,10 +174,11 @@ type leaderTracker struct {
 	pendingInvalidation atomic.Bool
 }
 
-// hintIdentity pairs a hint's CAS identity with its resolver address.
+// hintIdentity pairs a hint's CAS identity with its resolver address and member ID.
 type hintIdentity struct {
-	id      uint64
-	address string
+	id       uint64
+	address  string
+	memberID uint64
 }
 
 func newLeaderTracker(client *Client) *leaderTracker {
@@ -184,17 +204,10 @@ func newLeaderTracker(client *Client) *leaderTracker {
 	}
 }
 
-// TODO: Replace Status polling with response-driven hints. Phase 1 of
-// https://github.com/etcd-io/etcd/issues/22268 proposes returning the leader's
-// member ID in every ResponseHeader, analogous to opt-in response data such as
-// PrevKv.
-//
-// With a stable member-ID-to-endpoint mapping, ordinary responses could refresh
-// the hint. A failed hint could fall back to round_robin and relearn it without
-// periodic Status polling. Until the protocol exposes that identity, polling is
-// the only proactive refresh path; after a MoveLeader transfer it is also what
-// corrects the hint, because writes sent to the old leader still succeed
-// through forwarding.
+// Status polling bootstraps discovery and supports older servers with no
+// leader_id header. Successful unary responses reporting a different leader
+// schedule prompt rediscovery, including after a leadership transfer where
+// writes through the old leader still succeed.
 func (tracker *leaderTracker) run() {
 	defer close(tracker.donec)
 	// Reuse the main connection's round_robin SubConns for endpoint Status probes.
@@ -350,7 +363,7 @@ func (tracker *leaderTracker) clear() {
 	}
 }
 
-func (tracker *leaderTracker) publish(epoch, generation uint64, leader string) bool {
+func (tracker *leaderTracker) publish(epoch, generation uint64, leader string, memberID uint64) bool {
 	if tracker.pendingInvalidation.Load() || tracker.epoch.Load() != epoch {
 		return false
 	}
@@ -363,7 +376,7 @@ func (tracker *leaderTracker) publish(epoch, generation uint64, leader string) b
 		// The identity carries the interpreted address because picker failures
 		// compare resolver addresses.
 		address, _ := endpointpkg.Interpret(leader)
-		next = &hintIdentity{id: hintID, address: address}
+		next = &hintIdentity{id: hintID, address: address, memberID: memberID}
 	}
 	// Every nonempty publication gets a new identity.
 	// The CAS decides whether the old hint's failure or this publication wins.
@@ -448,7 +461,14 @@ func (tracker *leaderTracker) refresh(statusClient pb.MaintenanceClient) bool {
 	}
 
 	leader := selectLeader(statuses)
-	if tracker.publish(epoch, generation, leader) && leader != "" {
+	var memberID uint64
+	for _, status := range statuses {
+		if status.endpoint == leader {
+			memberID = status.memberID
+			break
+		}
+	}
+	if tracker.publish(epoch, generation, leader, memberID) && leader != "" {
 		tracker.client.GetLogger().Debug("refreshed etcd leader", zap.String("endpoint", leader))
 	}
 	return false

@@ -15,7 +15,12 @@
 package clientv3
 
 import (
+	"context"
+	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 )
@@ -118,6 +123,56 @@ func TestIsMutationRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := isMutationRequest(tt.req); got != tt.want {
 				t.Errorf("isMutationRequest(%T) = %v, want %v", tt.req, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLeaderResponseHint(t *testing.T) {
+	callErr := errors.New("RPC failed")
+	for _, tt := range []struct {
+		name       string
+		reply      any
+		err        error
+		noHint     bool
+		republish  bool
+		invalidate bool
+	}{
+		{name: "changed leader", reply: &pb.PutResponse{Header: &pb.ResponseHeader{LeaderId: 2}}, invalidate: true},
+		{name: "read response", reply: &pb.RangeResponse{Header: &pb.ResponseHeader{LeaderId: 2}}, invalidate: true},
+		{name: "unchanged leader", reply: &pb.PutResponse{Header: &pb.ResponseHeader{LeaderId: 1}}},
+		{name: "old server or unknown leader", reply: &pb.PutResponse{Header: &pb.ResponseHeader{}}},
+		{name: "missing header", reply: &pb.PutResponse{}},
+		{name: "nil response", reply: (*pb.PutResponse)(nil)},
+		{name: "no header accessor", reply: struct{}{}},
+		{name: "failed RPC", reply: &pb.PutResponse{Header: &pb.ResponseHeader{LeaderId: 2}}, err: callErr},
+		{name: "no current hint", reply: &pb.PutResponse{Header: &pb.ResponseHeader{LeaderId: 2}}, noHint: true},
+		{name: "late response after republication", reply: &pb.PutResponse{Header: &pb.ResponseHeader{LeaderId: 2}}, republish: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			tracker := newTestLeaderTracker()
+			tracker.client.leaderTracker = tracker
+			if !tt.noHint {
+				require.True(t, tracker.publish(0, 1, "http://127.0.0.1:2379", 1))
+			}
+			calls := 0
+			invoker := func(context.Context, string, any, any, *grpc.ClientConn, ...grpc.CallOption) error {
+				calls++
+				if tt.republish {
+					tracker.publish(0, 1, "http://127.0.0.1:2379", 1)
+				}
+				return tt.err
+			}
+			err := tracker.client.leaderUnaryInterceptor(t.Context(), "", &pb.RangeRequest{}, tt.reply, nil, invoker)
+			require.ErrorIs(t, err, tt.err)
+			require.Equal(t, 1, calls)
+			require.Equal(t, tt.invalidate, tracker.pending())
+			if tt.invalidate {
+				require.Nil(t, tracker.current.Load())
+				require.True(t, tracker.consumeInvalidation())
+				require.Empty(t, tracker.hintAddress)
+			} else if !tt.noHint {
+				require.NotNil(t, tracker.current.Load())
 			}
 		})
 	}

@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -131,8 +133,8 @@ func TestLeaderAwareBalancerFailover(t *testing.T) {
 	require.Equal(t, "2", string(resp.Kvs[0].Value))
 }
 
-// TestLeaderAwareBalancerMoveLeader verifies that writes continue to
-// succeed after a leadership transfer via MoveLeader.
+// TestLeaderAwareBalancerMoveLeader verifies that response headers trigger
+// routing to the new leader before the next periodic Status refresh.
 func TestLeaderAwareBalancerMoveLeader(t *testing.T) {
 	integration.BeforeTest(t)
 
@@ -142,13 +144,23 @@ func TestLeaderAwareBalancerMoveLeader(t *testing.T) {
 	oldLeadIdx := clus.WaitLeader(t)
 	oldLeadID := uint64(clus.Members[oldLeadIdx].Server.MemberID())
 
-	cli, err := integration.NewClient(t, leaderAwareClientConfig(clus.Endpoints()))
+	core, logs := observer.New(zap.DebugLevel)
+	cfg := leaderAwareClientConfig(clus.Endpoints()).WithLeaderAwareRefreshInterval(time.Hour)
+	cfg.Logger = zap.New(core)
+	cli, err := integration.NewClient(t, cfg)
 	require.NoError(t, err)
 	defer cli.Close()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
-	putWithRetry(ctx, t, cli, "before-move", "1")
+	// Wait for initial discovery so round_robin cannot satisfy the routing
+	// check by chance. Periodic polling cannot run during this test.
+	require.Eventually(t, func() bool {
+		return logs.FilterMessage("refreshed etcd leader").Len() == 1
+	}, 5*time.Second, 20*time.Millisecond)
+	before, err := cli.Put(ctx, "before-move", "1")
+	require.NoError(t, err)
+	require.Equal(t, oldLeadID, before.Header.MemberId)
 
 	// Transfer leadership to the next member.
 	targetIdx := (oldLeadIdx + 1) % 3
@@ -165,8 +177,12 @@ func TestLeaderAwareBalancerMoveLeader(t *testing.T) {
 		require.Equalf(t, targetID, newID, "leader transition did not reach member %d", i)
 	}
 
-	// Writes must still succeed after the leadership transfer.
-	putWithRetry(ctx, t, cli, "after-move", "2")
+	// The old leader still accepts writes, so verify the serving member too.
+	require.Eventually(t, func() bool {
+		resp, putErr := cli.Put(ctx, "after-move", "2")
+		return putErr == nil && resp.Header.MemberId == targetID &&
+			logs.FilterMessage("refreshed etcd leader").Len() >= 2
+	}, 5*time.Second, 20*time.Millisecond)
 
 	getCtx, cancelGet := context.WithTimeout(ctx, 2*time.Second)
 	resp, err := cli.Get(getCtx, "after-move")
