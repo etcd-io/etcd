@@ -24,7 +24,7 @@ All release version numbers follow the format of [semantic versioning 2.0.0](htt
 
 - Ensure the relevant [milestone](https://github.com/etcd-io/etcd/milestones) on GitHub is complete. All referenced issues should be closed or moved elsewhere.
 - Ensure the latest [upgrade documentation](https://etcd.io/docs/next/upgrades) is available.
-- Bump [hardcoded MinClusterVerion in the repository](https://github.com/etcd-io/etcd/blob/v3.4.15/version/version.go#L29), if necessary.
+- Bump [hardcoded MinClusterVersion in the repository](https://github.com/etcd-io/etcd/blob/v3.4.15/version/version.go#L28), if necessary.
 - Add feature capability maps for the new version, if necessary.
 
 ### Patch version release
