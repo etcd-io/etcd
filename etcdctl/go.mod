@@ -7,7 +7,7 @@ toolchain go1.27.1
 require (
 	github.com/bgentry/speakeasy v0.2.0
 	github.com/cheggaaa/pb/v3 v3.2.1
-	github.com/dustin/go-humanize v1.0.1
+	github.com/dustin/go-humanize v1.1.0
 	github.com/olekukonko/tablewriter v1.1.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10

@@ -20,7 +20,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/bgentry/speakeasy v0.2.0
 	github.com/cheggaaa/pb/v3 v3.2.1
-	github.com/dustin/go-humanize v1.0.1
+	github.com/dustin/go-humanize v1.1.0
 	github.com/golang/protobuf v1.5.4
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
