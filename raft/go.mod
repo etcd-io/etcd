@@ -13,7 +13,7 @@ require (
 
 require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
+	google.golang.org/protobuf v1.36.12 // indirect
 )
 
 // Bad imports are sometimes causing attempts to pull that code.
