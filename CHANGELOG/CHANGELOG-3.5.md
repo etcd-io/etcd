@@ -4,16 +4,23 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.34 (TBC)
+## v3.5.35 (TBC)
+
+---
+
+## v3.5.34 (2026-09-22)
 
 ### etcdctl
 
 - [Fix duplicate `RaftTerm` field in the `endpoint status` output when using `--write-out=fields`](https://github.com/etcd-io/etcd/pull/22219)
+- [fileutil: close locked file handle on os.Remove error in purgeFile](https://github.com/etcd-io/etcd/pull/22457)
 
 ### Dependencies
 
 - Compile binaries using [go 1.26.8](https://github.com/etcd-io/etcd/pull/22415).
 - Bump [github.com/gorilla/websocket to v1.5.3](https://github.com/etcd-io/etcd/pull/22366), to address GHSA-w67g-5rqw-f597.
+- Bump [go.opentelemetry.io/otel to v1.44.0 to addrss CVE-2026-41178](https://github.com/etcd-io/etcd/pull/22200).
+- Bump [google.golang.org/grpc to v1.83.2 to address CVE-2026-84303](https://github.com/etcd-io/etcd/pull/22467).
 
 ---
 
