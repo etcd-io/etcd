@@ -98,7 +98,7 @@ type WAL struct {
 // Create creates a WAL ready for appending records. The given metadata is
 // recorded at the head of each WAL file, and can be retrieved with ReadAll
 // after the file is Open.
-func Create(lg *zap.Logger, dirpath string, metadata []byte) (_ *WAL, err error) {
+func Create(lg *zap.Logger, dirpath string, metadata []byte) (_ *WAL, retErr error) {
 	if Exist(dirpath) {
 		return nil, os.ErrExist
 	}
@@ -110,20 +110,20 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (_ *WAL, err error)
 	// keep temporary wal directory so WAL initialization appears atomic
 	tmpdirpath := filepath.Clean(dirpath) + ".tmp"
 	if fileutil.Exist(tmpdirpath) {
-		if rmErr := os.RemoveAll(tmpdirpath); rmErr != nil {
-			return nil, rmErr
+		if err := os.RemoveAll(tmpdirpath); err != nil {
+			return nil, err
 		}
 	}
 	defer os.RemoveAll(tmpdirpath)
 
-	if mkErr := fileutil.CreateDirAll(lg, tmpdirpath); mkErr != nil {
+	if err := fileutil.CreateDirAll(lg, tmpdirpath); err != nil {
 		lg.Warn(
 			"failed to create a temporary WAL directory",
 			zap.String("tmp-dir-path", tmpdirpath),
 			zap.String("dir-path", dirpath),
-			zap.Error(mkErr),
+			zap.Error(err),
 		)
-		return nil, mkErr
+		return nil, err
 	}
 
 	p := filepath.Join(tmpdirpath, walName(0, 0))
@@ -137,7 +137,7 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (_ *WAL, err error)
 		return nil, err
 	}
 	defer func() {
-		if err != nil {
+		if retErr != nil {
 			f.Close()
 		}
 	}()
