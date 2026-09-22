@@ -4,17 +4,28 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.15 (TBC)
+## v3.6.16 (TBC)
+
+---
+
+## v3.6.15 (2026-09-22)
+
+### etcd server
+
+- [Fix fsync snap directory when saving a received snapshot db](https://github.com/etcd-io/etcd/pull/22401)
 
 ### etcdctl
 
 - [Fix duplicate `RaftTerm` field in the `endpoint status` output when using `--write-out=fields`](https://github.com/etcd-io/etcd/pull/22218)
+- [fileutil: close locked file handle on os.Remove error in purgeFile](https://github.com/etcd-io/etcd/pull/22456)
 
 ### Dependencies
 
 - Compile binaries using [go 1.26.8](https://github.com/etcd-io/etcd/pull/22414).
 - Bump [golang.org/x/text to v0.39.0](https://github.com/etcd-io/etcd/pull/22365), to address CVE-2026-56852.
 - Bump [github.com/gorilla/websocket to v1.5.3], to address GHSA-w67g-5rqw-f597.
+- Bump [go.opentelemetry.io/otel to v1.44.0 to addrss CVE-2026-41178](https://github.com/etcd-io/etcd/pull/22199).
+- Bump [google.golang.org/grpc to v1.83.2 to address CVE-2026-84303](https://github.com/etcd-io/etcd/pull/22468).
 
 ---
 
