@@ -211,8 +211,8 @@ func TestLeaderAwareBalancerEndpointChurn(t *testing.T) {
 	defer cancel()
 	putWithRetry(ctx, t, cli, "before-churn", "1")
 
-	// Reorder the endpoints. SetEndpoints must treat this as a no-op
-	// because the list is equal, so the leader hint must survive.
+	// Reordering the endpoints invalidates the leader hint. Writes must
+	// continue to succeed while the tracker rediscovers the leader.
 	endpoints := clus.Endpoints()
 	reordered := []string{endpoints[1], endpoints[0], endpoints[2]}
 	cli.SetEndpoints(reordered...)
