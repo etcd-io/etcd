@@ -6,7 +6,7 @@ toolchain go1.27.1
 
 require (
 	github.com/creack/pty v1.1.24
-	github.com/dustin/go-humanize v1.0.1
+	github.com/dustin/go-humanize v1.1.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1
