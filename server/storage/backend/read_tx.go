@@ -18,6 +18,8 @@ import (
 	"math"
 	"sync"
 
+	"go.uber.org/zap"
+
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -36,13 +38,19 @@ type UnsafeReader interface {
 	UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error
 }
 
-// Base type for readTx and concurrentReadTx to eliminate duplicate functions between these
-type baseReadTx struct {
-	// mu protects accesses to the txReadBuffer
-	mu  sync.RWMutex
-	buf txReadBuffer
+type sharedTx interface {
+	lock()
+	unlock()
+	addWait()
+	wait()
+	finishWait()
+	setTx(tx *bolt.Tx)
+	bucket(bucketType Bucket) *bolt.Bucket
+	reset(lg *zap.Logger)
+	clone() sharedTx
+}
 
-	// TODO: group and encapsulate {txMu, tx, buckets, txWg}, as they share the same lifecycle.
+type sharedBoltTx struct {
 	// txMu protects accesses to buckets and tx on Range requests.
 	txMu    *sync.RWMutex
 	tx      *bolt.Tx
@@ -51,7 +59,74 @@ type baseReadTx struct {
 	txWg *sync.WaitGroup
 }
 
-func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error {
+func newSharedTx() sharedTx {
+	return &sharedBoltTx{
+		txMu:    new(sync.RWMutex),
+		buckets: make(map[BucketID]*bolt.Bucket),
+		txWg:    new(sync.WaitGroup),
+	}
+}
+
+func (st *sharedBoltTx) lock()             { st.txMu.Lock() }
+func (st *sharedBoltTx) unlock()           { st.txMu.Unlock() }
+func (st *sharedBoltTx) addWait()          { st.txWg.Add(1) }
+func (st *sharedBoltTx) wait()             { st.txWg.Wait() }
+func (st *sharedBoltTx) finishWait()       { st.txWg.Done() }
+func (st *sharedBoltTx) setTx(tx *bolt.Tx) { st.tx = tx }
+
+func (st *sharedBoltTx) bucket(bucketType Bucket) *bolt.Bucket {
+	// find/cache bucket
+	bn := bucketType.ID()
+	st.txMu.RLock()
+	bucket, ok := st.buckets[bn]
+	st.txMu.RUnlock()
+	if !ok {
+		st.lock()
+		bucket = st.tx.Bucket(bucketType.Name())
+		st.buckets[bn] = bucket
+		st.unlock()
+	}
+
+	return bucket
+}
+
+func (st *sharedBoltTx) reset(lg *zap.Logger) {
+	if st.tx != nil {
+		// wait all store read transactions using the current boltdb tx to finish,
+		// then close the boltdb tx
+		go func(tx *bolt.Tx, wg *sync.WaitGroup) {
+			wg.Wait()
+			if err := tx.Rollback(); err != nil {
+				lg.Fatal("failed to rollback tx", zap.Error(err))
+			}
+		}(st.tx, st.txWg)
+	}
+
+	st.buckets = make(map[BucketID]*bolt.Bucket)
+	st.tx = nil
+	st.txWg = new(sync.WaitGroup)
+}
+
+func (st *sharedBoltTx) clone() sharedTx {
+	return &sharedBoltTx{
+		txMu:    st.txMu,
+		tx:      st.tx,
+		buckets: st.buckets,
+		txWg:    st.txWg,
+	}
+}
+
+// Base type for readTx and concurrentReadTx to eliminate duplicate functions between these
+type baseReadTx struct {
+	// mu protects accesses to the txReadBuffer
+	mu  sync.RWMutex
+	buf txReadBuffer
+
+	// tx encapsulates the underlying bolt.Tx and its associated locks and buckets.
+	tx sharedTx
+}
+
+func (baseReadTx *baseReadTx) UnsafeForEach(bucketType Bucket, visitor func(k, v []byte) error) error {
 	dups := make(map[string]struct{})
 	getDups := func(k, v []byte) error {
 		dups[string(k)] = struct{}{}
@@ -63,16 +138,17 @@ func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []b
 		}
 		return visitor(k, v)
 	}
-	if err := baseReadTx.buf.ForEach(bucket, getDups); err != nil {
+	if err := baseReadTx.buf.ForEach(bucketType, getDups); err != nil {
 		return err
 	}
-	baseReadTx.txMu.Lock()
-	err := unsafeForEach(baseReadTx.tx, bucket, visitNoDup)
-	baseReadTx.txMu.Unlock()
+	bucket := baseReadTx.tx.bucket(bucketType)
+	baseReadTx.tx.lock()
+	err := unsafeForEach(bucket, visitNoDup)
+	baseReadTx.tx.unlock()
 	if err != nil {
 		return err
 	}
-	return baseReadTx.buf.ForEach(bucket, visitor)
+	return baseReadTx.buf.ForEach(bucketType, visitor)
 }
 
 func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
@@ -91,31 +167,15 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte,
 		return keys, vals
 	}
 
-	// find/cache bucket
-	bn := bucketType.ID()
-	baseReadTx.txMu.RLock()
-	bucket, ok := baseReadTx.buckets[bn]
-	baseReadTx.txMu.RUnlock()
-	lockHeld := false
-	if !ok {
-		baseReadTx.txMu.Lock()
-		lockHeld = true
-		bucket = baseReadTx.tx.Bucket(bucketType.Name())
-		baseReadTx.buckets[bn] = bucket
-	}
+	bucket := baseReadTx.tx.bucket(bucketType)
 
 	// ignore missing bucket since may have been created in this batch
 	if bucket == nil {
-		if lockHeld {
-			baseReadTx.txMu.Unlock()
-		}
 		return keys, vals
 	}
-	if !lockHeld {
-		baseReadTx.txMu.Lock()
-	}
+	baseReadTx.tx.lock()
 	c := bucket.Cursor()
-	baseReadTx.txMu.Unlock()
+	baseReadTx.tx.unlock()
 
 	k2, v2 := unsafeRange(c, key, endKey, limit-int64(len(keys)))
 	return append(k2, keys...), append(v2, vals...)
@@ -130,11 +190,9 @@ func (rt *readTx) Unlock()  { rt.mu.Unlock() }
 func (rt *readTx) RLock()   { rt.mu.RLock() }
 func (rt *readTx) RUnlock() { rt.mu.RUnlock() }
 
-func (rt *readTx) reset() {
+func (rt *readTx) reset(lg *zap.Logger) {
 	rt.buf.reset()
-	rt.buckets = make(map[BucketID]*bolt.Bucket)
-	rt.tx = nil
-	rt.txWg = new(sync.WaitGroup)
+	rt.tx.reset(lg)
 }
 
 type concurrentReadTx struct {
@@ -148,4 +206,4 @@ func (rt *concurrentReadTx) Unlock() {}
 func (rt *concurrentReadTx) RLock() {}
 
 // RUnlock signals the end of concurrentReadTx.
-func (rt *concurrentReadTx) RUnlock() { rt.txWg.Done() }
+func (rt *concurrentReadTx) RUnlock() { rt.tx.finishWait() }
