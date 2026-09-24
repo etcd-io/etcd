@@ -890,7 +890,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 			j = int64(len(afterCompacts)) - 1
 		}
 
-		am := ti.Compact(i)
+		am, _ := ti.Compact(i)
 		require.Equalf(t, afterCompacts[j].compacted, am, "#%d: compact(%d) != expected", i, i)
 
 		keep := ti.Keep(i)
@@ -913,7 +913,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 			j = int64(len(afterCompacts)) - 1
 		}
 
-		am := ti.Compact(i)
+		am, _ := ti.Compact(i)
 		require.Equalf(t, afterCompacts[j].compacted, am, "#%d: compact(%d) != expected", i, i)
 
 		keep := ti.Keep(i)

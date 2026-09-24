@@ -17,6 +17,7 @@ package mvcc
 import (
 	"encoding/binary"
 	"fmt"
+	"sort"
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
@@ -27,7 +28,7 @@ import (
 
 func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyValueHash, error) {
 	totalStart := time.Now()
-	keep := s.kvindex.Compact(compactMainRev)
+	keep, _ := s.kvindex.Compact(compactMainRev)
 	indexCompactionPauseMs.Observe(float64(time.Since(totalStart) / time.Millisecond))
 
 	totalStart = time.Now()
@@ -97,4 +98,79 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyVal
 			return KeyValueHash{}, fmt.Errorf("interrupted due to stop signal")
 		}
 	}
+}
+
+func (s *store) scheduleCompactionIndexDriven(compactMainRev, prevCompactRev int64) (KeyValueHash, error) {
+	totalStart := time.Now()
+	_, del := s.kvindex.Compact(compactMainRev)
+	indexCompactionPauseMs.Observe(float64(time.Since(totalStart) / time.Millisecond))
+
+	totalStart = time.Now()
+	defer func() { dbCompactionTotalMs.Observe(float64(time.Since(totalStart) / time.Millisecond)) }()
+	keyCompactions := 0
+	defer func() { dbCompactionKeysCounter.Add(float64(keyCompactions)) }()
+	defer func() { dbCompactionLast.Set(float64(time.Now().Unix())) }()
+
+	// Sort the revisions so deletions hit the backend in ascending key order,
+	// which matches bbolt's B+tree layout and the order the standard compaction
+	// would delete them.
+	dels := make([]BucketKey, 0, len(del))
+	for bk := range del {
+		dels = append(dels, bk)
+	}
+	sort.Slice(dels, func(i, j int) bool {
+		return dels[j].Revision.GreaterThan(dels[i].Revision)
+	})
+
+	batchNum := s.cfg.CompactionBatchLimit
+	tx := s.b.BatchTx()
+	tx.LockOutsideApply()
+	// gofail: var compactAfterAcquiredBatchTxLock struct{}
+	start := time.Now()
+	for _, bk := range dels {
+		tx.UnsafeDelete(schema.Key, BucketKeyToBytes(bk, NewRevBytes()))
+		keyCompactions++
+
+		if keyCompactions%batchNum != 0 {
+			continue
+		}
+
+		tx.Unlock()
+		// Immediately commit the compaction deletes instead of letting them accumulate in the write buffer
+		// gofail: var compactBeforeCommitBatch struct{}
+		s.b.ForceCommit()
+		// gofail: var compactAfterCommitBatch struct{}
+		dbCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
+
+		select {
+		case <-time.After(s.cfg.CompactionSleepInterval):
+		case <-s.stopc:
+			return KeyValueHash{}, fmt.Errorf("interrupted due to stop signal")
+		}
+
+		tx = s.b.BatchTx()
+		tx.LockOutsideApply()
+		// gofail: var compactAfterAcquiredBatchTxLock struct{}
+		start = time.Now()
+	}
+
+	// gofail: var compactBeforeSetFinishedCompact struct{}
+	UnsafeSetFinishedCompact(tx, compactMainRev)
+	tx.Unlock()
+	dbCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
+	// gofail: var compactAfterSetFinishedCompact struct{}
+
+	size, sizeInUse := s.b.Size(), s.b.SizeInUse()
+	s.lg.Info(
+		"finished index-driven scheduled compaction",
+		zap.Int64("compact-revision", compactMainRev),
+		zap.Duration("took", time.Since(totalStart)),
+		zap.Int("number-of-keys-compacted", keyCompactions),
+		zap.Int64("current-db-size-bytes", size),
+		zap.String("current-db-size", humanize.Bytes(uint64(size))),
+		zap.Int64("current-db-size-in-use-bytes", sizeInUse),
+		zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse))),
+	)
+
+	return KeyValueHash{}, nil
 }
