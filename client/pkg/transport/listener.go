@@ -591,6 +591,9 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 		_, err := tlsutil.NewCert(info.CertFile, info.KeyFile, func(certPEMBlock []byte, keyPEMBlock []byte) (tls.Certificate, error) {
 			var block *pem.Block
 			block, _ = pem.Decode(certPEMBlock)
+			if block == nil {
+				return tls.Certificate{}, fmt.Errorf("failed to decode PEM block from certificate")
+			}
 			cert, err := x509.ParseCertificate(block.Bytes)
 			if err != nil {
 				return tls.Certificate{}, err
