@@ -21,7 +21,9 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/cheggaaa/pb/v3"
@@ -45,8 +47,9 @@ var (
 	keySize int
 	valSize int
 
-	putTotal int
-	putRate  int
+	putTotal          int
+	putRate           int
+	putReportInterval int
 
 	keySpaceSize int
 	seqKeys      bool
@@ -71,11 +74,17 @@ func init() {
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
 	putCmd.Flags().BoolVar(&checkHashkv, "check-hashkv", false, "'true' to check hashkv")
+	putCmd.Flags().IntVar(&putReportInterval, "report-interval", -1, "Print live JSON metrics every N seconds (min=1, -1 to disable)")
 }
 
 func putFunc(cmd *cobra.Command, _ []string) {
 	if keySpaceSize <= 0 {
 		fmt.Fprintf(os.Stderr, "expected positive --key-space-size, got (%v)", keySpaceSize)
+		os.Exit(1)
+	}
+
+	if putReportInterval < -1 || putReportInterval == 0 {
+		fmt.Fprintf(os.Stderr, "--report-interval must be >=1 or -1 to disable\n")
 		os.Exit(1)
 	}
 
@@ -88,7 +97,33 @@ func putFunc(cmd *cobra.Command, _ []string) {
 	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
 
 	bar = pb.New(putTotal)
+	// when live reporting is active, use stderr for the progress bar
+	// to keep stdout as a clean stream for JSON metrics
+	if putReportInterval > 0 {
+		bar.SetWriter(os.Stderr)
+	}
 	bar.Start()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+	defer signal.Stop(sigCh)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		select {
+		case <-sigCh:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	tracker := newIntervalTracker()
+	var stopLive chan struct{}
+	if putReportInterval > 0 {
+		stopLive = startSingleLiveReporter(putReportInterval, tracker)
+	}
 
 	r := newReport(cmd.Name())
 	for i := range clients {
@@ -96,26 +131,38 @@ func putFunc(cmd *cobra.Command, _ []string) {
 		go func(c *v3.Client) {
 			defer wg.Done()
 			for op := range requests {
-				limit.Wait(context.Background())
-
+				if err := limit.Wait(ctx); err != nil {
+					return
+				}
 				st := time.Now()
-				_, err := c.Do(context.Background(), op)
+				_, err := c.Do(ctx, op)
+				dur := time.Since(st)
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
+				tracker.add(dur)
 				bar.Increment()
 			}
 		}(clients[i])
 	}
 
 	go func() {
+		defer close(requests)
 		for i := 0; i < putTotal; i++ {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			if seqKeys {
 				binary.PutVarint(k, int64(i%keySpaceSize))
 			} else {
 				binary.PutVarint(k, int64(rand.Intn(keySpaceSize)))
 			}
-			requests <- v3.OpPut(prefix+string(k), v)
+			select {
+			case requests <- v3.OpPut(prefix+string(k), v):
+			case <-ctx.Done():
+				return
+			}
 		}
-		close(requests)
 	}()
 
 	if compactInterval > 0 {
@@ -131,7 +178,17 @@ func putFunc(cmd *cobra.Command, _ []string) {
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()
-	fmt.Println(<-rc)
+	if stopLive != nil {
+		close(stopLive)
+	}
+
+	// When live reporting is active, keep stdout as a clean JSON-lines stream
+	// by redirecting the final summary to stderr.
+	summaryOut := os.Stdout
+	if putReportInterval > 0 {
+		summaryOut = os.Stderr
+	}
+	fmt.Fprintln(summaryOut, <-rc)
 
 	if checkHashkv {
 		hashKV(cmd, clients)

@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/cheggaaa/pb/v3"
@@ -44,15 +46,16 @@ var rangeCmd = &cobra.Command{
 }
 
 var (
-	rangeRate        int
-	rangeTotal       int
-	rangeConsistency string
-	rangeLimit       int64
-	rangeCountOnly   bool
-	rangeKeysOnly    bool
-	rangeStream      bool
-	rangePaginate    bool
-	rangePrefix      bool
+	rangeRate           int
+	rangeTotal          int
+	rangeConsistency    string
+	rangeLimit          int64
+	rangeCountOnly      bool
+	rangeKeysOnly       bool
+	rangeStream         bool
+	rangePaginate       bool
+	rangePrefix         bool
+	rangeReportInterval int
 )
 
 func init() {
@@ -66,6 +69,7 @@ func init() {
 	rangeCmd.Flags().BoolVar(&rangeStream, "stream", false, "Use RangeStream instead of unary Range")
 	rangeCmd.Flags().BoolVar(&rangePaginate, "paginate", false, "Use paginated unary range with 10k-key pages")
 	rangeCmd.Flags().BoolVar(&rangePrefix, "prefix", false, "Range over all keys with the given key as prefix")
+	rangeCmd.Flags().IntVar(&rangeReportInterval, "report-interval", -1, "Print live JSON metrics every N seconds (min=1, -1 to disable)")
 }
 
 func rangeFunc(cmd *cobra.Command, args []string) {
@@ -93,10 +97,22 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	if rangeReportInterval < -1 || rangeReportInterval == 0 {
+		fmt.Fprintf(os.Stderr, "--report-interval must be >=1 or -1 to disable\n")
+		os.Exit(1)
+	}
+
+	// When live reporting is enabled, status messages go to stderr so stdout
+	// remains a clean JSON-lines stream.
+	messageOut := os.Stdout
+	if rangeReportInterval > 0 {
+		messageOut = os.Stderr
+	}
+
 	if rangeConsistency == "l" {
-		fmt.Println("bench with linearizable range")
+		fmt.Fprintln(messageOut, "bench with linearizable range")
 	} else if rangeConsistency == "s" {
-		fmt.Println("bench with serializable range")
+		fmt.Fprintln(messageOut, "bench with serializable range")
 	} else {
 		fmt.Fprintln(os.Stderr, cmd.Usage())
 		os.Exit(1)
@@ -111,7 +127,33 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 	clients := mustCreateClients(totalClients, totalConns)
 
 	bar = pb.New(rangeTotal)
+	// when live reporting is active, use stderr for the progress bar
+	// to keep stdout as a clean stream for JSON metrics
+	if rangeReportInterval > 0 {
+		bar.SetWriter(os.Stderr)
+	}
 	bar.Start()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+	defer signal.Stop(sigCh)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		select {
+		case <-sigCh:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	tracker := newIntervalTracker()
+	var stopLive chan struct{}
+	if rangeReportInterval > 0 {
+		stopLive = startSingleLiveReporter(rangeReportInterval, tracker)
+	}
 
 	var baseOpts []v3.OpOption
 	if rangeLimit > 0 {
@@ -149,39 +191,62 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		go func(c *v3.Client) {
 			defer wg.Done()
 			for range requests {
-				limit.Wait(context.Background())
+				if err := limit.Wait(ctx); err != nil {
+					return
+				}
 				st := time.Now()
 				var err error
 				switch {
 				case rangeStream:
 					var stream v3.GetStreamChan
-					stream, err = c.GetStream(context.Background(), key, baseOpts...)
+					stream, err = c.GetStream(ctx, key, baseOpts...)
 					if err == nil {
 						_, err = v3.GetStreamToGetResponse(stream)
 					}
 				case rangePaginate:
 					err = paginatedRange(c, key, k8sWatchCachePageSize, baseOpts)
 				default:
-					_, err = c.Get(context.Background(), key, baseOpts...)
+					_, err = c.Get(ctx, key, baseOpts...)
 				}
+				dur := time.Since(st)
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
+				tracker.add(dur)
 				bar.Increment()
 			}
 		}(clients[i])
 	}
 
 	go func() {
+		defer close(requests)
 		for i := 0; i < rangeTotal; i++ {
-			requests <- struct{}{}
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+			select {
+			case requests <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
 		}
-		close(requests)
 	}()
 
 	rc := r.Run()
 	wg.Wait()
 	close(r.Results())
 	bar.Finish()
-	fmt.Printf("%s", <-rc)
+	if stopLive != nil {
+		close(stopLive)
+	}
+
+	summaryOut := os.Stdout
+	// direct final summary to stderr if report interval is enabled,
+	// to separate it from live JSON snapshots in stdout
+	if rangeReportInterval > 0 {
+		summaryOut = os.Stderr
+	}
+	fmt.Fprintf(summaryOut, "%s", <-rc)
 }
 
 func paginatedRange(c *v3.Client, key string, pageSize int64, baseOpts []v3.OpOption) error {
