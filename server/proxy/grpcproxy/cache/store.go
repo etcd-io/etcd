@@ -18,7 +18,9 @@ package cache
 
 import (
 	"errors"
+	"math"
 	"sync"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 	"k8s.io/utils/lru"
@@ -33,9 +35,27 @@ var (
 	ErrCompacted      = rpctypes.ErrGRPCCompacted
 )
 
+// cacheEntry wraps a cached response with its expiry time. Entries expire
+// after a configurable TTL to prevent stale reads when auth tokens expire
+// on the backend but the proxy cache still holds the response.
+type cacheEntry struct {
+	resp      *pb.RangeResponse
+	expiresAt time.Time
+}
+
 type Cache interface {
-	Add(req *pb.RangeRequest, resp *pb.RangeResponse)
-	Get(req *pb.RangeRequest) (*pb.RangeResponse, error)
+	// Add stores resp for (req, authKey). authKey scopes the entry to a
+	// single caller identity so a cached response can never be replayed to
+	// a different principal; pass "" when the request carries no credentials.
+	// The entry expires after the TTL configured on the cache.
+	Add(req *pb.RangeRequest, resp *pb.RangeResponse, authKey string)
+	// Get returns the cached response for (req, authKey). Expired entries
+	// are treated as misses.
+	Get(req *pb.RangeRequest, authKey string) (*pb.RangeResponse, error)
+	// Clear drops every cached entry. Used when the authorization
+	// configuration may have changed (user/role/permission updates) so no
+	// principal keeps reading data cached under stale permissions.
+	Clear()
 	Compact(revision int64)
 	Invalidate(key []byte, endkey []byte)
 	Size() int
@@ -43,20 +63,47 @@ type Cache interface {
 }
 
 // keyFunc returns the key of a request, which is used to look up its caching response in the cache.
-func keyFunc(req *pb.RangeRequest) string {
+// The caller identity (authKey) is mixed in so that a response cached for
+// one authenticated user is never served to a different user.
+func keyFunc(req *pb.RangeRequest, authKey string) string {
 	// TODO: use marshalTo to reduce allocation
 	b, err := proto.Marshal(req)
 	if err != nil {
 		panic(err)
 	}
-	return string(b)
+	// Pre-size the buffer to avoid repeated allocation while appending.
+	// proto.Marshal output is bounded by MaxRequestBytes (typically
+	// 1.5 MiB) and authKey is a bounded user identifier, so the sum
+	// cannot overflow on any supported platform. The explicit guard
+	// documents that invariant and silences CodeQL's allocation-size
+	// overflow heuristic.
+	if len(b) > math.MaxInt-len(authKey)-1 {
+		panic("request too large")
+	}
+	out := make([]byte, 0, len(b)+1+len(authKey))
+	out = append(out, b...)
+	out = append(out, 0)
+	out = append(out, authKey...)
+	return string(out)
 }
 
+// NewCache creates a cache with no entry TTL (entries never expire based on
+// time). Use NewCacheWithTTL to set a maximum entry lifetime.
 func NewCache(maxCacheEntries int) Cache {
+	return NewCacheWithTTL(maxCacheEntries, 0)
+}
+
+// NewCacheWithTTL creates a cache where entries expire after ttl. A ttl of 0
+// means entries never expire based on time (only via LRU eviction, Clear, or
+// Invalidate). The TTL should be set to match or slightly less than the
+// backend auth token TTL to prevent serving stale reads after token expiry.
+func NewCacheWithTTL(maxCacheEntries int, ttl time.Duration) Cache {
 	return &cache{
 		lru:          lru.New(maxCacheEntries),
+		maxEntries:   maxCacheEntries,
 		cachedRanges: adt.NewIntervalTree(),
 		compactedRev: -1,
+		entryTTL:     ttl,
 	}
 }
 
@@ -64,24 +111,33 @@ func (c *cache) Close() {}
 
 // cache implements Cache
 type cache struct {
-	mu  sync.RWMutex
-	lru *lru.Cache
+	mu         sync.RWMutex
+	lru        *lru.Cache
+	maxEntries int
 
 	// a reverse index for cache invalidation
 	cachedRanges adt.IntervalTree
 
 	compactedRev int64
+
+	// entryTTL is the maximum lifetime of a cache entry. 0 means no
+	// time-based expiry.
+	entryTTL time.Duration
 }
 
 // Add adds the response of a request to the cache if its revision is larger than the compacted revision of the cache.
-func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse) {
-	key := keyFunc(req)
+func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse, authKey string) {
+	key := keyFunc(req, authKey)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if req.Revision > c.compactedRev {
-		c.lru.Add(key, resp)
+		entry := &cacheEntry{resp: resp}
+		if c.entryTTL > 0 {
+			entry.expiresAt = time.Now().Add(c.entryTTL)
+		}
+		c.lru.Add(key, entry)
 	}
 	// we do not need to invalidate a request with a revision specified.
 	// so we do not need to add it into the reverse index.
@@ -112,9 +168,10 @@ func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse) {
 }
 
 // Get looks up the caching response for a given request.
-// Get is also responsible for lazy eviction when accessing compacted entries.
-func (c *cache) Get(req *pb.RangeRequest) (*pb.RangeResponse, error) {
-	key := keyFunc(req)
+// Get is also responsible for lazy eviction when accessing compacted entries
+// and for dropping expired entries when a TTL is configured.
+func (c *cache) Get(req *pb.RangeRequest, authKey string) (*pb.RangeResponse, error) {
+	key := keyFunc(req, authKey)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -124,10 +181,27 @@ func (c *cache) Get(req *pb.RangeRequest) (*pb.RangeResponse, error) {
 		return nil, ErrCompacted
 	}
 
-	if resp, ok := c.lru.Get(key); ok {
-		return resp.(*pb.RangeResponse), nil
+	if item, ok := c.lru.Get(key); ok {
+		entry := item.(*cacheEntry)
+		// Check if the entry has expired (when TTL is configured)
+		if !entry.expiresAt.IsZero() && time.Now().After(entry.expiresAt) {
+			c.lru.Remove(key)
+			return nil, errors.New("entry expired")
+		}
+		return entry.resp, nil
 	}
 	return nil, errors.New("not exist")
+}
+
+// Clear drops all cached entries and resets the reverse invalidation index.
+// It is called when the authorization configuration may have changed so no
+// principal can keep reading data cached under stale permissions.
+func (c *cache) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.lru = lru.New(c.maxEntries)
+	c.cachedRanges = adt.NewIntervalTree()
 }
 
 // Invalidate invalidates the cache entries that intersecting with the given range from key to endkey.

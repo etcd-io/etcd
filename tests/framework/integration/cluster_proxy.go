@@ -24,6 +24,7 @@ import (
 	"go.etcd.io/etcd/client/v3/namespace"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/adapter"
+	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache"
 )
 
 const ThroughProxy = true
@@ -69,7 +70,7 @@ func ToGRPC(c *clientv3.Client) GRPCAPI {
 	lp, lpch := grpcproxy.NewLeaseProxy(ctx, c)
 	mp := grpcproxy.NewMaintenanceProxy(c)
 	clp, _ := grpcproxy.NewClusterProxy(lg, c, "", "") // without registering proxy URLs
-	authp := grpcproxy.NewAuthProxy(c)
+	authp := grpcproxy.NewAuthProxy(c, kvp.(interface{ Cache() cache.Cache }).Cache())
 	lockp := grpcproxy.NewLockProxy(c)
 	electp := grpcproxy.NewElectionProxy(c)
 
