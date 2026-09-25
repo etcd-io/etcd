@@ -65,25 +65,26 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 		t.lg.Warn(
 			"failed to parse a JWT token",
 			zap.Error(err),
+			zap.String("remote", clientIPFromContext(ctx)),
 		)
 		return nil, false
 	}
 
 	claims, ok := parsed.Claims.(jwt.MapClaims)
 	if !parsed.Valid || !ok {
-		t.lg.Warn("failed to obtain claims from a JWT token")
+		t.lg.Warn("failed to obtain claims from a JWT token", zap.String("remote", clientIPFromContext(ctx)))
 		return nil, false
 	}
 
 	username, ok = claims["username"].(string)
 	if !ok {
-		t.lg.Warn("failed to obtain user claims from jwt token")
+		t.lg.Warn("failed to obtain user claims from jwt token", zap.String("remote", clientIPFromContext(ctx)))
 		return nil, false
 	}
 
 	revision, ok = claims["revision"].(float64)
 	if !ok {
-		t.lg.Warn("failed to obtain revision claims from jwt token")
+		t.lg.Warn("failed to obtain revision claims from jwt token", zap.String("remote", clientIPFromContext(ctx)))
 		return nil, false
 	}
 

@@ -29,6 +29,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/raft/v3"
@@ -38,6 +39,13 @@ const (
 	maxNoLeaderCnt = 3
 	snapshotMethod = "/etcdserverpb.Maintenance/Snapshot"
 )
+
+// clientIPFromContext extracts the client IP from the context.
+// Uses the shared key from the auth package.
+// Returns empty string if not found.
+func clientIPFromContext(ctx context.Context) string {
+	return auth.ClientIPFromContext(ctx)
+}
 
 type streamsMap struct {
 	mu      sync.Mutex
@@ -79,6 +87,14 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		startTime := time.Now()
+
+		// Extract client IP from the gRPC peer and store it in context
+		// so it can be used in downstream log messages
+		peerInfo, ok := peer.FromContext(ctx)
+		if ok && peerInfo != nil {
+			ctx = context.WithValue(ctx, auth.ClientIPContextKey{}, peerInfo.Addr.String())
+		}
+
 		resp, err := handler(ctx, req)
 		lg := s.Logger()
 		if lg != nil { // acquire stats if debug level is enabled or RequestInfo is expensive
@@ -99,11 +115,6 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, warnLatency time.
 	}
 	if !enabledDebugLevel && !expensiveRequest {
 		return
-	}
-	remote := "No remote client info."
-	peerInfo, ok := peer.FromContext(ctx)
-	if ok {
-		remote = peerInfo.Addr.String()
 	}
 	responseType := info.FullMethod
 	var reqCount, respCount int64
@@ -175,19 +186,19 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, warnLatency time.
 	}
 
 	if enabledDebugLevel {
-		logGenericRequestStats(lg, startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent)
+		logGenericRequestStats(lg, startTime, duration, clientIPFromContext(ctx), responseType, reqCount, reqSize, respCount, respSize, reqContent)
 	} else if expensiveRequest {
-		logExpensiveRequestStats(lg, startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent)
+		logExpensiveRequestStats(lg, startTime, duration, clientIPFromContext(ctx), responseType, reqCount, reqSize, respCount, respSize, reqContent)
 	}
 }
 
-func logGenericRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
+func logGenericRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, clientIP string, responseType string,
 	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string,
 ) {
 	lg.Debug("request stats",
 		zap.Time("start time", startTime),
 		zap.Duration("time spent", duration),
-		zap.String("remote", remote),
+		zap.String("remote", clientIP),
 		zap.String("response type", responseType),
 		zap.Int64("request count", reqCount),
 		zap.Int("request size", reqSize),
@@ -197,13 +208,13 @@ func logGenericRequestStats(lg *zap.Logger, startTime time.Time, duration time.D
 	)
 }
 
-func logExpensiveRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
+func logExpensiveRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, clientIP string, responseType string,
 	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string,
 ) {
 	lg.Warn("request stats",
 		zap.Time("start time", startTime),
 		zap.Duration("time spent", duration),
-		zap.String("remote", remote),
+		zap.String("remote", clientIP),
 		zap.String("response type", responseType),
 		zap.Int64("request count", reqCount),
 		zap.Int("request size", reqSize),
