@@ -109,7 +109,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	lg.Info("Start traffic")
 	startTime := time.Since(clientSet.BaseTime())
-	err = SimulateKeyValueTraffic(ctx, &wg, profile.KeyValue, endpoints, clientSet, traffic, RunTrafficLoopParam{
+	keyValueParam := RunTrafficLoopParam{
 		QPSLimiter:                         limiter,
 		IDs:                                clientSet.IdentityProvider(),
 		LeaseIDStorage:                     lm,
@@ -117,28 +117,40 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 		KeyStore:                           keyStore,
 		Storage:                            kubernetesStorage,
 		Finish:                             finish,
-	})
-	require.NoError(t, err)
-	if profile.Watch != nil {
-		err = SimulateWatchTraffic(ctx, &wg, profile.Watch, endpoints, clientSet, traffic, RunWatchLoopParam{
-			Config:     *profile.Watch,
-			QPSLimiter: limiter,
-			KeyStore:   keyStore,
-			Storage:    kubernetesStorage,
-			Finish:     finish,
-			Logger:     lg,
-		})
-		require.NoError(t, err)
 	}
+	watchParam := RunWatchLoopParam{
+		QPSLimiter: limiter,
+		KeyStore:   keyStore,
+		Storage:    kubernetesStorage,
+		Finish:     finish,
+		Logger:     lg,
+	}
+	if profile.Watch != nil {
+		watchParam.Config = *profile.Watch
+	}
+	compactParam := RunCompactLoopParam{Finish: finish}
 	if profile.Compaction != nil {
 		if profile.Compaction.Period < MinimalCompactionPeriod {
 			t.Fatalf("Compaction period %v below minimal %v", profile.Compaction.Period, MinimalCompactionPeriod)
 		}
-		err = SimulateCompactionTraffic(ctx, &wg, profile.Compaction, endpoints, clientSet, traffic, RunCompactLoopParam{
-			Period: profile.Compaction.Period,
-			Finish: finish,
-		})
+		compactParam.Period = profile.Compaction.Period
+	}
+
+	if profile.SharedStream != nil {
+		require.NotNilf(t, profile.Watch, "SharedStream traffic requires a Watch profile")
+		err = SimulateSharedStreamTraffic(ctx, &wg, profile, endpoints, clientSet, traffic, keyValueParam, watchParam, compactParam)
 		require.NoError(t, err)
+	} else {
+		err = SimulateKeyValueTraffic(ctx, &wg, profile.KeyValue, endpoints, clientSet, traffic, keyValueParam)
+		require.NoError(t, err)
+		if profile.Watch != nil {
+			err = SimulateWatchTraffic(ctx, &wg, profile.Watch, endpoints, clientSet, traffic, watchParam)
+			require.NoError(t, err)
+		}
+		if profile.Compaction != nil {
+			err = SimulateCompactionTraffic(ctx, &wg, profile.Compaction, endpoints, clientSet, traffic, compactParam)
+			require.NoError(t, err)
+		}
 	}
 	var fr *report.FailpointInjection
 	select {
@@ -254,6 +266,56 @@ func SimulateCompactionTraffic(ctx context.Context, wg *sync.WaitGroup, profile 
 	return nil
 }
 
+// SimulateSharedStreamTraffic models a set of Kubernetes apiserver instances. Each instance
+// is one cluster-scoped client running all of its loops (key/value, watch, compaction), so
+// its watches multiplex onto a single gRPC stream, as a real apiserver does. Each instance
+// opens WatchesPerInstance concurrent watch substreams, modeling the events fan-in where a
+// single apiserver holds many direct watches on its one stream.
+func SimulateSharedStreamTraffic(ctx context.Context, wg *sync.WaitGroup, profile Profile, endpoints []string, clientSet *client.ClientSet, tf Traffic, keyValueParam RunTrafficLoopParam, watchParam RunWatchLoopParam, compactParam RunCompactLoopParam) error {
+	apiservers := profile.SharedStream
+	watchesPerInstance := max(apiservers.WatchesPerInstance, 1)
+	for range apiservers.InstanceCount {
+		// One cluster-scoped client per apiserver instance (all endpoints, like a real
+		// apiserver configured via --etcd-servers).
+		c, err := clientSet.NewClient(endpoints)
+		if err != nil {
+			return err
+		}
+		wg.Add(1)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			// All of this instance's loops run on the one client, so its watches
+			// multiplex onto a single gRPC stream. loops tracks them so the client is
+			// closed only after they all finish.
+			var loops sync.WaitGroup
+			loops.Add(1)
+			go func() {
+				defer loops.Done()
+				tf.RunKeyValueLoop(ctx, c, keyValueParam)
+			}()
+			if profile.Watch != nil {
+				for range watchesPerInstance {
+					loops.Add(1)
+					go func() {
+						defer loops.Done()
+						tf.RunWatchLoop(ctx, c, watchParam)
+					}()
+				}
+			}
+			if profile.Compaction != nil {
+				loops.Add(1)
+				go func() {
+					defer loops.Done()
+					tf.RunCompactLoop(ctx, c, compactParam)
+				}()
+			}
+			loops.Wait()
+		}(c)
+	}
+	return nil
+}
+
 func CalculateWatchStats(reports []report.ClientReport, start, end time.Duration) (ws watchStats) {
 	ws.Period = end - start
 	if ws.Period <= 0 {
@@ -362,9 +424,25 @@ func (ts *trafficStats) QPS() float64 {
 }
 
 type Profile struct {
-	KeyValue   *KeyValue
-	Watch      *Watch
-	Compaction *Compaction
+	KeyValue     *KeyValue
+	Watch        *Watch
+	Compaction   *Compaction
+	SharedStream *SharedStream
+}
+
+// SharedStream runs all loops (key/value, watch, compaction) on a single client per
+// simulated apiserver instance, so their watches multiplex onto one gRPC stream, as a
+// real apiserver does. It models the events resource in particular: events are not served
+// from the watch cache, so a single apiserver holds many direct watches at once, all on
+// its one stream. nil keeps the default behavior of a separate client per loop.
+type SharedStream struct {
+	// InstanceCount is the number of simulated apiserver instances. Each instance is a
+	// single cluster-scoped client (configured with all endpoints, like a real apiserver
+	// is via --etcd-servers) running all of its loops.
+	InstanceCount int
+	// WatchesPerInstance is the number of concurrent watch substreams each instance opens,
+	// all multiplexed onto its single gRPC stream. Values < 1 are treated as 1.
+	WatchesPerInstance int
 }
 
 type KeyValue struct {
@@ -438,10 +516,17 @@ func runWatchLoop(ctx context.Context, c *client.RecordingClient, p RunWatchLoop
 }
 
 func runWatch(ctx context.Context, c *client.RecordingClient, p RunWatchLoopParam, cfg watchLoopConfig) error {
+	key := cfg.key
+	if !cfg.recursive {
+		// Non-recursive watch: target a single concrete key from the pool so the
+		// watch exercises etcd's single-key path rather than a prefix watch.
+		key = p.KeyStore.GetKey()
+	}
+
 	getCtx, getCancel := context.WithTimeout(ctx, RequestTimeout)
 	defer getCancel()
 
-	resp, err := c.Get(getCtx, cfg.key)
+	resp, err := c.Get(getCtx, key)
 	if err != nil {
 		return err
 	}
@@ -453,7 +538,7 @@ func runWatch(ctx context.Context, c *client.RecordingClient, p RunWatchLoopPara
 	if cfg.requireLeader {
 		watchCtx = clientv3.WithRequireLeader(watchCtx)
 	}
-	w := c.Watch(watchCtx, cfg.key, rev, true, true, true)
+	w := c.Watch(watchCtx, key, rev, cfg.recursive, true, true)
 	for {
 		select {
 		case <-ctx.Done():
@@ -471,6 +556,10 @@ func runWatch(ctx context.Context, c *client.RecordingClient, p RunWatchLoopPara
 type watchLoopConfig struct {
 	key           string
 	requireLeader bool
+	// recursive controls whether the watch is a prefix (recursive) watch on key.
+	// When false, runWatch issues a single-key (non-recursive) watch on a concrete
+	// key from the key pool, exercising etcd's non-recursive watch path.
+	recursive bool
 }
 
 func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []string, cs *client.ClientSet) error {
