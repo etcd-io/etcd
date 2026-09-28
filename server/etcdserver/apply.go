@@ -753,9 +753,9 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 		lg.Warn("alarm raised", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
 		switch m.Alarm {
 		case pb.AlarmType_CORRUPT:
-			a.s.applyV3 = newApplierV3Corrupt(a)
+			a.s.applyV3 = newApplierV3Corrupt(a.s.newApplierV3())
 		case pb.AlarmType_NOSPACE:
-			a.s.applyV3 = newApplierV3Capped(a)
+			a.s.applyV3 = newApplierV3Capped(a.s.newApplierV3())
 		default:
 			lg.Panic("unimplemented alarm activation", zap.String("alarm", fmt.Sprintf("%+v", m)))
 		}
