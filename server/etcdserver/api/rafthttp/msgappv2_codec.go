@@ -102,26 +102,18 @@ func (enc *msgAppV2Encoder) encode(m *raftpb.Message) error {
 		if _, err := enc.w.Write(enc.uint64buf); err != nil {
 			return err
 		}
-		opts := proto.MarshalOptions{}
 		for i := 0; i < len(m.Entries); i++ {
-			size := proto.Size(m.Entries[i])
+			// Marshal first and take the length from the result instead of a
+			// separate proto.Size walk. Entries larger than enc.buf get a fresh
+			// slice from append, enc.buf keeps its size.
+			b := appendEntry(enc.buf[:0], m.Entries[i])
 			// write length of entry
-			binary.BigEndian.PutUint64(enc.uint64buf, uint64(size))
+			binary.BigEndian.PutUint64(enc.uint64buf, uint64(len(b)))
 			if _, err := enc.w.Write(enc.uint64buf); err != nil {
 				return err
 			}
-			if size < msgAppV2BufSize {
-				b, err := opts.MarshalAppend(enc.buf[:0], m.Entries[i])
-				if err != nil {
-					return err
-				}
-				if _, err := enc.w.Write(b); err != nil {
-					return err
-				}
-			} else {
-				if _, err := enc.w.Write(pbutil.MustMarshalMessage(m.Entries[i])); err != nil {
-					return err
-				}
+			if _, err := enc.w.Write(b); err != nil {
+				return err
 			}
 			enc.index++
 		}
@@ -140,7 +132,7 @@ func (enc *msgAppV2Encoder) encode(m *raftpb.Message) error {
 			return err
 		}
 		// write message
-		if _, err := enc.w.Write(pbutil.MustMarshalMessage(m)); err != nil {
+		if _, err := enc.w.Write(mustMarshalCachedSize(m)); err != nil {
 			return err
 		}
 
