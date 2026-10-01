@@ -1451,8 +1451,9 @@ message RangeStreamResponse {
   // same RangeResponse response as to the Range() method.
   //
   // Field population across chunks:
-  //   - kvs: each chunk carries a disjoint slice of the result. Concatenating
-  //     them in order yields the full key set.
+  //   - kvs: each chunk carries a non-empty, disjoint slice of the result (or is
+  //     empty on a single-chunk response when no keys match or count_only is set).
+  //     Concatenating them in order yields the full key set.
   //   - header, more, count: set only on the final chunk. Non-merge clients
   //     can rely on io.EOF (end of stream) to detect completion. These
   //     fields are provided for clients that merge all responses into a
