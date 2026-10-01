@@ -106,7 +106,7 @@ verify: verify-bom verify-lint verify-dep verify-shellcheck verify-mod-tidy \
 	verify-go-workspace verify-grpc-experimental
 
 .PHONY: fix
-fix: fix-mod-tidy fix-bom fix-lint fix-yamllint sync-toolchain-directive \
+fix: fix-dep fix-mod-tidy fix-bom fix-lint fix-yamllint sync-toolchain-directive \
 	update-go-workspace fix-shell-ws
 
 .PHONY: verify-bom
@@ -120,6 +120,10 @@ fix-bom:
 .PHONY: verify-dep
 verify-dep:
 	PASSES="dep" ./scripts/test.sh
+
+.PHONY: fix-dep
+fix-dep:
+	./scripts/fix/dep.sh
 
 .PHONY: verify-lint
 verify-lint: install-golangci-lint
