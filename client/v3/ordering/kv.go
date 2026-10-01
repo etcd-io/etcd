@@ -132,6 +132,21 @@ func (txn *txnOrdering) Else(ops ...clientv3.Op) clientv3.Txn {
 	return txn
 }
 
+func txnOpsReadOnly(ops []clientv3.Op) bool {
+	for _, op := range ops {
+		if op.IsPut() || op.IsDelete() {
+			return false
+		}
+		if op.IsTxn() {
+			_, thenOps, elseOps := op.Txn()
+			if !txnOpsReadOnly(thenOps) || !txnOpsReadOnly(elseOps) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func (txn *txnOrdering) Commit() (*clientv3.TxnResponse, error) {
 	// prevRev is stored in a local variable in order to record the prevRev
 	// at the beginning of the Commit operation, because concurrent
@@ -152,6 +167,14 @@ func (txn *txnOrdering) Commit() (*clientv3.TxnResponse, error) {
 		err = txn.orderViolationFunc(opTxn, opResp, prevRev)
 		if err != nil {
 			return nil, err
+		}
+		selectedOps := txn.elseOps
+		if txnResp.Succeeded {
+			selectedOps = txn.thenOps
+		}
+		if !txnOpsReadOnly(selectedOps) {
+			// The selected branch may have already mutated state; never replay it.
+			return txnResp, nil
 		}
 	}
 }
