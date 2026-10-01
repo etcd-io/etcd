@@ -164,6 +164,7 @@ func (cw *streamWriter) run() {
 		t          streamType
 		enc        encoder
 		flusher    http.Flusher
+		written    *countingWriter
 		batched    int
 	)
 	tickc := time.NewTicker(ConnReadTimeout / 3)
@@ -206,9 +207,10 @@ func (cw *streamWriter) run() {
 			heartbeatc, msgc = nil, nil
 
 		case m := <-msgc:
+			before := written.n
 			err := enc.encode(m)
 			if err == nil {
-				unflushed += proto.Size(m)
+				unflushed += int(written.n - before)
 
 				if len(msgc) == 0 || batched > streamBufSize/2 {
 					flusher.Flush()
@@ -240,11 +242,12 @@ func (cw *streamWriter) run() {
 			cw.mu.Lock()
 			closed := cw.closeUnlocked()
 			t = conn.t
+			written = &countingWriter{w: conn.Writer}
 			switch conn.t {
 			case streamTypeMsgAppV2:
-				enc = newMsgAppV2Encoder(conn.Writer, cw.fs)
+				enc = newMsgAppV2Encoder(written, cw.fs)
 			case streamTypeMessage:
-				enc = &messageEncoder{w: conn.Writer}
+				enc = &messageEncoder{w: written}
 			default:
 				if cw.lg != nil {
 					cw.lg.Panic("unhandled stream type", zap.String("stream-type", t.String()))
@@ -716,4 +719,17 @@ func checkStreamSupport(v *semver.Version, t streamType) bool {
 		}
 	}
 	return false
+}
+
+// countingWriter counts the bytes the encoder puts on the wire, so the
+// streamWriter does not have to size every message again for sentBytes.
+type countingWriter struct {
+	w io.Writer
+	n int64
+}
+
+func (c *countingWriter) Write(p []byte) (int, error) {
+	n, err := c.w.Write(p)
+	c.n += int64(n)
+	return n, err
 }

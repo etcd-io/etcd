@@ -17,11 +17,11 @@ package rafthttp
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 
 	"google.golang.org/protobuf/proto"
 
-	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -35,8 +35,22 @@ func (enc *messageEncoder) encode(m *raftpb.Message) error {
 	if err := binary.Write(enc.w, binary.BigEndian, uint64(proto.Size(m))); err != nil {
 		return err
 	}
-	_, err := enc.w.Write(pbutil.MustMarshalMessage(m))
+	_, err := enc.w.Write(mustMarshalCachedSize(m))
 	return err
+}
+
+// cachedSizeMarshal reuses the size computed by the preceding proto.Size call.
+// google.golang.org/protobuf does not do that by default, so every Marshal walks
+// the whole message a second time just to size it. The message must not be
+// modified between proto.Size and the Marshal call.
+var cachedSizeMarshal = proto.MarshalOptions{UseCachedSize: true}
+
+func mustMarshalCachedSize(m proto.Message) []byte {
+	b, err := cachedSizeMarshal.Marshal(m)
+	if err != nil {
+		panic(fmt.Sprintf("marshal should never fail (%v)", err))
+	}
+	return b
 }
 
 // messageDecoder is a decoder that can decode all kinds of messages.
