@@ -885,7 +885,13 @@ func TestApplySnapshotUpdatesAppliedIndex(t *testing.T) {
 	snapIndex := 2*maxGapBetweenApplyAndCommitIndex + 1
 	snapshotter := snap.New(lg, testdir)
 	snapBe, _ := betesting.NewDefaultTmpBackend(t)
-	mvcc.New(lg, snapBe, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	t.Cleanup(func() {
+		betesting.Close(t, snapBe)
+	})
+	snapKV := mvcc.New(lg, snapBe, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	t.Cleanup(func() {
+		require.NoError(t, snapKV.Close())
+	})
 	auth.NewAuthStore(lg, schema.NewAuthBackend(lg, snapBe), nil, 1)
 	snapBe.ForceCommit()
 	pr, pw := io.Pipe()
@@ -896,7 +902,6 @@ func TestApplySnapshotUpdatesAppliedIndex(t *testing.T) {
 	}()
 	_, err := snapshotter.SaveDBFrom(pr, uint64(snapIndex))
 	require.NoError(t, err)
-	betesting.Close(t, snapBe)
 
 	rs := raft.NewMemoryStorage()
 	r := newRaftNode(raftNodeConfig{
@@ -946,6 +951,7 @@ func TestApplySnapshotUpdatesAppliedIndex(t *testing.T) {
 	}
 
 	assert.Equal(t, uint64(snapIndex), s.AppliedIndex())
+	assert.Equal(t, uint64(1), s.Term())
 
 	// No entries follow the snapshot. The proposal is never applied and times
 	// out, but it must reach raft instead of being rejected as too many requests.
