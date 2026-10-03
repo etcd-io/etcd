@@ -15,10 +15,13 @@
 package cmd
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/bgentry/speakeasy"
 	"google.golang.org/grpc/grpclog"
@@ -31,7 +34,55 @@ var (
 	// cache the username and password for multiple connections
 	globalUserName string
 	globalPassword string
+
+	// defrag is the shared backing var for each benchmark command's --defrag flag.
+	defrag bool
+
+	// defragTriggerPercent is the shared backing var for each benchmark command's
+	// --defrag-trigger-percent flag.
+	defragTriggerPercent int
+
+	// defragOnce ensures the Defragment RPC triggered by --defrag fires exactly once per
+	// run, even though maybeTriggerDefrag is called from a tight per-request loop.
+	defragOnce sync.Once
+
+	// defragDuration is how long the Defragment RPC triggered by --defrag took.
+	defragDuration time.Duration
 )
+
+// maybeTriggerDefrag issues a single, asynchronous Defragment RPC against the first
+// --endpoints entry once a command's request-producer loop reaches approximately
+// --defrag-trigger-percent of total, when --defrag is set. current/total are that loop's
+// own progress counters (e.g. i and putTotal), so it should be called once per iteration
+// from that loop. The RPC runs in its own goroutine, tracked via the shared wg, so the
+// producer keeps issuing requests at full rate while defrag runs concurrently.
+func maybeTriggerDefrag(clients []*clientv3.Client, current, total int) {
+	if !defrag || total <= 0 || current != total*defragTriggerPercent/100 {
+		return
+	}
+	defragOnce.Do(func() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ep := clients[0].Endpoints()[0]
+			fmt.Printf("defrag: triggering defragmentation on %s (%d/%d requests issued)\n", ep, current, total)
+			st := time.Now()
+			if _, err := clients[0].Defragment(context.Background(), ep); err != nil {
+				fmt.Fprintf(os.Stderr, "defrag: failed to defragment %s: %v\n", ep, err)
+				return
+			}
+			defragDuration = time.Since(st)
+			fmt.Printf("defrag: defragmentation of %s completed in %v\n", ep, defragDuration)
+		}()
+	})
+}
+
+// printDefragDuration prints a --defrag run's duration as part of a command's final summary.
+func printDefragDuration() {
+	if defrag && defragDuration > 0 {
+		fmt.Printf("Defrag duration: %v\n", defragDuration)
+	}
+}
 
 func getUsernamePassword(usernameFlag string) (string, string, error) {
 	if globalUserName != "" && globalPassword != "" {

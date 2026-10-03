@@ -24,7 +24,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
@@ -41,7 +40,6 @@ func TestConfigParsingMemberFlags(t *testing.T) {
 		"-data-dir=testdir",
 		"-name=testname",
 		"-max-wals=10",
-		"-max-snapshots=10",
 		"-snapshot-count=10",
 		"-snapshot-catchup-entries=1000",
 		"-listen-peer-urls=http://localhost:8000,https://localhost:8001",
@@ -63,7 +61,6 @@ func TestConfigParsingMemberFlags(t *testing.T) {
 func TestConfigFileMemberFields(t *testing.T) {
 	yc := struct {
 		Dir                    string `json:"data-dir"`
-		MaxSnapFiles           uint   `json:"max-snapshots"`
 		MaxWALFiles            uint   `json:"max-wals"`
 		Name                   string `json:"name"`
 		SnapshotCount          uint64 `json:"snapshot-count"`
@@ -74,7 +71,6 @@ func TestConfigFileMemberFields(t *testing.T) {
 		AdvertiseClientURLs    string `json:"advertise-client-urls"`
 	}{
 		"testdir",
-		10,
 		10,
 		"testname",
 		10,
@@ -475,7 +471,6 @@ func validateMemberFlags(t *testing.T, cfg *config) {
 		ListenPeerUrls:         []url.URL{{Scheme: "http", Host: "localhost:8000"}, {Scheme: "https", Host: "localhost:8001"}},
 		ListenClientUrls:       []url.URL{{Scheme: "http", Host: "localhost:7000"}, {Scheme: "https", Host: "localhost:7001"}},
 		ListenClientHttpUrls:   []url.URL{{Scheme: "http", Host: "localhost:7002"}, {Scheme: "https", Host: "localhost:7003"}},
-		MaxSnapFiles:           10,
 		MaxWalFiles:            10,
 		Name:                   "testname",
 		SnapshotCount:          10,
@@ -484,9 +479,6 @@ func validateMemberFlags(t *testing.T, cfg *config) {
 
 	if cfg.ec.Dir != wcfg.Dir {
 		t.Errorf("dir = %v, want %v", cfg.ec.Dir, wcfg.Dir)
-	}
-	if cfg.ec.MaxSnapFiles != wcfg.MaxSnapFiles {
-		t.Errorf("maxsnap = %v, want %v", cfg.ec.MaxSnapFiles, wcfg.MaxSnapFiles)
 	}
 	if cfg.ec.MaxWalFiles != wcfg.MaxWalFiles {
 		t.Errorf("maxwal = %v, want %v", cfg.ec.MaxWalFiles, wcfg.MaxWalFiles)
@@ -533,67 +525,5 @@ func validateClusteringFlags(t *testing.T, cfg *config) {
 	}
 	if !reflect.DeepEqual(cfg.ec.AdvertiseClientUrls, wcfg.ec.AdvertiseClientUrls) {
 		t.Errorf("advertise-client-urls = %v, want %v", cfg.ec.AdvertiseClientUrls, wcfg.ec.AdvertiseClientUrls)
-	}
-}
-
-func TestConfigFileDeprecatedOptions(t *testing.T) {
-	// Define a minimal config struct with only the fields we need
-	type configFileYAML struct {
-		SnapshotCount uint64 `json:"snapshot-count,omitempty"`
-		MaxSnapFiles  uint   `json:"max-snapshots,omitempty"`
-	}
-
-	testCases := []struct {
-		name           string
-		configFileYAML configFileYAML
-		expectedFlags  map[string]struct{}
-	}{
-		{
-			name:           "no deprecated options",
-			configFileYAML: configFileYAML{},
-			expectedFlags:  map[string]struct{}{},
-		},
-		{
-			name: "deprecated snapshot options",
-			configFileYAML: configFileYAML{
-				SnapshotCount: 10000,
-				MaxSnapFiles:  5,
-			},
-			expectedFlags: map[string]struct{}{
-				"max-snapshots": {},
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Create config file
-			b, err := yaml.Marshal(&tc.configFileYAML)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			tmpfile := mustCreateCfgFile(t, b)
-			defer os.Remove(tmpfile.Name())
-
-			// Parse config
-			cfg := newConfig()
-			err = cfg.parse([]string{fmt.Sprintf("--config-file=%s", tmpfile.Name())})
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			// Check which flags were set and marked as deprecated
-			foundFlags := make(map[string]struct{})
-			for flagName := range cfg.ec.FlagsExplicitlySet {
-				if _, ok := deprecatedFlags[flagName]; ok {
-					foundFlags[flagName] = struct{}{}
-				}
-			}
-
-			// Compare sets of flags
-			assert.Equalf(t, tc.expectedFlags, foundFlags, "deprecated flags mismatch - expected: %v, got: %v",
-				tc.expectedFlags, foundFlags)
-		})
 	}
 }

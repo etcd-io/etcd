@@ -15,7 +15,7 @@
 package mockstorage
 
 import (
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/raft/v3"

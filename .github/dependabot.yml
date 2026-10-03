@@ -5,18 +5,25 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
+    groups:
+      codeql:
+        patterns:
+          - "github/codeql-action/*"
 
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
+      day: monday
     allow:
-      - dependency-type: all
+      - dependency-type: direct
 
   - package-ecosystem: gomod
     directory: /tools/mod # Not linked from /go.mod
     schedule:
       interval: weekly
+      day: monday
     allow:
       - dependency-type: direct
 
@@ -24,12 +31,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
-
-  - package-ecosystem: docker
-    directory: /
-    target-branch: "release-3.4"
-    schedule:
-      interval: monthly
+      day: monday
 
   - package-ecosystem: docker
     directory: /
@@ -44,6 +46,13 @@ updates:
       interval: monthly
 
   - package-ecosystem: docker
+    directory: /
+    target-branch: "release-3.7"
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
     directory: /tools/container-images/devcontainer
     schedule:
       interval: weekly
+      day: monday

@@ -24,7 +24,7 @@
           panels.stat.up('Up', t.up) { gridPos: { x: 0, h: 7, w: 6, y: 0 } },
           panels.timeSeries.rpcRate('RPC rate', [t.rpcRate, t.rpcFailedRate]) { gridPos: { x: 6, h: 7, w: 10, y: 0 } },
           panels.timeSeries.activeStreams('Active streams', [t.watchStreams, t.leaseStreams]) { gridPos: { x: 16, h: 7, w: 8, y: 0 } },
-          panels.timeSeries.dbSize('DB size', [t.dbSize]) { gridPos: { x: 0, h: 7, w: 8, y: 25 } },
+          panels.timeSeries.dbSize('DB size', [t.dbSize, t.dbSizeInUse]) { gridPos: { x: 0, h: 7, w: 8, y: 25 } },
           panels.timeSeries.diskSync('Disk sync duration', [t.walFsync, t.dbFsync]) { gridPos: { x: 8, h: 7, w: 8, y: 25 } },
           panels.timeSeries.memory('Memory', [t.memory]) { gridPos: { x: 16, h: 7, w: 8, y: 25 } },
           panels.timeSeries.traffic('Client traffic in', [t.clientTrafficIn]) { gridPos: { x: 0, h: 7, w: 6, y: 50 } },

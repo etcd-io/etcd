@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
@@ -518,11 +518,7 @@ var GetVersionFromBinary = func(binaryPath string) (*semver.Version, error) {
 			if err != nil {
 				return nil, err
 			}
-			return &semver.Version{
-				Major: version.Major,
-				Minor: version.Minor,
-				Patch: version.Patch,
-			}, nil
+			return semver.New(version.Major(), version.Minor(), version.Patch(), "", ""), nil
 		}
 	}
 
@@ -544,8 +540,8 @@ func CouldSetSnapshotCatchupEntries(execPath string) bool {
 		return false
 	}
 	// snapshot-catchup-entries flag was backported in https://github.com/etcd-io/etcd/pull/17808
-	v3_5_14 := semver.Version{Major: 3, Minor: 5, Patch: 14}
-	return v.Compare(v3_5_14) >= 0
+	v3_5_14 := *semver.New(3, 5, 14, "", "")
+	return v.Compare(&v3_5_14) >= 0
 }
 
 func IsSnapshotCatchupEntriesFlagAvailable(execPath string) bool {
@@ -553,5 +549,5 @@ func IsSnapshotCatchupEntriesFlagAvailable(execPath string) bool {
 	if err != nil {
 		return false
 	}
-	return !v.LessThan(version.V3_6)
+	return !v.LessThan(&version.V3_6)
 }

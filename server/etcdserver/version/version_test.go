@@ -20,7 +20,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -127,7 +127,7 @@ func newCluster(lg *zap.Logger, memberCount int, ver semver.Version) *clusterMoc
 		clusterVersion: ver,
 		members:        make([]*memberMock, 0, memberCount),
 	}
-	majorMinVer := semver.Version{Major: ver.Major, Minor: ver.Minor}
+	majorMinVer := *semver.New(ver.Major(), ver.Minor(), 0, "", "")
 	for i := 0; i < memberCount; i++ {
 		m := &memberMock{
 			isRunning:      true,
@@ -210,7 +210,7 @@ type memberMock struct {
 var _ Server = (*memberMock)(nil)
 
 func (m *memberMock) UpdateClusterVersion(version string) {
-	m.cluster.clusterVersion = *semver.New(version)
+	m.cluster.clusterVersion = *semver.MustParse(version)
 }
 
 func (m *memberMock) LinearizableReadNotify(ctx context.Context) error {

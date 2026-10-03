@@ -53,6 +53,7 @@ var (
 	// value should be used, but this is defined as an exported variable
 	// so that tests can set a different segment size.
 	SegmentSizeBytes int64 = 64 * 1000 * 1000 // 64MB
+	openWALFilesFn         = openWALFiles
 
 	ErrMetadataConflict = errors.New("wal: conflicting metadata found")
 	ErrFileNotFound     = errors.New("wal: file not found")
@@ -97,7 +98,7 @@ type WAL struct {
 // Create creates a WAL ready for appending records. The given metadata is
 // recorded at the head of each WAL file, and can be retrieved with ReadAll
 // after the file is Open.
-func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
+func Create(lg *zap.Logger, dirpath string, metadata []byte) (_ *WAL, retErr error) {
 	if Exist(dirpath) {
 		return nil, os.ErrExist
 	}
@@ -135,6 +136,11 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		)
 		return nil, err
 	}
+	defer func() {
+		if retErr != nil {
+			f.Close()
+		}
+	}()
 	if _, err = f.Seek(0, io.SeekEnd); err != nil {
 		lg.Warn(
 			"failed to seek an initial WAL file",
@@ -191,7 +197,6 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 			w.cleanupWAL(lg)
 		}
 	}()
-
 	// directory was renamed; sync parent dir to persist rename
 	pdir, perr := fileutil.OpenDir(filepath.Dir(w.dir))
 	if perr != nil {
@@ -348,6 +353,7 @@ func Open(lg *zap.Logger, dirpath string, snap *walpb.Snapshot) (*WAL, error) {
 		return nil, fmt.Errorf("openAtIndex failed: %w", err)
 	}
 	if w.dirFile, err = fileutil.OpenDir(w.dir); err != nil {
+		w.Close()
 		return nil, fmt.Errorf("fileutil.OpenDir failed: %w", err)
 	}
 	return w, nil
@@ -534,7 +540,7 @@ func (w *WAL) ReadAll() (metadata []byte, state *raftpb.HardState, ents []*raftp
 
 		default:
 			state.Reset()
-			return nil, state, nil, fmt.Errorf("unexpected block type %d", rec.Type)
+			return nil, state, nil, fmt.Errorf("unexpected block type %d", rec.GetType())
 		}
 	}
 
@@ -593,9 +599,45 @@ func (w *WAL) ReadAll() (metadata []byte, state *raftpb.HardState, ents []*raftp
 	return metadata, state, ents, err
 }
 
+func (w *WAL) LatestSnapshotEntry() (*walpb.Snapshot, error) {
+	walSnaps, err := ValidSnapshotEntries(w.lg, w.dir)
+	if err != nil || len(walSnaps) == 0 {
+		return &walpb.Snapshot{}, err
+	}
+
+	return walSnaps[len(walSnaps)-1], nil
+}
+
 // ValidSnapshotEntries returns all the valid snapshot entries in the wal logs in the given directory.
 // Snapshot entries are valid if their index is less than or equal to the most recent committed hardstate.
 func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]*walpb.Snapshot, error) {
+	const maxReadAttempts = 3
+
+	var lastErr error
+	for attempt := 1; attempt <= maxReadAttempts; attempt++ {
+		snaps, err := validSnapshotEntries(lg, walDir)
+		if err == nil {
+			return snaps, nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
+		lastErr = err
+		if attempt < maxReadAttempts {
+			lg.Warn(
+				"retrying WAL snapshot scan after transient file removal",
+				zap.String("wal-dir", walDir),
+				zap.Int("attempt", attempt),
+				zap.Int("max-attempts", maxReadAttempts),
+				zap.Error(err),
+			)
+		}
+	}
+
+	return nil, lastErr
+}
+
+func validSnapshotEntries(lg *zap.Logger, walDir string) ([]*walpb.Snapshot, error) {
 	var snaps []*walpb.Snapshot
 	state := &raftpb.HardState{}
 	var err error
@@ -608,7 +650,7 @@ func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]*walpb.Snapshot, err
 
 	// open wal files in read mode, so that there is no conflict
 	// when the same WAL is opened elsewhere in write mode
-	rs, _, closer, err := openWALFiles(lg, walDir, names, 0, false)
+	rs, _, closer, err := openWALFilesFn(lg, walDir, names, 0, false)
 	if err != nil {
 		return nil, err
 	}
@@ -725,7 +767,7 @@ func Verify(lg *zap.Logger, walDir string, snap *walpb.Snapshot) (*raftpb.HardSt
 		case StateType:
 			pbutil.MustUnmarshalMessage(state, rec.Data)
 		default:
-			return nil, fmt.Errorf("unexpected block type %d", rec.Type)
+			return nil, fmt.Errorf("unexpected block type %d", rec.GetType())
 		}
 	}
 

@@ -35,6 +35,7 @@ const (
 
 	keyClusterID = "cluster_id"
 	keyMemberID  = "member_id"
+	keyLeaderID  = "leader_id"
 	keyRaftTerm  = "raft_term"
 	keyRevision  = "revision"
 	keyID        = "ID"
@@ -72,9 +73,11 @@ func assertHeader(t *testing.T, testGroup *testScenario, tt *testCase, got map[s
 	if testGroup.isHex {
 		assertHexFieldEqual(t, header, keyClusterID, tt.wantHexString)
 		assertHexFieldEqual(t, header, keyMemberID, tt.wantHexString)
+		assertHexFieldEqual(t, header, keyLeaderID, tt.wantHexString)
 	} else {
 		assertNumericFieldEqual(t, header, keyClusterID, tt.wantDecimalNumber)
 		assertNumericFieldEqual(t, header, keyMemberID, tt.wantDecimalNumber)
+		assertNumericFieldEqual(t, header, keyLeaderID, tt.wantDecimalNumber)
 	}
 	assertNumericFieldEqual(t, header, keyRaftTerm, tt.wantDecimalNumber)
 	assertNumericFieldEqual(t, header, keyRevision, tt.wantDecimalNumber)
@@ -191,6 +194,7 @@ func TestMemberAdd(t *testing.T) {
 							MemberId:  tt.number,
 							Revision:  int64(tt.number),
 							RaftTerm:  tt.number,
+							LeaderId:  tt.number,
 						},
 						Member:  &pb.Member{ID: tt.number},
 						Members: []*pb.Member{{ID: tt.number}},
@@ -237,6 +241,7 @@ func TestMemberRemove(t *testing.T) {
 							MemberId:  tt.number,
 							Revision:  int64(tt.number),
 							RaftTerm:  tt.number,
+							LeaderId:  tt.number,
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
@@ -277,6 +282,7 @@ func TestMemberUpdate(t *testing.T) {
 							MemberId:  tt.number,
 							Revision:  int64(tt.number),
 							RaftTerm:  tt.number,
+							LeaderId:  tt.number,
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
@@ -317,6 +323,7 @@ func TestMemberPromote(t *testing.T) {
 							MemberId:  tt.number,
 							Revision:  int64(tt.number),
 							RaftTerm:  tt.number,
+							LeaderId:  tt.number,
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}
@@ -357,6 +364,7 @@ func TestMemberList(t *testing.T) {
 							MemberId:  tt.number,
 							Revision:  int64(tt.number),
 							RaftTerm:  tt.number,
+							LeaderId:  tt.number,
 						},
 						Members: []*pb.Member{{ID: tt.number}},
 					}

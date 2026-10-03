@@ -4,13 +4,64 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.32 (TBC)
+## v3.5.35 (TBC)
+
+### etcd server
+
+- [Fix fsync snap directory when saving a received snapshot db](https://github.com/etcd-io/etcd/pull/22472)
+
+---
+
+## v3.5.34 (2026-09-22)
+
+### etcdctl
+
+- [Fix duplicate `RaftTerm` field in the `endpoint status` output when using `--write-out=fields`](https://github.com/etcd-io/etcd/pull/22219)
+- [fileutil: close locked file handle on os.Remove error in purgeFile](https://github.com/etcd-io/etcd/pull/22457)
+
+### Dependencies
+
+- Compile binaries using [go 1.26.8](https://github.com/etcd-io/etcd/pull/22415).
+- Bump [github.com/gorilla/websocket to v1.5.3](https://github.com/etcd-io/etcd/pull/22366), to address GHSA-w67g-5rqw-f597.
+- Bump [go.opentelemetry.io/otel to v1.44.0 to addrss CVE-2026-41178](https://github.com/etcd-io/etcd/pull/22200).
+- Bump [google.golang.org/grpc to v1.83.2 to address CVE-2026-84303](https://github.com/etcd-io/etcd/pull/22467).
+
+---
+
+## v3.5.33 (2026-07-23)
+
+### etcd server
+
+- Fix [unbounded io.ReadAll on peer lease HTTP handler body](https://github.com/etcd-io/etcd/pull/22161)
+- Fix [the `costTxnReq` ignores nested `RequestTxn` issue](https://github.com/etcd-io/etcd/pull/22167)
+- [Set a ReadHeaderTimeout for client http.Server](https://github.com/etcd-io/etcd/pull/22163)
+- Fix [the security issue where a user granted read permission on one key could receive watch responses for every key starting from that key](https://github.com/etcd-io/etcd/security/advisories/GHSA-xg4h-6gfc-h4m8)
+
+### Package `clientv3`
+
+- Fix [unsynchronized range over leaseCache.entries](https://github.com/etcd-io/etcd/pull/22159)
+
+### package `client/pkg/v3`
+
+- [Set a tlsHandshakeTimeout for tlsListener](https://github.com/etcd-io/etcd/pull/22160). Refer to [GHSA-6vch-q96h-7gc3](https://github.com/etcd-io/etcd/security/advisories/GHSA-6vch-q96h-7gc3) for more details.
+
+### Dependencies
+
+- Compile binaries using [go 1.25.12](https://github.com/etcd-io/etcd/pull/22061).
+- [Bump golang.org/x/net to v0.56.0 to address GO-2026-5942 and golang.org/x/text to v0.39.0 to address GO-2026-5970](https://github.com/etcd-io/etcd/pull/22138)
+- [Bump google.golang.org/grpc to 1.82.1 to address GHSA-hrxh-6v49-42gf](https://github.com/etcd-io/etcd/pull/22153)
+
+---
+
+## v3.5.32 (2026-07-01)
 
 ### etcd server
 
 - Add [`write-only-skip-check` option for `--v2-deprecation` to bypass the v2 content check](https://github.com/etcd-io/etcd/pull/21897)
 - [server: allow non-admin maintenance status](https://github.com/etcd-io/etcd/pull/21815)
 - Fix [websocket authentication with bearer-prefixed auth tokens](https://github.com/etcd-io/etcd/pull/21935).
+- Fix [CRL enforcement bypass on gRPC listener when `--listen-client-http-urls` is configured](https://github.com/etcd-io/etcd/pull/22021), refer to [security/advisories/GHSA-3wh4-j44w-pg92](https://github.com/etcd-io/etcd/security/advisories/GHSA-3wh4-j44w-pg92) for more details.
+- Avoid logging for JWT token for a case of failed parsing ([#21993](https://github.com/etcd-io/etcd/pull/21993)).
 
 ### etcdutl
 

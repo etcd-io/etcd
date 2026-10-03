@@ -51,6 +51,8 @@ type Client interface {
 	HashKV(context context.Context, rev int64) ([]*clientv3.HashKVResponse, error)
 	Health(context context.Context) error
 	Defragment(context context.Context, opts config.DefragOption) error
+	Snapshot(context context.Context, outFile string) error
+	Downgrade(ctx context.Context, action clientv3.DowngradeAction, version string) (*clientv3.DowngradeResponse, error)
 	AlarmList(context context.Context) (*clientv3.AlarmResponse, error)
 	AlarmDisarm(context context.Context, alarmMember *clientv3.AlarmMember) (*clientv3.AlarmResponse, error)
 	Grant(context context.Context, ttl int64) (*clientv3.LeaseGrantResponse, error)

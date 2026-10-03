@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	bboltcmd "go.etcd.io/bbolt/cmd/bbolt/command"
 	"go.etcd.io/etcd/etcdutl/v3/etcdutl"
 )
 
@@ -48,6 +49,7 @@ func init() {
 		etcdutl.NewVersionCommand(),
 		etcdutl.NewCompletionCommand(),
 		etcdutl.NewMigrateCommand(),
+		bboltcmd.NewRootCommand(),
 	)
 }
 

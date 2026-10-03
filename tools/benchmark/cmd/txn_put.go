@@ -53,6 +53,8 @@ func init() {
 
 	txnPutCmd.Flags().IntVar(&txnPutTotal, "total", 10000, "Total number of txn requests")
 	txnPutCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
+	txnPutCmd.Flags().BoolVar(&defrag, "defrag", false, "'true' to trigger a one-time defragmentation at approximately --defrag-trigger-percent of --total requests")
+	txnPutCmd.Flags().IntVar(&defragTriggerPercent, "defrag-trigger-percent", 40, "Percentage of --total requests at which --defrag triggers defragmentation")
 }
 
 func txnPutFunc(cmd *cobra.Command, _ []string) {
@@ -101,6 +103,7 @@ func txnPutFunc(cmd *cobra.Command, _ []string) {
 				ops[j] = v3.OpPut(string(k), v)
 			}
 			requests <- ops
+			maybeTriggerDefrag(clients, i, txnPutTotal)
 		}
 		close(requests)
 	}()
@@ -110,4 +113,5 @@ func txnPutFunc(cmd *cobra.Command, _ []string) {
 	close(r.Results())
 	bar.Finish()
 	fmt.Println(<-rc)
+	printDefragDuration()
 }

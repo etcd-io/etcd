@@ -17,7 +17,7 @@ package etcdserver
 import (
 	"testing"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/version"
@@ -39,7 +39,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 				"c": {Server: "2.1.0", Cluster: "2.1.0"},
 			},
 			0xa,
-			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.0.0")),
+			semver.MustParse("2.0.0"), semver.MustParse("2.0.0"),
 			false,
 		},
 		{
@@ -49,7 +49,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 				"c": {Server: "2.1.0", Cluster: "2.1.0"},
 			},
 			0xa,
-			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.0.0"), semver.MustParse("2.1.0"),
 			true,
 		},
 		// too high
@@ -60,7 +60,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 				"c": {Server: "2.0.0", Cluster: "2.0.0"},
 			},
 			0xa,
-			semver.Must(semver.NewVersion("2.1.0")), semver.Must(semver.NewVersion("2.2.0")),
+			semver.MustParse("2.1.0"), semver.MustParse("2.2.0"),
 			false,
 		},
 		// cannot get b's version, expect ok
@@ -71,7 +71,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 				"c": {Server: "2.1.0", Cluster: "2.1.0"},
 			},
 			0xa,
-			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.0.0"), semver.MustParse("2.1.0"),
 			true,
 		},
 		// cannot get b and c's version, expect not ok
@@ -82,7 +82,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 				"c": nil,
 			},
 			0xa,
-			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.0.0"), semver.MustParse("2.1.0"),
 			false,
 		},
 	}
@@ -103,13 +103,13 @@ func TestConvertToClusterVersion(t *testing.T) {
 		hasError    bool
 	}{
 		{
-			"Succeeded: Major.Minor.Patch",
+			"Succeeded: Major.Minor().Patch()",
 			"3.4.2",
 			"3.4.0",
 			false,
 		},
 		{
-			"Succeeded: Major.Minor",
+			"Succeeded: Major.Minor()",
 			"3.4",
 			"3.4.0",
 			false,
@@ -139,9 +139,9 @@ func TestConvertToClusterVersion(t *testing.T) {
 }
 
 func TestDecideAllowedVersionRange(t *testing.T) {
-	minClusterV := semver.Must(semver.NewVersion(version.MinClusterVersion))
-	localV := semver.Must(semver.NewVersion(version.Version))
-	localV = &semver.Version{Major: localV.Major, Minor: localV.Minor}
+	minClusterV := semver.MustParse(version.MinClusterVersion)
+	localV := semver.MustParse(version.Version)
+	localV = semver.New(localV.Major(), localV.Minor(), 0, "", "")
 
 	tests := []struct {
 		name             string
@@ -152,8 +152,8 @@ func TestDecideAllowedVersionRange(t *testing.T) {
 		{
 			"When cluster enables downgrade",
 			true,
-			&semver.Version{Major: localV.Major, Minor: localV.Minor + 1},
-			&semver.Version{Major: localV.Major, Minor: localV.Minor + 1},
+			semver.New(localV.Major(), localV.Minor()+1, 0, "", ""),
+			semver.New(localV.Major(), localV.Minor()+1, 0, "", ""),
 		},
 		{
 			"When cluster disables downgrade",
@@ -166,11 +166,11 @@ func TestDecideAllowedVersionRange(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			minV, maxV := allowedVersionRange(tt.downgradeEnabled)
-			if !minV.Equal(*tt.expectedMinV) {
+			if !minV.Equal(tt.expectedMinV) {
 				t.Errorf("Expected minV is %v; Got %v", tt.expectedMinV.String(), minV.String())
 			}
 
-			if !maxV.Equal(*tt.expectedMaxV) {
+			if !maxV.Equal(tt.expectedMaxV) {
 				t.Errorf("Expected maxV is %v; Got %v", tt.expectedMaxV.String(), maxV.String())
 			}
 		})

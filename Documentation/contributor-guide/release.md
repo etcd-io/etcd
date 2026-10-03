@@ -24,7 +24,7 @@ All release version numbers follow the format of [semantic versioning 2.0.0](htt
 
 - Ensure the relevant [milestone](https://github.com/etcd-io/etcd/milestones) on GitHub is complete. All referenced issues should be closed or moved elsewhere.
 - Ensure the latest [upgrade documentation](https://etcd.io/docs/next/upgrades) is available.
-- Bump [hardcoded MinClusterVerion in the repository](https://github.com/etcd-io/etcd/blob/v3.4.15/version/version.go#L29), if necessary.
+- Bump [hardcoded MinClusterVersion in the repository](https://github.com/etcd-io/etcd/blob/v3.4.15/version/version.go#L28), if necessary.
 - Add feature capability maps for the new version, if necessary.
 
 ### Patch version release
@@ -130,7 +130,7 @@ On the day of the release:
 6. Update the changelog to reflect the correct release date.
 7. Paste the release link to the issue raised in Step 1 and close the issue.
 8. Raise a follow-up `kubernetes/org` pull request to return the GitHub release team to empty, least privilege state.
-9. Crease a new stable branch through `git push origin release-${VERSION_MAJOR}.${VERSION_MINOR}` if this is a new major or minor stable release.
+9. Create a new stable branch through `git push origin release-${VERSION_MAJOR}.${VERSION_MINOR}` if this is a new major or minor stable release.
 10. Re-generate a new password for quay.io if needed (e.g. shared to a contributor who isn't in the release team, and we should rotate the password at least once every 3 months).
 11. Bump the new etcd release in Kubernetes, refer to [Bump etcd Version in Kubernetes](bump_etcd_version_k8s.md).
 

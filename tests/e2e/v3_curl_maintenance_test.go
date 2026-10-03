@@ -68,7 +68,9 @@ func testCurlV3MaintenanceDefragment(cx ctlCtx) {
 		Endpoint: "/v3/maintenance/defragment",
 		Value:    "{}",
 		Expected: expect.ExpectedResponse{
-			Value: "{}",
+			// DefragmentResponse carries a populated response header
+			// (including leader_id), so the body is no longer "{}".
+			Value: `"leader_id"`,
 		},
 	}), "failed post maintenance defragment request")
 }
@@ -124,7 +126,8 @@ func testCurlV3MaintenanceSnapshot(cx ctlCtx) {
 		Endpoint: "/v3/maintenance/snapshot",
 		Value:    "{}",
 		Expected: expect.ExpectedResponse{
-			Value: `"result":{"blob":`,
+			Value:         `"result":\{"header":\{[^}]*"leader_id":"[1-9][0-9]*"[^}]*\},"blob":`,
+			IsRegularExpr: true,
 		},
 	}), "failed post maintenance snapshot request")
 }

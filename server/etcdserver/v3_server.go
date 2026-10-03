@@ -729,6 +729,7 @@ func (s *EtcdServer) newHeader() *pb.ResponseHeader {
 		MemberId:  uint64(s.MemberID()),
 		Revision:  s.KV().Rev(),
 		RaftTerm:  s.Term(),
+		LeaderId:  uint64(s.Leader()),
 	}
 }
 

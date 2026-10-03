@@ -1005,6 +1005,8 @@ func (b *fakeBackend) ForceCommit()                                             
 func (b *fakeBackend) Defrag() error                                              { return nil }
 func (b *fakeBackend) Close() error                                               { return nil }
 func (b *fakeBackend) SetTxPostLockInsideApplyHook(func())                        {}
+func (b *fakeBackend) LockForSafeRangeDelete()                                    {}
+func (b *fakeBackend) UnlockForSafeRangeDelete()                                  {}
 
 type indexGetResp struct {
 	rev     Revision

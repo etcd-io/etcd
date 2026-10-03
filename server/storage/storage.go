@@ -15,10 +15,9 @@
 package storage
 
 import (
-	"errors"
 	"sync"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -65,15 +64,8 @@ func (st *storage) SaveSnap(snap *raftpb.Snapshot) error {
 		Term:      snap.Metadata.Term,
 		ConfState: snap.Metadata.GetConfState(),
 	}
-	// save the snapshot file before writing the snapshot to the wal.
-	// This makes it possible for the snapshot file to become orphaned, but prevents
-	// a WAL snapshot entry from having no corresponding snapshot file.
-	err := st.s.SaveSnap(snap)
-	if err != nil {
-		return err
-	}
-	// gofail: var raftBeforeWALSaveSnaphot struct{}
 
+	// gofail: var raftBeforeWALSaveSnaphot struct{}
 	return st.w.SaveSnapshot(&walsnap)
 }
 
@@ -110,18 +102,12 @@ func (st *storage) Sync() error {
 func (st *storage) MinimalEtcdVersion() *semver.Version {
 	st.mux.Lock()
 	defer st.mux.Unlock()
-	walsnap := walpb.Snapshot{}
 
-	sn, err := st.s.Load()
-	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
+	walsnap, err := st.w.LatestSnapshotEntry()
+	if err != nil {
 		panic(err)
 	}
-	if sn != nil {
-		walsnap.Index = sn.Metadata.Index
-		walsnap.Term = sn.Metadata.Term
-		walsnap.ConfState = sn.Metadata.GetConfState()
-	}
-	w, err := st.w.Reopen(st.lg, &walsnap)
+	w, err := st.w.Reopen(st.lg, walsnap)
 	if err != nil {
 		panic(err)
 	}

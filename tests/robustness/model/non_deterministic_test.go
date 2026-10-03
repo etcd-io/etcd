@@ -15,6 +15,7 @@
 package model
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -330,7 +331,7 @@ func TestModelNonDeterministic(t *testing.T) {
 			model := NonDeterministicModel(keys)
 			state := model.Init()
 			for _, op := range tc.operations {
-				ok, newState := model.Step(state, op.req, op.resp)
+				ok, newState := model.StepContext(context.Background(), state, op.req, op.resp)
 				if ok != !op.expectFailure {
 					t.Logf("state: %v", state)
 					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, model.DescribeOperation(op.req, op.resp))

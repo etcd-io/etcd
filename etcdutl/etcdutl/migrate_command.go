@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
@@ -87,7 +87,7 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse target version: %w", err)
 	}
-	if c.targetVersion.LessThan(version.V3_5) {
+	if c.targetVersion.LessThan(&version.V3_5) {
 		return nil, fmt.Errorf(`target version %q not supported. Minimal "3.5"`, storageVersionToString(c.targetVersion))
 	}
 
@@ -106,7 +106,7 @@ func (c *migrateConfig) finalize() error {
 	walPath := datadir.ToWALDir(c.dataDir)
 	walSnap, err := getLatestWALSnap(c.lg, c.dataDir)
 	if err != nil {
-		return fmt.Errorf("failed to get the lastest snapshot: %w", err)
+		return fmt.Errorf("failed to get the latest snapshot: %w", err)
 	}
 	w, err := wal.OpenForRead(c.lg, walPath, walSnap)
 	if err != nil {
@@ -160,7 +160,7 @@ func migrateForce(lg *zap.Logger, tx backend.BatchTx, target *semver.Version) {
 	tx.LockOutsideApply()
 	defer tx.Unlock()
 	// Storage version is only supported since v3.6
-	if target.LessThan(version.V3_6) {
+	if target.LessThan(&version.V3_6) {
 		schema.UnsafeClearStorageVersion(tx)
 		lg.Warn("forcefully cleared storage version")
 	} else {
@@ -170,5 +170,5 @@ func migrateForce(lg *zap.Logger, tx backend.BatchTx, target *semver.Version) {
 }
 
 func storageVersionToString(ver *semver.Version) string {
-	return fmt.Sprintf("%d.%d", ver.Major, ver.Minor)
+	return fmt.Sprintf("%d.%d", ver.Major(), ver.Minor())
 }

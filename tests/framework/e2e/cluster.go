@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -707,7 +707,7 @@ func (epc *EtcdProcessCluster) MinServerVersion() (*semver.Version, error) {
 			return nil, fmt.Errorf("failed to get version from member %s binary: %w", member.Config().Name, err)
 		}
 
-		if minVersion == nil || ver.LessThan(*minVersion) {
+		if minVersion == nil || ver.LessThan(minVersion) {
 			minVersion = ver
 		}
 	}

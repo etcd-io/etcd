@@ -1,8 +1,8 @@
 // This is a generated file. Do not edit directly.
 
-go 1.26
+go 1.27
 
-toolchain go1.26.4
+toolchain go1.27.1
 
 use (
 	.
@@ -15,6 +15,7 @@ use (
 	./pkg
 	./server
 	./tests
+	./tests/antithesis/pkg
 	./tools/mod
 	./tools/rw-heatmaps
 	./tools/testgrid-analysis

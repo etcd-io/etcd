@@ -210,7 +210,6 @@ func (p *fieldsPrinter) EndpointStatus(eps []epStatus) {
 		fmt.Println(`"Leader" :`, resp.GetLeader())
 		fmt.Println(`"IsLearner" :`, resp.GetIsLearner())
 		fmt.Println(`"RaftIndex" :`, resp.GetRaftIndex())
-		fmt.Println(`"RaftTerm" :`, resp.GetRaftTerm())
 		fmt.Println(`"RaftAppliedIndex" :`, resp.GetRaftAppliedIndex())
 		fmt.Println(`"Errors" :`, resp.GetErrors())
 		fmt.Printf("\"Endpoint\" : %q\n", ep.Ep)

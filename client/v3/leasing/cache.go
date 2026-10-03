@@ -93,14 +93,7 @@ func (lc *leaseCache) LockWriteOps(ops []v3.Op) (ret []chan<- struct{}) {
 				ret = append(ret, wc)
 			}
 		} else {
-			for k := range lc.entries {
-				if !inRange(k, key, end) {
-					continue
-				}
-				if wc, _ := lc.Lock(k); wc != nil {
-					ret = append(ret, wc)
-				}
-			}
+			ret = append(ret, lc.LockRange(key, end)...)
 		}
 	}
 	return ret

@@ -64,7 +64,7 @@ The most common API documentation you'll need can be found here:
 
 The easiest way to get etcd is to use one of the pre-built release binaries which are available for OSX, Linux, Windows, and Docker on the [release page][github-release].
 
-For more installation guides, please check out [play.etcd.io](http://play.etcd.io) and [operating etcd](https://etcd.io/docs/latest/op-guide).
+For more installation guides, please check out [operating etcd](https://etcd.io/docs/latest/op-guide).
 
 [github-release]: https://github.com/etcd-io/etcd/releases
 
@@ -96,7 +96,6 @@ etcdctl get mykey
 
 etcd is now running and serving client requests. For more, please check out:
 
-* [Interactive etcd playground](http://play.etcd.io)
 * [Animated quick demo](https://etcd.io/docs/latest/demo)
 
 ### etcd TCP ports

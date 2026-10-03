@@ -1571,7 +1571,7 @@
         "DESCEND"
       ],
       "default": "NONE",
-      "title": "- NONE: default, no sorting\n - ASCEND: lowest target value first\n - DESCEND: highest target value first"
+      "description": "- NONE: default, no sorting\n - ASCEND: lowest target value first\n - DESCEND: highest target value first"
     },
     "RangeRequestSortTarget": {
       "type": "string",
@@ -1683,7 +1683,7 @@
         "CORRUPT"
       ],
       "default": "NONE",
-      "title": "- NONE: default, used to query if any alarm is active\n - NOSPACE: space quota is exhausted\n - CORRUPT: kv store corruption detected"
+      "description": "- NONE: default, used to query if any alarm is active\n - NOSPACE: space quota is exhausted\n - CORRUPT: kv store corruption detected"
     },
     "etcdserverpbAuthDisableRequest": {
       "type": "object"
@@ -2745,6 +2745,11 @@
           "type": "string",
           "format": "uint64",
           "description": "raft_term is the raft term when the request was applied."
+        },
+        "leader_id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "leader_id is the member ID of the raft leader that the responding\nmember believes is the current leader, or 0 if the responding member\ndoes not know who the leader is."
         }
       }
     },

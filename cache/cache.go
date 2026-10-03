@@ -317,7 +317,7 @@ func (c *Cache) getWatchLoop() {
 		if err := ctx.Err(); err != nil {
 			return
 		}
-		if err := c.getWatch(); err != nil {
+		if err := c.getWatch(); err != nil { //nolint:staticcheck // SA4023: Related diagnostic for the defensive nil check in getWatchLoop.
 			fmt.Printf("getWatch failed, will retry after %v: %v\n", backoff, err)
 		}
 		select {
@@ -328,7 +328,7 @@ func (c *Cache) getWatchLoop() {
 	}
 }
 
-func (c *Cache) getWatch() error {
+func (c *Cache) getWatch() error { //nolint:staticcheck // SA4023: never returns nil, defensive nil check in getWatchLoop.
 	getResp, err := c.get(c.internalCtx)
 	if err != nil {
 		return err

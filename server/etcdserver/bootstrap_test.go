@@ -36,7 +36,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -273,19 +272,6 @@ func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotI
 
 	confState := raftpb.ConfState{
 		Voters: []uint64{1, 2, 3},
-	}
-
-	// create snapshot file
-	ss := snap.New(cfg.Logger, cfg.SnapDir())
-	if err = ss.SaveSnap(&raftpb.Snapshot{
-		Data: []byte("{}"),
-		Metadata: &raftpb.SnapshotMetadata{
-			ConfState: &confState,
-			Index:     &snapshotIndex,
-			Term:      &snapshotTerm,
-		},
-	}); err != nil {
-		return err
 	}
 
 	// create snapshot db file: "%016x.snap.db"
