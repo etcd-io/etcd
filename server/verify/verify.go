@@ -138,6 +138,9 @@ func validateWAL(cfg Config) (*walpb.Snapshot, *raftpb.HardState, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	if len(walSnaps) == 0 {
+		return nil, nil, fmt.Errorf("no valid snapshot entries found in WAL directory %q", walDir)
+	}
 
 	snapshot := walSnaps[len(walSnaps)-1]
 	hardstate, err := wal2.Verify(cfg.Logger, walDir, snapshot)
