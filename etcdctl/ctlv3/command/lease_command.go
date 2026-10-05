@@ -127,7 +127,9 @@ func leaseTimeToLiveCommandFunc(cmd *cobra.Command, args []string) {
 	if timeToLiveKeys {
 		opts = append(opts, v3.WithAttachedKeys())
 	}
-	resp, rerr := mustClientFromCmd(cmd).TimeToLive(context.TODO(), leaseFromArgs(args[0]), opts...)
+	ctx, cancel := commandCtx(cmd)
+	resp, rerr := mustClientFromCmd(cmd).TimeToLive(ctx, leaseFromArgs(args[0]), opts...)
+	cancel()
 	if rerr != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, rerr)
 	}
@@ -146,7 +148,9 @@ func NewLeaseListCommand() *cobra.Command {
 
 // leaseListCommandFunc executes the "lease list" command.
 func leaseListCommandFunc(cmd *cobra.Command, args []string) {
-	resp, rerr := mustClientFromCmd(cmd).Leases(context.TODO())
+	ctx, cancel := commandCtx(cmd)
+	resp, rerr := mustClientFromCmd(cmd).Leases(ctx)
+	cancel()
 	if rerr != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, rerr)
 	}
@@ -178,7 +182,9 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 	id := leaseFromArgs(args[0])
 
 	if leaseKeepAliveOnce {
-		respc, kerr := mustClientFromCmd(cmd).KeepAliveOnce(context.TODO(), id)
+		ctx, cancel := commandCtx(cmd)
+		respc, kerr := mustClientFromCmd(cmd).KeepAliveOnce(ctx, id)
+		cancel()
 		if kerr != nil {
 			cobrautl.ExitWithError(cobrautl.ExitBadConnection, kerr)
 		}
@@ -186,7 +192,7 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	respc, kerr := mustClientFromCmd(cmd).KeepAlive(context.TODO(), id)
+	respc, kerr := mustClientFromCmd(cmd).KeepAlive(context.Background(), id)
 	if kerr != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, kerr)
 	}
