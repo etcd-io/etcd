@@ -7,7 +7,7 @@ toolchain go1.27.1
 require (
 	github.com/alexfalkowski/gocovmerge v1.11.0
 	github.com/appscodelabs/license-bill-of-materials v0.0.0-20220707232035-6018e0c5287c
-	github.com/cloudflare/cfssl v1.6.5
+	github.com/cloudflare/cfssl v1.7.0
 	github.com/golangci/golangci-lint/v2 v2.14.0
 	github.com/google/yamlfmt v0.21.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0
