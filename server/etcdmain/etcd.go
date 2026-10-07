@@ -40,7 +40,29 @@ var (
 	dirEmpty  = dirType("empty")
 )
 
+var (
+	ErrGeneralError  = errorspkg.New("General error")
+	ErrArgumentError = errorspkg.New("Bad argument")
+)
+
 func startEtcdOrProxyV2(args []string) {
+	err := startEtcdOrProxyV2Error(args)
+	switch {
+	case err == nil:
+		osutil.Exit(0)
+	case errorspkg.Is(err, ErrGeneralError):
+		fmt.Println(err)
+		os.Exit(1)
+	case errorspkg.Is(err, ErrArgumentError):
+		fmt.Println(err)
+		os.Exit(2)
+	default:
+		fmt.Println(err)
+		os.Exit(3)
+	}
+}
+
+func startEtcdOrProxyV2Error(args []string) error {
 	grpc.EnableTracing = false
 
 	cfg := newConfig()
@@ -56,17 +78,15 @@ func startEtcdOrProxyV2(args []string) {
 		// use this logger
 		lg, zapError = logutil.CreateDefaultZapLogger(zap.InfoLevel)
 		if zapError != nil {
-			fmt.Printf("error creating zap logger %v", zapError)
-			os.Exit(1)
+			return fmt.Errorf("%w: error creating zap logger %v", ErrGeneralError, zapError)
 		}
 	}
 	lg.Info("Running: ", zap.Strings("args", args))
 	if err != nil {
-		lg.Warn("failed to verify flags", zap.Error(err))
 		if errorspkg.Is(err, embed.ErrUnsetAdvertiseClientURLsFlag) {
-			lg.Warn("advertise client URLs are not set", zap.Error(err))
+			return fmt.Errorf("%w: advertise client URLs are not set: %v", ErrArgumentError, err)
 		}
-		os.Exit(1)
+		return fmt.Errorf("%w: failed to verify flags: %v", ErrArgumentError, err)
 	}
 
 	cfg.ec.SetupGlobalLoggers()
@@ -100,7 +120,10 @@ func startEtcdOrProxyV2(args []string) {
 	var stopped <-chan struct{}
 	var errc <-chan error
 
-	which := identifyDataDirOrDie(cfg.ec.GetLogger(), cfg.ec.Dir)
+	which, err := identifyDataDir(cfg.ec.GetLogger(), cfg.ec.Dir)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrGeneralError, err)
+	}
 	if which != dirEmpty {
 		lg.Info(
 			"server has already been initialized",
@@ -111,12 +134,9 @@ func startEtcdOrProxyV2(args []string) {
 		case dirMember:
 			stopped, errc, err = startEtcd(&cfg.ec)
 		case dirProxy:
-			lg.Panic("v2 http proxy has already been deprecated in 3.6", zap.String("dir-type", string(which)))
+			return fmt.Errorf("%w: v2 http proxy has already been deprecated in 3.6", ErrGeneralError)
 		default:
-			lg.Panic(
-				"unknown directory type",
-				zap.String("dir-type", string(which)),
-			)
+			return fmt.Errorf("%w: unknown directory type %s", ErrGeneralError, string(which))
 		}
 	} else {
 		lg.Info(
@@ -130,19 +150,10 @@ func startEtcdOrProxyV2(args []string) {
 	if err != nil {
 		var derr *errors.DiscoveryError
 		if errorspkg.As(err, &derr) {
-			lg.Warn(
-				"failed to bootstrap; discovery token was already used",
-				zap.String("discovery-token", cfg.ec.DiscoveryCfg.Token),
-				zap.Strings("discovery-endpoints", cfg.ec.DiscoveryCfg.Endpoints),
-				zap.Error(err),
-			)
-			lg.Warn("do not reuse discovery token; generate a new one to bootstrap a cluster")
-
-			os.Exit(1)
+			return fmt.Errorf("%w: failed to bootstrap; discovery token was already used: %v", ErrGeneralError, err)
 		}
 
 		if strings.Contains(err.Error(), "include") && strings.Contains(err.Error(), "--initial-cluster") {
-			lg.Warn("failed to start", zap.Error(err))
 			if cfg.ec.InitialCluster == cfg.ec.InitialClusterFromName(cfg.ec.Name) {
 				lg.Warn("forgot to set --initial-cluster?")
 			}
@@ -152,9 +163,9 @@ func startEtcdOrProxyV2(args []string) {
 			if cfg.ec.InitialCluster == cfg.ec.InitialClusterFromName(cfg.ec.Name) && len(cfg.ec.DiscoveryCfg.Endpoints) == 0 {
 				lg.Warn("V3 discovery settings (i.e., --discovery-token, --discovery-endpoints) are not set")
 			}
-			os.Exit(1)
+			return fmt.Errorf("%w: failed to start: %v", ErrArgumentError, err)
 		}
-		lg.Fatal("discovery failed", zap.Error(err))
+		return fmt.Errorf("%w: discovery failed: %v", ErrGeneralError, err)
 	}
 
 	osutil.HandleInterrupts(lg)
@@ -169,11 +180,11 @@ func startEtcdOrProxyV2(args []string) {
 	select {
 	case lerr := <-errc:
 		// fatal out on listener errors
-		lg.Fatal("listener failed", zap.Error(lerr))
+		return fmt.Errorf("%w: listener failed: %v", ErrGeneralError, lerr)
 	case <-stopped:
 	}
 
-	osutil.Exit(0)
+	return nil
 }
 
 // startEtcd runs StartEtcd in addition to hooks needed for standalone etcd.
@@ -190,15 +201,15 @@ func startEtcd(cfg *embed.Config) (<-chan struct{}, <-chan error, error) {
 	return e.Server.StopNotify(), e.Err(), nil
 }
 
-// identifyDataDirOrDie returns the type of the data dir.
-// Dies if the datadir is invalid.
-func identifyDataDirOrDie(lg *zap.Logger, dir string) dirType {
+// identifyDataDir returns the type of the data dir.
+// Returns an error if the datadir is invalid.
+func identifyDataDir(lg *zap.Logger, dir string) (dirType, error) {
 	names, err := fileutil.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return dirEmpty
+			return dirEmpty, nil
 		}
-		lg.Fatal("failed to list data directory", zap.String("dir", dir), zap.Error(err))
+		return dirEmpty, fmt.Errorf("failed to list data directory: %w", err)
 	}
 
 	var m, p bool
@@ -218,18 +229,18 @@ func identifyDataDirOrDie(lg *zap.Logger, dir string) dirType {
 	}
 
 	if m && p {
-		lg.Fatal("invalid datadir; both member and proxy directories exist")
+		return dirEmpty, errorspkg.New("invalid datadir; both member and proxy directories exist")
 	}
 	if m {
-		return dirMember
+		return dirMember, nil
 	}
 	if p {
-		return dirProxy
+		return dirProxy, nil
 	}
-	return dirEmpty
+	return dirEmpty, nil
 }
 
-func checkSupportArch() {
+func checkSupportArch() error {
 	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if err != nil {
 		panic(err)
@@ -238,16 +249,15 @@ func checkSupportArch() {
 	// The ${VERSION} is the etcd version, e.g. v3.5, v3.6 etc.
 	switch runtime.GOARCH {
 	case "amd64", "arm64", "ppc64le", "s390x":
-		return
+		return nil
 	}
 	// unsupported arch only configured via environment variable
 	// so unset here to not parse through flag
 	defer os.Unsetenv("ETCD_UNSUPPORTED_ARCH")
 	if env, ok := os.LookupEnv("ETCD_UNSUPPORTED_ARCH"); ok && env == runtime.GOARCH {
 		lg.Info("running etcd on unsupported architecture since ETCD_UNSUPPORTED_ARCH is set", zap.String("arch", env))
-		return
+		return nil
 	}
 
-	lg.Error("Refusing to run etcd on unsupported architecture since ETCD_UNSUPPORTED_ARCH is not set", zap.String("arch", runtime.GOARCH))
-	os.Exit(1)
+	return fmt.Errorf("Refusing to run etcd on unsupported architecture since ETCD_UNSUPPORTED_ARCH is not set: %s", runtime.GOARCH)
 }

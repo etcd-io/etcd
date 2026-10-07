@@ -23,7 +23,10 @@ import (
 )
 
 func Main(args []string) {
-	checkSupportArch()
+	if err := checkSupportArch(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	if len(args) > 1 {
 		cmd := args[1]
