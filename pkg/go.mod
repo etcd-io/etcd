@@ -6,7 +6,7 @@ toolchain go1.27.1
 
 require (
 	github.com/creack/pty v1.1.24
-	github.com/dustin/go-humanize v1.0.1
+	github.com/dustin/go-humanize v1.1.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1
@@ -20,7 +20,6 @@ require (
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	go.opentelemetry.io/otel v1.46.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
