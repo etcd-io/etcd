@@ -35,3 +35,5 @@ hack/tls-setup/certs
 /tools/benchmark/benchmark
 /out
 /etcd-dump-logs
+config.bat
+node_modules
