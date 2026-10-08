@@ -302,6 +302,132 @@ func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 	}
 }
 
+func TestProcessMessagesKeepsReadyOrder(t *testing.T) {
+	r := newRaftNode(raftNodeConfig{
+		lg:          zaptest.NewLogger(t),
+		isIDRemoved: func(id uint64) bool { return id == 5 },
+		Node:        newNopReadyNode(),
+		storage:     mockstorage.NewStorageRecorder(""),
+		raftStorage: raft.NewMemoryStorage(),
+		transport:   newNopTransporter(),
+	})
+
+	const (
+		lead  = uint64(1)
+		peer2 = uint64(2)
+		peer3 = uint64(3)
+		peer5 = uint64(5)
+	)
+	app := func(to, index uint64) *raftpb.Message {
+		return &raftpb.Message{
+			Type:  raftpb.MsgApp.Enum(),
+			From:  new(lead),
+			To:    new(to),
+			Term:  new(uint64(1)),
+			Index: new(index),
+		}
+	}
+	resp := func(index uint64) *raftpb.Message {
+		return &raftpb.Message{
+			Type:  raftpb.MsgAppResp.Enum(),
+			From:  new(peer2),
+			To:    new(lead),
+			Term:  new(uint64(1)),
+			Index: new(index),
+		}
+	}
+	type msgFields struct {
+		typ   raftpb.MessageType
+		to    uint64
+		index uint64
+	}
+	snapshot := func(ms []*raftpb.Message) []msgFields {
+		out := make([]msgFields, len(ms))
+		for i, m := range ms {
+			out[i] = msgFields{typ: m.GetType(), to: m.GetTo(), index: m.GetIndex()}
+		}
+		return out
+	}
+	unchanged := func(t *testing.T, ms []*raftpb.Message, before []msgFields) {
+		t.Helper()
+		if len(ms) != len(before) {
+			t.Fatalf("input len=%d, want %d", len(ms), len(before))
+		}
+		for i, m := range ms {
+			if m.GetType() != before[i].typ || m.GetTo() != before[i].to || m.GetIndex() != before[i].index {
+				t.Fatalf("input %d mutated: type=%s to=%d index=%d, was type=%s to=%d index=%d",
+					i, m.GetType(), m.GetTo(), m.GetIndex(), before[i].typ, before[i].to, before[i].index)
+			}
+		}
+	}
+
+	t.Run("MsgApp", func(t *testing.T) {
+		ms := []*raftpb.Message{
+			app(peer2, 10),
+			app(peer2, 11),
+			app(peer2, 12),
+			app(peer3, 10),
+			app(peer5, 10),
+		}
+		before := snapshot(ms)
+		got := r.processMessages(ms)
+		want := []*raftpb.Message{ms[0], ms[1], ms[2], ms[3]}
+		if len(got) != len(want) {
+			t.Fatalf("len=%d, want %d", len(got), len(want))
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("got[%d] is not the Ready pointer", i)
+			}
+		}
+		unchanged(t, ms, before)
+	})
+
+	t.Run("MsgAppResp", func(t *testing.T) {
+		ms := []*raftpb.Message{
+			resp(1),
+			app(peer2, 10),
+			resp(2),
+			resp(3),
+		}
+		before := snapshot(ms)
+		got := r.processMessages(ms)
+		want := []*raftpb.Message{ms[1], ms[3]}
+		if len(got) != len(want) {
+			t.Fatalf("len=%d, want %d", len(got), len(want))
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("got[%d] is not the Ready pointer", i)
+			}
+		}
+		unchanged(t, ms, before)
+	})
+
+	t.Run("mixed", func(t *testing.T) {
+		ms := []*raftpb.Message{
+			app(peer2, 10),
+			app(peer2, 11),
+			app(peer2, 12),
+			resp(1),
+			resp(2),
+			app(peer5, 10),
+		}
+		before := snapshot(ms)
+		got := r.processMessages(ms)
+		want := []*raftpb.Message{ms[0], ms[1], ms[2], ms[4]}
+		if len(got) != len(want) {
+			t.Fatalf("len=%d, want %d", len(got), len(want))
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("got[%d] is not the Ready pointer", i)
+			}
+		}
+		unchanged(t, ms, before)
+	})
+}
+
 // TestExpvarWithNoRaftStatus to test that none of the expvars that get added during init panic.
 // This matters if another package imports etcdserver, doesn't use it, but does use expvars.
 func TestExpvarWithNoRaftStatus(t *testing.T) {
