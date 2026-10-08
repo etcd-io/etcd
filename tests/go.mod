@@ -27,7 +27,7 @@ require (
 	github.com/olekukonko/tablewriter v1.1.5
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.3
-	github.com/prometheus/common v0.71.0
+	github.com/prometheus/common v0.72.0
 	github.com/soheilhy/cmux v0.1.5
 	github.com/stretchr/testify v1.12.1
 	go.etcd.io/bbolt v1.5.0
