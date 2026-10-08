@@ -69,6 +69,28 @@ var (
 			{Choice: Put, Weight: 40},
 		},
 	}
+	// EtcdPutSingleKeyWatch mirrors EtcdPut but watches a single key non-recursively,
+	// providing coverage for etcd's non-recursive watch path. This lives in the generic
+	// etcd profile because Kubernetes does not meaningfully issue non-recursive watches
+	// to etcd.
+	EtcdPutSingleKeyWatch Traffic = etcdTraffic{
+		keyCount:       10,
+		leaseTTL:       DefaultLeaseTTL,
+		singleKeyWatch: true,
+		// Please keep the sum of weights equal 100.
+		requests: []random.ChoiceWeight[etcdRequestType]{
+			{Choice: Get, Weight: 15},
+			{Choice: List, Weight: 4},
+			{Choice: ListKeyOnly, Weight: 4},
+			{Choice: ListStream, Weight: 4},
+			{Choice: ListStreamKeyOnly, Weight: 3},
+			{Choice: StaleGet, Weight: 10},
+			{Choice: StaleList, Weight: 5},
+			{Choice: StaleListStream, Weight: 5},
+			{Choice: MultiOpTxn, Weight: 10},
+			{Choice: Put, Weight: 40},
+		},
+	}
 	EtcdDelete Traffic = etcdTraffic{
 		keyCount: 10,
 		leaseTTL: DefaultLeaseTTL,
@@ -84,6 +106,9 @@ type etcdTraffic struct {
 	keyCount int
 	requests []random.ChoiceWeight[etcdRequestType]
 	leaseTTL int64
+	// singleKeyWatch makes RunWatchLoop issue a non-recursive (single-key) watch
+	// instead of a recursive prefix watch, to exercise etcd's non-recursive path.
+	singleKeyWatch bool
 }
 
 func (t etcdTraffic) ExpectUniqueRevision() bool {
@@ -163,7 +188,8 @@ func (t etcdTraffic) RunKeyValueLoop(ctx context.Context, c *client.RecordingCli
 
 func (t etcdTraffic) RunWatchLoop(ctx context.Context, c *client.RecordingClient, p RunWatchLoopParam) {
 	runWatchLoop(ctx, c, p, watchLoopConfig{
-		key: p.KeyStore.GetPrefix(),
+		key:       p.KeyStore.GetPrefix(),
+		recursive: !t.singleKeyWatch,
 	})
 }
 
