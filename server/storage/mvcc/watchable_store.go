@@ -259,6 +259,12 @@ func (s *watchableStore) syncWatchersLoop() {
 func (s *watchableStore) syncVictimsLoop() {
 	defer s.wg.Done()
 
+	retryTimer := time.NewTimer(0)
+	defer retryTimer.Stop()
+	if !retryTimer.Stop() {
+		<-retryTimer.C
+	}
+
 	for {
 		for s.moveVictims() != 0 {
 			// try to update all victim watchers
@@ -269,7 +275,8 @@ func (s *watchableStore) syncVictimsLoop() {
 
 		var tickc <-chan time.Time
 		if !isEmpty {
-			tickc = time.After(10 * time.Millisecond)
+			retryTimer.Reset(10 * time.Millisecond)
+			tickc = retryTimer.C
 		}
 
 		select {

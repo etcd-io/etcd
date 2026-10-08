@@ -194,9 +194,11 @@ func (tp *TCPProxy) serve(in net.Conn) {
 }
 
 func (tp *TCPProxy) runMonitor() {
+	ticker := time.NewTicker(tp.MonitorInterval)
+	defer ticker.Stop()
 	for {
 		select {
-		case <-time.After(tp.MonitorInterval):
+		case <-ticker.C:
 			tp.mu.Lock()
 			for _, rem := range tp.remotes {
 				if rem.isActive() {
