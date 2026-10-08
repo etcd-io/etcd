@@ -11,7 +11,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1
 	go.etcd.io/etcd/client/pkg/v3 v3.8.0-alpha.0
-	go.opentelemetry.io/otel/trace v1.46.0
+	go.opentelemetry.io/otel/trace v1.47.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/sys v0.48.0
 	google.golang.org/grpc v1.84.0
@@ -21,7 +21,7 @@ require (
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	go.opentelemetry.io/otel v1.46.0 // indirect
+	go.opentelemetry.io/otel v1.47.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/net v0.59.0 // indirect
