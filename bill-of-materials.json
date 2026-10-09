@@ -36,7 +36,7 @@
 		]
 	},
 	{
-		"project": "github.com/cenkalti/backoff/v4",
+		"project": "github.com/cenkalti/backoff/v5",
 		"licenses": [
 			{
 				"type": "MIT License",
@@ -598,7 +598,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -607,7 +607,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
