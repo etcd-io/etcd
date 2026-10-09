@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.16 (TBC)
 
+### etcdctl
+
+- Fix [etcdctl txn panic with `bad value` when comparing a lease](https://github.com/etcd-io/etcd/pull/22542)
+
 ---
 
 ## v3.6.15 (2026-09-22)
