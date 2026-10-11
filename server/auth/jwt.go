@@ -124,6 +124,49 @@ func (t *tokenJWT) assign(ctx context.Context, username string, revision uint64)
 	return token, nil
 }
 
+func (t *tokenJWT) renew(ctx context.Context, token string, revision uint64) (string, error) {
+	if t.verifyOnly {
+		return "", ErrVerifyOnly
+	}
+
+	parsed, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
+		if token.Method.Alg() != t.signMethod.Alg() {
+			return nil, errors.New("invalid signing method")
+		}
+		switch k := t.key.(type) {
+		case *rsa.PrivateKey:
+			return &k.PublicKey, nil
+		case *ecdsa.PrivateKey:
+			return &k.PublicKey, nil
+		case ed25519.PrivateKey:
+			return k.Public(), nil
+		default:
+			return t.key, nil
+		}
+	}, jwt.WithoutClaimsValidation())
+	if err != nil {
+		t.lg.Warn(
+			"failed to parse a JWT token for renewal",
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	claims, ok := parsed.Claims.(jwt.MapClaims)
+	if !parsed.Valid || !ok {
+		t.lg.Warn("failed to obtain claims from a JWT token for renewal")
+		return "", errors.New("failed to obtain claims from a JWT token")
+	}
+
+	username, ok := claims["username"].(string)
+	if !ok {
+		t.lg.Warn("failed to obtain user claims from jwt token for renewal")
+		return "", errors.New("failed to obtain user claims from jwt token")
+	}
+
+	return t.assign(ctx, username, revision)
+}
+
 func newTokenProviderJWT(lg *zap.Logger, optMap map[string]string) (*tokenJWT, error) {
 	if lg == nil {
 		lg = zap.NewNop()

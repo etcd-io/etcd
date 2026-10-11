@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -161,4 +162,130 @@ func TestV3ElectionObserve(t *testing.T) {
 	}
 
 	<-leader2c
+}
+
+func TestV3ElectionCampaignAuthTokenExpiration(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:      1,
+		AuthToken: integration.DefaultTokenJWT,
+	})
+	defer clus.Terminate(t)
+
+	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
+
+	rootc1, cerr1 := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, cerr1)
+	defer rootc1.Close()
+
+	authResp, aerr := rootc1.Authenticate(t.Context(), "root", "123")
+	require.NoError(t, aerr)
+
+	rootc2, cerr2 := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Token:     authResp.Token,
+	})
+	require.NoError(t, cerr2)
+	defer rootc2.Close()
+
+	lease1, err1 := rootc1.Grant(t.Context(), 30)
+	require.NoError(t, err1)
+	lease2, err2 := rootc2.Grant(t.Context(), 30)
+	require.NoError(t, err2)
+
+	lc1 := integration.ToGRPC(rootc1).Election
+	lc2 := integration.ToGRPC(rootc2).Election
+
+	req1 := &epb.CampaignRequest{Name: []byte("foo"), Lease: int64(lease1.ID), Value: []byte("leader1")}
+	l1, lerr1 := lc1.Campaign(t.Context(), req1)
+	require.NoError(t, lerr1)
+
+	campaignc := make(chan error, 1)
+	go func() {
+		req2 := &epb.CampaignRequest{Name: []byte("foo"), Lease: int64(lease2.ID), Value: []byte("leader2")}
+		_, lerr2 := lc2.Campaign(t.Context(), req2)
+		campaignc <- lerr2
+	}()
+
+	// Wait 3 seconds so the JWT auth token (ttl=2s) expires while leader 2 is blocked in Campaign
+	time.Sleep(3 * time.Second)
+
+	_, uerr := lc1.Resign(t.Context(), &epb.ResignRequest{Leader: l1.Leader})
+	require.NoError(t, uerr)
+
+	select {
+	case err := <-campaignc:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatalf("campaigner timed out after resign")
+	}
+}
+
+func TestV3ElectionCampaignAuthRevisionUpdate(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:      1,
+		AuthToken: integration.DefaultTokenJWT,
+	})
+	defer clus.Terminate(t)
+
+	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
+
+	rootc1, cerr1 := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, cerr1)
+	defer rootc1.Close()
+
+	authResp, aerr := rootc1.Authenticate(t.Context(), "root", "123")
+	require.NoError(t, aerr)
+
+	rootc2, cerr2 := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Token:     authResp.Token,
+	})
+	require.NoError(t, cerr2)
+	defer rootc2.Close()
+
+	lease1, err1 := rootc1.Grant(t.Context(), 30)
+	require.NoError(t, err1)
+	lease2, err2 := rootc2.Grant(t.Context(), 30)
+	require.NoError(t, err2)
+
+	lc1 := integration.ToGRPC(rootc1).Election
+	lc2 := integration.ToGRPC(rootc2).Election
+
+	req1 := &epb.CampaignRequest{Name: []byte("foo"), Lease: int64(lease1.ID), Value: []byte("leader1")}
+	l1, lerr1 := lc1.Campaign(t.Context(), req1)
+	require.NoError(t, lerr1)
+
+	campaignc := make(chan error, 1)
+	go func() {
+		req2 := &epb.CampaignRequest{Name: []byte("foo"), Lease: int64(lease2.ID), Value: []byte("leader2")}
+		_, lerr2 := lc2.Campaign(t.Context(), req2)
+		campaignc <- lerr2
+	}()
+
+	// Give follower time to block in Campaign waitDeletes
+	time.Sleep(500 * time.Millisecond)
+
+	// Modify auth revision while follower is blocked
+	_, err := rootc1.RoleAdd(t.Context(), "new-role-revision-bump")
+	require.NoError(t, err)
+
+	_, uerr := lc1.Resign(t.Context(), &epb.ResignRequest{Leader: l1.Leader})
+	require.NoError(t, uerr)
+
+	select {
+	case err := <-campaignc:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatalf("campaigner timed out after resign")
+	}
 }
