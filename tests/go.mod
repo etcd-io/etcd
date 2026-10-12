@@ -2,7 +2,7 @@ module go.etcd.io/etcd/tests/v3
 
 go 1.27
 
-toolchain go1.27.1
+toolchain go1.27.2
 
 replace (
 	go.etcd.io/etcd/api/v3 => ../api
@@ -41,7 +41,7 @@ require (
 	go.etcd.io/etcd/server/v3 v3.8.0-alpha.0
 	go.etcd.io/gofail v0.2.0
 	go.etcd.io/raft/v3 v3.7.0
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.71.0
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.72.0
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/sdk v1.47.0
 	go.opentelemetry.io/proto/otlp v1.11.1
