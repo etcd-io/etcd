@@ -114,6 +114,13 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			},
 		},
 		{
+			name:   "LogLevel",
+			config: NewConfig(WithLogLevel("debug")),
+			expectArgsContain: []string{
+				"--log-level=debug",
+			},
+		},
+		{
 			name:   "MetricsURL",
 			config: NewConfig(WithMetricsURLScheme("http")),
 			expectArgsContain: []string{

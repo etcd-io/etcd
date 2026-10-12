@@ -32,6 +32,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/proxy"
@@ -585,6 +586,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 
 	if cfg.ServerConfig.ForceNewCluster {
 		args = append(args, "--force-new-cluster=true")
+	}
+	if cfg.ServerConfig.LogLevel != "" && cfg.ServerConfig.LogLevel != logutil.DefaultLogLevel {
+		args = append(args, "--log-level="+cfg.ServerConfig.LogLevel)
 	}
 	if cfg.ServerConfig.QuotaBackendBytes > 0 {
 		args = append(args,
