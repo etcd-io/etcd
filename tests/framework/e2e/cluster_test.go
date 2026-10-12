@@ -200,6 +200,20 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 				"--cipher-suites",
 			},
 		},
+		{
+			name:   "LogLevel",
+			config: NewConfig(WithLogLevel("debug")),
+			expectArgsContain: []string{
+				"--log-level=debug",
+			},
+		},
+		{
+			name:   "DefaultLogLevelNotPassed",
+			config: NewConfig(),
+			expectArgsNotContain: []string{
+				"--log-level=info",
+			},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
