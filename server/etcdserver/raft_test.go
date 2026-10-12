@@ -252,10 +252,8 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 	// finish toApply, unblock raft routine
 	<-ap.notifyc
 
-	select {
-	case <-ap.raftAdvancedC:
-		t.Log("received raft advance notification")
-	}
+	<-ap.raftAdvancedC
+	t.Log("received raft advance notification")
 
 	select {
 	case <-continueC:

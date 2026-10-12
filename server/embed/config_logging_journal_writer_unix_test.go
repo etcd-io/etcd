@@ -14,7 +14,7 @@
 
 //go:build !windows
 
-package logutil
+package embed
 
 import (
 	"bytes"
@@ -22,11 +22,13 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 )
 
-func TestNewJournalWriter(t *testing.T) {
+func TestJournalWriter(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	jw, err := NewJournalWriter(buf)
+	jw, err := newJournalWriter(buf)
 	if err != nil {
 		t.Skip(err)
 	}
@@ -34,7 +36,7 @@ func TestNewJournalWriter(t *testing.T) {
 	syncer := zapcore.AddSync(jw)
 
 	cr := zapcore.NewCore(
-		zapcore.NewJSONEncoder(DefaultZapLoggerConfig.EncoderConfig),
+		zapcore.NewJSONEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig),
 		syncer,
 		zap.NewAtomicLevelAt(zap.InfoLevel),
 	)
@@ -42,7 +44,7 @@ func TestNewJournalWriter(t *testing.T) {
 	lg := zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
 	defer lg.Sync()
 
-	lg.Info("TestNewJournalWriter")
+	lg.Info("TestJournalWriter")
 	if buf.String() == "" {
 		// check with "journalctl -f"
 		t.Log("sent logs successfully to journald")

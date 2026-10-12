@@ -10,6 +10,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 - [Fix fsync snap directory when saving a received snapshot db](https://github.com/etcd-io/etcd/pull/22472)
 
+### Dependencies
+
+- Compile binaries using [go 1.26.9](https://github.com/etcd-io/etcd/pull/22557).
+
 ---
 
 ## v3.5.34 (2026-09-22)

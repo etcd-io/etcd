@@ -21,7 +21,12 @@ Previous change logs can be found at [CHANGELOG-3.7](https://github.com/etcd-io/
 
 ### Dependencies
 
+- Move the systemd journal log writer (`logutil.NewJournalWriter`) from `client/pkg/v3` into `server/embed`, so the client packages no longer depend on `github.com/coreos/go-systemd/v22`.
 - Compile binaries using [go 1.26.5](https://github.com/etcd-io/etcd/pull/22062).
+
+### Deprecations
+
+- Removed [NewJournalWriter in client/pkg/v3/logutil](https://github.com/etcd-io/etcd/pull/22502), so that `client/pkg/v3` no longer depends on `github.com/coreos/go-systemd/v22`. The function was deprecated in [v3.7.3](https://github.com/etcd-io/etcd/pull/22530).
 
 ### etcdutl
 
