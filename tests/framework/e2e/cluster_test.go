@@ -114,13 +114,6 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			},
 		},
 		{
-			name:   "LogLevel",
-			config: NewConfig(WithLogLevel("debug")),
-			expectArgsContain: []string{
-				"--log-level=debug",
-			},
-		},
-		{
 			name:   "MetricsURL",
 			config: NewConfig(WithMetricsURLScheme("http")),
 			expectArgsContain: []string{
@@ -205,6 +198,20 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			config: NewConfig(WithCipherSuites([]string{"a", "b"})),
 			expectArgsContain: []string{
 				"--cipher-suites",
+			},
+		},
+		{
+			name:   "LogLevel",
+			config: NewConfig(WithLogLevel("debug")),
+			expectArgsContain: []string{
+				"--log-level=debug",
+			},
+		},
+		{
+			name:   "DefaultLogLevelNotPassed",
+			config: NewConfig(),
+			expectArgsNotContain: []string{
+				"--log-level=info",
 			},
 		},
 	}
