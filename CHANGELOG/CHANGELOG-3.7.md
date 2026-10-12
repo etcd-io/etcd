@@ -9,6 +9,10 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 - Deprecated [NewJournalWriter in client/pkg/v3/logutil](https://github.com/etcd-io/etcd/pull/22530). It will be removed in v3.8, so that `client/pkg/v3` no longer depends on `github.com/coreos/go-systemd/v22`.
 
+### Dependencies
+
+- Compile binaries using [go 1.26.9](https://github.com/etcd-io/etcd/pull/22555).
+
 ---
 
 ## v3.7.2 (2026-09-22)
