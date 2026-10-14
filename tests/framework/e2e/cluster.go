@@ -387,6 +387,10 @@ func WithCipherSuites(suites []string) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CipherSuites = suites }
 }
 
+func WithCurvePreferences(curves []string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CurvePreferences = curves }
+}
+
 func WithExtensiveMetrics() EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.Metrics = "extensive" }
 }
@@ -807,6 +811,10 @@ func (cfg *EtcdProcessClusterConfig) TLSArgs() (args []string) {
 
 	if len(cfg.ServerConfig.CipherSuites) > 0 {
 		args = append(args, "--cipher-suites", strings.Join(cfg.ServerConfig.CipherSuites, ","))
+	}
+
+	if len(cfg.ServerConfig.CurvePreferences) > 0 {
+		args = append(args, "--curve-preferences", strings.Join(cfg.ServerConfig.CurvePreferences, ","))
 	}
 
 	return args
