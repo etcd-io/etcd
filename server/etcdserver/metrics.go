@@ -16,9 +16,11 @@ package etcdserver
 
 import (
 	goruntime "runtime"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
@@ -95,18 +97,19 @@ var (
 		Name:      "proposals_failed_total",
 		Help:      "The total number of failed proposals seen.",
 	})
-	slowReadIndex = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "slow_read_indexes_total",
-		Help:      "The total number of pending read indexes not in sync with leader's or timed out read index requests.",
-	})
-	readIndexFailed = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "read_indexes_failed_total",
-		Help:      "The total number of failed read indexes seen.",
-	})
+	requestDurationSec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "etcd",
+			Subsystem: "server",
+			Name:      "request_duration_seconds",
+			Help:      "Response latency distribution in seconds for each type.",
+
+			// lowest bucket start of upper bound 0.001 sec (1 ms) with factor 2
+			// highest bucket start of 0.001 sec * 2^13 == 8.192 sec
+			Buckets: prometheus.ExponentialBuckets(0.001, 2, 14),
+		},
+		[]string{"type", "success"},
+	)
 	leaseExpired = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd_debugging",
 		Subsystem: "server",
@@ -171,8 +174,7 @@ func init() {
 	prometheus.MustRegister(proposalsApplied)
 	prometheus.MustRegister(proposalsPending)
 	prometheus.MustRegister(proposalsFailed)
-	prometheus.MustRegister(slowReadIndex)
-	prometheus.MustRegister(readIndexFailed)
+	prometheus.MustRegister(requestDurationSec)
 	prometheus.MustRegister(leaseExpired)
 	prometheus.MustRegister(currentVersion)
 	prometheus.MustRegister(currentGoVersion)
@@ -191,6 +193,25 @@ func init() {
 	}).Set(1)
 }
 
+var enableAllRuntimeMetricsOnce sync.Once
+
+// EnableAllRuntimeMetrics swaps client_golang's default Go collector for one
+// exposing the full runtime/metrics set (scheduler latency, mutex contention,
+// GC CPU share).
+func EnableAllRuntimeMetrics(lg *zap.Logger) {
+	enableAllRuntimeMetricsOnce.Do(func() {
+		if !prometheus.Unregister(collectors.NewGoCollector()) {
+			lg.Warn("failed to unregister the default Go collector, all runtime metrics will not be exposed")
+			return
+		}
+		if err := prometheus.Register(collectors.NewGoCollector(
+			collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll),
+		)); err != nil {
+			lg.Warn("failed to register the Go collector with all runtime metrics", zap.Error(err))
+		}
+	})
+}
+
 func monitorFileDescriptor(lg *zap.Logger, done <-chan struct{}) {
 	// This ticker will check File Descriptor Requirements ,and count all fds in used.
 	// And recorded some logs when in used >= limit/5*4. Just recorded message.
@@ -200,14 +221,14 @@ func monitorFileDescriptor(lg *zap.Logger, done <-chan struct{}) {
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 	for {
-		used, err := runtime.FDUsage()
-		if err != nil {
+		used, err := runtime.FDUsage() //nolint:staticcheck // SA4023: FDUsage always errors on non-linux by design; on linux it can return nil
+		if err != nil {                //nolint:staticcheck // SA4023: FDUsage always errors on non-linux by design; on linux it can return nil
 			lg.Warn("failed to get file descriptor usage", zap.Error(err))
 			return
 		}
 		fdUsed.Set(float64(used))
-		limit, err := runtime.FDLimit()
-		if err != nil {
+		limit, err := runtime.FDLimit() //nolint:staticcheck // SA4023: FDLimit always errors on non-linux by design; on linux it can return nil
+		if err != nil {                 //nolint:staticcheck // SA4023: FDLimit always errors on non-linux by design; on linux it can return nil
 			lg.Warn("failed to get file descriptor limit", zap.Error(err))
 			return
 		}

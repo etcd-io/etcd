@@ -81,5 +81,5 @@ func transferLeadershipCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.MoveLeader(leaderID, target, *resp)
+	display.MoveLeader(leaderID, target, resp)
 }

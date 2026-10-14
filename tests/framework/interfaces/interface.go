@@ -43,7 +43,7 @@ type Member interface {
 }
 
 type Client interface {
-	Put(context context.Context, key, value string, opts config.PutOptions) error
+	Put(context context.Context, key, value string, opts config.PutOptions) (*clientv3.PutResponse, error)
 	Get(context context.Context, key string, opts config.GetOptions) (*clientv3.GetResponse, error)
 	Delete(context context.Context, key string, opts config.DeleteOptions) (*clientv3.DeleteResponse, error)
 	Compact(context context.Context, rev int64, opts config.CompactOption) (*clientv3.CompactResponse, error)
@@ -51,6 +51,8 @@ type Client interface {
 	HashKV(context context.Context, rev int64) ([]*clientv3.HashKVResponse, error)
 	Health(context context.Context) error
 	Defragment(context context.Context, opts config.DefragOption) error
+	Snapshot(context context.Context, outFile string) error
+	Downgrade(ctx context.Context, action clientv3.DowngradeAction, version string) (*clientv3.DowngradeResponse, error)
 	AlarmList(context context.Context) (*clientv3.AlarmResponse, error)
 	AlarmDisarm(context context.Context, alarmMember *clientv3.AlarmMember) (*clientv3.AlarmResponse, error)
 	Grant(context context.Context, ttl int64) (*clientv3.LeaseGrantResponse, error)

@@ -15,11 +15,13 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
 	"hash/fnv"
-	"maps"
 	"reflect"
 	"slices"
+
+	"go.etcd.io/etcd/client/pkg/v3/types"
 )
 
 // RevisionForNonLinearizableResponse is a fake revision value used to
@@ -69,9 +71,10 @@ type RangeRequest struct {
 }
 
 type RangeOptions struct {
-	Start string
-	End   string
-	Limit int64
+	Start    string
+	End      string
+	Limit    int64
+	KeysOnly bool
 }
 
 type PutOptions struct {
@@ -138,15 +141,40 @@ type MaybeEtcdResponse struct {
 
 var ErrEtcdFutureRev = errors.New("future rev")
 
+type MemberID uint64
+
+// MarshalJSON implements the json.Marshaler interface for MemberID.
+// It marshals the MemberID as a hexadecimal string.
+func (m MemberID) MarshalJSON() ([]byte, error) {
+	return json.Marshal(types.ID(m).String())
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface for MemberID.
+// It unmarshals the MemberID from a hexadecimal string.
+func (m *MemberID) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	id, err := types.IDFromString(s)
+	if err != nil {
+		return err
+	}
+	*m = MemberID(id)
+	return nil
+}
+
 type EtcdResponse struct {
 	Txn         *TxnResponse
 	Range       *RangeResponse
-	LeaseGrant  *LeaseGrantReponse
+	LeaseGrant  *LeaseGrantResponse
 	LeaseRevoke *LeaseRevokeResponse
 	Defragment  *DefragmentResponse
 	Compact     *CompactResponse
 	ClientError string
 	Revision    int64
+	MemberID    MemberID `json:"member-id,omitempty"`
 }
 
 func Match(r1, r2 MaybeEtcdResponse) bool {
@@ -158,6 +186,10 @@ func Match(r1, r2 MaybeEtcdResponse) bool {
 	if r2.Persisted {
 		r2Revision = r2.PersistedRevision
 	}
+
+	r1.EtcdResponse.MemberID = 0
+	r2.EtcdResponse.MemberID = 0
+
 	return (r1.Persisted && r1.PersistedRevision == 0) || (r2.Persisted && r2.PersistedRevision == 0) || ((r1.Persisted || r2.Persisted) && (r1.Error != "" || r2.Error != "" || r1Revision == r2Revision)) || reflect.DeepEqual(r1, r2)
 }
 
@@ -171,7 +203,7 @@ type RangeResponse struct {
 	Count int64
 }
 
-type LeaseGrantReponse struct {
+type LeaseGrantResponse struct {
 	LeaseID int64
 }
 type (
@@ -187,20 +219,6 @@ type EtcdOperationResult struct {
 type KeyValue struct {
 	Key string
 	ValueRevision
-}
-
-var leased = struct{}{}
-
-type EtcdLease struct {
-	LeaseID int64
-	Keys    map[string]struct{}
-}
-
-func (el EtcdLease) DeepCopy() EtcdLease {
-	return EtcdLease{
-		LeaseID: el.LeaseID,
-		Keys:    maps.Clone(el.Keys),
-	}
 }
 
 type ValueRevision struct {

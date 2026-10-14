@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -74,13 +74,13 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 	cli.Close()
 	srv.Close()
 
-	w, err := wal.Open(zap.NewNop(), cfg.Dir+"/member/wal", walpb.Snapshot{})
+	w, err := wal.Open(zap.NewNop(), cfg.Dir+"/member/wal", &walpb.Snapshot{})
 	require.NoError(t, err)
 	defer w.Close()
 
 	walVersion, err := wal.ReadWALVersion(w)
 	require.NoError(t, err)
-	assert.Equal(t, &semver.Version{Major: 3, Minor: 5}, walVersion.MinimalEtcdVersion())
+	assert.Equal(t, semver.New(3, 5, 0, "", ""), walVersion.MinimalEtcdVersion())
 }
 
 func waitForClusterVersionReady(srv *embed.Etcd) error {

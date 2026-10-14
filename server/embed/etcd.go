@@ -128,6 +128,10 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		e = nil
 	}()
 
+	if cfg.Metrics == "extensive" {
+		etcdserver.EnableAllRuntimeMetrics(cfg.logger)
+	}
+
 	if !cfg.SocketOpts.Empty() {
 		cfg.logger.Info(
 			"configuring socket options",
@@ -187,7 +191,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		DedicatedWALDir:                   cfg.WalDir,
 		SnapshotCount:                     cfg.SnapshotCount,
 		SnapshotCatchUpEntries:            cfg.SnapshotCatchUpEntries,
-		MaxSnapFiles:                      cfg.MaxSnapFiles,
 		MaxWALFiles:                       cfg.MaxWalFiles,
 		InitialPeerURLsMap:                urlsmap,
 		InitialClusterToken:               token,
@@ -231,7 +234,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		MemoryMlock:                       cfg.MemoryMlock,
 		BootstrapDefragThresholdMegabytes: cfg.BootstrapDefragThresholdMegabytes,
 		MaxLearners:                       cfg.MaxLearners,
-		V2Deprecation:                     cfg.V2DeprecationEffective(),
 		LocalAddress:                      cfg.InferLocalAddr(),
 		ServerFeatureGate:                 cfg.ServerFeatureGate,
 		Metrics:                           cfg.Metrics,
@@ -339,7 +341,6 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.Bool("initial-election-tick-advance", sc.InitialElectionTickAdvance),
 		zap.Uint64("snapshot-count", sc.SnapshotCount),
 		zap.Uint("max-wals", sc.MaxWALFiles),
-		zap.Uint("max-snapshots", sc.MaxSnapFiles),
 		zap.Uint64("snapshot-catchup-entries", sc.SnapshotCatchUpEntries),
 		zap.Strings("initial-advertise-peer-urls", ec.getAdvertisePeerURLs()),
 		zap.Strings("listen-peer-urls", ec.getListenPeerURLs()),
@@ -380,8 +381,6 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 
 		zap.String("downgrade-check-interval", sc.DowngradeCheckTime.String()),
 		zap.Int("max-learners", sc.MaxLearners),
-
-		zap.String("v2-deprecation", string(ec.V2Deprecation)),
 	)
 }
 
@@ -392,7 +391,7 @@ func (e *Etcd) Config() Config {
 
 // Close gracefully shuts down all servers/listeners.
 // Client requests will be terminated with request timeout.
-// After timeout, enforce remaning requests be closed immediately.
+// After timeout, enforce remaining requests be closed immediately.
 //
 // The rough workflow to shut down etcd:
 //  1. close the `stopc` channel, so that all error handlers (child
@@ -710,7 +709,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		// net.Listener will rewrite ipv4 0.0.0.0 to ipv6 [::], breaking
 		// hosts that disable ipv6. So, use the address given by the user.
 
-		if fdLimit, fderr := runtimeutil.FDLimit(); fderr == nil {
+		if fdLimit, fderr := runtimeutil.FDLimit(); fderr == nil { //nolint:staticcheck // SA4023: FDLimit always errors on non-linux by design; on linux it can return nil
 			if fdLimit <= reservedInternalFDNum {
 				cfg.logger.Fatal(
 					"file descriptor limit of etcd process is too low; please set higher",
@@ -727,7 +726,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			}
 			sctx.l.Close()
 			cfg.logger.Warn(
-				"closing peer listener",
+				"closing client listener",
 				zap.String("address", sctx.addr),
 				zap.Error(err),
 			)
@@ -831,13 +830,13 @@ func (e *Etcd) grpcGatewayDial(splitHTTP bool) (grpcDial func(ctx context.Contex
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	return func(ctx context.Context) (*grpc.ClientConn, error) {
-		conn, err := grpc.DialContext(ctx, addr, opts...)
+	return func(_ context.Context) (*grpc.ClientConn, error) {
+		conn, err := grpc.NewClient(addr, opts...)
 		if err != nil {
-			sctx.lg.Error("grpc gateway failed to dial", zap.String("addr", addr), zap.Error(err))
+			sctx.lg.Error("failed to setup grpc-gateway client", zap.String("addr", addr), zap.Error(err))
 			return nil, err
 		}
-		return conn, err
+		return conn, nil
 	}
 }
 

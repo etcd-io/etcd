@@ -23,6 +23,8 @@ import (
 
 type lockProxy struct {
 	lockClient v3lockpb.LockClient
+	// we want compile errors if new methods are added
+	v3lockpb.UnsafeLockServer
 }
 
 func NewLockProxy(client *clientv3.Client) v3lockpb.LockServer {

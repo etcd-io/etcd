@@ -40,6 +40,7 @@ var (
 	Unknown ResultStatus
 	Success ResultStatus = "Success"
 	Failure ResultStatus = "Failure"
+	Timeout ResultStatus = "Timeout"
 )
 
 func (r RobustnessResult) Error() error {
@@ -71,25 +72,40 @@ func ResultFromError(err error) Result {
 }
 
 func (r Result) Error() error {
-	if r.Status == Failure {
-		if r.Message != "" {
-			return errors.New(r.Message)
-		}
-		return errors.New("failure")
+	switch r.Status {
+	case Success, Unknown:
+		return nil
+	default:
+		return errors.New(r.String())
 	}
-	return nil
+}
+
+func (r Result) String() string {
+	if r.Message != "" {
+		return fmt.Sprintf("%s: %s", r.Status, r.Message)
+	}
+	return string(r.Status)
 }
 
 type LinearizationResult struct {
 	Info  porcupine.LinearizationInfo
 	Model porcupine.Model
 	Result
-	Timeout bool
 }
 
 func (r *LinearizationResult) Visualize(lg *zap.Logger, path string) error {
+	if r.Model.Step == nil && r.Model.StepContext == nil {
+		lg.Info("Skipping linearization visualization as model is not initialized")
+		return nil
+	}
+	err := r.Error()
+	if err != nil {
+		lg.Info("Skipping linearization visualization", zap.Error(err))
+		return nil
+	}
+
 	lg.Info("Saving visualization", zap.String("path", path))
-	err := porcupine.VisualizePath(r.Model, r.Info, path)
+	err = porcupine.VisualizePath(r.Model, r.Info, path)
 	if err != nil {
 		return fmt.Errorf("failed to visualize, err: %w", err)
 	}
@@ -104,6 +120,7 @@ func (r *LinearizationResult) AddToVisualization(serializable []porcupine.Operat
 			Start:       op.Call,
 			End:         op.Return,
 			Description: r.Model.DescribeOperation(op.Input, op.Output),
+			Details:     r.Model.DescribeOperationMetadata(op.Metadata),
 		})
 	}
 	r.Info.AddAnnotations(annotations)

@@ -73,7 +73,7 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 	defer c.Terminate(t)
 
 	if err := m.Launch(); err == nil {
-		t.Errorf("unexpect successful launch")
+		t.Errorf("unexpected successful launch")
 	} else {
 		t.Logf("launch failed as expected: %v", err)
 		assert.Contains(t, err.Error(), "has already been bootstrapped")

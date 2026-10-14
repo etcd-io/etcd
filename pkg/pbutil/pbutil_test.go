@@ -20,6 +20,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestMarshaler(t *testing.T) {
@@ -50,6 +53,29 @@ func TestUnmarshalerPanic(t *testing.T) {
 	}()
 	m := &fakeUnmarshaler{err: errors.New("blah")}
 	MustUnmarshal(m, nil)
+}
+
+func TestProtoMarshaler(t *testing.T) {
+	m := wrapperspb.Int64(7)
+	g := MustMarshalMessage(m)
+	w, err := proto.Marshal(m)
+	require.NoError(t, err)
+	assert.Equal(t, w, g)
+}
+
+func TestProtoUnmarshaler(t *testing.T) {
+	data := MustMarshalMessage(wrapperspb.Int64(9))
+	m := &wrapperspb.Int64Value{}
+	MustUnmarshalMessage(m, data)
+	assert.Equal(t, int64(9), m.Value)
+}
+
+func TestProtoUnmarshalerPanic(t *testing.T) {
+	defer func() {
+		assert.NotNilf(t, recover(), "recover = nil, want error")
+	}()
+	m := &wrapperspb.Int64Value{}
+	MustUnmarshalMessage(m, []byte("not-a-protobuf"))
 }
 
 func TestGetBool(t *testing.T) {

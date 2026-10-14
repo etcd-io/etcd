@@ -14,7 +14,11 @@
 
 package backend
 
-import bolt "go.etcd.io/bbolt"
+import (
+	"github.com/prometheus/client_golang/prometheus/testutil"
+
+	bolt "go.etcd.io/bbolt"
+)
 
 func DbFromBackendForTest(b Backend) *bolt.DB {
 	return b.(*backend).db
@@ -26,4 +30,9 @@ func DefragLimitForTest() int {
 
 func CommitsForTest(b Backend) int64 {
 	return b.(*backend).Commits()
+}
+
+// IsDefragActiveForTest reports whether a Defrag() call is currently in progress.
+func IsDefragActiveForTest() bool {
+	return testutil.ToFloat64(isDefragActive) == 1
 }

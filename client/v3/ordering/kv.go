@@ -18,6 +18,9 @@ import (
 	"context"
 	"sync"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -31,7 +34,7 @@ type kvOrdering struct {
 	revMu              sync.RWMutex
 }
 
-func NewKV(kv clientv3.KV, orderViolationFunc OrderViolationFunc) *kvOrdering {
+func NewKV(kv clientv3.KV, orderViolationFunc OrderViolationFunc) clientv3.KV {
 	return &kvOrdering{kv, orderViolationFunc, 0, sync.RWMutex{}}
 }
 
@@ -73,6 +76,11 @@ func (kv *kvOrdering) Get(ctx context.Context, key string, opts ...clientv3.OpOp
 			return nil, err
 		}
 	}
+}
+
+// GetStream is not supported by kvOrdering.
+func (kv *kvOrdering) GetStream(ctx context.Context, key string, opts ...clientv3.OpOption) (clientv3.GetStreamChan, error) {
+	return nil, status.Error(codes.Unimplemented, "GetStream is not supported by kvOrdering")
 }
 
 func (kv *kvOrdering) Txn(ctx context.Context) clientv3.Txn {

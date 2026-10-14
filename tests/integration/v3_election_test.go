@@ -282,6 +282,60 @@ func TestElectionObserveCompacted(t *testing.T) {
 	require.Equalf(t, "abc", string(v.Kvs[0].Value), `expected leader value "abc", got %q`, string(v.Kvs[0].Value))
 }
 
+func TestElectionObserveFreshResponsesOnProclaim(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.RandClient()
+
+	session, err := concurrency.NewSession(cli)
+	require.NoError(t, err)
+	defer session.Orphan()
+
+	e := concurrency.NewElection(session, "test-elect")
+	require.NoError(t, e.Campaign(t.Context(), "abc"))
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	observeCh := e.Observe(ctx)
+
+	mustObserve := func(want string, msg string) *clientv3.GetResponse {
+		resp, ok := <-observeCh
+		require.Truef(t, ok, msg)
+		require.Len(t, resp.Kvs, 1)
+		require.Equal(t, want, string(resp.Kvs[0].Value))
+		return resp
+	}
+
+	assertFreshResponse := func(lhs, rhs *clientv3.GetResponse, msg string) {
+		if lhs == rhs {
+			t.Fatal(msg)
+		}
+	}
+
+	firstResp := mustObserve("abc", "could not wait for first election; channel closed")
+
+	require.NoError(t, e.Proclaim(t.Context(), "def"))
+	secondResp := mustObserve("def", "could not wait for proclaimed election; channel closed")
+
+	require.NoError(t, e.Proclaim(t.Context(), "ghi"))
+	thirdResp := mustObserve("ghi", "could not wait for second proclaimed election; channel closed")
+
+	assertFreshResponse(firstResp, secondResp, "Observe() reused the first GetResponse pointer")
+	assertFreshResponse(firstResp, thirdResp, "Observe() reused the first GetResponse pointer")
+	assertFreshResponse(secondResp, thirdResp, "Observe() reused the second GetResponse pointer")
+
+	require.Equal(t, "abc", string(firstResp.Kvs[0].Value))
+	require.Equal(t, "def", string(secondResp.Kvs[0].Value))
+	require.Equal(t, int64(1), firstResp.Kvs[0].Version)
+	require.Equal(t, int64(2), secondResp.Kvs[0].Version)
+	require.Equal(t, int64(3), thirdResp.Kvs[0].Version)
+	require.Less(t, firstResp.Header.Revision, secondResp.Header.Revision)
+	require.Less(t, secondResp.Header.Revision, thirdResp.Header.Revision)
+}
+
 // TestElectionWithAuthEnabled verifies the election interface when auth is enabled.
 // Refer to the discussion in https://github.com/etcd-io/etcd/issues/17502
 func TestElectionWithAuthEnabled(t *testing.T) {

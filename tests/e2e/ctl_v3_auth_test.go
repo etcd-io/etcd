@@ -17,6 +17,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -302,20 +303,22 @@ func authTestEndpointHealth(cx ctlCtx) {
 
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
-
 	require.NoErrorf(cx.t, ctlV3EndpointHealth(cx), "endpointStatusTest ctlV3EndpointHealth error")
 
-	// health checking with an ordinary user "succeeds" since permission denial goes through consensus
-	cx.user, cx.pass = "test-user", "pass"
-	require.NoErrorf(cx.t, ctlV3EndpointHealth(cx), "endpointStatusTest ctlV3EndpointHealth error")
-
-	// succeed if permissions granted for ordinary user
-	cx.user, cx.pass = "root", "root"
 	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "health", "", false}))
+
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3EndpointHealth(cx); err != nil {
-		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
-	}
+	require.NoErrorf(cx.t, ctlV3EndpointHealth(cx), "endpointStatusTest ctlV3EndpointHealth error")
+
+	cmdArgs := append(cx.PrefixArgs(), "endpoint", "health", "--user=root:root", "--cluster")
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	require.NoError(cx.t, err)
+	defer func() {
+		require.NoError(cx.t, proc.Close())
+	}()
+	proc.Wait()
+	response := strings.Join(proc.Lines(), "\n")
+	require.Contains(cx.t, response, "is healthy: successfully")
 }
 
 func certCNAndUsername(cx ctlCtx, noPassword bool) {

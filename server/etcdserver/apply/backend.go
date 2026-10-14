@@ -17,7 +17,7 @@ package apply
 import (
 	"context"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -43,7 +43,7 @@ func newApplierV3Backend(opts ApplierOptions) applierV3 {
 	}
 }
 
-func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result {
+func (a *applierV3backend) Apply(r *InternalRaftRequestWrapper, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result {
 	return applyFunc(r, shouldApplyV3)
 }
 
@@ -56,11 +56,11 @@ func (a *applierV3backend) DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRan
 }
 
 func (a *applierV3backend) Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.Range(context.TODO(), a.options.Logger, a.options.KV, r)
+	return mvcctxn.Range(context.TODO(), a.options.Logger, a.options.KV, r, true)
 }
 
-func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return mvcctxn.Txn(context.TODO(), a.options.Logger, rt, a.options.TxnModeWriteWithSharedBuffer, a.options.KV, a.options.Lessor)
+func (a *applierV3backend) Txn(rt *pb.TxnRequest, skipRangeExecution bool) (*pb.TxnResponse, *traceutil.Trace, error) {
+	return mvcctxn.Txn(context.TODO(), a.options.Logger, rt, a.options.TxnModeWriteWithSharedBuffer, a.options.KV, a.options.Lessor, skipRangeExecution)
 }
 
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
@@ -269,10 +269,10 @@ func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleList
 
 func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	prevVersion := a.options.Cluster.Version()
-	newVersion := semver.Must(semver.NewVersion(r.Ver))
+	newVersion := semver.MustParse(r.Ver)
 	a.options.Cluster.SetVersion(newVersion, api.UpdateCapability, shouldApplyV3)
 	// Force snapshot after cluster version downgrade.
-	if prevVersion != nil && newVersion.LessThan(*prevVersion) {
+	if prevVersion != nil && newVersion.LessThan(prevVersion) {
 		lg := a.options.Logger
 		if lg != nil {
 			lg.Info("Cluster version downgrade detected, forcing snapshot",
@@ -309,5 +309,6 @@ func (a *applierV3backend) newHeader() *pb.ResponseHeader {
 		MemberId:  uint64(a.options.RaftStatus.MemberID()),
 		Revision:  a.options.KV.Rev(),
 		RaftTerm:  a.options.RaftStatus.Term(),
+		LeaderId:  uint64(a.options.RaftStatus.Leader()),
 	}
 }

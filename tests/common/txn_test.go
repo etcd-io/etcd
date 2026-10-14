@@ -65,9 +65,9 @@ func TestTxnSucc(t *testing.T) {
 			defer clus.Close()
 			cc := testutils.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
-				err := cc.Put(ctx, "key1", "value1", config.PutOptions{})
+				_, err := cc.Put(ctx, "key1", "value1", config.PutOptions{})
 				require.NoErrorf(t, err, "could not create key:%s, value:%s", "key1", "value1")
-				err = cc.Put(ctx, "key2", "value2", config.PutOptions{})
+				_, err = cc.Put(ctx, "key2", "value2", config.PutOptions{})
 				require.NoErrorf(t, err, "could not create key:%s, value:%s", "key2", "value2")
 				for _, req := range reqs {
 					resp, err := cc.Txn(ctx, req.compare, req.ifSuccess, req.ifFail, config.TxnOptions{
@@ -105,7 +105,7 @@ func TestTxnFail(t *testing.T) {
 			defer clus.Close()
 			cc := testutils.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
-				err := cc.Put(ctx, "key1", "value1", config.PutOptions{})
+				_, err := cc.Put(ctx, "key1", "value1", config.PutOptions{})
 				require.NoErrorf(t, err, "could not create key:%s, value:%s", "key1", "value1")
 				for _, req := range reqs {
 					resp, err := cc.Txn(ctx, req.compare, req.ifSuccess, req.ifFail, config.TxnOptions{
@@ -129,17 +129,17 @@ func getRespValues(r *clientv3.TxnResponse) []string {
 	for _, resp := range r.Responses {
 		switch v := resp.Response.(type) {
 		case *pb.ResponseOp_ResponseDeleteRange:
-			r := (clientv3.DeleteResponse)(*v.ResponseDeleteRange)
-			ss = append(ss, fmt.Sprintf("%d", r.Deleted))
+			r := v.ResponseDeleteRange
+			ss = append(ss, fmt.Sprintf("%d", r.GetDeleted()))
 		case *pb.ResponseOp_ResponsePut:
-			r := (clientv3.PutResponse)(*v.ResponsePut)
+			r := v.ResponsePut
 			ss = append(ss, "OK")
-			if r.PrevKv != nil {
+			if r.GetPrevKv() != nil {
 				ss = append(ss, string(r.PrevKv.Key), string(r.PrevKv.Value))
 			}
 		case *pb.ResponseOp_ResponseRange:
-			r := (clientv3.GetResponse)(*v.ResponseRange)
-			for _, kv := range r.Kvs {
+			r := v.ResponseRange
+			for _, kv := range r.GetKvs() {
 				ss = append(ss, string(kv.Key), string(kv.Value))
 			}
 		default:

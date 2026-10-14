@@ -18,10 +18,8 @@ import (
 	"os"
 	"testing"
 
-	grpclogsettable "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zapgrpc"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -32,13 +30,8 @@ import (
 )
 
 var (
-	grpcLogger        grpclogsettable.SettableLoggerV2
 	insideTestContext bool
 )
-
-func init() {
-	grpcLogger = grpclogsettable.ReplaceGrpcLoggerV2()
-}
 
 type testOptions struct {
 	goLeakDetection bool
@@ -83,6 +76,12 @@ func BeforeTestExternal(t testutil.TB) {
 	BeforeTest(t, WithoutSkipInShort(), WithoutGoLeakDetection())
 }
 
+func SkipIfNoGoFail(t testutil.TB) {
+	if len(gofail.List()) == 0 {
+		t.Skip("please run 'make gofail-enable' before running the test")
+	}
+}
+
 func BeforeTest(t testutil.TB, opts ...TestOption) {
 	t.Helper()
 	options := newTestOptions(opts...)
@@ -100,9 +99,7 @@ func BeforeTest(t testutil.TB, opts ...TestOption) {
 	}
 
 	if options.failpoint != nil && len(options.failpoint.name) != 0 {
-		if len(gofail.List()) == 0 {
-			t.Skip("please run 'make gofail-enable' before running the test")
-		}
+		SkipIfNoGoFail(t)
 		require.NoError(t, gofail.Enable(options.failpoint.name, options.failpoint.payload))
 		t.Cleanup(func() {
 			require.NoError(t, gofail.Disable(options.failpoint.name))
@@ -120,13 +117,11 @@ func BeforeTest(t testutil.TB, opts ...TestOption) {
 
 	// Registering cleanup early, such it will get executed even if the helper fails.
 	t.Cleanup(func() {
-		grpcLogger.Reset()
 		insideTestContext = previousInsideTestContext
 		os.Chdir(previousWD)
 		revertFunc()
 	})
 
-	grpcLogger.Set(zapgrpc.NewLogger(zaptest.NewLogger(t).Named("grpc")))
 	insideTestContext = true
 
 	os.Chdir(t.TempDir())

@@ -60,6 +60,7 @@ func TestFailoverOnDefrag(t *testing.T) {
 			clusterOptions: []e2e.EPClusterOption{
 				e2e.WithClusterSize(3),
 				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", true),
+				e2e.WithServerFeatureGate("NonBlockingDefrag", false),
 				e2e.WithGoFailEnabled(true),
 			},
 			gRPCDialOptions: []grpc.DialOption{
@@ -74,6 +75,7 @@ func TestFailoverOnDefrag(t *testing.T) {
 			clusterOptions: []e2e.EPClusterOption{
 				e2e.WithClusterSize(3),
 				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", false),
+				e2e.WithServerFeatureGate("NonBlockingDefrag", false),
 				e2e.WithGoFailEnabled(true),
 			},
 			gRPCDialOptions: []grpc.DialOption{
@@ -88,6 +90,7 @@ func TestFailoverOnDefrag(t *testing.T) {
 			clusterOptions: []e2e.EPClusterOption{
 				e2e.WithClusterSize(3),
 				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", true),
+				e2e.WithServerFeatureGate("NonBlockingDefrag", false),
 				e2e.WithGoFailEnabled(true),
 			},
 			expectedMinQPS:         20,
@@ -98,6 +101,7 @@ func TestFailoverOnDefrag(t *testing.T) {
 			clusterOptions: []e2e.EPClusterOption{
 				e2e.WithClusterSize(3),
 				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", true),
+				e2e.WithServerFeatureGate("NonBlockingDefrag", false),
 				e2e.WithGoFailEnabled(true),
 			},
 			gRPCDialOptions: []grpc.DialOption{
@@ -112,6 +116,7 @@ func TestFailoverOnDefrag(t *testing.T) {
 			clusterOptions: []e2e.EPClusterOption{
 				e2e.WithClusterSize(3),
 				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", false),
+				e2e.WithServerFeatureGate("NonBlockingDefrag", false),
 				e2e.WithGoFailEnabled(true),
 			},
 			gRPCDialOptions: []grpc.DialOption{
@@ -126,6 +131,7 @@ func TestFailoverOnDefrag(t *testing.T) {
 			clusterOptions: []e2e.EPClusterOption{
 				e2e.WithClusterSize(3),
 				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", true),
+				e2e.WithServerFeatureGate("NonBlockingDefrag", false),
 				e2e.WithGoFailEnabled(true),
 			},
 			expectedMinQPS:         20,

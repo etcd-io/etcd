@@ -15,7 +15,7 @@
 package cache
 
 import (
-	"github.com/google/btree"
+	"k8s.io/utils/third_party/forked/golang/btree"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 )
@@ -23,10 +23,10 @@ import (
 // snapshot captures a full, point-in-time view of the KV state at rev.
 type snapshot struct {
 	rev  int64
-	tree *btree.BTree
+	tree *btree.BTree[*kvItem]
 }
 
-func newClonedSnapshot(rev int64, t *btree.BTree) *snapshot {
+func newClonedSnapshot(rev int64, t *btree.BTree[*kvItem]) *snapshot {
 	return &snapshot{rev: rev, tree: t.Clone()}
 }
 
@@ -34,19 +34,23 @@ func (s *snapshot) Range(startKey, endKey []byte) []*mvccpb.KeyValue {
 	var out []*mvccpb.KeyValue
 	switch {
 	case len(endKey) == 0:
-		if item := s.tree.Get(probeItemFromKey(startKey)); item != nil {
-			out = append(out, item.(*kvItem).kv)
+		if item, ok := s.tree.Get(probeItemFromKey(startKey)); ok {
+			out = append(out, item.kv)
 		}
 	case isPrefixScan(endKey):
-		s.tree.AscendGreaterOrEqual(probeItemFromKey(startKey), func(item btree.Item) bool {
-			out = append(out, item.(*kvItem).kv)
+		s.tree.AscendGreaterOrEqual(probeItemFromKey(startKey), func(item *kvItem) bool {
+			out = append(out, item.kv)
 			return true
 		})
 	default:
-		s.tree.AscendRange(probeItemFromKey(startKey), probeItemFromKey(endKey), func(item btree.Item) bool {
-			out = append(out, item.(*kvItem).kv)
-			return true
-		})
+		s.tree.AscendRange(
+			probeItemFromKey(startKey),
+			probeItemFromKey(endKey),
+			func(item *kvItem) bool {
+				out = append(out, item.kv)
+				return true
+			},
+		)
 	}
 	return out
 }

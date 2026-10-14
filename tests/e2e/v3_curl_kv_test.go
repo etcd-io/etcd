@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	protov1 "github.com/golang/protobuf/proto"
+	protov1 "github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
 	gw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"

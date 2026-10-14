@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -749,6 +750,9 @@ func TestLeaseWithRequireLeader(t *testing.T) {
 		t.Fatalf("leader not required first keep-alive timed out")
 	}
 
+	prevUnavailableCount := getLeaseKeepAliveMetric(t, clus.Members[0], "Unavailable")
+	prevCanceledCount := getLeaseKeepAliveMetric(t, clus.Members[0], "Canceled")
+
 	clus.Members[1].Stop(t)
 	// kaReqLeader may issue multiple requests while waiting for the first
 	// response from proxy server; drain any stray keepalive responses
@@ -766,10 +770,33 @@ func TestLeaseWithRequireLeader(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("keepalive with require leader took too long to close")
 	}
+
+	require.Eventuallyf(t, func() bool {
+		return getLeaseKeepAliveMetric(t, clus.Members[0], "Unavailable") > prevUnavailableCount
+	}, 3*time.Second, 100*time.Millisecond,
+		"expected Unavailable metric to increase after leader loss, prev count: %d", prevUnavailableCount)
+	// Ensure the error is Unavailable, not Canceled
+	currentCanceledCount := getLeaseKeepAliveMetric(t, clus.Members[0], "Canceled")
+	require.Equalf(t, prevCanceledCount, currentCanceledCount,
+		"Canceled metric should not change, expected %d, got %d", prevCanceledCount, currentCanceledCount)
+
 	select {
 	case _, ok := <-kaWait:
 		require.Truef(t, ok, "got closed channel with no require leader, expected non-closed")
 	case <-time.After(10 * time.Millisecond):
 		// wait some to detect any closes happening soon after kaReqLeader closing
 	}
+}
+
+func getLeaseKeepAliveMetric(t *testing.T, member *integration.Member, grpcCode string) int64 {
+	t.Helper()
+	metricVal, err := member.Metric(
+		"grpc_server_handled_total",
+		`grpc_method="LeaseKeepAlive"`,
+		fmt.Sprintf(`grpc_code="%v"`, grpcCode),
+	)
+	require.NoError(t, err)
+	count, err := strconv.ParseInt(metricVal, 10, 64)
+	require.NoError(t, err)
+	return count
 }

@@ -30,10 +30,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -114,9 +114,7 @@ func (tc hashTestCase) Defrag(ctx context.Context) error {
 }
 
 func (tc hashTestCase) Compact(ctx context.Context, rev int64) error {
-	_, err := tc.Client.Compact(ctx, rev)
-	// Wait for compaction to be compacted
-	time.Sleep(50 * time.Millisecond)
+	_, err := tc.Client.Compact(ctx, rev, clientv3.WithCompactPhysical())
 	return err
 }
 
@@ -137,13 +135,50 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 	}
 
 	cli = clus.Client(oldLeadIdx)
-	_, err = cli.MoveLeader(t.Context(), target)
+	resp, err := cli.MoveLeader(t.Context(), target)
 	require.NoError(t, err)
+	require.NotNil(t, resp.Header)
+	assert.Equal(t, uint64(clus.Members[oldLeadIdx].Server.Cluster().ID()), resp.Header.ClusterId)
+	assert.Equal(t, uint64(clus.Members[oldLeadIdx].ID()), resp.Header.MemberId)
+	assert.NotZero(t, resp.Header.RaftTerm)
+	assert.Equal(t, target, resp.Header.LeaderId)
 
 	leadIdx := clus.WaitLeader(t)
 	lead := uint64(clus.Members[leadIdx].ID())
 	if target != lead {
 		t.Fatalf("new leader expected %d, got %d", target, lead)
+	}
+}
+
+func TestMaintenanceSnapshotResponseHeader(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+	populateDataIntoCluster(t, clus, 64*1024)
+	leaderID := uint64(clus.Members[clus.WaitLeader(t)].ID())
+
+	for i, member := range clus.Members {
+		stream, err := pb.NewMaintenanceClient(clus.Client(i).ActiveConnection()).Snapshot(t.Context(), &pb.SnapshotRequest{})
+		require.NoError(t, err)
+		var blobs [][]byte
+		for {
+			resp, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			require.NoError(t, err)
+			require.NotNil(t, resp.Header)
+			assert.Equal(t, uint64(member.Server.Cluster().ID()), resp.Header.ClusterId)
+			assert.Equal(t, uint64(member.ID()), resp.Header.MemberId)
+			assert.Equal(t, leaderID, resp.Header.LeaderId)
+			assert.NotZero(t, resp.Header.RaftTerm)
+			assert.Zero(t, resp.Header.Revision)
+			blobs = append(blobs, resp.Blob)
+		}
+		require.Greaterf(t, len(blobs), 2, "expected multiple data chunks and a checksum")
+		digest := sha256.Sum256(bytes.Join(blobs[:len(blobs)-1], nil))
+		assert.Equal(t, digest[:], blobs[len(blobs)-1])
 	}
 }
 
@@ -165,7 +200,7 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 	// And the initialized cluster has 20KiB snapshot, which can be
 	// pre-read by underlayer. We should increase the snapshot's size here,
 	// just in case that io.Copy won't return the canceled error.
-	populateDataIntoCluster(t, clus, 3, 1024*1024)
+	populateDataIntoCluster(t, clus, 1024*1024)
 
 	rc1, err := clus.RandClient().Snapshot(ctx)
 	require.NoError(t, err)
@@ -182,6 +217,25 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("expected %v, got %v", context.Canceled, err)
 	}
+}
+
+// TestMaintenanceSnapshotFromServerClient verifies that snapshot streams created
+// by Member.ServerClient (in-process adapter path) complete successfully.
+func TestMaintenanceSnapshotFromServerClient(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	srvClient := clus.Members[0].ServerClient
+	require.NotNilf(t, srvClient, "Member.ServerClient must be initialized")
+
+	rc, err := srvClient.Snapshot(t.Context())
+	require.NoError(t, err)
+	defer rc.Close()
+
+	_, err = io.Copy(io.Discard, rc)
+	require.NoErrorf(t, err, "snapshot stream should terminate cleanly")
 }
 
 // TestMaintenanceSnapshotWithVersionTimeout ensures that SnapshotWithVersion function
@@ -223,7 +277,7 @@ func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context,
 	// And the initialized cluster has 20KiB snapshot, which can be
 	// pre-read by underlayer. We should increase the snapshot's size here,
 	// just in case that io.Copy won't return the timeout error.
-	populateDataIntoCluster(t, clus, 3, 1024*1024)
+	populateDataIntoCluster(t, clus, 1024*1024)
 
 	rc2, err := snapshot(ctx, clus.RandClient())
 	require.NoError(t, err)
@@ -342,7 +396,7 @@ func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 	resp, err := clus.RandClient().SnapshotWithVersion(t.Context())
 	require.NoError(t, err)
 	defer resp.Snapshot.Close()
-	if resp.Version != "3.7.0" {
+	if resp.Version != "3.8.0" {
 		t.Errorf("unexpected version, expected %q, got %q", version.Version, resp.Version)
 	}
 }
@@ -353,7 +407,7 @@ func TestMaintenanceSnapshotContentDigest(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	populateDataIntoCluster(t, clus, 3, 1024*1024)
+	populateDataIntoCluster(t, clus, 1024*1024)
 
 	// reading snapshot with canceled context should error out
 	resp, err := clus.RandClient().SnapshotWithVersion(t.Context())
@@ -432,7 +486,7 @@ func TestMaintenanceStatus(t *testing.T) {
 			}
 
 			t.Logf("Creating client...")
-			cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+			cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps})
 			require.NoError(t, err)
 			defer cli.Close()
 			t.Logf("Creating client [DONE]")
@@ -461,5 +515,30 @@ func TestMaintenanceStatus(t *testing.T) {
 				t.Fatal("no leader found")
 			}
 		})
+	}
+}
+
+// TestMaintenanceDefragmentResponseHeader verifies that Defragment populates
+// the response header on every member, not just the leader.
+func TestMaintenanceDefragmentResponseHeader(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	leaderIdx := clus.WaitLeader(t)
+	leaderID := uint64(clus.Members[leaderIdx].ID())
+
+	// hit each member directly, so the header is the serving member's own view
+	for i := 0; i < 3; i++ {
+		cli := clus.Client(i)
+		resp, err := cli.Defragment(t.Context(), clus.Members[i].GRPCURL)
+		require.NoErrorf(t, err, "failed to defragment member %d", i)
+		require.NotNilf(t, resp.Header, "defragment response from member %d should carry a header", i)
+		require.Equalf(t, uint64(clus.Members[i].ID()), resp.Header.MemberId,
+			"defragment should be served by the addressed member")
+		require.NotZerof(t, resp.Header.RaftTerm, "defragment header should carry the raft term")
+		require.Equalf(t, leaderID, resp.Header.LeaderId,
+			"defragment header.leader_id should report the cluster leader")
 	}
 }

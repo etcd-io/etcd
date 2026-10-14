@@ -29,6 +29,8 @@ import (
 type ClusterServer struct {
 	cluster api.Cluster
 	server  *etcdserver.EtcdServer
+	// we want compile errors if new methods are added
+	pb.UnsafeClusterServer
 }
 
 func NewClusterServer(s *etcdserver.EtcdServer) *ClusterServer {
@@ -88,12 +90,12 @@ func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateReq
 }
 
 func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest) (*pb.MemberListResponse, error) {
-	if r.Linearizable {
-		if err := cs.server.LinearizableReadNotify(ctx); err != nil {
-			return nil, togRPCError(err)
-		}
+	members, err := cs.server.MemberList(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
 	}
-	membs := membersToProtoMembers(cs.cluster.Members())
+
+	membs := membersToProtoMembers(members)
 	return &pb.MemberListResponse{Header: cs.header(), Members: membs}, nil
 }
 
@@ -105,8 +107,10 @@ func (cs *ClusterServer) MemberPromote(ctx context.Context, r *pb.MemberPromoteR
 	return &pb.MemberPromoteResponse{Header: cs.header(), Members: membersToProtoMembers(membs)}, nil
 }
 
+// header includes leader_id so clients can learn this member's leader view from
+// a Cluster RPC instead of a separate Status request. See #22268.
 func (cs *ClusterServer) header() *pb.ResponseHeader {
-	return &pb.ResponseHeader{ClusterId: uint64(cs.cluster.ID()), MemberId: uint64(cs.server.MemberID()), RaftTerm: cs.server.Term()}
+	return &pb.ResponseHeader{ClusterId: uint64(cs.cluster.ID()), MemberId: uint64(cs.server.MemberID()), RaftTerm: cs.server.Term(), LeaderId: uint64(cs.server.Leader())}
 }
 
 func membersToProtoMembers(membs []*membership.Member) []*pb.Member {

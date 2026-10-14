@@ -1,0 +1,29 @@
+diff --git a/server/verify/verify.go b/server/verify/verify.go
+index 1eb68b2b0..ed9648b4a 100644
+--- a/server/verify/verify.go
++++ b/server/verify/verify.go
+@@ -27,6 +27,8 @@ import (
+ 	wal2 "go.etcd.io/etcd/server/v3/storage/wal"
+ 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+ 	"go.etcd.io/raft/v3/raftpb"
++
++	"github.com/antithesishq/antithesis-sdk-go/assert"
+ )
+ 
+ const envVerifyValueStorageWAL verify.VerificationType = "storage_wal"
+@@ -102,9 +104,12 @@ func VerifyIfEnabled(cfg Config) error {
+ // See Verify for more information.
+ func MustVerifyIfEnabled(cfg Config) {
+ 	if err := VerifyIfEnabled(cfg); err != nil {
+-		cfg.Logger.Fatal("Verification failed",
+-			zap.String("data-dir", cfg.DataDir),
+-			zap.Error(err))
++		assert.Unreachable("Verification failed",
++			map[string]any{
++				"data-dir": cfg.DataDir,
++				"error":    err,
++			},
++		)
+ 	}
+ }
+ 

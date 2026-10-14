@@ -23,6 +23,7 @@ import (
 
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/raft/v3/raftpb"
@@ -46,6 +47,9 @@ func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 	}
 	bcfg.BackendFreelistType = cfg.BackendFreelistType
 	bcfg.Logger = cfg.Logger
+	if cfg.ServerFeatureGate != nil {
+		bcfg.NonBlockingDefrag = cfg.ServerFeatureGate.Enabled(features.NonBlockingDefrag)
+	}
 	if cfg.QuotaBackendBytes > 0 && cfg.QuotaBackendBytes != DefaultQuotaBytes {
 		// permit 10% excess over quota for disarm
 		bcfg.MmapSize = uint64(cfg.QuotaBackendBytes + cfg.QuotaBackendBytes/10)
@@ -56,8 +60,8 @@ func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 }
 
 // OpenSnapshotBackend renames a snapshot db to the current etcd db and opens it.
-func OpenSnapshotBackend(cfg config.ServerConfig, ss *snap.Snapshotter, snapshot raftpb.Snapshot, hooks *BackendHooks) (backend.Backend, error) {
-	snapPath, err := ss.DBFilePath(snapshot.Metadata.Index)
+func OpenSnapshotBackend(cfg config.ServerConfig, ss *snap.Snapshotter, snapshot *raftpb.Snapshot, hooks *BackendHooks) (backend.Backend, error) {
+	snapPath, err := ss.DBFilePath(snapshot.Metadata.GetIndex())
 	if err != nil {
 		return nil, fmt.Errorf("failed to find database snapshot file (%w)", err)
 	}
@@ -99,16 +103,16 @@ func OpenBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 // before updating the backend db after persisting raft snapshot to disk,
 // violating the invariant snapshot.Metadata.Index < db.consistentIndex. In this
 // case, replace the db with the snapshot db sent by the leader.
-func RecoverSnapshotBackend(cfg config.ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot, beExist bool, hooks *BackendHooks) (backend.Backend, error) {
+func RecoverSnapshotBackend(cfg config.ServerConfig, oldbe backend.Backend, snapshot *raftpb.Snapshot, beExist bool, hooks *BackendHooks) (backend.Backend, error) {
 	consistentIndex := uint64(0)
 	if beExist {
 		consistentIndex, _ = schema.ReadConsistentIndex(oldbe.ReadTx())
 	}
-	if snapshot.Metadata.Index <= consistentIndex {
-		cfg.Logger.Info("Skipping snapshot backend", zap.Uint64("consistent-index", consistentIndex), zap.Uint64("snapshot-index", snapshot.Metadata.Index))
+	if snapshot.Metadata.GetIndex() <= consistentIndex {
+		cfg.Logger.Info("Skipping snapshot backend", zap.Uint64("consistent-index", consistentIndex), zap.Uint64("snapshot-index", snapshot.Metadata.GetIndex()))
 		return oldbe, nil
 	}
-	cfg.Logger.Info("Recovering from snapshot backend", zap.Uint64("consistent-index", consistentIndex), zap.Uint64("snapshot-index", snapshot.Metadata.Index))
+	cfg.Logger.Info("Recovering from snapshot backend", zap.Uint64("consistent-index", consistentIndex), zap.Uint64("snapshot-index", snapshot.Metadata.GetIndex()))
 	oldbe.Close()
 	return OpenSnapshotBackend(cfg, snap.New(cfg.Logger, cfg.SnapDir()), snapshot, hooks)
 }

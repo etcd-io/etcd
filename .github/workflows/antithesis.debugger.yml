@@ -30,7 +30,7 @@ jobs:
     environment: Antithesis
     steps:
       - name: Trigger Antithesis Debugger
-        uses: antithesishq/antithesis-trigger-action@6c0a27302c0a3cd97d87d40bd6704e673abed4bb # v0.9
+        uses: antithesishq/antithesis-trigger-action@80a5e9be591d303bf3c83e3ecbdc00102ad9de90 # v0.12
         with:
           notebook_name: debugging
           tenant: linuxfoundation

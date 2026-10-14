@@ -62,7 +62,7 @@ func (q *Queue) Dequeue() (string, error) {
 		q.client,
 		q.keyPrefix,
 		resp.Header.Revision,
-		[]mvccpb.Event_EventType{mvccpb.PUT})
+		[]mvccpb.Event_EventType{mvccpb.Event_PUT})
 	if err != nil {
 		return "", err
 	}

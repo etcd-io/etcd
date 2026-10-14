@@ -155,7 +155,8 @@ func TestAuthority(t *testing.T) {
 				cc := testutils.MustClient(clus.Client(WithEndpoints(endpoints)))
 
 				for i := 0; i < 100; i++ {
-					require.NoError(t, cc.Put(ctx, "foo", "bar", config.PutOptions{}))
+					_, err := cc.Put(ctx, "foo", "bar", config.PutOptions{})
+					require.NoError(t, err)
 				}
 
 				testutils.ExecuteWithTimeout(t, 5*time.Second, func() {

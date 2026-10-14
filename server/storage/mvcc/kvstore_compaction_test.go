@@ -140,7 +140,7 @@ func TestCompactAllAndRestore(t *testing.T) {
 	}
 	_, err = s1.Range(t.Context(), []byte("foo"), nil, RangeOptions{})
 	if err != nil {
-		t.Errorf("unexpect range error %v", err)
+		t.Errorf("unexpected range error %v", err)
 	}
 	err = s1.Close()
 	if err != nil {

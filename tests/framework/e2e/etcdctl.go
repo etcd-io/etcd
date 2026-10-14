@@ -17,18 +17,15 @@ package e2e
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
@@ -53,7 +50,6 @@ func NewEtcdctl(cfg ClientConfig, endpoints []string, opts ...config.ClientOptio
 		client, err := clientv3.New(clientv3.Config{
 			Endpoints:   ctl.endpoints,
 			DialTimeout: 5 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
 			Username:    ctl.authConfig.Username,
 			Password:    ctl.authConfig.Password,
 			Token:       ctl.authConfig.Token,
@@ -89,9 +85,41 @@ func WithEndpoints(endpoints []string) config.ClientOption {
 	}
 }
 
+func WithDialTimeout(tio time.Duration) config.ClientOption {
+	return func(c any) {
+		ctl := c.(*EtcdctlV3)
+		ctl.cfg.DialTimeout = tio
+	}
+}
+
+func (ctl *EtcdctlV3) Snapshot(ctx context.Context, outFile string) error {
+	// etcdctl requires the snapshot to be requested from exactly one node.
+	singleEndpointCtl := *ctl
+	singleEndpointCtl.endpoints = []string{ctl.endpoints[0]}
+	_, err := SpawnWithExpectLines(ctx, singleEndpointCtl.cmdArgs("snapshot", "save", outFile), nil, expect.ExpectedResponse{Value: "Snapshot saved at"})
+	return err
+}
+
 func (ctl *EtcdctlV3) DowngradeEnable(ctx context.Context, version string) error {
 	_, err := SpawnWithExpectLines(ctx, ctl.cmdArgs("downgrade", "enable", version), nil, expect.ExpectedResponse{Value: "Downgrade enable success"})
 	return err
+}
+
+func (ctl *EtcdctlV3) Downgrade(ctx context.Context, action clientv3.DowngradeAction, version string) (*clientv3.DowngradeResponse, error) {
+	var args []string
+	switch action {
+	case clientv3.DowngradeValidate:
+		args = []string{"downgrade", "validate", version}
+	case clientv3.DowngradeEnable:
+		args = []string{"downgrade", "enable", version}
+	case clientv3.DowngradeCancel:
+		args = []string{"downgrade", "cancel"}
+	default:
+		return nil, fmt.Errorf("unknown downgrade action %v", action)
+	}
+	resp := clientv3.DowngradeResponse{}
+	err := ctl.spawnJSONCmd(ctx, &resp, args...)
+	return &resp, err
 }
 
 func (ctl *EtcdctlV3) DowngradeCancel(ctx context.Context) error {
@@ -100,7 +128,6 @@ func (ctl *EtcdctlV3) DowngradeCancel(ctx context.Context) error {
 }
 
 func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) (*clientv3.GetResponse, error) {
-	resp := clientv3.GetResponse{}
 	var args []string
 	if o.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
@@ -124,10 +151,31 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 	if o.FromKey {
 		args = append(args, "--from-key")
 	}
+	writeOut := "json"
+	if o.CountOnly || o.KeysOnly {
+		writeOut = "fields"
+	}
+	args = append(args, "-w", writeOut)
 	if o.CountOnly {
-		args = append(args, "-w", "fields", "--count-only")
-	} else {
-		args = append(args, "-w", "json")
+		args = append(args, "--count-only")
+	}
+	if o.KeysOnly {
+		args = append(args, "--keys-only")
+	}
+	if o.MaxCreateRevision != 0 {
+		args = append(args, fmt.Sprintf("--max-create-rev=%d", o.MaxCreateRevision))
+	}
+	if o.MinCreateRevision != 0 {
+		args = append(args, fmt.Sprintf("--min-create-rev=%d", o.MinCreateRevision))
+	}
+	if o.MaxModRevision != 0 {
+		args = append(args, fmt.Sprintf("--max-mod-rev=%d", o.MaxModRevision))
+	}
+	if o.MinModRevision != 0 {
+		args = append(args, fmt.Sprintf("--min-mod-rev=%d", o.MinModRevision))
+	}
+	if o.Stream {
+		args = append(args, "--stream")
 	}
 	switch o.SortBy {
 	case clientv3.SortByCreateRevision:
@@ -159,24 +207,70 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 			return nil, err
 		}
 		defer cmd.Close()
+		// Relying on finding 'Count' as the last line of the output to get all the lines from cmd.Lines()
 		_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "Count"})
-		return &resp, err
+		if err != nil {
+			return nil, err
+		}
+		return parseFieldsGetResponse(cmd.Lines())
 	}
+	resp := clientv3.GetResponse{}
 	err := ctl.spawnJSONCmd(ctx, &resp, args...)
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) Put(ctx context.Context, key, value string, opts config.PutOptions) error {
-	args := ctl.cmdArgs()
-	args = append(args, "put", key, value)
-	if opts.LeaseID != 0 {
+func parseFieldsGetResponse(lines []string) (*clientv3.GetResponse, error) {
+	resp := &clientv3.GetResponse{Header: &etcdserverpb.ResponseHeader{}}
+	for _, l := range lines {
+		fields := strings.Split(l, ":")
+		key, value := strings.TrimSpace(fields[0]), strings.TrimSpace(fields[1])
+		var err error
+		if key, err = strconv.Unquote(key); err != nil {
+			return resp, err
+		}
+		switch key {
+		case "ClusterID":
+			resp.Header.ClusterId, err = strconv.ParseUint(value, 10, 64)
+		case "MemberID":
+			resp.Header.MemberId, err = strconv.ParseUint(value, 10, 64)
+		case "Revision":
+			resp.Header.Revision, err = strconv.ParseInt(value, 10, 64)
+		case "RaftTerm":
+			resp.Header.RaftTerm, err = strconv.ParseUint(value, 10, 64)
+		case "More":
+			resp.More, err = strconv.ParseBool(value)
+		case "Count":
+			resp.Count, err = strconv.ParseInt(value, 10, 64)
+		default:
+			return resp, fmt.Errorf("unexpected field %q:%s", key, value)
+		}
+		if err != nil {
+			return resp, err
+		}
+	}
+	return resp, nil
+}
+
+func (ctl *EtcdctlV3) Put(ctx context.Context, key, value string, opts config.PutOptions) (*clientv3.PutResponse, error) {
+	resp := clientv3.PutResponse{}
+	args := []string{"put", key}
+	if !opts.IgnoreValue {
+		args = append(args, value)
+	}
+	if opts.LeaseID != 0 && !opts.IgnoreLease {
 		args = append(args, "--lease", strconv.FormatInt(int64(opts.LeaseID), 16))
+	}
+	if opts.IgnoreValue {
+		args = append(args, "--ignore-value")
+	}
+	if opts.IgnoreLease {
+		args = append(args, "--ignore-lease")
 	}
 	if opts.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", opts.Timeout))
 	}
-	_, err := SpawnWithExpectLines(ctx, args, nil, expect.ExpectedResponse{Value: "OK"})
-	return err
+	err := ctl.spawnJSONCmd(ctx, &resp, args...)
+	return &resp, err
 }
 
 func (ctl *EtcdctlV3) Delete(ctx context.Context, key string, o config.DeleteOptions) (*clientv3.DeleteResponse, error) {
@@ -249,47 +343,11 @@ func (ctl *EtcdctlV3) Txn(ctx context.Context, compares, ifSucess, ifFail []stri
 	if err != nil {
 		return nil, err
 	}
-	var resp clientv3.TxnResponse
-	addTxnResponse(&resp, line)
-	err = json.Unmarshal([]byte(line), &resp)
-	return &resp, err
-}
-
-// addTxnResponse looks for ResponseOp json tags and adds the objects for json decoding
-func addTxnResponse(resp *clientv3.TxnResponse, jsonData string) {
-	if resp == nil {
-		return
+	var jsonResp command.TxnResponseJSON
+	if err := json.Unmarshal([]byte(line), &jsonResp); err != nil {
+		return nil, err
 	}
-	if resp.Responses == nil {
-		resp.Responses = []*etcdserverpb.ResponseOp{}
-	}
-	jd := json.NewDecoder(strings.NewReader(jsonData))
-	for {
-		t, e := jd.Token()
-		if errors.Is(e, io.EOF) {
-			break
-		}
-		if t == "response_range" {
-			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
-				Response: &etcdserverpb.ResponseOp_ResponseRange{},
-			})
-		}
-		if t == "response_put" {
-			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
-				Response: &etcdserverpb.ResponseOp_ResponsePut{},
-			})
-		}
-		if t == "response_delete_range" {
-			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
-				Response: &etcdserverpb.ResponseOp_ResponseDeleteRange{},
-			})
-		}
-		if t == "response_txn" {
-			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
-				Response: &etcdserverpb.ResponseOp_ResponseTxn{},
-			})
-		}
-	}
+	return (*clientv3.TxnResponse)(jsonResp.ToProto()), nil
 }
 
 func (ctl *EtcdctlV3) MemberList(ctx context.Context, serializable bool) (*clientv3.MemberListResponse, error) {
@@ -362,6 +420,9 @@ func (ctl *EtcdctlV3) flags() map[string]string {
 		fmap["auth-jwt-token"] = ctl.authConfig.Token
 	} else if !ctl.authConfig.Empty() {
 		fmap["user"] = ctl.authConfig.Username + ":" + ctl.authConfig.Password
+	}
+	if ctl.cfg.DialTimeout != 0 {
+		fmap["dial-timeout"] = ctl.cfg.DialTimeout.String()
 	}
 	return fmap
 }
@@ -451,7 +512,7 @@ func (ctl *EtcdctlV3) TimeToLive(ctx context.Context, id clientv3.LeaseID, o con
 	}
 	defer cmd.Close()
 	var resp clientv3.LeaseTimeToLiveResponse
-	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "id"})
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "member_id"})
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +541,7 @@ func (ctl *EtcdctlV3) Leases(ctx context.Context) (*clientv3.LeaseLeasesResponse
 	}
 	defer cmd.Close()
 	var resp clientv3.LeaseLeasesResponse
-	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "id"})
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "member_id"})
 	if err != nil {
 		return nil, err
 	}

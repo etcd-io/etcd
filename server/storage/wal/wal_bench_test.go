@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -48,7 +49,7 @@ func benchmarkWriteEntry(b *testing.B, size int, batch int) {
 
 	b.ResetTimer()
 	n := 0
-	b.SetBytes(int64(e.Size()))
+	b.SetBytes(int64(proto.Size(e)))
 	for i := 0; i < b.N; i++ {
 		err := w.saveEntry(e)
 		if err != nil {

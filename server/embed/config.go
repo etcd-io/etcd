@@ -45,7 +45,6 @@ import (
 	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/pkg/v3/netutil"
-	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
@@ -59,7 +58,6 @@ const (
 	ClusterStateFlagExisting = "existing"
 
 	DefaultName                        = "default"
-	DefaultMaxSnapshots                = 5
 	DefaultMaxWALs                     = 5
 	DefaultMaxTxnOps                   = uint(128)
 	DefaultWarningApplyDuration        = 100 * time.Millisecond
@@ -157,28 +155,29 @@ func init() {
 }
 
 // Config holds the arguments for configuring an etcd server.
+//
+// Note: time.Duration fields in this struct are unmarshalled from JSON/YAML
+// as integer nanoseconds (e.g. 600000000000 for 10 minutes). Human-readable
+// duration strings such as "10m" are only accepted by the equivalent
+// command-line flags, not by the configuration file.
+// This is a [known Go standard library limitation](https://github.com/golang/go/issues/10275)
+// where time.Duration is unmarshaled as a plain integer.
 type Config struct {
 	Name string `json:"name"`
 	Dir  string `json:"data-dir"`
 	//revive:disable-next-line:var-naming
 	WalDir string `json:"wal-dir"`
 
-	// SnapshotCount is the number of committed transactions that trigger a snapshot to disk.
-	// TODO: remove it in 3.7.
-	// Deprecated: Will be decommissioned in v3.7.
+	// SnapshotCount is the number of committed transactions that trigger a snapshot.
 	SnapshotCount uint64 `json:"snapshot-count"`
 
-	// SnapshotCatchUpEntries is the number of entires for a slow follower
+	// SnapshotCatchUpEntries is the number of entries for a slow follower
 	// to catch-up after compacting the raft storage entries.
 	// We expect the follower has a millisecond level latency with the leader.
 	// The max throughput is around 10K. Keep a 5K entries is enough for helping
 	// follower to catch up.
 	SnapshotCatchUpEntries uint64 `json:"snapshot-catchup-entries"`
 
-	// MaxSnapFiles is the maximum number of snapshot files.
-	// TODO: remove it in 3.7.
-	// Deprecated: Will be removed in v3.7.
-	MaxSnapFiles uint `json:"max-snapshots"`
 	//revive:disable-next-line:var-naming
 	MaxWalFiles uint `json:"max-wals"`
 
@@ -447,12 +446,6 @@ type Config struct {
 	// be refined to mlock in-use area of bbolt only.
 	MemoryMlock bool `json:"memory-mlock"`
 
-	// V2Deprecation describes phase of API & Storage V2 support.
-	// Do not set this field for embedded use cases, as it has no effect. However, setting it will not cause any harm.
-	// TODO: Delete in v3.8
-	// Deprecated: The default value is enforced, to be removed in v3.8.
-	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
-
 	// ServerFeatureGate is a server level feature gate
 	ServerFeatureGate featuregate.FeatureGate
 	// FlagsExplicitlySet stores if a flag is explicitly set from the cmd line or config file.
@@ -502,18 +495,18 @@ func NewConfig() *Config {
 	lcurl, _ := url.Parse(DefaultListenClientURLs)
 	acurl, _ := url.Parse(DefaultAdvertiseClientURLs)
 	cfg := &Config{
-		MaxSnapFiles: DefaultMaxSnapshots,
-		MaxWalFiles:  DefaultMaxWALs,
+		MaxWalFiles: DefaultMaxWALs,
 
 		Name: DefaultName,
 
 		SnapshotCount:          etcdserver.DefaultSnapshotCount,
 		SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
 
-		MaxTxnOps:            DefaultMaxTxnOps,
-		MaxRequestBytes:      DefaultMaxRequestBytes,
-		MaxConcurrentStreams: DefaultMaxConcurrentStreams,
-		WarningApplyDuration: DefaultWarningApplyDuration,
+		MaxTxnOps:                   DefaultMaxTxnOps,
+		MaxRequestBytes:             DefaultMaxRequestBytes,
+		MaxConcurrentStreams:        DefaultMaxConcurrentStreams,
+		WarningApplyDuration:        DefaultWarningApplyDuration,
+		WarningUnaryRequestDuration: DefaultWarningUnaryRequestDuration,
 
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
@@ -569,8 +562,6 @@ func NewConfig() *Config {
 
 		CompactHashCheckTime: DefaultCompactHashCheckTime,
 
-		V2Deprecation: config.V2DeprDefault,
-
 		DiscoveryCfg: v3discovery.DiscoveryConfig{
 			ConfigSpec: clientv3.ConfigSpec{
 				DialTimeout:      DefaultDiscoveryDialTimeout,
@@ -616,10 +607,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 		"listen-metrics-urls",
 		"List of URLs to listen on for the metrics and health endpoints.",
 	)
-	fs.UintVar(&cfg.MaxSnapFiles, "max-snapshots", cfg.MaxSnapFiles, "Maximum number of snapshot files to retain (0 is unlimited). Deprecated in v3.6 and will be decommissioned in v3.7.")
 	fs.UintVar(&cfg.MaxWalFiles, "max-wals", cfg.MaxWalFiles, "Maximum number of wal files to retain (0 is unlimited).")
 	fs.StringVar(&cfg.Name, "name", cfg.Name, "Human-readable name for this member.")
-	fs.Uint64Var(&cfg.SnapshotCount, "snapshot-count", cfg.SnapshotCount, "Number of committed transactions to trigger a snapshot to disk. Deprecated in v3.6 and will be decommissioned in v3.7.")
+	fs.Uint64Var(&cfg.SnapshotCount, "snapshot-count", cfg.SnapshotCount, "Number of committed transactions to trigger a snapshot.")
 	fs.UintVar(&cfg.TickMs, "heartbeat-interval", cfg.TickMs, "Time (in milliseconds) of a heartbeat interval.")
 	fs.UintVar(&cfg.ElectionMs, "election-timeout", cfg.ElectionMs, "Time (in milliseconds) for an election to timeout.")
 	fs.BoolVar(&cfg.InitialElectionTickAdvance, "initial-election-tick-advance", cfg.InitialElectionTickAdvance, "Whether to fast-forward initial election ticks on boot for faster election.")
@@ -728,7 +718,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&cfg.EnablePprof, "enable-pprof", false, "Enable runtime profiling data via HTTP server. Address is at client URL + \"/debug/pprof/\"")
 
 	// additional metrics
-	fs.StringVar(&cfg.Metrics, "metrics", cfg.Metrics, "Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics")
+	fs.StringVar(&cfg.Metrics, "metrics", cfg.Metrics, "Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics and the full Go runtime metrics set")
 
 	fs.BoolVar(&cfg.EnableDistributedTracing, "enable-distributed-tracing", false, "Enable distributed tracing using OpenTelemetry Tracing.")
 	fs.StringVar(&cfg.DistributedTracingAddress, "distributed-tracing-address", cfg.DistributedTracingAddress, "Address for distributed tracing used for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag).")
@@ -1212,13 +1202,6 @@ func (cfg *Config) InferLocalAddr() string {
 
 func (cfg *Config) IsNewCluster() bool { return cfg.ClusterState == ClusterStateFlagNew }
 func (cfg *Config) ElectionTicks() int { return int(cfg.ElectionMs / cfg.TickMs) }
-
-func (cfg *Config) V2DeprecationEffective() config.V2DeprecationEnum {
-	if cfg.V2Deprecation == "" {
-		return config.V2DeprDefault
-	}
-	return cfg.V2Deprecation
-}
 
 func (cfg *Config) defaultPeerHost() bool {
 	return len(cfg.AdvertisePeerUrls) == 1 && cfg.AdvertisePeerUrls[0].String() == DefaultInitialAdvertisePeerURLs

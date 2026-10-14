@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
@@ -56,11 +56,16 @@ func TestNewPlan(t *testing.T) {
 			target:  version.V3_7,
 		},
 		{
-			name:           "Upgrade v3.7 to v3.8 should fail as v3.8 is unknown",
-			current:        version.V3_7,
-			target:         version.V3_8,
+			name:    "Upgrade v3.7 to v3.8 should work",
+			current: version.V3_7,
+			target:  version.V3_8,
+		},
+		{
+			name:           "Upgrade v3.8 to v3.9 should fail as v3.8 is unknown",
+			current:        version.V3_8,
+			target:         version.V3_9,
 			expectError:    true,
-			expectErrorMsg: `version "3.8.0" is not supported`,
+			expectErrorMsg: `version "3.9.0" is not supported`,
 		},
 		{
 			name:           "Upgrade v3.6 to v4.0 as major version changes are unsupported",
@@ -100,31 +105,31 @@ func TestMigrationStepExecute(t *testing.T) {
 	}{
 		{
 			name:           "Upgrade execute changes in order and updates version",
-			currentVersion: semver.Version{Major: 99, Minor: 0},
+			currentVersion: *semver.New(99, 0, 0, "", ""),
 			isUpgrade:      true,
 			changes: []schemaChange{
 				recorder.changeMock("A"),
 				recorder.changeMock("B"),
 			},
 
-			expectVersion:         &semver.Version{Major: 99, Minor: 1},
+			expectVersion:         semver.New(99, 1, 0, "", ""),
 			expectRecordedActions: []string{"upgrade A", "upgrade B"},
 		},
 		{
 			name:           "Downgrade execute changes in reversed order and downgrades version",
-			currentVersion: semver.Version{Major: 99, Minor: 1},
+			currentVersion: *semver.New(99, 1, 0, "", ""),
 			isUpgrade:      false,
 			changes: []schemaChange{
 				recorder.changeMock("A"),
 				recorder.changeMock("B"),
 			},
 
-			expectVersion:         &semver.Version{Major: 99, Minor: 0},
+			expectVersion:         semver.New(99, 0, 0, "", ""),
 			expectRecordedActions: []string{"downgrade B", "downgrade A"},
 		},
 		{
 			name:           "Failure during upgrade should revert previous changes in reversed order and not change version",
-			currentVersion: semver.Version{Major: 99, Minor: 0},
+			currentVersion: *semver.New(99, 0, 0, "", ""),
 			isUpgrade:      true,
 			changes: []schemaChange{
 				recorder.changeMock("A"),
@@ -134,13 +139,13 @@ func TestMigrationStepExecute(t *testing.T) {
 				recorder.changeMock("E"),
 			},
 
-			expectVersion:         &semver.Version{Major: 99, Minor: 0},
+			expectVersion:         semver.New(99, 0, 0, "", ""),
 			expectRecordedActions: []string{"upgrade A", "upgrade B", "upgrade error C", "revert upgrade B", "revert upgrade A"},
 			expectError:           errorC,
 		},
 		{
 			name:           "Failure during downgrade should revert previous changes in reversed order and not change version",
-			currentVersion: semver.Version{Major: 99, Minor: 0},
+			currentVersion: *semver.New(99, 0, 0, "", ""),
 			isUpgrade:      false,
 			changes: []schemaChange{
 				recorder.changeMock("A"),
@@ -150,13 +155,13 @@ func TestMigrationStepExecute(t *testing.T) {
 				recorder.changeMock("E"),
 			},
 
-			expectVersion:         &semver.Version{Major: 99, Minor: 0},
+			expectVersion:         semver.New(99, 0, 0, "", ""),
 			expectRecordedActions: []string{"downgrade E", "downgrade D", "downgrade error C", "revert downgrade D", "revert downgrade E"},
 			expectError:           errorC,
 		},
 		{
 			name:           "Downgrade below to below v3.6 doesn't leave storage version as it was not supported then",
-			currentVersion: semver.Version{Major: 3, Minor: 6},
+			currentVersion: *semver.New(3, 6, 0, "", ""),
 			changes:        schemaChanges[version.V3_6],
 			isUpgrade:      false,
 			expectVersion:  nil,

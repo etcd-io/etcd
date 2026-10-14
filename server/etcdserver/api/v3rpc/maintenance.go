@@ -89,6 +89,9 @@ type maintenanceServer struct {
 	cg     ConfigGetter
 
 	healthNotifier notifier
+
+	// we want compile errors if new methods are added
+	pb.UnsafeMaintenanceServer
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer, healthNotifier notifier) pb.MaintenanceServer {
@@ -123,7 +126,12 @@ func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRe
 		return nil, togRPCError(err)
 	}
 	ms.lg.Info("finished defragment")
-	return &pb.DefragmentResponse{}, nil
+	// fill the header after the defrag returns: a defrag can take long enough
+	// for leadership to move, and callers read header.leader_id to decide
+	// whether they still need to transfer leadership before restarting a member.
+	resp := &pb.DefragmentResponse{Header: &pb.ResponseHeader{}}
+	ms.hdr.fill(resp.Header)
+	return resp, nil
 }
 
 // big enough size to hold >1 OS pages in the buffer
@@ -185,10 +193,13 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		// No, the client will still receive non-nil response
 		// until server closes the stream with EOF
 		resp := &pb.SnapshotResponse{
+			Header:         &pb.ResponseHeader{},
 			RemainingBytes: uint64(total - sent),
 			Blob:           buf[:n],
 			Version:        storageVersion,
 		}
+		// The live store revision may differ from the snapshot's revision.
+		ms.hdr.fillWithoutRevision(resp.Header)
 		if err = srv.Send(resp); err != nil {
 			return togRPCError(err)
 		}
@@ -203,7 +214,8 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		zap.Int64("total-bytes", total),
 		zap.Int("checksum-size", len(sha)),
 	)
-	hresp := &pb.SnapshotResponse{RemainingBytes: 0, Blob: sha, Version: storageVersion}
+	hresp := &pb.SnapshotResponse{Header: &pb.ResponseHeader{}, RemainingBytes: 0, Blob: sha, Version: storageVersion}
+	ms.hdr.fillWithoutRevision(hresp.Header)
 	if err := srv.Send(hresp); err != nil {
 		return togRPCError(err)
 	}
@@ -300,7 +312,9 @@ func (ms *maintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRe
 	if err := ms.lt.MoveLeader(ctx, uint64(ms.rg.Leader()), tr.TargetID); err != nil {
 		return nil, togRPCError(err)
 	}
-	return &pb.MoveLeaderResponse{}, nil
+	resp := &pb.MoveLeaderResponse{Header: &pb.ResponseHeader{}}
+	ms.hdr.fill(resp.Header)
+	return resp, nil
 }
 
 func (ms *maintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
@@ -349,8 +363,22 @@ func (ams *authMaintenanceServer) HashKV(ctx context.Context, r *pb.HashKVReques
 	return ams.maintenanceServer.HashKV(ctx, r)
 }
 
+func (ams *authMaintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
+	switch ar.GetAction() {
+	case pb.AlarmRequest_GET:
+		if err := ams.requireAuthInfo(ctx); err != nil {
+			return nil, togRPCError(err)
+		}
+	default:
+		if err := ams.isPermitted(ctx); err != nil {
+			return nil, togRPCError(err)
+		}
+	}
+	return ams.maintenanceServer.Alarm(ctx, ar)
+}
+
 func (ams *authMaintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {
-	if err := ams.isPermitted(ctx); err != nil {
+	if err := ams.requireAuthInfo(ctx); err != nil {
 		return nil, togRPCError(err)
 	}
 

@@ -24,7 +24,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	v3 "go.etcd.io/etcd/client/v3"
@@ -89,6 +88,11 @@ func (lkv *leasingKV) Get(ctx context.Context, key string, opts ...v3.OpOption) 
 
 func (lkv *leasingKV) Put(ctx context.Context, key, val string, opts ...v3.OpOption) (*v3.PutResponse, error) {
 	return lkv.put(ctx, v3.OpPut(key, val, opts...))
+}
+
+// GetStream is not supported by leasingKV.
+func (lkv *leasingKV) GetStream(ctx context.Context, key string, opts ...v3.OpOption) (v3.GetStreamChan, error) {
+	return nil, status.Error(codes.Unimplemented, "GetStream is not supported by leasingKV")
 }
 
 func (lkv *leasingKV) Delete(ctx context.Context, key string, opts ...v3.OpOption) (*v3.DeleteResponse, error) {
@@ -263,7 +267,7 @@ func (lkv *leasingKV) acquire(ctx context.Context, key string, op v3.Op) (*v3.Tx
 		if err := lkv.waitSession(ctx); err != nil {
 			return nil, err
 		}
-		lcmp := v3.Cmp{Key: []byte(key), Target: pb.Compare_LEASE}
+		lcmp := v3.LeaseValue(key)
 		resp, err := lkv.kv.Txn(ctx).If(
 			v3.Compare(v3.CreateRevision(lkv.pfx+key), "=", 0),
 			v3.Compare(lcmp, "=", 0)).

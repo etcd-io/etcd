@@ -1,0 +1,21 @@
+# Allowlist for experimental gRPC APIs
+# Format: PackageName.Symbol
+# Remove items from this list as they are migrated or stabilized.
+
+grpc.NewContextWithServerTransportStream
+grpc.ServeHTTP
+grpc.WithResolvers
+resolver.Address
+resolver.BuildOptions
+resolver.Builder
+resolver.ClientConn
+resolver.Endpoint
+resolver.ParseServiceConfig
+resolver.ResolveNowOptions
+resolver.Resolver
+resolver.State
+resolver.Target
+resolver.URL
+resolver.UpdateState
+serviceconfig.Err
+serviceconfig.ParseResult

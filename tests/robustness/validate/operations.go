@@ -16,6 +16,7 @@ package validate
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/anishathalye/porcupine"
@@ -30,30 +31,34 @@ var (
 	errFutureRevRespRequested = errors.New("request about a future rev with response")
 )
 
-func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []porcupine.Operation, timeout time.Duration) LinearizationResult {
+func validateLinearizableOperationsAndVisualize(lg *zap.Logger, keys []string, operations []porcupine.Operation, timeout time.Duration) LinearizationResult {
 	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
 	start := time.Now()
-	check, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
+
+	m := model.NonDeterministicModel(keys)
+	check, info := porcupine.CheckOperationsVerbose(m, operations, timeout)
+	duration := time.Since(start)
+
 	result := LinearizationResult{
 		Info:  info,
-		Model: model.NonDeterministicModel,
+		Model: m,
 	}
+
 	switch check {
 	case porcupine.Ok:
 		result.Status = Success
-		lg.Info("Linearization success", zap.Duration("duration", time.Since(start)))
+		lg.Info("Linearization success", zap.Duration("duration", duration))
 	case porcupine.Unknown:
-		result.Status = Failure
+		result.Status = Timeout
 		result.Message = "timed out"
-		result.Timeout = true
-		lg.Error("Linearization timed out", zap.Duration("duration", time.Since(start)))
+		lg.Error("Linearization timed out", zap.Duration("duration", duration))
 	case porcupine.Illegal:
 		result.Status = Failure
 		result.Message = "illegal"
-		lg.Error("Linearization illegal", zap.Duration("duration", time.Since(start)))
+		lg.Error("Linearization illegal", zap.Duration("duration", duration))
 	default:
 		result.Status = Failure
-		result.Message = "unknown"
+		result.Message = fmt.Sprintf("unknown results from porcupine: %s", check)
 	}
 	return result
 }
@@ -64,8 +69,9 @@ func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Opera
 	err := validateSerializableOperationsError(lg, operations, replay)
 	if err != nil {
 		lg.Error("Serializable validation failed", zap.Duration("duration", time.Since(start)), zap.Error(err))
+	} else {
+		lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
 	}
-	lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
 	return ResultFromError(err)
 }
 

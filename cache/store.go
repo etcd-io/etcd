@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/btree"
+	"k8s.io/utils/third_party/forked/golang/btree"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -32,18 +32,22 @@ var ErrNotReady = fmt.Errorf("cache: store not ready")
 // reads at historical revisions can be served until they fall out of the window.
 type store struct {
 	mu      sync.RWMutex
+	revCond *sync.Cond // revCond is broadcast whenever latest.rev changes
 	degree  int
 	latest  snapshot              // latest is the mutable working snapshot
 	history ringBuffer[*snapshot] // history stores immutable cloned snapshots
 }
 
 func newStore(degree int, historyCapacity int) *store {
-	tree := btree.New(degree)
-	return &store{
+	tree := btree.New[*kvItem](degree, kvItemLess)
+	s := &store{
 		degree:  degree,
 		latest:  snapshot{rev: 0, tree: tree},
 		history: *newRingBuffer(historyCapacity, func(s *snapshot) int64 { return s.rev }),
 	}
+	// Use RLocker so waiters hold read lock, allowing concurrent reads and non-blocking writes
+	s.revCond = sync.NewCond(s.mu.RLocker())
+	return s
 }
 
 type kvItem struct {
@@ -55,8 +59,8 @@ func newKVItem(kv *mvccpb.KeyValue) *kvItem {
 	return &kvItem{key: string(kv.Key), kv: kv}
 }
 
-func (a *kvItem) Less(b btree.Item) bool {
-	return a.key < b.(*kvItem).key
+func kvItemLess(a, b *kvItem) bool {
+	return a.key < b.key
 }
 
 func (s *store) Get(startKey, endKey []byte, rev int64) ([]*mvccpb.KeyValue, int64, error) {
@@ -83,19 +87,15 @@ func (s *store) getSnapshot(rev int64) (*snapshot, int64, error) {
 	if rev > s.latest.rev {
 		return nil, 0, rpctypes.ErrFutureRev
 	}
-	oldestRev := s.history.PeekOldest()
-	if rev < oldestRev {
-		return nil, 0, rpctypes.ErrCompacted
-	}
 
 	var targetSnapshot *snapshot
-	s.history.AscendGreaterOrEqual(rev, func(rev int64, snap *snapshot) bool {
+	s.history.DescendLessOrEqual(rev, func(rev int64, snap *snapshot) bool {
 		targetSnapshot = snap
 		return false
 	})
-	// If s.history < rev < s.latest.rev serve latest.
+
 	if targetSnapshot == nil {
-		targetSnapshot = &s.latest
+		return nil, 0, rpctypes.ErrCompacted
 	}
 
 	return targetSnapshot, s.latest.rev, nil
@@ -106,13 +106,14 @@ func (s *store) Restore(kvs []*mvccpb.KeyValue, rev int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.latest.tree = btree.New(s.degree)
+	s.latest.tree = btree.New[*kvItem](s.degree, kvItemLess)
 	for _, kv := range kvs {
 		s.latest.tree.ReplaceOrInsert(newKVItem(kv))
 	}
 	s.history.RebaseHistory()
 	s.latest.rev = rev
 	s.history.Append(newClonedSnapshot(rev, s.latest.tree))
+	s.revCond.Broadcast()
 }
 
 func (s *store) Apply(resp clientv3.WatchResponse) error {
@@ -142,6 +143,7 @@ func (s *store) applyProgressNotifyLocked(revision int64) {
 		return
 	}
 	s.latest.rev = revision
+	s.revCond.Broadcast()
 }
 
 func (s *store) applyEventsLocked(events []*clientv3.Event) error {
@@ -152,7 +154,7 @@ func (s *store) applyEventsLocked(events []*clientv3.Event) error {
 			ev := events[i]
 			switch ev.Type {
 			case clientv3.EventTypeDelete:
-				if removed := s.latest.tree.Delete(&kvItem{key: string(ev.Kv.Key)}); removed == nil {
+				if _, ok := s.latest.tree.Delete(&kvItem{key: string(ev.Kv.Key)}); !ok {
 					return fmt.Errorf("cache: delete non-existent key %s", string(ev.Kv.Key))
 				}
 			case clientv3.EventTypePut:
@@ -162,6 +164,7 @@ func (s *store) applyEventsLocked(events []*clientv3.Event) error {
 		}
 		s.latest.rev = rev
 		s.history.Append(newClonedSnapshot(rev, s.latest.tree))
+		s.revCond.Broadcast()
 	}
 	return nil
 }

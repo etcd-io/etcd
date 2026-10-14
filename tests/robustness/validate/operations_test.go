@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
@@ -294,58 +295,128 @@ func keyValueRevision(key, value string, rev int64) model.KeyValue {
 	}
 }
 
+func TestValidateLinearizableOperationsTimeoutIsRespected(t *testing.T) {
+	testutil.RegisterLeakDetection(t)
+
+	timeout := 1 * time.Nanosecond
+
+	const failedPutCount = 17
+	// Repeat the range read to make the final applyRequestWithResponse step slow.
+	const rangeReadCount = 3072
+
+	history := []porcupine.Operation{}
+	for i := 0; i < failedPutCount; i++ {
+		history = append(history, porcupine.Operation{
+			ClientId: i,
+			Input:    putRequest(fmt.Sprintf("failed%03d", i), "value"),
+			Output:   errorResponse(fmt.Errorf("timeout")),
+			Call:     int64(i),
+			Return:   int64(failedPutCount + i),
+		})
+	}
+
+	rangeOperations := make([]model.EtcdOperation, 0, rangeReadCount)
+	for i := 0; i < rangeReadCount; i++ {
+		rangeOperations = append(rangeOperations, model.EtcdOperation{
+			Type: model.RangeOperation,
+			Range: model.RangeOptions{
+				Start: "failed",
+				End:   "faile~",
+			},
+		})
+	}
+	readRequest := model.EtcdRequest{
+		Type: model.Txn,
+		Txn: &model.TxnRequest{
+			OperationsOnSuccess: rangeOperations,
+		},
+	}
+
+	// Each failed put can be lost or persisted, so the large read-only
+	// transaction reaches applyRequestWithResponse with many possible states in
+	// a single Step call.
+	replay := model.NewReplayFromOperations(history)
+	state, err := replay.StateForRevision(failedPutCount + 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, readResponse := state.Step(readRequest)
+	history = append(history, porcupine.Operation{
+		ClientId: failedPutCount,
+		Input:    readRequest,
+		Output:   readResponse,
+		Call:     int64(2 * failedPutCount),
+		Return:   int64(2*failedPutCount + 1),
+	})
+	keys := model.ModelKeys(history)
+
+	result := validateLinearizableOperationsAndVisualize(zap.NewNop(), keys, history, timeout)
+
+	if result.Status != Timeout {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) status = %q, want %q", result.Status, Timeout)
+	}
+	if result.Message != "timed out" {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) message = %q, want %q", result.Message, "timed out")
+	}
+}
+
 func BenchmarkValidateLinearizableOperations(b *testing.B) {
 	lg := zap.NewNop()
-	b.Run("Successes", func(b *testing.B) {
-		history := allPutSuccesses(1000)
+	b.Run("SequentialSuccessPuts", func(b *testing.B) {
+		history := sequentialSuccessPuts(7000, 2)
 		shuffles := shuffleHistory(history, b.N)
 		b.ResetTimer()
 		validateShuffles(b, lg, shuffles, time.Second)
 	})
-	b.Run("AllFailures", func(b *testing.B) {
-		history := allPutFailures(10)
+	b.Run("SequentialFailedPuts", func(b *testing.B) {
+		history := sequentialFailedPuts(14, 1)
 		shuffles := shuffleHistory(history, b.N)
 		b.ResetTimer()
 		validateShuffles(b, lg, shuffles, time.Second)
 	})
-	b.Run("PutFailuresWithRead", func(b *testing.B) {
-		history := putFailuresWithRead(b, 8)
+	b.Run("ConcurrentFailedPutsWithRead", func(b *testing.B) {
+		history := concurrentFailedPutsWithRead(b, 13)
 		shuffles := shuffleHistory(history, b.N)
 		b.ResetTimer()
 		validateShuffles(b, lg, shuffles, time.Second)
+	})
+	b.Run("BacktrackingHeavy", func(b *testing.B) {
+		history := backtrackingHeavy(b)
+		shuffles := shuffleHistory(history, b.N)
+		keys := model.ModelKeys(history)
+		b.ResetTimer()
+		for i := 0; i < len(shuffles); i++ {
+			validateLinearizableOperationsAndVisualize(lg, keys, shuffles[i], time.Second)
+		}
 	})
 }
 
-func allPutSuccesses(concurrencyCount int) []porcupine.Operation {
+func sequentialSuccessPuts(count int, startRevision int64) []porcupine.Operation {
 	ops := []porcupine.Operation{}
-	for i := 0; i < concurrencyCount; i++ {
+	for i := 0; i < count; i++ {
 		ops = append(ops, porcupine.Operation{
 			ClientId: i,
 			Input:    putRequest("key", "value"),
-			Output:   txnResponse(int64(i)+2, model.EtcdOperationResult{}),
-			Call:     int64(i),
-			Return:   int64(i) + int64(concurrencyCount),
+			Output:   txnResponse(startRevision+int64(i), model.EtcdOperationResult{}),
+			Call:     int64(i * 2),
+			Return:   int64(i*2 + 1),
 		})
 	}
 	return ops
 }
 
-func putFailuresWithRead(b *testing.B, concurrencyCount int) []porcupine.Operation {
+func concurrentFailedPutsWithRead(b *testing.B, concurrencyCount int) []porcupine.Operation {
 	ops := []porcupine.Operation{}
 	for i := 0; i < concurrencyCount; i++ {
 		ops = append(ops, porcupine.Operation{
 			ClientId: i,
-			Input:    putRequest(fmt.Sprintf("key%d", i), "value"),
+			Input:    putRequest("key", "value"),
 			Output:   errorResponse(fmt.Errorf("timeout")),
 			Call:     int64(i),
 			Return:   int64(i) + int64(concurrencyCount),
 		})
 	}
-	requests := []model.EtcdRequest{}
-	for _, op := range ops {
-		requests = append(requests, op.Input.(model.EtcdRequest))
-	}
-	replay := model.NewReplay(requests)
+	replay := model.NewReplayFromOperations(ops)
 	state, err := replay.StateForRevision(int64(concurrencyCount) + 1)
 	if err != nil {
 		b.Fatal(err)
@@ -362,17 +433,72 @@ func putFailuresWithRead(b *testing.B, concurrencyCount int) []porcupine.Operati
 	return ops
 }
 
-func allPutFailures(concurrencyCount int) []porcupine.Operation {
+func sequentialFailedPuts(count int, keyCount int) []porcupine.Operation {
 	ops := []porcupine.Operation{}
-	for i := 0; i < concurrencyCount; i++ {
+	for i := 0; i < count; i++ {
+		key := "key0"
+		if keyCount > 1 {
+			key = fmt.Sprintf("key%d", i%keyCount)
+		}
 		ops = append(ops, porcupine.Operation{
 			ClientId: i,
-			Input:    putRequest("key", "value"),
+			Input:    putRequest(key, "value"),
 			Output:   errorResponse(fmt.Errorf("timeout")),
-			Call:     int64(i),
-			Return:   int64(i) + int64(concurrencyCount),
+			Call:     int64(i * 2),
+			Return:   int64(i*2 + 1),
 		})
 	}
+	return ops
+}
+
+func backtrackingHeavy(b *testing.B) (ops []porcupine.Operation) {
+	for i := 0; i < 30; i++ {
+		ops = append(ops, porcupine.Operation{
+			ClientId: -1,
+			Input:    putRequest(fmt.Sprintf("key%d", i+1000), "value"),
+			Output:   txnResponse(int64(i+2), model.EtcdOperationResult{}),
+			Call:     int64(i),
+			Return:   int64(i) + 1,
+		})
+	}
+	startTime := int64(1000)
+
+	failedPuts := 4
+	for i := 0; i < failedPuts; i++ {
+		ops = append(ops, porcupine.Operation{
+			ClientId: i,
+			Input:    putRequest(fmt.Sprintf("key%d", i), "value"),
+			Output:   errorResponse(fmt.Errorf("timeout")),
+			Call:     startTime + int64(i),
+			Return:   startTime + 1000 + int64(i),
+		})
+	}
+	replay := model.NewReplayFromOperations(ops)
+	state, err := replay.StateForRevision(int64(30 + 1))
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	concurrentReads := 3
+	for i := 0; i < concurrentReads; i++ {
+		request := rangeRequest(fmt.Sprintf("key%d", i), "", 0, 0)
+		_, resp := state.Step(request)
+		ops = append(ops, porcupine.Operation{
+			ClientId: failedPuts + i,
+			Input:    request,
+			Output:   resp,
+			Call:     startTime + 1100,
+			Return:   startTime + 2100,
+		})
+	}
+
+	ops = append(ops, porcupine.Operation{
+		ClientId: 99,
+		Input:    rangeRequest("key0", "", 0, 0),
+		Output:   rangeResponse(0, keyValueRevision("key0", "wrong", 9999)),
+		Call:     startTime + 3000,
+		Return:   startTime + 4000,
+	})
 	return ops
 }
 
@@ -390,8 +516,9 @@ func shuffleHistory(history []porcupine.Operation, shuffleCount int) [][]porcupi
 }
 
 func validateShuffles(b *testing.B, lg *zap.Logger, shuffles [][]porcupine.Operation, duration time.Duration) {
+	keys := model.ModelKeys(shuffles[0])
 	for i := 0; i < len(shuffles); i++ {
-		result := validateLinearizableOperationsAndVisualize(lg, shuffles[i], duration)
+		result := validateLinearizableOperationsAndVisualize(lg, keys, shuffles[i], duration)
 		if err := result.Error(); err != nil {
 			b.Fatalf("Not linearizable: %v", err)
 		}

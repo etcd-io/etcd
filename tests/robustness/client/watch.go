@@ -22,17 +22,13 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-
-	"go.etcd.io/etcd/tests/v3/robustness/options"
 )
 
 type CollectClusterWatchEventsParam struct {
 	Lg              *zap.Logger
 	Endpoints       []string
 	MaxRevisionChan <-chan int64
-	Cfg             WatchConfig
 	ClientSet       *ClientSet
-	options.BackgroundWatchConfig
 }
 
 func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEventsParam) error {
@@ -47,41 +43,22 @@ func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEve
 				return err
 			}
 			defer c.Close()
-			return watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan, param.Cfg)
+			return watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan)
 		})
 	}
-	finish := make(chan struct{})
 	g.Go(func() error {
 		maxRevision := <-param.MaxRevisionChan
 		for _, memberChan := range memberMaxRevisionChans {
 			memberChan <- maxRevision
 		}
-		close(finish)
 		return nil
 	})
-
-	if param.BackgroundWatchConfig.Interval > 0 {
-		for _, endpoint := range param.Endpoints {
-			g.Go(func() error {
-				c, err := param.ClientSet.NewClient([]string{endpoint})
-				if err != nil {
-					return err
-				}
-				defer c.Close()
-				return openWatchPeriodically(ctx, &g, c, param.BackgroundWatchConfig, finish)
-			})
-		}
-	}
 
 	return g.Wait()
 }
 
-type WatchConfig struct {
-	RequestProgress bool
-}
-
 // watchUntilRevision watches all changes until context is canceled, it has observed the revision provided via maxRevisionChan or maxRevisionChan was closed.
-func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) error {
+func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64) error {
 	var maxRevision int64
 	var lastRevision int64 = 1
 	var closing bool
@@ -115,13 +92,12 @@ resetWatch:
 						cancel()
 					}
 				}
+			case <-time.After(100 * time.Millisecond):
+				c.RequestProgress(ctx)
 			case resp, ok := <-watch:
 				if !ok {
 					lg.Info("Watch channel closed")
 					continue resetWatch
-				}
-				if cfg.RequestProgress {
-					c.RequestProgress(ctx)
 				}
 
 				if resp.Err() != nil {
@@ -142,40 +118,5 @@ resetWatch:
 				}
 			}
 		}
-	}
-}
-
-func openWatchPeriodically(ctx context.Context, g *errgroup.Group, c *RecordingClient, backgroundWatchConfig options.BackgroundWatchConfig, finish <-chan struct{}) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-finish:
-			return nil
-		case <-time.After(backgroundWatchConfig.Interval):
-		}
-		g.Go(func() error {
-			resp, err := c.Get(ctx, "/key")
-			if err != nil {
-				return err
-			}
-			rev := resp.Header.Revision + backgroundWatchConfig.RevisionOffset
-
-			watchCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			w := c.Watch(watchCtx, "", rev, true, true, true)
-			for {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-finish:
-					return nil
-				case _, ok := <-w:
-					if !ok {
-						return nil
-					}
-				}
-			}
-		})
 	}
 }

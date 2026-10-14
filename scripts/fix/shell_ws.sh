@@ -23,7 +23,7 @@ function main {
   local TAB=$'\t'
 
   log_callout "Fixing whitespaces in bash scripts"
-  # Makes sure all bash scripts do use '  ' (double space) for indention.
+  # Makes sure all bash scripts do use '  ' (double space) for indentation.
   run find "${ETCD_ROOT_DIR}" -name '*.sh' -exec sed -i.bak "s|${TAB}|  |g" {} \;
   run find "${ETCD_ROOT_DIR}" -name '*.sh.bak' -delete
 }

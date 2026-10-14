@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
@@ -54,79 +54,79 @@ func TestEtctlutlMigrate(t *testing.T) {
 			targetVersion:        "abc",
 			clusterSize:          1,
 			expectLogsSubString:  `Error: wrong target version format, expected "X.Y", got "abc"`,
-			expectStorageVersion: &version.V3_7,
+			expectStorageVersion: &version.V3_8,
 		},
 		{
 			name:                 "Invalid target version",
 			targetVersion:        "3.a",
 			clusterSize:          1,
-			expectLogsSubString:  `Error: failed to parse target version: strconv.ParseInt: parsing "a": invalid syntax`,
-			expectStorageVersion: &version.V3_7,
+			expectLogsSubString:  `Error: failed to parse target version: invalid semantic version`,
+			expectStorageVersion: &version.V3_8,
 		},
 		{
 			name:                 "Target with only major version is invalid",
 			targetVersion:        "3",
 			clusterSize:          1,
 			expectLogsSubString:  `Error: wrong target version format, expected "X.Y", got "3"`,
-			expectStorageVersion: &version.V3_7,
+			expectStorageVersion: &version.V3_8,
 		},
 		{
 			name:                 "Target with patch version is invalid",
 			targetVersion:        "3.6.0",
 			clusterSize:          1,
 			expectLogsSubString:  `Error: wrong target version format, expected "X.Y", got "3.6.0"`,
-			expectStorageVersion: &version.V3_7,
-		},
-		{
-			name:                 "Migrate v3.6 to v3.6 is no-op",
-			clusterVersion:       e2e.LastVersion,
-			clusterSize:          1,
-			targetVersion:        "3.6",
-			expectStorageVersion: &version.V3_6,
-			expectLogsSubString:  "storage version up-to-date\t" + `{"storage-version": "3.6"}`,
+			expectStorageVersion: &version.V3_8,
 		},
 		{
 			name:                 "Upgrade 1 member cluster from v3.5 to v3.6 should work",
 			clusterVersion:       e2e.LastVersion,
 			clusterSize:          1,
-			targetVersion:        "3.7",
-			expectStorageVersion: &version.V3_7,
+			targetVersion:        "3.8",
+			expectStorageVersion: &version.V3_8,
 		},
 		{
-			name:                 "Upgrade 3 member cluster from v3.6 to v3.7 should work",
+			name:                 "Upgrade 3 member cluster from v3.7 to v3.8 should work",
 			clusterVersion:       e2e.LastVersion,
 			clusterSize:          3,
-			targetVersion:        "3.7",
-			expectStorageVersion: &version.V3_7,
+			targetVersion:        "3.8",
+			expectStorageVersion: &version.V3_8,
 		},
 		{
 			name:                 "Migrate v3.7 to v3.7 is no-op",
+			clusterVersion:       e2e.LastVersion,
 			targetVersion:        "3.7",
 			clusterSize:          1,
 			expectLogsSubString:  "storage version up-to-date\t" + `{"storage-version": "3.7"}`,
 			expectStorageVersion: &version.V3_7,
 		},
 		{
-			name:                 "Downgrade 1 member cluster from v3.7 to v3.6 should work",
-			targetVersion:        "3.6",
+			name:                 "Downgrade 1 member cluster from v3.8 to v3.7 should work",
+			targetVersion:        "3.7",
 			clusterSize:          1,
 			expectLogsSubString:  "updated storage version",
-			expectStorageVersion: &version.V3_6,
+			expectStorageVersion: &version.V3_7,
 		},
 		{
-			name:                 "Downgrade 3 member cluster from v3.7 to v3.6 should work",
-			targetVersion:        "3.6",
+			name:                 "Downgrade 3 member cluster from v3.8 to v3.7 should work",
+			targetVersion:        "3.7",
 			clusterSize:          3,
 			expectLogsSubString:  "updated storage version",
-			expectStorageVersion: &version.V3_6,
+			expectStorageVersion: &version.V3_7,
 		},
 		{
-			name:                 "Upgrade v3.7 to v3.8 with force should work",
-			targetVersion:        "3.8",
+			name:                 "Upgrade v3.8 to v3.9 with force should work",
+			targetVersion:        "3.9",
 			clusterSize:          1,
 			force:                true,
-			expectLogsSubString:  "forcefully set storage version\t" + `{"storage-version": "3.8"}`,
-			expectStorageVersion: &semver.Version{Major: 3, Minor: 8},
+			expectLogsSubString:  "forcefully set storage version\t" + `{"storage-version": "3.9"}`,
+			expectStorageVersion: &version.V3_9,
+		},
+		{
+			name:                 "Migrate v3.8 to v3.8 is no-op",
+			targetVersion:        "3.8",
+			clusterSize:          1,
+			expectLogsSubString:  "storage version up-to-date\t" + `{"storage-version": "3.8"}`,
+			expectStorageVersion: &version.V3_8,
 		},
 	}
 	for _, tc := range tcs {
@@ -163,7 +163,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 				require.NoError(t, e2e.SpawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), expect.ExpectedResponse{Value: "OK"}))
 			}
 
-			t.Log("Stopping the the members")
+			t.Log("Stopping the members")
 			for i := 0; i < len(epc.Procs); i++ {
 				t.Logf("Stopping server %d: %v", i, epc.Procs[i].EndpointsGRPC())
 				err = epc.Procs[i].Stop()

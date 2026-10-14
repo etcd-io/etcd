@@ -18,13 +18,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEtcdServerProcessConfig(t *testing.T) {
-	v3_6_0 := semver.Version{Major: 3, Minor: 6, Patch: 0}
-	v3_7_0 := semver.Version{Major: 3, Minor: 7, Patch: 0}
+	v3_7_0 := *semver.New(3, 7, 0, "", "")
+	v3_8_0 := *semver.New(3, 8, 0, "", "")
 	tcs := []struct {
 		name                 string
 		config               *EtcdProcessClusterConfig
@@ -82,7 +82,7 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			expectArgsContain: []string{
 				"--snapshot-catchup-entries=100",
 			},
-			mockBinaryVersion: &v3_7_0,
+			mockBinaryVersion: &v3_8_0,
 		},
 		{
 			name:   "CatchUpEntriesNoVersion",
@@ -97,7 +97,7 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			expectArgsContain: []string{
 				"--snapshot-catchup-entries=100",
 			},
-			mockBinaryVersion: &v3_6_0,
+			mockBinaryVersion: &v3_7_0,
 		},
 		{
 			name:   "ClientHTTPSeparate",
@@ -198,6 +198,20 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			config: NewConfig(WithCipherSuites([]string{"a", "b"})),
 			expectArgsContain: []string{
 				"--cipher-suites",
+			},
+		},
+		{
+			name:   "LogLevel",
+			config: NewConfig(WithLogLevel("debug")),
+			expectArgsContain: []string{
+				"--log-level=debug",
+			},
+		},
+		{
+			name:   "DefaultLogLevelNotPassed",
+			config: NewConfig(),
+			expectArgsNotContain: []string{
+				"--log-level=info",
 			},
 		},
 	}

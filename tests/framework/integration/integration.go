@@ -17,6 +17,8 @@ package integration
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -212,13 +214,35 @@ func (c integrationClient) Get(ctx context.Context, key string, o config.GetOpti
 	if o.CountOnly {
 		clientOpts = append(clientOpts, clientv3.WithCountOnly())
 	}
+	if o.KeysOnly {
+		clientOpts = append(clientOpts, clientv3.WithKeysOnly())
+	}
 	if o.SortBy != clientv3.SortByKey || o.Order != clientv3.SortNone {
 		clientOpts = append(clientOpts, clientv3.WithSort(o.SortBy, o.Order))
+	}
+	if o.MaxCreateRevision != 0 {
+		clientOpts = append(clientOpts, clientv3.WithMaxCreateRev(int64(o.MaxCreateRevision)))
+	}
+	if o.MinCreateRevision != 0 {
+		clientOpts = append(clientOpts, clientv3.WithMinCreateRev(int64(o.MinCreateRevision)))
+	}
+	if o.MaxModRevision != 0 {
+		clientOpts = append(clientOpts, clientv3.WithMaxModRev(int64(o.MaxModRevision)))
+	}
+	if o.MinModRevision != 0 {
+		clientOpts = append(clientOpts, clientv3.WithMinModRev(int64(o.MinModRevision)))
+	}
+	if o.Stream {
+		stream, err := c.Client.GetStream(ctx, key, clientOpts...)
+		if err != nil {
+			return nil, err
+		}
+		return clientv3.GetStreamToGetResponse(stream)
 	}
 	return c.Client.Get(ctx, key, clientOpts...)
 }
 
-func (c integrationClient) Put(ctx context.Context, key, value string, opts config.PutOptions) error {
+func (c integrationClient) Put(ctx context.Context, key, value string, opts config.PutOptions) (*clientv3.PutResponse, error) {
 	if opts.Timeout != 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
@@ -228,8 +252,13 @@ func (c integrationClient) Put(ctx context.Context, key, value string, opts conf
 	if opts.LeaseID != 0 {
 		clientOpts = append(clientOpts, clientv3.WithLease(opts.LeaseID))
 	}
-	_, err := c.Client.Put(ctx, key, value, clientOpts...)
-	return err
+	if opts.IgnoreValue {
+		clientOpts = append(clientOpts, clientv3.WithIgnoreValue())
+	}
+	if opts.IgnoreLease {
+		clientOpts = append(clientOpts, clientv3.WithIgnoreLease())
+	}
+	return c.Client.Put(ctx, key, value, clientOpts...)
 }
 
 func (c integrationClient) Delete(ctx context.Context, key string, o config.DeleteOptions) (*clientv3.DeleteResponse, error) {
@@ -310,6 +339,25 @@ func (c integrationClient) Defragment(ctx context.Context, o config.DefragOption
 		}
 	}
 	return nil
+}
+
+func (c integrationClient) Snapshot(ctx context.Context, outFile string) error {
+	rc, err := c.Client.Snapshot(ctx)
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+	f, err := os.Create(outFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = io.Copy(f, rc)
+	return err
+}
+
+func (c integrationClient) Downgrade(ctx context.Context, action clientv3.DowngradeAction, version string) (*clientv3.DowngradeResponse, error) {
+	return c.Client.Downgrade(ctx, action, version)
 }
 
 func (c integrationClient) TimeToLive(ctx context.Context, id clientv3.LeaseID, o config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error) {

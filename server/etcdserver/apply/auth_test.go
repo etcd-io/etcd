@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/lease"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -44,7 +45,7 @@ func dummyIndexWaiter(_ uint64) <-chan struct{} {
 	return ch
 }
 
-func dummyApplyFunc(_ *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result {
+func dummyApplyFunc(_ *InternalRaftRequestWrapper, shouldApplyV3 membership.ShouldApplyV3) *Result {
 	return &Result{}
 }
 
@@ -143,7 +144,7 @@ func mustCreateRolesAndEnableAuth(t *testing.T, authApplier *authApplierV3) {
 	_, err = authApplier.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: userReadOnly, Role: roleReadOnly})
 	require.NoError(t, err)
 	_, err = authApplier.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{Name: roleReadOnly, Perm: &authpb.Permission{
-		PermType: authpb.READ,
+		PermType: authpb.Permission_READ,
 		Key:      []byte(key),
 		RangeEnd: []byte(rangeEnd),
 	}})
@@ -156,7 +157,7 @@ func mustCreateRolesAndEnableAuth(t *testing.T, authApplier *authApplierV3) {
 	_, err = authApplier.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: userWriteOnly, Role: roleWriteOnly})
 	require.NoError(t, err)
 	_, err = authApplier.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{Name: roleWriteOnly, Perm: &authpb.Permission{
-		PermType: authpb.WRITE,
+		PermType: authpb.Permission_WRITE,
 		Key:      []byte(key),
 		RangeEnd: []byte(rangeEnd),
 	}})
@@ -179,36 +180,36 @@ func setAuthInfo(authApplier *authApplierV3, userName string) {
 func TestAuthApplierV3_Apply(t *testing.T) {
 	tcs := []struct {
 		name         string
-		request      *pb.InternalRaftRequest
+		request      *InternalRaftRequestWrapper
 		expectResult *Result
 	}{
 		{
 			name: "request does not need admin permission",
-			request: &pb.InternalRaftRequest{
+			request: &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{
 				Header: &pb.RequestHeader{},
-			},
+			}},
 			expectResult: &Result{},
 		},
 		{
 			name: "request needs admin permission but permission denied",
-			request: &pb.InternalRaftRequest{
+			request: &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{
 				Header: &pb.RequestHeader{
 					Username: userReadOnly,
 				},
 				AuthEnable: &pb.AuthEnableRequest{},
-			},
+			}},
 			expectResult: &Result{
 				Err: auth.ErrPermissionDenied,
 			},
 		},
 		{
 			name: "request needs admin permission and permitted",
-			request: &pb.InternalRaftRequest{
+			request: &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{
 				Header: &pb.RequestHeader{
 					Username: userRoot,
 				},
 				AuthEnable: &pb.AuthEnableRequest{},
-			},
+			}},
 			expectResult: &Result{},
 		},
 	}
@@ -228,147 +229,147 @@ func TestAuthApplierV3_Apply(t *testing.T) {
 func TestAuthApplierV3_AdminPermission(t *testing.T) {
 	tcs := []struct {
 		name                  string
-		request               *pb.InternalRaftRequest
+		request               *InternalRaftRequestWrapper
 		adminPermissionNeeded bool
 	}{
 		{
 			name:                  "Range does not need admin permission",
-			request:               &pb.InternalRaftRequest{Range: &pb.RangeRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Range: &pb.RangeRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "Put does not need admin permission",
-			request:               &pb.InternalRaftRequest{Put: &pb.PutRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Put: &pb.PutRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "DeleteRange does not need admin permission",
-			request:               &pb.InternalRaftRequest{DeleteRange: &pb.DeleteRangeRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{DeleteRange: &pb.DeleteRangeRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "Txn does not need admin permission",
-			request:               &pb.InternalRaftRequest{Txn: &pb.TxnRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Txn: &pb.TxnRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "Compaction does not need admin permission",
-			request:               &pb.InternalRaftRequest{Compaction: &pb.CompactionRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Compaction: &pb.CompactionRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "LeaseGrant does not need admin permission",
-			request:               &pb.InternalRaftRequest{LeaseGrant: &pb.LeaseGrantRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{LeaseGrant: &pb.LeaseGrantRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "LeaseRevoke does not need admin permission",
-			request:               &pb.InternalRaftRequest{LeaseRevoke: &pb.LeaseRevokeRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{LeaseRevoke: &pb.LeaseRevokeRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "Alarm does not need admin permission",
-			request:               &pb.InternalRaftRequest{Alarm: &pb.AlarmRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Alarm: &pb.AlarmRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "LeaseCheckpoint does not need admin permission",
-			request:               &pb.InternalRaftRequest{LeaseCheckpoint: &pb.LeaseCheckpointRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{LeaseCheckpoint: &pb.LeaseCheckpointRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "Authenticate does not need admin permission",
-			request:               &pb.InternalRaftRequest{Authenticate: &pb.InternalAuthenticateRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{Authenticate: &pb.InternalAuthenticateRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "ClusterVersionSet does not need admin permission",
-			request:               &pb.InternalRaftRequest{ClusterVersionSet: &membershippb.ClusterVersionSetRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{ClusterVersionSet: &membershippb.ClusterVersionSetRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "ClusterMemberAttrSet does not need admin permission",
-			request:               &pb.InternalRaftRequest{ClusterMemberAttrSet: &membershippb.ClusterMemberAttrSetRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{ClusterMemberAttrSet: &membershippb.ClusterMemberAttrSetRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "DowngradeInfoSet does not need admin permission",
-			request:               &pb.InternalRaftRequest{DowngradeInfoSet: &membershippb.DowngradeInfoSetRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{DowngradeInfoSet: &membershippb.DowngradeInfoSetRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "AuthUserGet does not need admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserGet: &pb.AuthUserGetRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserGet: &pb.AuthUserGetRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "AuthRoleGet does not need admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleGet: &pb.AuthRoleGetRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleGet: &pb.AuthRoleGetRequest{}}},
 			adminPermissionNeeded: false,
 		},
 		{
 			name:                  "AuthEnable needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthEnable: &pb.AuthEnableRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthEnable: &pb.AuthEnableRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthDisable needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthDisable: &pb.AuthDisableRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthDisable: &pb.AuthDisableRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserAdd needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserAdd: &pb.AuthUserAddRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserAdd: &pb.AuthUserAddRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserDelete needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserDelete: &pb.AuthUserDeleteRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserDelete: &pb.AuthUserDeleteRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserChangePassword needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserChangePassword: &pb.AuthUserChangePasswordRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserChangePassword: &pb.AuthUserChangePasswordRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserGrantRole needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserGrantRole: &pb.AuthUserGrantRoleRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserGrantRole: &pb.AuthUserGrantRoleRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserRevokeRole needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserRevokeRole: &pb.AuthUserRevokeRoleRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserRevokeRole: &pb.AuthUserRevokeRoleRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthUserList needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthUserList: &pb.AuthUserListRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthUserList: &pb.AuthUserListRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthRoleList needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleList: &pb.AuthRoleListRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleList: &pb.AuthRoleListRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthRoleAdd needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleAdd: &pb.AuthRoleAddRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleAdd: &pb.AuthRoleAddRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthRoleDelete needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleDelete: &pb.AuthRoleDeleteRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleDelete: &pb.AuthRoleDeleteRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthRoleGrantPermission needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleGrantPermission: &pb.AuthRoleGrantPermissionRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleGrantPermission: &pb.AuthRoleGrantPermissionRequest{}}},
 			adminPermissionNeeded: true,
 		},
 		{
 			name:                  "AuthRoleRevokePermission needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthRoleRevokePermission: &pb.AuthRoleRevokePermissionRequest{}},
+			request:               &InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{AuthRoleRevokePermission: &pb.AuthRoleRevokePermissionRequest{}}},
 			adminPermissionNeeded: true,
 		},
 	}
@@ -652,7 +653,7 @@ func TestAuthApplierV3_Txn(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, _, err := authApplier.Txn(tc.request)
+			_, _, err := authApplier.Txn(tc.request, false)
 			require.Equalf(t, tc.expectError, err, "Range returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}
@@ -780,24 +781,24 @@ func TestAuthApplierV3_RoleGet(t *testing.T) {
 
 func TestCheckLeasePutsKeys(t *testing.T) {
 	aa := defaultAuthApplierV3(t)
-	require.NoErrorf(t, aa.checkLeasePutsKeys(lease.NewLease(lease.LeaseID(1), 3600)), "auth is disabled, should allow puts")
+	require.NoErrorf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, lease.NewLease(lease.LeaseID(1), 3600)), "auth is disabled, should allow puts")
 	mustCreateRolesAndEnableAuth(t, aa)
 	aa.authInfo = auth.AuthInfo{Username: "root"}
-	require.NoErrorf(t, aa.checkLeasePutsKeys(lease.NewLease(lease.LeaseID(1), 3600)), "auth is enabled, should allow puts for root")
+	require.NoErrorf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, lease.NewLease(lease.LeaseID(1), 3600)), "auth is enabled, should allow puts for root")
 
 	l := lease.NewLease(lease.LeaseID(1), 3600)
 	l.SetLeaseItem(lease.LeaseItem{Key: "a"})
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: 0}
-	require.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrUserEmpty, "auth is enabled, should not allow bob, non existing at rev 0")
+	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrUserEmpty, "auth is enabled, should not allow bob, non existing at rev 0")
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: 1}
-	require.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrAuthOldRevision, "auth is enabled, old revision")
+	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrAuthOldRevision, "auth is enabled, old revision")
 
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	require.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrPermissionDenied, "auth is enabled, bob does not have permissions, bob does not exist")
+	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrPermissionDenied, "auth is enabled, bob does not have permissions, bob does not exist")
 	_, err := aa.as.UserAdd(&pb.AuthUserAddRequest{Name: "bob", Options: &authpb.UserAddOptions{NoPassword: true}})
 	require.NoErrorf(t, err, "bob should be added without error")
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	require.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrPermissionDenied, "auth is enabled, bob exists yet does not have permissions")
+	require.ErrorIsf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), auth.ErrPermissionDenied, "auth is enabled, bob exists yet does not have permissions")
 
 	// allow bob to access "a"
 	_, err = aa.as.RoleAdd(&pb.AuthRoleAddRequest{Name: "bobsrole"})
@@ -805,7 +806,7 @@ func TestCheckLeasePutsKeys(t *testing.T) {
 	_, err = aa.as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
 		Name: "bobsrole",
 		Perm: &authpb.Permission{
-			PermType: authpb.READWRITE,
+			PermType: authpb.Permission_READWRITE,
 			Key:      []byte("a"),
 			RangeEnd: nil,
 		},
@@ -818,5 +819,369 @@ func TestCheckLeasePutsKeys(t *testing.T) {
 	require.NoErrorf(t, err, "bob should be granted bobsrole without error")
 
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	assert.NoErrorf(t, aa.checkLeasePutsKeys(l), "bob should be able to access key 'a'")
+	assert.NoErrorf(t, checkLeasePutsKeys(aa.as, &aa.authInfo, l), "bob should be able to access key 'a'")
 }
+
+func TestCheckTxnAuth(t *testing.T) {
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	as := setupAuth(t, be)
+
+	tests := []struct {
+		name       string
+		txnRequest *pb.TxnRequest
+		err        error
+	}{
+		{
+			name: "Out of range compare is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Compare: []*pb.Compare{outOfRangeCompare},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "In range compare is authorized",
+			txnRequest: &pb.TxnRequest{
+				Compare: []*pb.Compare{inRangeCompare},
+			},
+			err: nil,
+		},
+		{
+			name: "Nil request range is always authorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{nilRequestRange},
+			},
+			err: nil,
+		},
+		{
+			name: "Range request in range is authorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{inRangeRequestRange},
+				Failure: []*pb.RequestOp{inRangeRequestRange},
+			},
+			err: nil,
+		},
+		{
+			name: "Range request out of range success case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{outOfRangeRequestRange},
+				Failure: []*pb.RequestOp{inRangeRequestRange},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Range request out of range failure case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{inRangeRequestRange},
+				Failure: []*pb.RequestOp{outOfRangeRequestRange},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Nil Put request is always authorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{nilRequestPut},
+			},
+			err: nil,
+		},
+		{
+			name: "Put request in range in authorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{inRangeRequestPut},
+				Failure: []*pb.RequestOp{inRangeRequestPut},
+			},
+			err: nil,
+		},
+		{
+			name: "Put request out of range success case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{outOfRangeRequestPut},
+				Failure: []*pb.RequestOp{inRangeRequestPut},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Put request out of range failure case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{inRangeRequestPut},
+				Failure: []*pb.RequestOp{outOfRangeRequestPut},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Nil delete request is authorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{nilRequestDeleteRange},
+			},
+			err: nil,
+		},
+		{
+			name: "Delete range request in range is authorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{inRangeRequestDeleteRange},
+				Failure: []*pb.RequestOp{inRangeRequestDeleteRange},
+			},
+			err: nil,
+		},
+		{
+			name: "Delete range request out of range success case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{outOfRangeRequestDeleteRange},
+				Failure: []*pb.RequestOp{inRangeRequestDeleteRange},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Delete range request out of range failure case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{inRangeRequestDeleteRange},
+				Failure: []*pb.RequestOp{outOfRangeRequestDeleteRange},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Delete range request out of range and PrevKv false success case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{outOfRangeRequestDeleteRangeKvFalse},
+				Failure: []*pb.RequestOp{inRangeRequestDeleteRange},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Delete range request out of range and PrevKv false failure case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{inRangeRequestDeleteRange},
+				Failure: []*pb.RequestOp{outOfRangeRequestDeleteRangeKvFalse},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Nested txn request in range is authorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestTxn{
+							RequestTxn: &pb.TxnRequest{
+								Success: []*pb.RequestOp{inRangeRequestRange, inRangeRequestPut},
+								Failure: []*pb.RequestOp{inRangeRequestDeleteRange},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Nested txn request out of range success case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestTxn{
+							RequestTxn: &pb.TxnRequest{
+								Success: []*pb.RequestOp{outOfRangeRequestRange},
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Nested txn request out of range failure case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Failure: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestTxn{
+							RequestTxn: &pb.TxnRequest{
+								Failure: []*pb.RequestOp{outOfRangeRequestPut},
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Nested txn request out of range delete is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestTxn{
+							RequestTxn: &pb.TxnRequest{
+								Success: []*pb.RequestOp{outOfRangeRequestDeleteRange},
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Two level nested txn request out of range delete is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestTxn{
+							RequestTxn: &pb.TxnRequest{
+								Failure: []*pb.RequestOp{
+									{
+										Request: &pb.RequestOp_RequestTxn{
+											RequestTxn: &pb.TxnRequest{
+												Success: []*pb.RequestOp{outOfRangeRequestDeleteRange},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := CheckTxnAuth(as, &auth.AuthInfo{Username: "foo", Revision: 8}, &lease.FakeLessor{}, tt.txnRequest)
+			assert.Equal(t, tt.err, err)
+		})
+	}
+}
+
+// CheckTxnAuth test setup.
+func setupAuth(t *testing.T, be backend.Backend) auth.AuthStore {
+	lg := zaptest.NewLogger(t)
+
+	simpleTokenTTLDefault := 300 * time.Second
+	tokenTypeSimple := "simple"
+	dummyIndexWaiter1 := func(index uint64) <-chan struct{} {
+		ch := make(chan struct{}, 1)
+		go func() {
+			ch <- struct{}{}
+		}()
+		return ch
+	}
+
+	tp, _ := auth.NewTokenProvider(zaptest.NewLogger(t), tokenTypeSimple, dummyIndexWaiter1, simpleTokenTTLDefault)
+
+	as := auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), tp, 4)
+
+	// create "root" user and "foo" user with limited range
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "root"})
+	require.NoError(t, err)
+
+	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: "rw"})
+	require.NoError(t, err)
+
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "rw",
+		Perm: &authpb.Permission{
+			PermType: authpb.Permission_READWRITE,
+			Key:      []byte("foo"),
+			RangeEnd: []byte("zoo"),
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "foo"})
+	require.NoError(t, err)
+
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: "foo", Password: "foo"})
+	require.NoError(t, err)
+
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "root", Role: "root"})
+	require.NoError(t, err)
+
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "rw"})
+	require.NoError(t, err)
+
+	err = as.AuthEnable()
+	require.NoError(t, err)
+
+	return as
+}
+
+// CheckTxnAuth variables setup.
+var (
+	inRangeCompare = &pb.Compare{
+		Key:      []byte("foo"),
+		RangeEnd: []byte("zoo"),
+	}
+	outOfRangeCompare = &pb.Compare{
+		Key:      []byte("boo"),
+		RangeEnd: []byte("zoo"),
+	}
+	nilRequestPut = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: nil,
+		},
+	}
+	inRangeRequestPut = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key: []byte("foo"),
+			},
+		},
+	}
+	outOfRangeRequestPut = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key: []byte("boo"),
+			},
+		},
+	}
+	nilRequestRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestRange{
+			RequestRange: nil,
+		},
+	}
+	inRangeRequestRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestRange{
+			RequestRange: &pb.RangeRequest{
+				Key:      []byte("foo"),
+				RangeEnd: []byte("zoo"),
+			},
+		},
+	}
+	outOfRangeRequestRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestRange{
+			RequestRange: &pb.RangeRequest{
+				Key:      []byte("boo"),
+				RangeEnd: []byte("zoo"),
+			},
+		},
+	}
+	nilRequestDeleteRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: nil,
+		},
+	}
+	inRangeRequestDeleteRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key:      []byte("foo"),
+				RangeEnd: []byte("zoo"),
+				PrevKv:   true,
+			},
+		},
+	}
+	outOfRangeRequestDeleteRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key:      []byte("boo"),
+				RangeEnd: []byte("zoo"),
+				PrevKv:   true,
+			},
+		},
+	}
+	outOfRangeRequestDeleteRangeKvFalse = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key:      []byte("boo"),
+				RangeEnd: []byte("zoo"),
+				PrevKv:   false,
+			},
+		},
+	}
+)

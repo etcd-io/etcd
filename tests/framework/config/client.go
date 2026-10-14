@@ -28,21 +28,29 @@ import (
 type ClientOption func(any)
 
 type GetOptions struct {
-	Revision     int
-	End          string
-	CountOnly    bool
-	Serializable bool
-	Prefix       bool
-	FromKey      bool
-	Limit        int
-	Order        clientv3.SortOrder
-	SortBy       clientv3.SortTarget
-	Timeout      time.Duration
+	Revision          int
+	End               string
+	CountOnly         bool
+	Serializable      bool
+	Prefix            bool
+	FromKey           bool
+	Limit             int
+	Order             clientv3.SortOrder
+	SortBy            clientv3.SortTarget
+	Timeout           time.Duration
+	KeysOnly          bool
+	MinModRevision    int
+	MaxModRevision    int
+	MinCreateRevision int
+	MaxCreateRevision int
+	Stream            bool
 }
 
 type PutOptions struct {
-	LeaseID clientv3.LeaseID
-	Timeout time.Duration
+	LeaseID     clientv3.LeaseID
+	Timeout     time.Duration
+	IgnoreValue bool
+	IgnoreLease bool
 }
 
 type DeleteOptions struct {

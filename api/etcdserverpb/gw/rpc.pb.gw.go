@@ -9,8 +9,6 @@ It translates gRPC into RESTful JSON APIs.
 package gw
 
 import (
-	protov1 "github.com/golang/protobuf/proto"
-
 	"context"
 	"errors"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -43,14 +41,14 @@ func request_KV_Range_0(ctx context.Context, marshaler runtime.Marshaler, client
 		protoReq etcdserverpb.RangeRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.Range(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_KV_Range_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -58,11 +56,11 @@ func local_request_KV_Range_0(ctx context.Context, marshaler runtime.Marshaler, 
 		protoReq etcdserverpb.RangeRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.Range(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_KV_Put_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -70,14 +68,14 @@ func request_KV_Put_0(ctx context.Context, marshaler runtime.Marshaler, client e
 		protoReq etcdserverpb.PutRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.Put(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_KV_Put_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -85,11 +83,11 @@ func local_request_KV_Put_0(ctx context.Context, marshaler runtime.Marshaler, se
 		protoReq etcdserverpb.PutRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.Put(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_KV_DeleteRange_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -97,14 +95,14 @@ func request_KV_DeleteRange_0(ctx context.Context, marshaler runtime.Marshaler, 
 		protoReq etcdserverpb.DeleteRangeRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.DeleteRange(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_KV_DeleteRange_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -112,11 +110,11 @@ func local_request_KV_DeleteRange_0(ctx context.Context, marshaler runtime.Marsh
 		protoReq etcdserverpb.DeleteRangeRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.DeleteRange(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_KV_Txn_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -124,14 +122,14 @@ func request_KV_Txn_0(ctx context.Context, marshaler runtime.Marshaler, client e
 		protoReq etcdserverpb.TxnRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.Txn(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_KV_Txn_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -139,11 +137,11 @@ func local_request_KV_Txn_0(ctx context.Context, marshaler runtime.Marshaler, se
 		protoReq etcdserverpb.TxnRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.Txn(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_KV_Compact_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -151,14 +149,14 @@ func request_KV_Compact_0(ctx context.Context, marshaler runtime.Marshaler, clie
 		protoReq etcdserverpb.CompactionRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.Compact(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_KV_Compact_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -166,11 +164,11 @@ func local_request_KV_Compact_0(ctx context.Context, marshaler runtime.Marshaler
 		protoReq etcdserverpb.CompactionRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.Compact(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Watch_Watch_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.WatchClient, req *http.Request, pathParams map[string]string) (etcdserverpb.Watch_WatchClient, runtime.ServerMetadata, error) {
@@ -183,7 +181,7 @@ func request_Watch_Watch_0(ctx context.Context, marshaler runtime.Marshaler, cli
 	dec := marshaler.NewDecoder(req.Body)
 	handleSend := func() error {
 		var protoReq etcdserverpb.WatchRequest
-		err := dec.Decode(protov1.MessageV2(&protoReq))
+		err := dec.Decode(&protoReq)
 		if errors.Is(err, io.EOF) {
 			return err
 		}
@@ -221,14 +219,14 @@ func request_Lease_LeaseGrant_0(ctx context.Context, marshaler runtime.Marshaler
 		protoReq etcdserverpb.LeaseGrantRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.LeaseGrant(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Lease_LeaseGrant_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -236,11 +234,11 @@ func local_request_Lease_LeaseGrant_0(ctx context.Context, marshaler runtime.Mar
 		protoReq etcdserverpb.LeaseGrantRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.LeaseGrant(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Lease_LeaseRevoke_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -248,14 +246,14 @@ func request_Lease_LeaseRevoke_0(ctx context.Context, marshaler runtime.Marshale
 		protoReq etcdserverpb.LeaseRevokeRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.LeaseRevoke(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Lease_LeaseRevoke_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -263,11 +261,11 @@ func local_request_Lease_LeaseRevoke_0(ctx context.Context, marshaler runtime.Ma
 		protoReq etcdserverpb.LeaseRevokeRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.LeaseRevoke(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Lease_LeaseRevoke_1(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -275,14 +273,14 @@ func request_Lease_LeaseRevoke_1(ctx context.Context, marshaler runtime.Marshale
 		protoReq etcdserverpb.LeaseRevokeRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.LeaseRevoke(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Lease_LeaseRevoke_1(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -290,11 +288,11 @@ func local_request_Lease_LeaseRevoke_1(ctx context.Context, marshaler runtime.Ma
 		protoReq etcdserverpb.LeaseRevokeRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.LeaseRevoke(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Lease_LeaseKeepAlive_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (etcdserverpb.Lease_LeaseKeepAliveClient, runtime.ServerMetadata, error) {
@@ -307,7 +305,7 @@ func request_Lease_LeaseKeepAlive_0(ctx context.Context, marshaler runtime.Marsh
 	dec := marshaler.NewDecoder(req.Body)
 	handleSend := func() error {
 		var protoReq etcdserverpb.LeaseKeepAliveRequest
-		err := dec.Decode(protov1.MessageV2(&protoReq))
+		err := dec.Decode(&protoReq)
 		if errors.Is(err, io.EOF) {
 			return err
 		}
@@ -345,14 +343,14 @@ func request_Lease_LeaseTimeToLive_0(ctx context.Context, marshaler runtime.Mars
 		protoReq etcdserverpb.LeaseTimeToLiveRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.LeaseTimeToLive(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Lease_LeaseTimeToLive_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -360,11 +358,11 @@ func local_request_Lease_LeaseTimeToLive_0(ctx context.Context, marshaler runtim
 		protoReq etcdserverpb.LeaseTimeToLiveRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.LeaseTimeToLive(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Lease_LeaseTimeToLive_1(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -372,14 +370,14 @@ func request_Lease_LeaseTimeToLive_1(ctx context.Context, marshaler runtime.Mars
 		protoReq etcdserverpb.LeaseTimeToLiveRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.LeaseTimeToLive(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Lease_LeaseTimeToLive_1(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -387,11 +385,11 @@ func local_request_Lease_LeaseTimeToLive_1(ctx context.Context, marshaler runtim
 		protoReq etcdserverpb.LeaseTimeToLiveRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.LeaseTimeToLive(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Lease_LeaseLeases_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -399,14 +397,14 @@ func request_Lease_LeaseLeases_0(ctx context.Context, marshaler runtime.Marshale
 		protoReq etcdserverpb.LeaseLeasesRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.LeaseLeases(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Lease_LeaseLeases_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -414,11 +412,11 @@ func local_request_Lease_LeaseLeases_0(ctx context.Context, marshaler runtime.Ma
 		protoReq etcdserverpb.LeaseLeasesRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.LeaseLeases(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Lease_LeaseLeases_1(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -426,14 +424,14 @@ func request_Lease_LeaseLeases_1(ctx context.Context, marshaler runtime.Marshale
 		protoReq etcdserverpb.LeaseLeasesRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.LeaseLeases(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Lease_LeaseLeases_1(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -441,11 +439,11 @@ func local_request_Lease_LeaseLeases_1(ctx context.Context, marshaler runtime.Ma
 		protoReq etcdserverpb.LeaseLeasesRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.LeaseLeases(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Cluster_MemberAdd_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -453,14 +451,14 @@ func request_Cluster_MemberAdd_0(ctx context.Context, marshaler runtime.Marshale
 		protoReq etcdserverpb.MemberAddRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.MemberAdd(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Cluster_MemberAdd_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -468,11 +466,11 @@ func local_request_Cluster_MemberAdd_0(ctx context.Context, marshaler runtime.Ma
 		protoReq etcdserverpb.MemberAddRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.MemberAdd(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Cluster_MemberRemove_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -480,14 +478,14 @@ func request_Cluster_MemberRemove_0(ctx context.Context, marshaler runtime.Marsh
 		protoReq etcdserverpb.MemberRemoveRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.MemberRemove(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Cluster_MemberRemove_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -495,11 +493,11 @@ func local_request_Cluster_MemberRemove_0(ctx context.Context, marshaler runtime
 		protoReq etcdserverpb.MemberRemoveRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.MemberRemove(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Cluster_MemberUpdate_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -507,14 +505,14 @@ func request_Cluster_MemberUpdate_0(ctx context.Context, marshaler runtime.Marsh
 		protoReq etcdserverpb.MemberUpdateRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.MemberUpdate(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Cluster_MemberUpdate_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -522,11 +520,11 @@ func local_request_Cluster_MemberUpdate_0(ctx context.Context, marshaler runtime
 		protoReq etcdserverpb.MemberUpdateRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.MemberUpdate(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Cluster_MemberList_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -534,14 +532,14 @@ func request_Cluster_MemberList_0(ctx context.Context, marshaler runtime.Marshal
 		protoReq etcdserverpb.MemberListRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.MemberList(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Cluster_MemberList_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -549,11 +547,11 @@ func local_request_Cluster_MemberList_0(ctx context.Context, marshaler runtime.M
 		protoReq etcdserverpb.MemberListRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.MemberList(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Cluster_MemberPromote_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -561,14 +559,14 @@ func request_Cluster_MemberPromote_0(ctx context.Context, marshaler runtime.Mars
 		protoReq etcdserverpb.MemberPromoteRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.MemberPromote(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Cluster_MemberPromote_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -576,11 +574,11 @@ func local_request_Cluster_MemberPromote_0(ctx context.Context, marshaler runtim
 		protoReq etcdserverpb.MemberPromoteRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.MemberPromote(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -588,14 +586,14 @@ func request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Marshale
 		protoReq etcdserverpb.AlarmRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.Alarm(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -603,11 +601,11 @@ func local_request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Ma
 		protoReq etcdserverpb.AlarmRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.Alarm(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Maintenance_Status_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -615,14 +613,14 @@ func request_Maintenance_Status_0(ctx context.Context, marshaler runtime.Marshal
 		protoReq etcdserverpb.StatusRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.Status(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Maintenance_Status_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -630,11 +628,11 @@ func local_request_Maintenance_Status_0(ctx context.Context, marshaler runtime.M
 		protoReq etcdserverpb.StatusRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.Status(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Maintenance_Defragment_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -642,14 +640,14 @@ func request_Maintenance_Defragment_0(ctx context.Context, marshaler runtime.Mar
 		protoReq etcdserverpb.DefragmentRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.Defragment(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Maintenance_Defragment_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -657,11 +655,11 @@ func local_request_Maintenance_Defragment_0(ctx context.Context, marshaler runti
 		protoReq etcdserverpb.DefragmentRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.Defragment(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Maintenance_Hash_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -669,14 +667,14 @@ func request_Maintenance_Hash_0(ctx context.Context, marshaler runtime.Marshaler
 		protoReq etcdserverpb.HashRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.Hash(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Maintenance_Hash_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -684,11 +682,11 @@ func local_request_Maintenance_Hash_0(ctx context.Context, marshaler runtime.Mar
 		protoReq etcdserverpb.HashRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.Hash(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Maintenance_HashKV_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -696,14 +694,14 @@ func request_Maintenance_HashKV_0(ctx context.Context, marshaler runtime.Marshal
 		protoReq etcdserverpb.HashKVRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.HashKV(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Maintenance_HashKV_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -711,11 +709,11 @@ func local_request_Maintenance_HashKV_0(ctx context.Context, marshaler runtime.M
 		protoReq etcdserverpb.HashKVRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.HashKV(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Maintenance_Snapshot_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (etcdserverpb.Maintenance_SnapshotClient, runtime.ServerMetadata, error) {
@@ -723,7 +721,7 @@ func request_Maintenance_Snapshot_0(ctx context.Context, marshaler runtime.Marsh
 		protoReq etcdserverpb.SnapshotRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
@@ -746,14 +744,14 @@ func request_Maintenance_MoveLeader_0(ctx context.Context, marshaler runtime.Mar
 		protoReq etcdserverpb.MoveLeaderRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.MoveLeader(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Maintenance_MoveLeader_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -761,11 +759,11 @@ func local_request_Maintenance_MoveLeader_0(ctx context.Context, marshaler runti
 		protoReq etcdserverpb.MoveLeaderRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.MoveLeader(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Maintenance_Downgrade_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -773,14 +771,14 @@ func request_Maintenance_Downgrade_0(ctx context.Context, marshaler runtime.Mars
 		protoReq etcdserverpb.DowngradeRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.Downgrade(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Maintenance_Downgrade_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -788,11 +786,11 @@ func local_request_Maintenance_Downgrade_0(ctx context.Context, marshaler runtim
 		protoReq etcdserverpb.DowngradeRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.Downgrade(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_AuthEnable_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -800,14 +798,14 @@ func request_Auth_AuthEnable_0(ctx context.Context, marshaler runtime.Marshaler,
 		protoReq etcdserverpb.AuthEnableRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.AuthEnable(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_AuthEnable_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -815,11 +813,11 @@ func local_request_Auth_AuthEnable_0(ctx context.Context, marshaler runtime.Mars
 		protoReq etcdserverpb.AuthEnableRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.AuthEnable(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_AuthDisable_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -827,14 +825,14 @@ func request_Auth_AuthDisable_0(ctx context.Context, marshaler runtime.Marshaler
 		protoReq etcdserverpb.AuthDisableRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.AuthDisable(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_AuthDisable_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -842,11 +840,11 @@ func local_request_Auth_AuthDisable_0(ctx context.Context, marshaler runtime.Mar
 		protoReq etcdserverpb.AuthDisableRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.AuthDisable(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_AuthStatus_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -854,14 +852,14 @@ func request_Auth_AuthStatus_0(ctx context.Context, marshaler runtime.Marshaler,
 		protoReq etcdserverpb.AuthStatusRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.AuthStatus(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_AuthStatus_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -869,11 +867,11 @@ func local_request_Auth_AuthStatus_0(ctx context.Context, marshaler runtime.Mars
 		protoReq etcdserverpb.AuthStatusRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.AuthStatus(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_Authenticate_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -881,14 +879,14 @@ func request_Auth_Authenticate_0(ctx context.Context, marshaler runtime.Marshale
 		protoReq etcdserverpb.AuthenticateRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.Authenticate(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_Authenticate_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -896,11 +894,11 @@ func local_request_Auth_Authenticate_0(ctx context.Context, marshaler runtime.Ma
 		protoReq etcdserverpb.AuthenticateRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.Authenticate(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_UserAdd_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -908,14 +906,14 @@ func request_Auth_UserAdd_0(ctx context.Context, marshaler runtime.Marshaler, cl
 		protoReq etcdserverpb.AuthUserAddRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.UserAdd(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_UserAdd_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -923,11 +921,11 @@ func local_request_Auth_UserAdd_0(ctx context.Context, marshaler runtime.Marshal
 		protoReq etcdserverpb.AuthUserAddRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.UserAdd(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_UserGet_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -935,14 +933,14 @@ func request_Auth_UserGet_0(ctx context.Context, marshaler runtime.Marshaler, cl
 		protoReq etcdserverpb.AuthUserGetRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.UserGet(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_UserGet_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -950,11 +948,11 @@ func local_request_Auth_UserGet_0(ctx context.Context, marshaler runtime.Marshal
 		protoReq etcdserverpb.AuthUserGetRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.UserGet(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_UserList_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -962,14 +960,14 @@ func request_Auth_UserList_0(ctx context.Context, marshaler runtime.Marshaler, c
 		protoReq etcdserverpb.AuthUserListRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.UserList(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_UserList_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -977,11 +975,11 @@ func local_request_Auth_UserList_0(ctx context.Context, marshaler runtime.Marsha
 		protoReq etcdserverpb.AuthUserListRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.UserList(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_UserDelete_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -989,14 +987,14 @@ func request_Auth_UserDelete_0(ctx context.Context, marshaler runtime.Marshaler,
 		protoReq etcdserverpb.AuthUserDeleteRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.UserDelete(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_UserDelete_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1004,11 +1002,11 @@ func local_request_Auth_UserDelete_0(ctx context.Context, marshaler runtime.Mars
 		protoReq etcdserverpb.AuthUserDeleteRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.UserDelete(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_UserChangePassword_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1016,14 +1014,14 @@ func request_Auth_UserChangePassword_0(ctx context.Context, marshaler runtime.Ma
 		protoReq etcdserverpb.AuthUserChangePasswordRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.UserChangePassword(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_UserChangePassword_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1031,11 +1029,11 @@ func local_request_Auth_UserChangePassword_0(ctx context.Context, marshaler runt
 		protoReq etcdserverpb.AuthUserChangePasswordRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.UserChangePassword(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_UserGrantRole_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1043,14 +1041,14 @@ func request_Auth_UserGrantRole_0(ctx context.Context, marshaler runtime.Marshal
 		protoReq etcdserverpb.AuthUserGrantRoleRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.UserGrantRole(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_UserGrantRole_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1058,11 +1056,11 @@ func local_request_Auth_UserGrantRole_0(ctx context.Context, marshaler runtime.M
 		protoReq etcdserverpb.AuthUserGrantRoleRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.UserGrantRole(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_UserRevokeRole_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1070,14 +1068,14 @@ func request_Auth_UserRevokeRole_0(ctx context.Context, marshaler runtime.Marsha
 		protoReq etcdserverpb.AuthUserRevokeRoleRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.UserRevokeRole(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_UserRevokeRole_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1085,11 +1083,11 @@ func local_request_Auth_UserRevokeRole_0(ctx context.Context, marshaler runtime.
 		protoReq etcdserverpb.AuthUserRevokeRoleRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.UserRevokeRole(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_RoleAdd_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1097,14 +1095,14 @@ func request_Auth_RoleAdd_0(ctx context.Context, marshaler runtime.Marshaler, cl
 		protoReq etcdserverpb.AuthRoleAddRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.RoleAdd(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_RoleAdd_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1112,11 +1110,11 @@ func local_request_Auth_RoleAdd_0(ctx context.Context, marshaler runtime.Marshal
 		protoReq etcdserverpb.AuthRoleAddRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.RoleAdd(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_RoleGet_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1124,14 +1122,14 @@ func request_Auth_RoleGet_0(ctx context.Context, marshaler runtime.Marshaler, cl
 		protoReq etcdserverpb.AuthRoleGetRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.RoleGet(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_RoleGet_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1139,11 +1137,11 @@ func local_request_Auth_RoleGet_0(ctx context.Context, marshaler runtime.Marshal
 		protoReq etcdserverpb.AuthRoleGetRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.RoleGet(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_RoleList_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1151,14 +1149,14 @@ func request_Auth_RoleList_0(ctx context.Context, marshaler runtime.Marshaler, c
 		protoReq etcdserverpb.AuthRoleListRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.RoleList(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_RoleList_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1166,11 +1164,11 @@ func local_request_Auth_RoleList_0(ctx context.Context, marshaler runtime.Marsha
 		protoReq etcdserverpb.AuthRoleListRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.RoleList(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_RoleDelete_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1178,14 +1176,14 @@ func request_Auth_RoleDelete_0(ctx context.Context, marshaler runtime.Marshaler,
 		protoReq etcdserverpb.AuthRoleDeleteRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.RoleDelete(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_RoleDelete_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1193,11 +1191,11 @@ func local_request_Auth_RoleDelete_0(ctx context.Context, marshaler runtime.Mars
 		protoReq etcdserverpb.AuthRoleDeleteRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.RoleDelete(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_RoleGrantPermission_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1205,14 +1203,14 @@ func request_Auth_RoleGrantPermission_0(ctx context.Context, marshaler runtime.M
 		protoReq etcdserverpb.AuthRoleGrantPermissionRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.RoleGrantPermission(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_RoleGrantPermission_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1220,11 +1218,11 @@ func local_request_Auth_RoleGrantPermission_0(ctx context.Context, marshaler run
 		protoReq etcdserverpb.AuthRoleGrantPermissionRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.RoleGrantPermission(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1232,14 +1230,14 @@ func request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler runtime.
 		protoReq etcdserverpb.AuthRoleRevokePermissionRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
 	msg, err := client.RoleRevokePermission(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 func local_request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -1247,11 +1245,11 @@ func local_request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler ru
 		protoReq etcdserverpb.AuthRoleRevokePermissionRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	msg, err := server.RoleRevokePermission(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 }
 
 // etcdserverpb.RegisterKVHandlerServer registers the http handlers for service KV to "mux".
@@ -2345,10 +2343,7 @@ func RegisterWatchHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_Watch_Watch_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) {
-			m1, err := resp.Recv()
-			return protov1.MessageV2(m1), err
-		}, mux.GetForwardResponseOptions()...)
+		forward_Watch_Watch_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
 	})
 	return nil
 }
@@ -2463,10 +2458,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_Lease_LeaseKeepAlive_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) {
-			m1, err := resp.Recv()
-			return protov1.MessageV2(m1), err
-		}, mux.GetForwardResponseOptions()...)
+		forward_Lease_LeaseKeepAlive_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodPost, pattern_Lease_LeaseTimeToLive_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -2837,10 +2829,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_Maintenance_Snapshot_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) {
-			m1, err := resp.Recv()
-			return protov1.MessageV2(m1), err
-		}, mux.GetForwardResponseOptions()...)
+		forward_Maintenance_Snapshot_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodPost, pattern_Maintenance_MoveLeader_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())

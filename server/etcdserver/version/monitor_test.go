@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
@@ -34,7 +34,7 @@ func TestMemberMinimalVersion(t *testing.T) {
 	}{
 		{
 			map[string]*version.Versions{"a": {Server: "2.0.0"}},
-			semver.Must(semver.NewVersion("2.0.0")),
+			semver.MustParse("2.0.0"),
 		},
 		// unknown
 		{
@@ -43,11 +43,11 @@ func TestMemberMinimalVersion(t *testing.T) {
 		},
 		{
 			map[string]*version.Versions{"a": {Server: "2.0.0"}, "b": {Server: "2.1.0"}, "c": {Server: "2.1.0"}},
-			semver.Must(semver.NewVersion("2.0.0")),
+			semver.MustParse("2.0.0"),
 		},
 		{
 			map[string]*version.Versions{"a": {Server: "2.1.0"}, "b": {Server: "2.1.0"}, "c": {Server: "2.1.0"}},
-			semver.Must(semver.NewVersion("2.1.0")),
+			semver.MustParse("2.1.0"),
 		},
 		{
 			map[string]*version.Versions{"a": nil, "b": {Server: "2.1.0"}, "c": {Server: "2.1.0"}},
@@ -124,7 +124,7 @@ func TestVersionMatchTarget(t *testing.T) {
 	}{
 		{
 			"When downgrade finished",
-			&semver.Version{Major: 3, Minor: 4},
+			semver.New(3, 4, 0, "", ""),
 			map[string]*version.Versions{
 				"mem1": {Server: "3.4.1", Cluster: "3.4.0"},
 				"mem2": {Server: "3.4.2-pre", Cluster: "3.4.0"},
@@ -133,8 +133,18 @@ func TestVersionMatchTarget(t *testing.T) {
 			true,
 		},
 		{
+			"When downgrade finished with v-prefixed peer versions",
+			semver.New(3, 4, 0, "", ""),
+			map[string]*version.Versions{
+				"mem1": {Server: "v3.4.1", Cluster: "3.4.0"},
+				"mem2": {Server: "v3.4.2-pre", Cluster: "3.4.0"},
+				"mem3": {Server: "v3.4.2", Cluster: "3.4.0"},
+			},
+			true,
+		},
+		{
 			"When cannot parse peer version",
-			&semver.Version{Major: 3, Minor: 4},
+			semver.New(3, 4, 0, "", ""),
 			map[string]*version.Versions{
 				"mem1": {Server: "3.4", Cluster: "3.4.0"},
 				"mem2": {Server: "3.4.2-pre", Cluster: "3.4.0"},
@@ -144,7 +154,7 @@ func TestVersionMatchTarget(t *testing.T) {
 		},
 		{
 			"When downgrade not finished",
-			&semver.Version{Major: 3, Minor: 4},
+			semver.New(3, 4, 0, "", ""),
 			map[string]*version.Versions{
 				"mem1": {Server: "3.4.1", Cluster: "3.4.0"},
 				"mem2": {Server: "3.4.2-pre", Cluster: "3.4.0"},
@@ -415,7 +425,7 @@ type storageMock struct {
 var _ Server = (*storageMock)(nil)
 
 func (s *storageMock) UpdateClusterVersion(version string) {
-	s.clusterVersion = semver.New(version)
+	s.clusterVersion = semver.MustParse(version)
 }
 
 func (s *storageMock) LinearizableReadNotify(ctx context.Context) error {

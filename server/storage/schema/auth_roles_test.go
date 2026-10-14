@@ -18,8 +18,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/server/v3/auth"
@@ -45,7 +46,7 @@ func TestGetAllRoles(t *testing.T) {
 					Name: []byte("readKey"),
 					KeyPermission: []*authpb.Permission{
 						{
-							PermType: authpb.READ,
+							PermType: authpb.Permission_READ,
 							Key:      []byte("key"),
 							RangeEnd: []byte("end"),
 						},
@@ -57,7 +58,7 @@ func TestGetAllRoles(t *testing.T) {
 					Name: []byte("readKey"),
 					KeyPermission: []*authpb.Permission{
 						{
-							PermType: authpb.READ,
+							PermType: authpb.Permission_READ,
 							Key:      []byte("key"),
 							RangeEnd: []byte("end"),
 						},
@@ -85,7 +86,7 @@ func TestGetAllRoles(t *testing.T) {
 					Name: []byte("role1"),
 					KeyPermission: []*authpb.Permission{
 						{
-							PermType: authpb.READ,
+							PermType: authpb.Permission_READ,
 						},
 					},
 				})
@@ -96,13 +97,13 @@ func TestGetAllRoles(t *testing.T) {
 					Name: []byte("role1"),
 					KeyPermission: []*authpb.Permission{
 						{
-							PermType: authpb.READWRITE,
+							PermType: authpb.Permission_READWRITE,
 						},
 					},
 				})
 			},
 			want: []*authpb.Role{
-				{Name: []byte("role1"), KeyPermission: []*authpb.Permission{{PermType: authpb.READWRITE}}},
+				{Name: []byte("role1"), KeyPermission: []*authpb.Permission{{PermType: authpb.Permission_READWRITE}}},
 				{Name: []byte("role2")},
 			},
 		},
@@ -127,7 +128,9 @@ func TestGetAllRoles(t *testing.T) {
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetAllRoles()
 
-			assert.Equal(t, tc.want, users)
+			if diff := cmp.Diff(tc.want, users, protocmp.Transform()); diff != "" {
+				t.Fatalf("roles mismatch (-want +got):\n%s", diff)
+			}
 		})
 	}
 }
@@ -150,7 +153,7 @@ func TestGetRole(t *testing.T) {
 					Name: []byte("role1"),
 					KeyPermission: []*authpb.Permission{
 						{
-							PermType: authpb.READ,
+							PermType: authpb.Permission_READ,
 							Key:      []byte("key"),
 							RangeEnd: []byte("end"),
 						},
@@ -161,7 +164,7 @@ func TestGetRole(t *testing.T) {
 				Name: []byte("role1"),
 				KeyPermission: []*authpb.Permission{
 					{
-						PermType: authpb.READ,
+						PermType: authpb.Permission_READ,
 						Key:      []byte("key"),
 						RangeEnd: []byte("end"),
 					},
@@ -185,7 +188,7 @@ func TestGetRole(t *testing.T) {
 					Name: []byte("role1"),
 					KeyPermission: []*authpb.Permission{
 						{
-							PermType: authpb.READ,
+							PermType: authpb.Permission_READ,
 						},
 					},
 				})
@@ -193,14 +196,14 @@ func TestGetRole(t *testing.T) {
 					Name: []byte("role1"),
 					KeyPermission: []*authpb.Permission{
 						{
-							PermType: authpb.READWRITE,
+							PermType: authpb.Permission_READWRITE,
 						},
 					},
 				})
 			},
 			want: &authpb.Role{
 				Name:          []byte("role1"),
-				KeyPermission: []*authpb.Permission{{PermType: authpb.READWRITE}},
+				KeyPermission: []*authpb.Permission{{PermType: authpb.Permission_READWRITE}},
 			},
 		},
 	}
@@ -224,7 +227,9 @@ func TestGetRole(t *testing.T) {
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetRole("role1")
 
-			assert.Equal(t, tc.want, users)
+			if diff := cmp.Diff(tc.want, users, protocmp.Transform()); diff != "" {
+				t.Fatalf("roles mismatch (-want +got):\n%s", diff)
+			}
 		})
 	}
 }

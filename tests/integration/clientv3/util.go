@@ -106,12 +106,12 @@ func IsUnavailable(err error) bool {
 	return code == codes.Unavailable
 }
 
-// populateDataIntoCluster populates the key-value pairs into cluster and the
+// populateDataIntoCluster populates three key-value pairs into cluster and the
 // key will be named by testing.T.Name()-index.
-func populateDataIntoCluster(t *testing.T, cluster *integration.Cluster, numKeys int, valueSize int) {
+func populateDataIntoCluster(t *testing.T, cluster *integration.Cluster, valueSize int) {
 	ctx := t.Context()
 
-	for i := 0; i < numKeys; i++ {
+	for i := 0; i < 3; i++ {
 		_, err := cluster.RandClient().Put(ctx,
 			fmt.Sprintf("%s-%v", t.Name(), i), strings.Repeat("a", valueSize))
 		if err != nil {

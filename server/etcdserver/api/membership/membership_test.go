@@ -17,7 +17,7 @@ package membership
 import (
 	"testing"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 

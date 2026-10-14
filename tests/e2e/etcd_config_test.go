@@ -597,13 +597,13 @@ func TestSnapshotCatchupEntriesFlag(t *testing.T) {
 	}
 }
 
-// TestEtcdHealthyWithTinySnapshotCatchupEntries ensures multi-node etcd cluster remains healthy with 1 snapshot catch up entry
+// TestEtcdHealthyWithTinySnapshotCatchupEntries ensures multi-node etcd cluster remains healthy with 10 snapshot catch up entry
 func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 	e2e.BeforeTest(t)
 	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithClusterSize(3),
-		e2e.WithSnapshotCount(1),
-		e2e.WithSnapshotCatchUpEntries(1),
+		e2e.WithSnapshotCount(10),
+		e2e.WithSnapshotCatchUpEntries(10),
 	)
 	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	t.Cleanup(func() {
@@ -621,7 +621,7 @@ func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 		g.Go(func() error {
 			cc := epc.Etcdctl()
 			for j := 0; j < 100; j++ {
-				if err := cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientID), config.PutOptions{}); err != nil {
+				if _, err := cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientID), config.PutOptions{}); err != nil {
 					return err
 				}
 			}
@@ -660,80 +660,6 @@ func TestEtcdTLSVersion(t *testing.T) {
 
 	proc.Wait() // ensure the port has been released
 	proc.Close()
-}
-
-// TestEtcdDeprecatedFlags checks that etcd will print warning messages if deprecated flags are set.
-func TestEtcdDeprecatedFlags(t *testing.T) {
-	e2e.SkipInShortMode(t)
-
-	commonArgs := []string{
-		e2e.BinPath.Etcd,
-		"--name", "e1",
-	}
-
-	testCases := []struct {
-		name        string
-		args        []string
-		expectedMsg string
-	}{
-		{
-			name:        "snapshot-count",
-			args:        append(commonArgs, "--snapshot-count=100"),
-			expectedMsg: "--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7",
-		},
-		{
-			name:        "max-snapshots",
-			args:        append(commonArgs, "--max-snapshots=10"),
-			expectedMsg: "--max-snapshots is deprecated in 3.6 and will be decommissioned in 3.7",
-		},
-		{
-			name:        "v2-deprecation",
-			args:        append(commonArgs, "--v2-deprecation", "write-only-drop-data"),
-			expectedMsg: "--v2-deprecation is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			proc, err := e2e.SpawnCmd(
-				tc.args, nil,
-			)
-			require.NoError(t, err)
-			require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, []string{tc.expectedMsg}))
-			require.NoError(t, proc.Stop())
-
-			proc.Wait() // ensure the port has been released
-			proc.Close()
-		})
-	}
-}
-
-// TestV2DeprecationEnforceDefaultValue verifies that etcd enforces the default V2Deprecation level
-// and ignores users input.
-func TestV2DeprecationEnforceDefaultValue(t *testing.T) {
-	e2e.SkipInShortMode(t)
-
-	commonArgs := []string{
-		e2e.BinPath.Etcd,
-		"--name", "e1",
-	}
-
-	validV2DeprecationLevels := []string{"write-only", "write-only-drop-data", "gone"}
-	expectedDeprecationLevelMsg := `"v2-deprecation":"write-only"`
-
-	for _, optionLevel := range validV2DeprecationLevels {
-		t.Run(optionLevel, func(t *testing.T) {
-			proc, err := e2e.SpawnCmd(
-				append(commonArgs, "--v2-deprecation", optionLevel), nil,
-			)
-			require.NoError(t, err)
-			require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, []string{expectedDeprecationLevelMsg}))
-			require.NoError(t, proc.Stop())
-
-			proc.Wait() // ensure the port has been released
-			proc.Close()
-		})
-	}
 }
 
 func TestEtcdAdvertiseClientUnix(t *testing.T) {

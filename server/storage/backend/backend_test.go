@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	bolt "go.etcd.io/bbolt"
@@ -193,6 +194,145 @@ func TestBackendDefrag(t *testing.T) {
 	tx.UnsafePut(schema.Test, []byte("more"), []byte("bar"))
 	tx.Unlock()
 	b.ForceCommit()
+}
+
+// TestBackendDefragNonBlocking verifies that, with NonBlockingDefrag enabled, writers are not blocked while
+// Defrag() is running, and that everything written during the run - to both a safe-range bucket
+// (schema.Key) and a non-safe-range one (schema.Test) - is present afterward.
+func TestBackendDefragNonBlocking(t *testing.T) {
+	bcfg := backend.DefaultBackendConfig(zaptest.NewLogger(t, zaptest.Level(zap.InfoLevel)))
+	bcfg.NonBlockingDefrag = true
+	b, _ := betesting.NewTmpBackendFromCfg(t, bcfg)
+	defer betesting.Close(t, b)
+
+	n := backend.DefragLimitForTest() + 100
+	tx := b.BatchTx()
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Key)
+	tx.UnsafeCreateBucket(schema.Test)
+	for i := 0; i < n; i++ {
+		tx.UnsafeSeqPut(schema.Key, []byte(fmt.Sprintf("key_%08d", i)), []byte("bar"))
+		tx.UnsafePut(schema.Test, []byte(fmt.Sprintf("foo_%d", i)), []byte("bar"))
+	}
+	tx.Unlock()
+	b.ForceCommit()
+
+	// Delete some entries from the non-safe-range bucket, so there's space to reclaim and the
+	// catch-up phase's full re-copy of that bucket is exercised against a bucket whose shape
+	// changed after the bulk-copy snapshot was taken.
+	tx = b.BatchTx()
+	tx.Lock()
+	for i := 0; i < 50; i++ {
+		tx.UnsafeDelete(schema.Test, []byte(fmt.Sprintf("foo_%d", i)))
+	}
+	tx.Unlock()
+	b.ForceCommit()
+
+	defragDone := make(chan error, 1)
+	go func() {
+		defragDone <- b.Defrag()
+	}()
+
+	// Wait for the goroutine above to actually start running Defrag() before racing writes
+	// against it below.
+	require.Eventuallyf(t, backend.IsDefragActiveForTest, time.Second, time.Millisecond,
+		"Defrag() did not start running in time")
+
+	// Issue writes to both buckets while Defrag() is (expected to be) still running its
+	// non-blocking bulk-copy phase. A legacy blocking defrag would make every one of these wait
+	// for Defrag() to return.
+	concurrentWrites := 0
+	sawConcurrentProgress := false
+loop:
+	for i := 0; ; i++ {
+		select {
+		case err := <-defragDone:
+			require.NoError(t, err)
+			break loop
+		default:
+		}
+		wtx := b.BatchTx()
+		wtx.Lock()
+		wtx.UnsafeSeqPut(schema.Key, []byte(fmt.Sprintf("key_%08d", n+i)), []byte("during"))
+		wtx.UnsafePut(schema.Test, []byte(fmt.Sprintf("during_%d", i)), []byte("during"))
+		wtx.Unlock()
+		b.ForceCommit()
+		concurrentWrites++
+		sawConcurrentProgress = true
+		if i > 5000 {
+			// Safety valve: don't loop forever if Defrag() unexpectedly never signals.
+			require.NoError(t, <-defragDone)
+			break loop
+		}
+	}
+	require.Truef(t, sawConcurrentProgress, "expected at least one write to complete while Defrag() was still running (non-blocking defrag should not block writers)")
+
+	tx = b.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	keys, _ := tx.UnsafeRange(schema.Key, []byte(fmt.Sprintf("key_%08d", n)), []byte(fmt.Sprintf("key_%08d", n+concurrentWrites)), 0)
+	require.Lenf(t, keys, concurrentWrites, "catch-up phase should have copied every key written to the safe-range bucket during the run")
+	testKeys, _ := tx.UnsafeRange(schema.Test, []byte("during_"), []byte("during_\xff"), 0)
+	require.Lenf(t, testKeys, concurrentWrites, "catch-up phase should have copied every key written to the non-safe-range bucket during the run")
+}
+
+// populateForDefragTest writes identical key/value data (schema.Key, the mvcc "key" bucket, is
+// the only safe-range bucket) to a backend for the blocking/non-blocking defrag size-comparison
+// test below: enough rows to force at least one intermediate defrag commit, then deletes some of
+// them so there's free space for defrag to reclaim.
+func populateForDefragTest(b backend.Backend) {
+	n := backend.DefragLimitForTest() + 100
+	tx := b.BatchTx()
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Key)
+	for i := 0; i < n; i++ {
+		tx.UnsafeSeqPut(schema.Key, []byte(fmt.Sprintf("key_%08d", i)), []byte("bar"))
+	}
+	tx.Unlock()
+	b.ForceCommit()
+
+	tx = b.BatchTx()
+	tx.Lock()
+	for i := 0; i < 50; i++ {
+		tx.UnsafeDelete(schema.Key, []byte(fmt.Sprintf("key_%08d", i)))
+	}
+	tx.Unlock()
+	b.ForceCommit()
+}
+
+// TestBackendDefragBlockingAndNonBlockingProduceSameSize verifies that, given identical key/value
+// data and no concurrent traffic during the non-blocking run, blocking and non-blocking defrag
+// produce a final db of exactly the same size and hash.
+func TestBackendDefragBlockingAndNonBlockingProduceSameSize(t *testing.T) {
+	blockingCfg := backend.DefaultBackendConfig(zaptest.NewLogger(t, zaptest.Level(zap.InfoLevel)))
+	bBlocking, _ := betesting.NewTmpBackendFromCfg(t, blockingCfg)
+	defer betesting.Close(t, bBlocking)
+	populateForDefragTest(bBlocking)
+
+	nonBlockingCfg := backend.DefaultBackendConfig(zaptest.NewLogger(t, zaptest.Level(zap.InfoLevel)))
+	nonBlockingCfg.NonBlockingDefrag = true
+	bNonBlocking, _ := betesting.NewTmpBackendFromCfg(t, nonBlockingCfg)
+	defer betesting.Close(t, bNonBlocking)
+	populateForDefragTest(bNonBlocking)
+
+	requireSameHash := func(msgAndArgs ...any) {
+		t.Helper()
+		blockingHash, err := bBlocking.Hash(nil)
+		require.NoError(t, err)
+		nonBlockingHash, err := bNonBlocking.Hash(nil)
+		require.NoError(t, err)
+		require.Equal(t, blockingHash, nonBlockingHash, msgAndArgs...)
+	}
+
+	requireSameHash("pre-defrag hashes should already match: both backends were populated identically")
+
+	require.NoError(t, bBlocking.Defrag())
+	require.NoError(t, bNonBlocking.Defrag())
+
+	assert.Equalf(t, bBlocking.Size(), bNonBlocking.Size(), "blocking and non-blocking defrag should produce a db of exactly the same size when there's no traffic during the non-blocking run")
+	assert.Equal(t, bBlocking.SizeInUse(), bNonBlocking.SizeInUse())
+
+	requireSameHash()
 }
 
 // TestBackendWriteback ensures writes are stored to the read txn on write txn unlock.

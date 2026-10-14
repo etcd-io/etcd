@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -48,7 +47,7 @@ var (
 	}
 )
 
-// TestDialTLSExpired tests client with expired certs fails to dial.
+// TestDialTLSExpired tests client with expired certs fails the read request.
 func TestDialTLSExpired(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, PeerTLS: &testTLSInfo, ClientTLS: &testTLSInfo})
@@ -57,16 +56,23 @@ func TestDialTLSExpired(t *testing.T) {
 	tls, err := testTLSInfoExpired.ClientConfig()
 	require.NoError(t, err)
 	// expect remote errors "tls: bad certificate"
-	_, err = integration.NewClient(t, clientv3.Config{
+	c, err := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: 3 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		TLS:         tls,
 	})
-	require.Truef(t, clientv3test.IsClientTimeout(err), "expected dial timeout error")
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, c.Close())
+	}()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	_, rerr := c.Get(ctx, "foo")
+	cancel()
+	require.Truef(t, clientv3test.IsClientTimeout(rerr), "expected get timeout error")
 }
 
-// TestDialTLSNoConfig ensures the client fails to dial / times out
+// TestDialTLSNoConfig ensures the client fails to range / times out
 // when TLS endpoints (https, unixs) are given but no tls config.
 func TestDialTLSNoConfig(t *testing.T) {
 	integration.BeforeTest(t)
@@ -76,14 +82,16 @@ func TestDialTLSNoConfig(t *testing.T) {
 	c, err := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	})
+	require.NoError(t, err)
 	defer func() {
-		if c != nil {
-			c.Close()
-		}
+		require.NoError(t, c.Close())
 	}()
-	require.Truef(t, clientv3test.IsClientTimeout(err), "expected dial timeout error")
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	_, rerr := c.Get(ctx, "foo")
+	cancel()
+	require.Truef(t, clientv3test.IsClientTimeout(rerr), "expected get timeout error")
 }
 
 // TestDialSetEndpointsBeforeFail ensures SetEndpoints can replace unavailable
@@ -112,7 +120,6 @@ func testDialSetEndpoints(t *testing.T, setBefore bool) {
 	cfg := clientv3.Config{
 		Endpoints:   []string{eps[toKill]},
 		DialTimeout: 1 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	cli, err := integration.NewClient(t, cfg)
 	require.NoError(t, err)
@@ -165,7 +172,6 @@ func TestRejectOldCluster(t *testing.T) {
 	cfg := clientv3.Config{
 		Endpoints:        []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL},
 		DialTimeout:      5 * time.Second,
-		DialOptions:      []grpc.DialOption{grpc.WithBlock()},
 		RejectOldCluster: true,
 	}
 	cli, err := integration.NewClient(t, cfg)

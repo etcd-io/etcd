@@ -21,21 +21,16 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
-	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 type testCase struct {
@@ -228,7 +223,7 @@ func TestCheckTxn(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			_, _, err := Txn(ctx, zaptest.NewLogger(t), tc.txn, false, s, lessor)
+			_, _, err := Txn(ctx, zaptest.NewLogger(t), tc.txn, false, s, lessor, false)
 
 			gotErr := ""
 			if err != nil {
@@ -268,7 +263,7 @@ func TestCheckRange(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			_, _, err := Range(ctx, zaptest.NewLogger(t), s, tc.op.GetRequestRange())
+			_, _, err := Range(ctx, zaptest.NewLogger(t), s, tc.op.GetRequestRange(), true)
 
 			gotErr := ""
 			if err != nil {
@@ -307,6 +302,76 @@ func setup(t *testing.T, setup testSetup) (mvcc.KV, lease.Lessor) {
 	return s, lessor
 }
 
+func TestSkippedRangeExecutionResponseHeaderRevision(t *testing.T) {
+	tests := []struct {
+		name string
+		txn  *pb.TxnRequest
+	}{
+		{
+			name: "range before write",
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{Key: []byte("foo")},
+						},
+					},
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "range after write",
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
+						},
+					},
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{Key: []byte("foo")},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			lg := zaptest.NewLogger(t)
+			normalKV, normalLessor := setup(t, testSetup{})
+			skippedKV, skippedLessor := setup(t, testSetup{})
+
+			normalResp, _, err := Txn(ctx, lg, tt.txn, false, normalKV, normalLessor, false)
+			require.NoError(t, err)
+			skippedResp, _, err := Txn(ctx, lg, tt.txn, false, skippedKV, skippedLessor, true)
+			require.NoError(t, err)
+
+			var normalRangeHeader, skippedRangeHeader *pb.ResponseHeader
+			for i, resp := range normalResp.Responses {
+				rangeResp := resp.GetResponseRange()
+				if rangeResp == nil {
+					continue
+				}
+				normalRangeHeader = rangeResp.Header
+				skippedRangeHeader = skippedResp.Responses[i].GetResponseRange().Header
+				break
+			}
+			require.NotNil(t, normalRangeHeader)
+			require.NotNil(t, skippedRangeHeader)
+			require.Equal(t, normalRangeHeader.Revision, skippedRangeHeader.Revision)
+		})
+	}
+}
+
 func TestReadonlyTxnError(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, b)
@@ -333,7 +398,7 @@ func TestReadonlyTxnError(t *testing.T) {
 		},
 	}
 
-	_, _, err := Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{})
+	_, _, err := Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}, false)
 	if err == nil || !strings.Contains(err.Error(), "applyTxn: failed Range: rangeKeys: context cancelled: context canceled") {
 		t.Fatalf("Expected context canceled error, got %v", err)
 	}
@@ -376,206 +441,10 @@ func TestWriteTxnPanicWithoutApply(t *testing.T) {
 	// we verify the following properties below:
 	// 1. server panics after a write txn aply fails (invariant: server should never try to move on from a failed write)
 	// 2. no writes from the txn are applied to the backend (invariant: failed write should have no side-effect on DB state besides panic)
-	assert.Panicsf(t, func() { Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}) }, "Expected panic in Txn with writes")
+	assert.Panicsf(t, func() { Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}, false) }, "Expected panic in Txn with writes")
 	dbHashAfter, err := computeFileHash(bePath)
 	require.NoErrorf(t, err, "failed to compute DB file hash after txn")
 	require.Equalf(t, dbHashBefore, dbHashAfter, "mismatch in DB hash before and after failed write txn")
-}
-
-func TestCheckTxnAuth(t *testing.T) {
-	be, _ := betesting.NewDefaultTmpBackend(t)
-	defer betesting.Close(t, be)
-	as := setupAuth(t, be)
-
-	tests := []struct {
-		name       string
-		txnRequest *pb.TxnRequest
-		err        error
-	}{
-		{
-			name: "Out of range compare is unauthorized",
-			txnRequest: &pb.TxnRequest{
-				Compare: []*pb.Compare{outOfRangeCompare},
-			},
-			err: auth.ErrPermissionDenied,
-		},
-		{
-			name: "In range compare is authorized",
-			txnRequest: &pb.TxnRequest{
-				Compare: []*pb.Compare{inRangeCompare},
-			},
-			err: nil,
-		},
-		{
-			name: "Nil request range is always authorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{nilRequestRange},
-			},
-			err: nil,
-		},
-		{
-			name: "Range request in range is authorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{inRangeRequestRange},
-				Failure: []*pb.RequestOp{inRangeRequestRange},
-			},
-			err: nil,
-		},
-		{
-			name: "Range request out of range success case is unauthorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{outOfRangeRequestRange},
-				Failure: []*pb.RequestOp{inRangeRequestRange},
-			},
-			err: auth.ErrPermissionDenied,
-		},
-		{
-			name: "Range request out of range failure case is unauthorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{inRangeRequestRange},
-				Failure: []*pb.RequestOp{outOfRangeRequestRange},
-			},
-			err: auth.ErrPermissionDenied,
-		},
-		{
-			name: "Nil Put request is always authorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{nilRequestPut},
-			},
-			err: nil,
-		},
-		{
-			name: "Put request in range in authorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{inRangeRequestPut},
-				Failure: []*pb.RequestOp{inRangeRequestPut},
-			},
-			err: nil,
-		},
-		{
-			name: "Put request out of range success case is unauthorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{outOfRangeRequestPut},
-				Failure: []*pb.RequestOp{inRangeRequestPut},
-			},
-			err: auth.ErrPermissionDenied,
-		},
-		{
-			name: "Put request out of range failure case is unauthorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{inRangeRequestPut},
-				Failure: []*pb.RequestOp{outOfRangeRequestPut},
-			},
-			err: auth.ErrPermissionDenied,
-		},
-		{
-			name: "Nil delete request is authorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{nilRequestDeleteRange},
-			},
-			err: nil,
-		},
-		{
-			name: "Delete range request in range is authorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{inRangeRequestDeleteRange},
-				Failure: []*pb.RequestOp{inRangeRequestDeleteRange},
-			},
-			err: nil,
-		},
-		{
-			name: "Delete range request out of range success case is unauthorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{outOfRangeRequestDeleteRange},
-				Failure: []*pb.RequestOp{inRangeRequestDeleteRange},
-			},
-			err: auth.ErrPermissionDenied,
-		},
-		{
-			name: "Delete range request out of range failure case is unauthorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{inRangeRequestDeleteRange},
-				Failure: []*pb.RequestOp{outOfRangeRequestDeleteRange},
-			},
-			err: auth.ErrPermissionDenied,
-		},
-		{
-			name: "Delete range request out of range and PrevKv false success case is unauthorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{outOfRangeRequestDeleteRangeKvFalse},
-				Failure: []*pb.RequestOp{inRangeRequestDeleteRange},
-			},
-			err: auth.ErrPermissionDenied,
-		},
-		{
-			name: "Delete range request out of range and PrevKv false failure case is unauthorized",
-			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{inRangeRequestDeleteRange},
-				Failure: []*pb.RequestOp{outOfRangeRequestDeleteRangeKvFalse},
-			},
-			err: auth.ErrPermissionDenied,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := CheckTxnAuth(as, &auth.AuthInfo{Username: "foo", Revision: 8}, tt.txnRequest)
-			assert.Equal(t, tt.err, err)
-		})
-	}
-}
-
-// CheckTxnAuth test setup.
-func setupAuth(t *testing.T, be backend.Backend) auth.AuthStore {
-	lg := zaptest.NewLogger(t)
-
-	simpleTokenTTLDefault := 300 * time.Second
-	tokenTypeSimple := "simple"
-	dummyIndexWaiter := func(index uint64) <-chan struct{} {
-		ch := make(chan struct{}, 1)
-		go func() {
-			ch <- struct{}{}
-		}()
-		return ch
-	}
-
-	tp, _ := auth.NewTokenProvider(zaptest.NewLogger(t), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
-
-	as := auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), tp, 4)
-
-	// create "root" user and "foo" user with limited range
-	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "root"})
-	require.NoError(t, err)
-
-	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: "rw"})
-	require.NoError(t, err)
-
-	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
-		Name: "rw",
-		Perm: &authpb.Permission{
-			PermType: authpb.READWRITE,
-			Key:      []byte("foo"),
-			RangeEnd: []byte("zoo"),
-		},
-	})
-	require.NoError(t, err)
-
-	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "foo"})
-	require.NoError(t, err)
-
-	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: "foo", Password: "foo"})
-	require.NoError(t, err)
-
-	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "root", Role: "root"})
-	require.NoError(t, err)
-
-	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "rw"})
-	require.NoError(t, err)
-
-	err = as.AuthEnable()
-	require.NoError(t, err)
-
-	return as
 }
 
 func computeFileHash(filePath string) (string, error) {
@@ -591,87 +460,3 @@ func computeFileHash(filePath string) (string, error) {
 	}
 	return string(h.Sum(nil)), nil
 }
-
-// CheckTxnAuth variables setup.
-var (
-	inRangeCompare = &pb.Compare{
-		Key:      []byte("foo"),
-		RangeEnd: []byte("zoo"),
-	}
-	outOfRangeCompare = &pb.Compare{
-		Key:      []byte("boo"),
-		RangeEnd: []byte("zoo"),
-	}
-	nilRequestPut = &pb.RequestOp{
-		Request: &pb.RequestOp_RequestPut{
-			RequestPut: nil,
-		},
-	}
-	inRangeRequestPut = &pb.RequestOp{
-		Request: &pb.RequestOp_RequestPut{
-			RequestPut: &pb.PutRequest{
-				Key: []byte("foo"),
-			},
-		},
-	}
-	outOfRangeRequestPut = &pb.RequestOp{
-		Request: &pb.RequestOp_RequestPut{
-			RequestPut: &pb.PutRequest{
-				Key: []byte("boo"),
-			},
-		},
-	}
-	nilRequestRange = &pb.RequestOp{
-		Request: &pb.RequestOp_RequestRange{
-			RequestRange: nil,
-		},
-	}
-	inRangeRequestRange = &pb.RequestOp{
-		Request: &pb.RequestOp_RequestRange{
-			RequestRange: &pb.RangeRequest{
-				Key:      []byte("foo"),
-				RangeEnd: []byte("zoo"),
-			},
-		},
-	}
-	outOfRangeRequestRange = &pb.RequestOp{
-		Request: &pb.RequestOp_RequestRange{
-			RequestRange: &pb.RangeRequest{
-				Key:      []byte("boo"),
-				RangeEnd: []byte("zoo"),
-			},
-		},
-	}
-	nilRequestDeleteRange = &pb.RequestOp{
-		Request: &pb.RequestOp_RequestDeleteRange{
-			RequestDeleteRange: nil,
-		},
-	}
-	inRangeRequestDeleteRange = &pb.RequestOp{
-		Request: &pb.RequestOp_RequestDeleteRange{
-			RequestDeleteRange: &pb.DeleteRangeRequest{
-				Key:      []byte("foo"),
-				RangeEnd: []byte("zoo"),
-				PrevKv:   true,
-			},
-		},
-	}
-	outOfRangeRequestDeleteRange = &pb.RequestOp{
-		Request: &pb.RequestOp_RequestDeleteRange{
-			RequestDeleteRange: &pb.DeleteRangeRequest{
-				Key:      []byte("boo"),
-				RangeEnd: []byte("zoo"),
-				PrevKv:   true,
-			},
-		},
-	}
-	outOfRangeRequestDeleteRangeKvFalse = &pb.RequestOp{
-		Request: &pb.RequestOp_RequestDeleteRange{
-			RequestDeleteRange: &pb.DeleteRangeRequest{
-				Key:      []byte("boo"),
-				RangeEnd: []byte("zoo"),
-				PrevKv:   false,
-			},
-		},
-	}
-)

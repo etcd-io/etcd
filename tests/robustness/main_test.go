@@ -45,7 +45,7 @@ var testRunner = framework.E2eTestRunner
 
 var (
 	WaitBeforeFailpoint = time.Second
-	WaitJitter          = traffic.DefaultCompactionPeriod
+	WaitJitter          = time.Millisecond * 200
 	WaitAfterFailpoint  = time.Second
 )
 
@@ -88,38 +88,36 @@ func TestRobustnessRegression(t *testing.T) {
 }
 
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenarios.TestScenario, c *e2e.EtcdProcessCluster) {
-	serverDataPaths := report.ServerDataPaths(c)
-	r := report.TestReport{
-		Logger:          lg,
-		ServersDataPath: serverDataPaths,
-		Traffic:         &report.TrafficDetail{ExpectUniqueRevision: s.Traffic.ExpectUniqueRevision()},
-	}
+	r, err := report.NewTestReport(lg, testResultsDirectory(t), report.ServerDataPaths(c), &report.TrafficDetail{ExpectUniqueRevision: s.Traffic.ExpectUniqueRevision()})
+	require.NoError(t, err)
 	// t.Failed() returns false during panicking. We need to forcibly
 	// save data on panicking.
 	// Refer to: https://github.com/golang/go/issues/49929
 	panicked := true
 	defer func() {
-		_, persistResults := os.LookupEnv("PERSIST_RESULTS")
-		shouldReport := t.Failed() || panicked || persistResults
-		if shouldReport {
-			path := testResultsDirectory(t)
-			if err := r.Report(path); err != nil {
-				t.Error(err)
-			}
+		err = r.Finalize(t.Failed(), panicked)
+		if err != nil {
+			t.Error(err)
 		}
 	}()
-	r.Client = runScenario(ctx, t, s, lg, c)
-	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
+	clientReports := runScenario(ctx, t, s, lg, c)
+	r.SetClientReports(clientReports)
+	err = r.SaveEtcdData()
 	if err != nil {
 		t.Error(err)
 	}
 
 	validateConfig := validate.Config{ExpectRevisionUnique: s.Traffic.ExpectUniqueRevision()}
-	result := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
-	r.Visualize = result.Linearization.Visualize
+	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
+	if err != nil {
+		t.Error(err)
+	}
+	result := validate.ValidateAndReturnVisualize(lg, validateConfig, clientReports, persistedRequests, 5*time.Minute)
 	err = result.Error()
 	if err != nil {
 		t.Error(err)
+	} else {
+		r.SetVisualizer(result.Linearization.Visualize)
 	}
 	panicked = false
 }
@@ -168,12 +166,10 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	g.Go(func() error {
 		endpoints := processEndpoints(clus)
 		err := client.CollectClusterWatchEvents(ctx, client.CollectClusterWatchEventsParam{
-			Lg:                    lg,
-			Endpoints:             endpoints,
-			MaxRevisionChan:       maxRevisionChan,
-			Cfg:                   s.Watch,
-			ClientSet:             watchSet,
-			BackgroundWatchConfig: s.Profile.BackgroundWatchConfig,
+			Lg:              lg,
+			Endpoints:       endpoints,
+			MaxRevisionChan: maxRevisionChan,
+			ClientSet:       watchSet,
 		})
 		return err
 	})

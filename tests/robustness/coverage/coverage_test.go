@@ -126,6 +126,23 @@ var referenceUsageOfWatchAndKV = map[string]refOp{
 			},
 		},
 	},
+	"etcdserverpb.KV/RangeStream": {
+		args: []column{
+			{name: "limit", matcher: isLimitSet},
+			{name: "rangeEnd", matcher: isRangeEndSet},
+			{name: "rev", matcher: isRevisionSet},
+		},
+		keyAttrName: "range_begin",
+		methods: []method{
+			{
+				name: "List",
+				matcher: andMatcher(
+					isRangeEndSet,
+					notMatcher(orMatcher(isKeysOnly, isCountOnly)),
+				),
+			},
+		},
+	},
 	"etcdserverpb.KV/Txn": {
 		args: []column{
 			{name: "getOnFailure", matcher: keyIsEqualInt("failure_len", 1)},
@@ -224,8 +241,9 @@ func testInterfaceUse(t *testing.T, filename string) {
 	t.Run("only_expected_methods_were_called", func(t *testing.T) {
 		expectedEtcdMethodsCalled := map[string]bool{
 			// All calls should go through etcd-k8s interface
-			"etcdserverpb.KV/Range": true,
-			"etcdserverpb.KV/Txn":   true,
+			"etcdserverpb.KV/Range":       true,
+			"etcdserverpb.KV/RangeStream": true,
+			"etcdserverpb.KV/Txn":         true,
 			// Not part of the contract interface (yet)
 			"etcdserverpb.Watch/Watch": true,
 			// Compaction should move to using internal Etcd mechanism

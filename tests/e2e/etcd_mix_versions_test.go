@@ -169,7 +169,7 @@ func writeKVs(t *testing.T, etcdctl *e2e.EtcdctlV3, startIdx, endIdx int) {
 	for i := startIdx; i < endIdx; i++ {
 		key := fmt.Sprintf("key-%d", i)
 		value := fmt.Sprintf("value-%d", i)
-		err := etcdctl.Put(t.Context(), key, value, config.PutOptions{})
+		_, err := etcdctl.Put(t.Context(), key, value, config.PutOptions{})
 		require.NoErrorf(t, err, "failed to put %q", key)
 	}
 }

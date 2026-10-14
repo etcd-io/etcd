@@ -4,11 +4,183 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.7 (TBA)
+## v3.6.16 (TBC)
+
+### etcdctl
+
+- Fix [etcdctl txn panic with `bad value` when comparing a lease](https://github.com/etcd-io/etcd/pull/22542)
+
+### Dependencies
+
+- Compile binaries using [go 1.26.9](https://github.com/etcd-io/etcd/pull/22556).
+
+---
+
+## v3.6.15 (2026-09-22)
+
+### etcd server
+
+- [Fix fsync snap directory when saving a received snapshot db](https://github.com/etcd-io/etcd/pull/22401)
+
+### etcdctl
+
+- [Fix duplicate `RaftTerm` field in the `endpoint status` output when using `--write-out=fields`](https://github.com/etcd-io/etcd/pull/22218)
+- [fileutil: close locked file handle on os.Remove error in purgeFile](https://github.com/etcd-io/etcd/pull/22456)
+
+### Dependencies
+
+- Compile binaries using [go 1.26.8](https://github.com/etcd-io/etcd/pull/22414).
+- Bump [golang.org/x/text to v0.39.0](https://github.com/etcd-io/etcd/pull/22365), to address CVE-2026-56852.
+- Bump [github.com/gorilla/websocket to v1.5.3], to address GHSA-w67g-5rqw-f597.
+- Bump [go.opentelemetry.io/otel to v1.44.0 to addrss CVE-2026-41178](https://github.com/etcd-io/etcd/pull/22199).
+- Bump [google.golang.org/grpc to v1.83.2 to address CVE-2026-84303](https://github.com/etcd-io/etcd/pull/22468).
+
+---
+
+## v3.6.14 (2026-07-23)
+
+### etcd server
+
+- Fix [unbounded io.ReadAll on peer lease HTTP handler body](https://github.com/etcd-io/etcd/pull/22148)
+- [Set a reasonable value for `snapshotLimitByte`](https://github.com/etcd-io/etcd/pull/22146)
+- Fix [the `costTxnReq` ignores nested `RequestTxn` issue](https://github.com/etcd-io/etcd/pull/22140)
+- [Set a ReadHeaderTimeout for client http.Server](https://github.com/etcd-io/etcd/pull/22144)
+- Fix [the security issue where a user granted read permission on one key could receive watch responses for every key starting from that key](https://github.com/etcd-io/etcd/security/advisories/GHSA-xg4h-6gfc-h4m8)
+
+### Package `clientv3`
+
+- Fix [unsynchronized range over leaseCache.entries](https://github.com/etcd-io/etcd/pull/22150)
+
+### package `client/pkg/v3`
+
+- [Set a tlsHandshakeTimeout for tlsListener](https://github.com/etcd-io/etcd/pull/22142). Refer to [GHSA-6vch-q96h-7gc3](https://github.com/etcd-io/etcd/security/advisories/GHSA-6vch-q96h-7gc3) for more details.
+
+### Dependencies
+
+- Compile binaries using [go 1.25.12](https://github.com/etcd-io/etcd/pull/22060).
+- [Bump golang.org/x/net from 0.54.0 to 0.55.0 to address CVE-2026-25681, CVE-2026-27136, CVE-2026-39821, CVE-2026-42502, CVE-2026-25680 and CVE-2026-42506](https://github.com/etcd-io/etcd/pull/22030)
+- [Bump google.golang.org/grpc to 1.82.1 to address GHSA-hrxh-6v49-42gf](https://github.com/etcd-io/etcd/pull/22155)
+
+---
+
+## v3.6.13 (2026-07-01)
+
+### etcd server
+
+- Add [`write-only-skip-check` option for `--v2-deprecation` to bypass the v2 content check](https://github.com/etcd-io/etcd/pull/21850)
+- Fix [websocket authentication with bearer-prefixed auth tokens](https://github.com/etcd-io/etcd/pull/21932).
+- Fix [CRL enforcement bypass on gRPC listener when `--listen-client-http-urls` is configured](https://github.com/etcd-io/etcd/pull/22025), refer to [security/advisories/GHSA-3wh4-j44w-pg92](https://github.com/etcd-io/etcd/security/advisories/GHSA-3wh4-j44w-pg92) for more details.
+
+### Dependencies
+
+- Compile binaries using [go 1.25.11](https://github.com/etcd-io/etcd/pull/21892)
+- Bump golang.org/x/crypto to [v0.52.0](https://github.com/etcd-io/etcd/pull/21904) to resolve CVE-2026-46598, CVE-2026-39835, CVE-2026-39828 and CVE-2026-46597.
+- Bump `go.opentelemetry.io/otel` from `v1.40.0` to `v1.43.0` and `go.opentelemetry.io/otel/sdk` from `v1.40.0` to `v1.43.0` to address CVE-2026-29181 and CVE-2026-39883 ([#21918](https://github.com/etcd-io/etcd/pull/21918)).
+
+---
+
+## v3.6.12 (2026-06-01)
+
+### etcd server
+
+- [bugfix: MemberUpdate implicitly and unexpectedly promotes a learner](https://github.com/etcd-io/etcd/pull/21736)
+- [server: allow non-admin maintenance status](https://github.com/etcd-io/etcd/pull/21811)
+
+### etcdutl
+
+- [etcdutl: validate data file path instead of panic](https://github.com/etcd-io/etcd/pull/21768)
+
+### Dependencies
+
+- Compile binaries using [go 1.25.10](https://github.com/etcd-io/etcd/pull/21727)
+
+---
+
+## v3.6.11 (2026-05-01)
+
+### etcd server
+
+- [Fixed an issue that prevented adding a new member when one member was down, even though quorum was still satisfied](https://github.com/etcd-io/etcd/pull/21667)
+- Fix RBAC authorization bypass allowing read access via PrevKv or lease attachment in Put requests nested in etcd transactions (see [PR/21681](https://github.com/etcd-io/etcd/pull/21681) and [PR/21685](https://github.com/etcd-io/etcd/pull/21685))
+
+### Dependencies
+
+- [Bump golang.org/x/image to v0.39.0 to resolve GO-2026-4962](https://github.com/etcd-io/etcd/pull/21668)
+- Compile binaries using [go 1.25.9](https://github.com/etcd-io/etcd/pull/21586)
+
+---
+
+## v3.6.10 (2026-04-01)
+
+### etcd server
+
+- [etcdserver: allow non-admin to fetch member list and alarms](https://github.com/etcd-io/etcd/pull/21549)
+
+### etcdctl
+
+- Fix [etcdctl endpoint command regression with option --cluster when auth is enabled](https://github.com/etcd-io/etcd/pull/21530)
+
+---
+
+## v3.6.9 (2026-03-20)
+
+### etcd server
+
+- [Ensure the metrics interceptor runs before other interceptors so that metrics remain up to date](https://github.com/etcd-io/etcd/pull/21329)
+- Fix [Race between read index and leader change](https://github.com/etcd-io/etcd/pull/21378)
+- Fix [Stale reads caused by process pausing](https://github.com/etcd-io/etcd/pull/21417)
+- Revert [Reuse events between sync loops](https://github.com/etcd-io/etcd/pull/21443)
+- Guard unauthenticated endpoints with auth checks to fix [Authorization bypasses in multiple APIs (CVE-2026-33413)](https://github.com/etcd-io/etcd/security/advisories/GHSA-q8m4-xhhv-38mg)
+- Enforce auth checks for nested txn ops to fix [Nested etcd transactions bypass RBAC authorization checks (CVE-2026-33343)](https://github.com/etcd-io/etcd/security/advisories/GHSA-rfx7-8w68-q57q)
+
+### Package `clientv3`
+
+- [Print the endpoint the grpc request was actually sent to in unary interceptor](https://github.com/etcd-io/etcd/pull/21382)
+
+### etcd grpc-proxy
+
+- [server/etcdmain: fix startup deadlock in grpcproxy](https://github.com/etcd-io/etcd/pull/21354)
+
+### etcdctl
+
+- Fix [slice bounds trimming single-quoted args in Argify](https://github.com/etcd-io/etcd/pull/21402)
+
+### Dependencies
+
+- [Bump go.opentelemetry.io/otel/sdk to v1.40.0 to resolve https://pkg.go.dev/vuln/GO-2026-4394](https://github.com/etcd-io/etcd/pull/21340)
+- Compile binaries using [go 1.25.8](https://github.com/etcd-io/etcd/pull/21463)
+- [Bump golang.org/x/net to v0.51.0 to resolve GO-2026-4559](https://github.com/etcd-io/etcd/pull/21440)
+- [Bump google.golang.org/grpc to 1.79.3 to resolve CVE-2026-33186](https://github.com/etcd-io/etcd/pull/21501)
+
+---
+
+## v3.6.8 (2026-02-13)
+
+### etcd server
+
+- [Postpone removal of the --max-snapshots flag from v3.7 to v3.8](https://github.com/etcd-io/etcd/pull/21161)
+- [Revoke the deprecation of the `--snapshot-count` flag](https://github.com/etcd-io/etcd/pull/21163)
+
+### Package `clientv3`
+
+- [Remove the use of grpc-go's Metadata field](https://github.com/etcd-io/etcd/pull/21241)
+
+### Dependencies
+
+- Bump [golang.org/x/crypto to 0.45.0 to address CVE-2025-47914, and CVE-2025-58181](https://github.com/etcd-io/etcd/pull/21037).
+- Compile binaries using [go 1.24.13](https://github.com/etcd-io/etcd/pull/21266). This addresses [CVE-2025-61726](https://github.com/advisories/GHSA-gm9r-q53w-2gh4), [CVE-2025-61731](https://github.com/advisories/GHSA-xvqr-69v8-f3gv), and [CVE-2025-61732](https://github.com/advisories/GHSA-8jvr-vh7g-f8gx).
+
+---
+
+## v3.6.7 (2025-12-17)
 
 ### etcd server
 
 - [Print token fingerprint instead of the original tokens in log messages](https://github.com/etcd-io/etcd/pull/20941)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.11](https://github.com/etcd-io/etcd/pull/20998).
 
 ---
 
@@ -21,6 +193,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 - Fix [endpoint status not retuning the correct storage quota](https://github.com/etcd-io/etcd/pull/20790)
 - Fix [`--force-new-cluster can't clean up learners after creating snapshot`](https://github.com/etcd-io/etcd/pull/20896)
 - Fix [duplicate metrics collector registration that caused warning messages](https://github.com/etcd-io/etcd/pull/20905)
+- Fix [cannot promote member from follower when auth is enabled](https://github.com/etcd-io/etcd/pull/20874)
 
 ### Dependencies
 
@@ -264,7 +437,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Decreased [`--snapshot-count` default value from 100,000 to 10,000](https://github.com/etcd-io/etcd/pull/15408)
 - Add [`etcd --tls-min-version --tls-max-version`](https://github.com/etcd-io/etcd/pull/15156) to enable support for TLS 1.3.
 - Add [quota to endpoint status response](https://github.com/etcd-io/etcd/pull/17877)
-- Add [feature gate `SetMemberLocalAddr`](https://github.com/etcd-io/etcd/pull/19413) to [enable using the first specified and non-loopback local address from initial-advertise-peer-urls as the local address when communicating with a peer]((https://github.com/etcd-io/etcd/pull/17661))
+- Add [feature gate `SetMemberLocalAddr`](https://github.com/etcd-io/etcd/pull/19413) to [enable using the first specified and non-loopback local address from initial-advertise-peer-urls as the local address when communicating with a peer](https://github.com/etcd-io/etcd/pull/17661)
 - Add [Support multiple values for allowed client and peer TLS identities](https://github.com/etcd-io/etcd/pull/18015)
 - Add [`embed.Config.GRPCAdditionalServerOptions`](https://github.com/etcd-io/etcd/pull/14066) to support updating the default internal gRPC configuration for embedded use cases.
 

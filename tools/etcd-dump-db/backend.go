@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/authpb"
@@ -71,7 +72,7 @@ func defaultDecoder(k, v []byte) {
 func keyDecoder(k, v []byte) {
 	rev := mvcc.BytesToBucketKey(k)
 	var kv mvccpb.KeyValue
-	if err := kv.Unmarshal(v); err != nil {
+	if err := proto.Unmarshal(v, &kv); err != nil {
 		panic(err)
 	}
 	fmt.Printf("rev=%+v, value=[key %q | val %q | created %d | mod %d | ver %d]\n", rev, string(kv.Key), string(kv.Value), kv.CreateRevision, kv.ModRevision, kv.Version)
@@ -87,7 +88,7 @@ func bytesToLeaseID(bytes []byte) int64 {
 func leaseDecoder(k, v []byte) {
 	leaseID := bytesToLeaseID(k)
 	var lpb leasepb.Lease
-	if err := lpb.Unmarshal(v); err != nil {
+	if err := proto.Unmarshal(v, &lpb); err != nil {
 		panic(err)
 	}
 	fmt.Printf("lease ID=%016x, TTL=%ds, remaining TTL=%ds\n", leaseID, lpb.TTL, lpb.RemainingTTL)
@@ -104,7 +105,7 @@ func authDecoder(k, v []byte) {
 
 func authRolesDecoder(_, v []byte) {
 	role := &authpb.Role{}
-	err := role.Unmarshal(v)
+	err := proto.Unmarshal(v, role)
 	if err != nil {
 		panic(err)
 	}
@@ -113,7 +114,7 @@ func authRolesDecoder(_, v []byte) {
 
 func authUsersDecoder(_, v []byte) {
 	user := &authpb.User{}
-	err := user.Unmarshal(v)
+	err := proto.Unmarshal(v, user)
 	if err != nil {
 		panic(err)
 	}

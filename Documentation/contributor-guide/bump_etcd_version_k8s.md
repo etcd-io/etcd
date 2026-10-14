@@ -15,9 +15,9 @@ Bumping the etcd version in Kubernetes consists of two steps.
 
 ## Bump etcd client SDK
 
-> Reference: [link](https://github.com/kubernetes/kubernetes/pull/131103)
+> Reference: [etcd client SDK bump PR](https://github.com/kubernetes/kubernetes/pull/131103)
 
-You can refer to the guide [here](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/vendor.md) under the **Adding or updating a dependency** section.
+You can refer to the guide [vendor update guide](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/vendor.md) under the **Adding or updating a dependency** section.
 
 1. Get all the etcd modules used in Kubernetes.
 
@@ -53,48 +53,11 @@ You can refer to the guide [here](https://github.com/kubernetes/community/blob/m
 
 ### Build etcd image
 
-> Reference: [link 1](https://github.com/kubernetes/kubernetes/pull/131105) [link 2](https://github.com/kubernetes/kubernetes/pull/131126)
-
-1. In `build/dependencies.yaml`, update the `version` of `etcd-image` to the new version. Update `golang: etcd release version` if necessary.
-
-    ```yaml
-    - name: "etcd-image"
-      # version: 3.5.17
-      version: 3.5.21
-      refPaths:
-      - path: cluster/images/etcd/Makefile
-        match: BUNDLED_ETCD_VERSIONS\?|
-    ---
-    - name: "golang: etcd release version"
-      # version: 1.22.9
-      version: 1.23.7 # https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.6.md
-    ```
-
-2. In `cluster/images/etcd/Makefile`, include the new version in `BUNDLED_ETCD_VERSIONS` and update the `LATEST_ETCD_VERSION` as well (the image tag will be generated from the `LATEST_ETCD_VERSION`). Update `GOLANG_VERSION` according to the version used to compile that release version (`"golang: etcd release version"` in step 1).
-
-    ```Makefile
-    # BUNDLED_ETCD_VERSIONS?=3.4.18 3.5.17
-    BUNDLED_ETCD_VERSIONS?=3.4.18 3.5.21
-
-    # LATEST_ETCD_VERSION?=3.5.17
-    LATEST_ETCD_VERSION?=3.5.21
-
-    # GOLANG_VERSION := 1.22.9
-    GOLANG_VERSION := 1.23.7
-    ```
-
-3. In `cluster/images/etcd/migrate/options.go`, include the new version in the `supportedEtcdVersions` slice.
-
-    ```go
-    var (
-    // supportedEtcdVersions = []string{"3.4.18", "3.5.17"}
-    supportedEtcdVersions = []string{"3.4.18", "3.5.21"}
-    )
-    ```
+Kubernetes now uses the officially released etcd image, so there is no need to build additional etcd images anymore.
 
 ### Publish etcd image
 
-> Reference: [link](https://github.com/kubernetes/k8s.io/pull/7957)
+> Reference: [etcd image staging PR](https://github.com/kubernetes/k8s.io/pull/7957)
 
 1. When the previous step is merged, a post-commit job will run to build the image. You can find the newly built image in the [registry](https://gcr.io/k8s-staging-etcd/etcd).
 
@@ -110,7 +73,7 @@ You can refer to the guide [here](https://github.com/kubernetes/community/blob/m
 
 ### Update to use the new etcd image
 
-> Reference: [link](https://github.com/kubernetes/kubernetes/pull/131144)
+> Reference: [etcd image update PR](https://github.com/kubernetes/kubernetes/pull/131144)
 
 1. In `build/dependencies.yaml`, change the `version` of `etcd` to the new version.
 

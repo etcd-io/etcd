@@ -23,6 +23,10 @@ import (
 func TestEnableAuth(t *testing.T) {
 	tdir := t.TempDir()
 	cfg := NewConfig()
+
+	testURLConfig := newConfigTestURLs()
+	applyTestURLConfig(cfg, testURLConfig)
+
 	cfg.Dir = tdir
 	e, err := StartEtcd(cfg)
 	if err != nil {

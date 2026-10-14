@@ -57,7 +57,7 @@ func delCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-	display.Del(*resp)
+	display.Del(resp)
 }
 
 func getDelOp(args []string) (string, []clientv3.OpOption) {

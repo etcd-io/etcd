@@ -21,7 +21,6 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	cconfig "go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/features"
@@ -41,6 +40,10 @@ var (
 
   etcd --config-file
     Path to the server configuration file. Note that if a configuration file is provided, other command line flags and environment variables will be ignored.
+    Duration-typed fields (for example --heartbeat-interval, --election-timeout,
+    --watch-progress-notify-interval) must be specified as integer nanoseconds
+    in the JSON/YAML file (e.g. 600000000000 for 10m); human-readable strings
+    such as "10m" are only accepted on the command line.
 
   etcd gateway
     Run the stateless pass-through etcd TCP connection forwarding proxy.
@@ -57,7 +60,7 @@ Member:
   --wal-dir ''
     Path to the dedicated wal directory.
   --snapshot-count '10000'
-    Number of committed transactions to trigger a snapshot to disk. Deprecated in v3.6 and will be decommissioned in v3.7.
+    Number of committed transactions to trigger a snapshot.
   --heartbeat-interval '100'
     Time (in milliseconds) of a heartbeat interval.
   --election-timeout '1000'
@@ -70,8 +73,6 @@ Member:
     List of URLs to listen on for client grpc traffic and http as long as --listen-client-http-urls is not specified.
   --listen-client-http-urls ''
     List of URLs to listen on for http only client traffic. Enabling this flag removes http services from --listen-client-urls.
-  --max-snapshots '` + strconv.Itoa(embed.DefaultMaxSnapshots) + `'
-    Maximum number of snapshot files to retain (0 is unlimited). Deprecated in v3.6 and will be decommissioned in v3.7.
   --max-wals '` + strconv.Itoa(embed.DefaultMaxWALs) + `'
     Maximum number of wal files to retain (0 is unlimited).
   --memory-mlock
@@ -167,13 +168,6 @@ Clustering:
     Auto compaction retention length. 0 means disable auto compaction.
   --auto-compaction-mode 'periodic'
     Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
-  --v2-deprecation '` + string(cconfig.V2DeprDefault) + `'
-    Phase of v2store deprecation. Deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
-    Supported values:
-      'not-yet'                // Issues a warning if v2store have meaningful content (default in v3.5)
-      'write-only'             // Custom v2 state is not allowed (default in v3.6)
-      'write-only-drop-data'   // Custom v2 state will get DELETED ! (planned default in v3.7)
-      'gone'                   // v2store is not maintained any longer. (planned to cleanup anything related to v2store in v3.8)
 
 Security:
   --cert-file ''
@@ -239,7 +233,7 @@ Profiling and Monitoring:
   --enable-pprof 'false'
     Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
   --metrics 'basic'
-    Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics.
+    Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics and the full Go runtime metrics set.
   --listen-metrics-urls ''
     List of URLs to listen on for the /metrics and /health endpoints. For https, the client URL TLS info is used.
 

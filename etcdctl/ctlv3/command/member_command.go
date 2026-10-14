@@ -160,7 +160,7 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 	}
 	newID := resp.Member.ID
 
-	display.MemberAdd(*resp)
+	display.MemberAdd(resp)
 
 	if _, ok := (display).(*simplePrinter); ok {
 		var conf []string
@@ -199,7 +199,7 @@ func memberRemoveCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-	display.MemberRemove(id, *resp)
+	display.MemberRemove(id, resp)
 }
 
 // memberUpdateCommandFunc executes the "member update" command.
@@ -226,7 +226,7 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.MemberUpdate(id, *resp)
+	display.MemberUpdate(id, resp)
 }
 
 // memberListCommandFunc executes the "member list" command.
@@ -242,7 +242,7 @@ func memberListCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	display.MemberList(*resp)
+	display.MemberList(resp)
 }
 
 // memberPromoteCommandFunc executes the "member promote" command.
@@ -262,5 +262,5 @@ func memberPromoteCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-	display.MemberPromote(id, *resp)
+	display.MemberPromote(id, resp)
 }

@@ -67,7 +67,7 @@ done < <(find . -name 'go.mod')
 
 if [[ "${toolchain_out_of_sync}" == "true" ]]; then
     log_error
-    log_error "Please run scripts/sync_go_toolchain_directive.sh or update .go-version to rectify this error"
+    log_error "Please run make sync-toolchain-directive or update .go-version to rectify this error"
 fi
 
 if [[ "${go_line_violation}" == "true" ]]; then

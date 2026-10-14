@@ -51,7 +51,8 @@ func TestCompact(t *testing.T) {
 			testutils.ExecuteUntil(ctx, t, func() {
 				kvs := []testutils.KV{{Key: "key", Val: "val1"}, {Key: "key", Val: "val2"}, {Key: "key", Val: "val3"}}
 				for i := range kvs {
-					require.NoErrorf(t, cc.Put(ctx, kvs[i].Key, kvs[i].Val, config.PutOptions{}), "compactTest #%d: put kv error", i)
+					_, err := cc.Put(ctx, kvs[i].Key, kvs[i].Val, config.PutOptions{})
+					require.NoErrorf(t, err, "compactTest #%d: put kv error", i)
 				}
 				get, err := cc.Get(ctx, "key", config.GetOptions{Revision: 3})
 				require.NoErrorf(t, err, "compactTest: Get kv by revision error")

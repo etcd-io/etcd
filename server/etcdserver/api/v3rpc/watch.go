@@ -25,6 +25,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -51,6 +52,9 @@ type watchServer struct {
 	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
 	ag        AuthGetter
+
+	// we want compile errors if new methods are added
+	pb.UnsafeWatchServer
 }
 
 // NewWatchServer returns a new watch server.
@@ -263,15 +267,6 @@ func (sws *serverWatchStream) recvLoop() error {
 				// \x00 is the smallest key
 				creq.Key = []byte{0}
 			}
-			if len(creq.RangeEnd) == 0 {
-				// force nil since watchstream.Watch distinguishes
-				// between nil and []byte{} for single key / >=
-				creq.RangeEnd = nil
-			}
-			if len(creq.RangeEnd) == 1 && creq.RangeEnd[0] == 0 {
-				// support  >= key queries
-				creq.RangeEnd = []byte{}
-			}
 			if creq.StartRevision < 0 {
 				wr := &pb.WatchResponse{
 					Header:       sws.newResponseHeader(sws.watchStream.Rev()),
@@ -320,6 +315,16 @@ func (sws *serverWatchStream) recvLoop() error {
 				case <-sws.closec:
 					return nil
 				}
+			}
+
+			if len(creq.RangeEnd) == 0 {
+				// force nil since watchstream.Watch distinguishes
+				// between nil and []byte{} for single key / >=
+				creq.RangeEnd = nil
+			}
+			if len(creq.RangeEnd) == 1 && creq.RangeEnd[0] == 0 {
+				// support  >= key queries
+				creq.RangeEnd = []byte{}
 			}
 
 			filters := FiltersFromRequest(creq)
@@ -432,21 +437,21 @@ func (sws *serverWatchStream) sendLoop() {
 				return
 			}
 
-			// TODO: evs is []mvccpb.Event type
-			// either return []*mvccpb.Event from the mvcc package
-			// or define protocol buffer with []mvccpb.Event.
+			start := time.Now()
+
+			// TODO(fuweid): do we still need copy here?
 			evs := wresp.Events
 			events := make([]*mvccpb.Event, len(evs))
 			sws.mu.RLock()
 			needPrevKV := sws.prevKV[wresp.WatchID]
 			sws.mu.RUnlock()
 			for i := range evs {
-				events[i] = &evs[i]
+				events[i] = evs[i]
 				if needPrevKV && !IsCreateEvent(evs[i]) {
 					opt := mvcc.RangeOptions{Rev: evs[i].Kv.ModRevision - 1}
 					r, err := sws.watchable.Range(context.TODO(), evs[i].Kv.Key, nil, opt)
 					if err == nil && len(r.KVs) != 0 {
-						events[i].PrevKv = &(r.KVs[0])
+						events[i].PrevKv = r.KVs[0]
 					}
 				}
 			}
@@ -502,11 +507,15 @@ func (sws *serverWatchStream) sendLoop() {
 			}
 			sws.mu.Unlock()
 
+			totalDur := time.Since(start)
+			watchSendLoopWatchStreamDuration.Observe(totalDur.Seconds())
+			watchSendLoopWatchStreamDurationPerEvent.Observe(totalDur.Seconds() / float64(len(evs)))
+
 		case c, ok := <-sws.ctrlStream:
 			if !ok {
 				return
 			}
-
+			start := time.Now()
 			if err := sws.gRPCStream.Send(c); err != nil {
 				if isClientCtxErr(sws.gRPCStream.Context().Err(), err) {
 					sws.lg.Debug("failed to send watch control response to gRPC stream", zap.Error(err))
@@ -544,7 +553,11 @@ func (sws *serverWatchStream) sendLoop() {
 				delete(pending, wid)
 			}
 
+			watchSendLoopControlStreamDuration.Observe(time.Since(start).Seconds())
+
 		case <-progressTicker.C:
+			start := time.Now()
+
 			sws.mu.Lock()
 			for id, ok := range sws.progress {
 				if ok {
@@ -553,6 +566,7 @@ func (sws *serverWatchStream) sendLoop() {
 				sws.progress[id] = true
 			}
 			sws.mu.Unlock()
+			watchSendLoopProgressDuration.Observe(time.Since(start).Seconds())
 
 		case <-sws.closec:
 			return
@@ -560,8 +574,8 @@ func (sws *serverWatchStream) sendLoop() {
 	}
 }
 
-func IsCreateEvent(e mvccpb.Event) bool {
-	return e.Type == mvccpb.PUT && e.Kv.CreateRevision == e.Kv.ModRevision
+func IsCreateEvent(e *mvccpb.Event) bool {
+	return e.Type == mvccpb.Event_PUT && e.Kv.CreateRevision == e.Kv.ModRevision
 }
 
 func sendFragments(
@@ -571,20 +585,36 @@ func sendFragments(
 ) error {
 	// no need to fragment if total request size is smaller
 	// than max request limit or response contains only one event
-	if uint(wr.Size()) < maxRequestBytes || len(wr.Events) < 2 {
+	if uint(proto.Size(wr)) < maxRequestBytes || len(wr.Events) < 2 {
 		return sendFunc(wr)
 	}
 
-	ow := *wr
-	ow.Events = make([]*mvccpb.Event, 0)
-	ow.Fragment = true
-
 	var idx int
 	for {
-		cur := ow
+		// Keep this explicit field copy in sync with pb.WatchResponse.
+		// TestWatchResponseProtoFieldCount guards against missing new fields.
+		//
+		// Header is the same for all fragments from one response, so
+		// it is safe to reuse. However, we cannot reuse wr itself.
+		// sendFunc can enqueue the response and return immediately,
+		// so the actual send may happen later. Reusing wr would let
+		// mutations in the next loop iteration corrupt queued fragments.
+		//
+		// REF: https://github.com/grpc/grpc-go/issues/5857
+		cur := &pb.WatchResponse{
+			Header:          wr.Header,
+			WatchId:         wr.WatchId,
+			Created:         wr.Created,
+			Canceled:        wr.Canceled,
+			CompactRevision: wr.CompactRevision,
+			CancelReason:    wr.CancelReason,
+			Fragment:        true,
+			Events:          make([]*mvccpb.Event, 0),
+		}
+
 		for _, ev := range wr.Events[idx:] {
 			cur.Events = append(cur.Events, ev)
-			if len(cur.Events) > 1 && uint(cur.Size()) >= maxRequestBytes {
+			if len(cur.Events) > 1 && uint(proto.Size(cur)) >= maxRequestBytes {
 				cur.Events = cur.Events[:len(cur.Events)-1]
 				break
 			}
@@ -594,7 +624,7 @@ func sendFragments(
 			// last response has no more fragment
 			cur.Fragment = false
 		}
-		if err := sendFunc(&cur); err != nil {
+		if err := sendFunc(cur); err != nil {
 			return err
 		}
 		if !cur.Fragment {
@@ -616,15 +646,16 @@ func (sws *serverWatchStream) newResponseHeader(rev int64) *pb.ResponseHeader {
 		MemberId:  uint64(sws.memberID),
 		Revision:  rev,
 		RaftTerm:  sws.sg.Term(),
+		LeaderId:  uint64(sws.sg.Leader()),
 	}
 }
 
-func filterNoDelete(e mvccpb.Event) bool {
-	return e.Type == mvccpb.DELETE
+func filterNoDelete(e *mvccpb.Event) bool {
+	return e.Type == mvccpb.Event_DELETE
 }
 
-func filterNoPut(e mvccpb.Event) bool {
-	return e.Type == mvccpb.PUT
+func filterNoPut(e *mvccpb.Event) bool {
+	return e.Type == mvccpb.Event_PUT
 }
 
 // FiltersFromRequest returns "mvcc.FilterFunc" from a given watch create request.

@@ -15,13 +15,12 @@
 package model
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 )
@@ -328,15 +327,15 @@ func TestModelNonDeterministic(t *testing.T) {
 	for _, tc := range nonDeterministicTestScenarios {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			state := NonDeterministicModel.Init()
+			keys := keysFromTestOperations(tc.operations)
+			model := NonDeterministicModel(keys)
+			state := model.Init()
 			for _, op := range tc.operations {
-				ok, newState := NonDeterministicModel.Step(state, op.req, op.resp)
+				ok, newState := model.StepContext(context.Background(), state, op.req, op.resp)
 				if ok != !op.expectFailure {
 					t.Logf("state: %v", state)
-					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, NonDeterministicModel.DescribeOperation(op.req, op.resp))
-					var loadedState nonDeterministicState
-					err := json.Unmarshal([]byte(state.(string)), &loadedState)
-					require.NoErrorf(t, err, "Failed to load state")
+					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, model.DescribeOperation(op.req, op.resp))
+					loadedState := state.(nonDeterministicState)
 					for i, s := range loadedState {
 						_, resp := s.Step(op.req)
 						t.Errorf("For state %d, response diff: %s", i, cmp.Diff(op.resp, resp))
@@ -542,6 +541,11 @@ func TestModelResponseMatch(t *testing.T) {
 			resp1:       putResponse(2),
 			resp2:       MaybeEtcdResponse{Persisted: true, PersistedRevision: 3},
 			expectMatch: false,
+		},
+		{
+			resp1:       putResponseWithMemberID(2, 1),
+			resp2:       putResponseWithMemberID(2, 2),
+			expectMatch: true,
 		},
 		{
 			resp1:       failedResponse(errors.New("failed request")),

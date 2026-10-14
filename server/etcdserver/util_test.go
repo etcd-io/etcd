@@ -19,8 +19,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
@@ -77,8 +79,8 @@ func newNopTransporterWithActiveTime(memberIDs []types.ID) rafthttp.Transporter 
 
 func (s *nopTransporterWithActiveTime) Start() error                        { return nil }
 func (s *nopTransporterWithActiveTime) Handler() http.Handler               { return nil }
-func (s *nopTransporterWithActiveTime) Send(m []raftpb.Message)             {}
-func (s *nopTransporterWithActiveTime) SendSnapshot(m snap.Message)         {}
+func (s *nopTransporterWithActiveTime) Send(m []*raftpb.Message)            {}
+func (s *nopTransporterWithActiveTime) SendSnapshot(m *snap.Message)        {}
 func (s *nopTransporterWithActiveTime) AddRemote(id types.ID, us []string)  {}
 func (s *nopTransporterWithActiveTime) AddPeer(id types.ID, us []string)    {}
 func (s *nopTransporterWithActiveTime) RemovePeer(id types.ID)              {}
@@ -91,22 +93,65 @@ func (s *nopTransporterWithActiveTime) Pause()                              {}
 func (s *nopTransporterWithActiveTime) Resume()                             {}
 func (s *nopTransporterWithActiveTime) reset(am map[types.ID]time.Time)     { s.activeMap = am }
 
-func TestPanicAlternativeStringer(t *testing.T) {
-	p := panicAlternativeStringer{alternative: func() string { return "alternative" }}
-
-	p.stringer = testStringerFunc(func() string { panic("here") })
-	if s := p.String(); s != "alternative" {
-		t.Fatalf("expected 'alternative', got %q", s)
+func TestExceedsRequestLimit(t *testing.T) {
+	tests := []struct {
+		name           string
+		ci             uint64
+		ai             uint64
+		expectedResult bool
+		req            *pb.InternalRaftRequest
+		enablePriority bool
+	}{
+		{
+			ci:             1 + maxGapBetweenApplyAndCommitIndex,
+			ai:             1,
+			expectedResult: false,
+			req:            nil,
+			name:           "Test nil InternalRaftRequest",
+		},
+		{
+			ci:             1 + maxGapBetweenApplyAndCommitIndex,
+			ai:             1,
+			expectedResult: false,
+			req:            &pb.InternalRaftRequest{},
+			name:           "Test non-critical request and gap is not larger than maxGapBetweenApplyAndCommitIndex",
+		},
+		{
+			ci:             1 + maxGapBetweenApplyAndCommitIndex + 1,
+			ai:             1,
+			expectedResult: true,
+			req:            &pb.InternalRaftRequest{},
+			name:           "Test non-critical request and gap is larger than maxGapBetweenApplyAndCommitIndex",
+		},
+		{
+			ci:             1 + maxGapBetweenApplyAndCommitIndex + 1,
+			ai:             1,
+			expectedResult: false,
+			req:            &pb.InternalRaftRequest{LeaseRevoke: &pb.LeaseRevokeRequest{}},
+			name:           "Test critical request and gap is larger than maxGapBetweenApplyAndCommitIndex with priority check",
+			enablePriority: true,
+		},
+		{
+			ci:             1 + maxGapBetweenApplyAndCommitIndex + 1,
+			ai:             1,
+			expectedResult: true,
+			req:            &pb.InternalRaftRequest{LeaseRevoke: &pb.LeaseRevokeRequest{}},
+			name:           "Test critical request and gap is larger than maxGapBetweenApplyAndCommitIndex without priority check",
+			enablePriority: false,
+		},
+		{
+			ci:             1 + 2*maxGapBetweenApplyAndCommitIndex + 1,
+			ai:             1,
+			expectedResult: true,
+			req:            &pb.InternalRaftRequest{LeaseRevoke: &pb.LeaseRevokeRequest{}},
+			name:           "Test critical request and gap is larger than 200% maxGapBetweenApplyAndCommitIndex with priority check",
+			enablePriority: true,
+		},
 	}
 
-	p.stringer = testStringerFunc(func() string { return "test" })
-	if s := p.String(); s != "test" {
-		t.Fatalf("expected 'test', got %q", s)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expectedResult, exceedsRequestLimit(tc.ai, tc.ci, tc.req, tc.enablePriority))
+		})
 	}
-}
-
-type testStringerFunc func() string
-
-func (s testStringerFunc) String() string {
-	return s()
 }

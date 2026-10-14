@@ -25,6 +25,8 @@ import (
 
 type maintenanceProxy struct {
 	maintenanceClient pb.MaintenanceClient
+	// we want compile errors if new methods are added
+	pb.UnsafeMaintenanceServer
 }
 
 func NewMaintenanceProxy(c *clientv3.Client) pb.MaintenanceServer {

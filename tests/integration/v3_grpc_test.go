@@ -17,8 +17,10 @@ package integration
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"reflect"
@@ -26,18 +28,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+	gofail "go.etcd.io/gofail/runtime"
 )
 
 // TestV3PutOverwrite puts a key with the v3 api to a random Cluster member,
@@ -190,7 +197,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 	i := new(int)
 	keyf := func() []byte {
 		*i++
-		return []byte(fmt.Sprintf("key-%d", i))
+		return []byte(fmt.Sprintf("key-%d", *i))
 	}
 
 	addCompareOps := func(txn *pb.TxnRequest) {
@@ -491,13 +498,13 @@ func TestV3TxnRangeCompare(t *testing.T) {
 	}
 
 	tests := []struct {
-		cmp pb.Compare
+		cmp *pb.Compare
 
 		wSuccess bool
 	}{
 		{
 			// >= /a/; all create revs fit
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte{0},
 				Target:      pb.Compare_CREATE,
@@ -508,7 +515,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// >= /a/; one create rev doesn't fit
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte{0},
 				Target:      pb.Compare_CREATE,
@@ -519,7 +526,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// prefix /a/*; all create revs fit
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_CREATE,
@@ -530,7 +537,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// prefix /a/*; one create rev doesn't fit
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_CREATE,
@@ -541,7 +548,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// does not exist, does not succeed
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/b/"),
 				RangeEnd:    []byte("/b0"),
 				Target:      pb.Compare_VALUE,
@@ -552,7 +559,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// all keys are leased
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_LEASE,
@@ -563,7 +570,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		},
 		{
 			// no keys are leased
-			pb.Compare{
+			&pb.Compare{
 				Key:         []byte("/a/"),
 				RangeEnd:    []byte("/a0"),
 				Target:      pb.Compare_LEASE,
@@ -577,7 +584,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 	kvc := integration.ToGRPC(clus.Client(0)).KV
 	for i, tt := range tests {
 		txn := &pb.TxnRequest{}
-		txn.Compare = append(txn.Compare, &tt.cmp)
+		txn.Compare = append(txn.Compare, tt.cmp)
 		tresp, err := kvc.Txn(t.Context(), txn)
 		require.NoError(t, err)
 		if tt.wSuccess != tresp.Succeeded {
@@ -631,7 +638,7 @@ func TestV3TxnNestedPath(t *testing.T) {
 	curTxnResp := tresp
 	for i := range txnPath {
 		if curTxnResp.Succeeded != txnPath[i] {
-			t.Fatalf("expected path %+v, got response %+v", txnPath, *tresp)
+			t.Fatalf("expected path %+v, got response %s", txnPath, tresp.String())
 		}
 		curTxnResp = curTxnResp.Responses[0].Response.(*pb.ResponseOp_ResponseTxn).ResponseTxn
 	}
@@ -646,7 +653,13 @@ func TestV3PutIgnoreValue(t *testing.T) {
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 	key, val := []byte("foo"), []byte("bar")
-	putReq := pb.PutRequest{Key: key, Value: val}
+
+	newPutReq := func() *pb.PutRequest {
+		return &pb.PutRequest{
+			Key:   bytes.Clone(key),
+			Value: bytes.Clone(val),
+		}
+	}
 
 	// create lease
 	lc := integration.ToGRPC(clus.RandClient()).Lease
@@ -661,9 +674,10 @@ func TestV3PutIgnoreValue(t *testing.T) {
 	}{
 		{ // put failure for non-existent key
 			func() error {
-				preq := putReq
+				preq := newPutReq()
+				preq.Value = nil
 				preq.IgnoreValue = true
-				_, err := kvc.Put(t.Context(), &preq)
+				_, err := kvc.Put(t.Context(), preq)
 				return err
 			},
 			rpctypes.ErrGRPCKeyNotFound,
@@ -671,12 +685,12 @@ func TestV3PutIgnoreValue(t *testing.T) {
 		},
 		{ // txn failure for non-existent key
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Value = nil
 				preq.IgnoreValue = true
 				txn := &pb.TxnRequest{}
 				txn.Success = append(txn.Success, &pb.RequestOp{
-					Request: &pb.RequestOp_RequestPut{RequestPut: &preq},
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
 				})
 				_, err := kvc.Txn(t.Context(), txn)
 				return err
@@ -686,7 +700,7 @@ func TestV3PutIgnoreValue(t *testing.T) {
 		},
 		{ // put success
 			func() error {
-				_, err := kvc.Put(t.Context(), &putReq)
+				_, err := kvc.Put(t.Context(), newPutReq())
 				return err
 			},
 			nil,
@@ -694,13 +708,13 @@ func TestV3PutIgnoreValue(t *testing.T) {
 		},
 		{ // txn success, attach lease
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Value = nil
 				preq.Lease = lresp.ID
 				preq.IgnoreValue = true
 				txn := &pb.TxnRequest{}
 				txn.Success = append(txn.Success, &pb.RequestOp{
-					Request: &pb.RequestOp_RequestPut{RequestPut: &preq},
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
 				})
 				_, err := kvc.Txn(t.Context(), txn)
 				return err
@@ -710,9 +724,9 @@ func TestV3PutIgnoreValue(t *testing.T) {
 		},
 		{ // non-empty value with ignore_value should error
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.IgnoreValue = true
-				_, err := kvc.Put(t.Context(), &preq)
+				_, err := kvc.Put(t.Context(), preq)
 				return err
 			},
 			rpctypes.ErrGRPCValueProvided,
@@ -720,10 +734,10 @@ func TestV3PutIgnoreValue(t *testing.T) {
 		},
 		{ // overwrite with previous value, ensure no prev-kv is returned and lease is detached
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Value = nil
 				preq.IgnoreValue = true
-				presp, err := kvc.Put(t.Context(), &preq)
+				presp, err := kvc.Put(t.Context(), preq)
 				if err != nil {
 					return err
 				}
@@ -784,7 +798,12 @@ func TestV3PutIgnoreLease(t *testing.T) {
 	require.Empty(t, lresp.Error)
 
 	key, val, val1 := []byte("zoo"), []byte("bar"), []byte("bar1")
-	putReq := pb.PutRequest{Key: key, Value: val}
+	newPutReq := func() *pb.PutRequest {
+		return &pb.PutRequest{
+			Key:   bytes.Clone(key),
+			Value: bytes.Clone(val),
+		}
+	}
 
 	tests := []struct {
 		putFunc  func() error
@@ -794,9 +813,9 @@ func TestV3PutIgnoreLease(t *testing.T) {
 	}{
 		{ // put failure for non-existent key
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.IgnoreLease = true
-				_, err := kvc.Put(t.Context(), &preq)
+				_, err := kvc.Put(t.Context(), preq)
 				return err
 			},
 			rpctypes.ErrGRPCKeyNotFound,
@@ -805,11 +824,11 @@ func TestV3PutIgnoreLease(t *testing.T) {
 		},
 		{ // txn failure for non-existent key
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.IgnoreLease = true
 				txn := &pb.TxnRequest{}
 				txn.Success = append(txn.Success, &pb.RequestOp{
-					Request: &pb.RequestOp_RequestPut{RequestPut: &preq},
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
 				})
 				_, err := kvc.Txn(t.Context(), txn)
 				return err
@@ -820,9 +839,9 @@ func TestV3PutIgnoreLease(t *testing.T) {
 		},
 		{ // put success
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Lease = lresp.ID
-				_, err := kvc.Put(t.Context(), &preq)
+				_, err := kvc.Put(t.Context(), preq)
 				return err
 			},
 			nil,
@@ -831,12 +850,12 @@ func TestV3PutIgnoreLease(t *testing.T) {
 		},
 		{ // txn success, modify value using 'ignore_lease' and ensure lease is not detached
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Value = val1
 				preq.IgnoreLease = true
 				txn := &pb.TxnRequest{}
 				txn.Success = append(txn.Success, &pb.RequestOp{
-					Request: &pb.RequestOp_RequestPut{RequestPut: &preq},
+					Request: &pb.RequestOp_RequestPut{RequestPut: preq},
 				})
 				_, err := kvc.Txn(t.Context(), txn)
 				return err
@@ -847,10 +866,10 @@ func TestV3PutIgnoreLease(t *testing.T) {
 		},
 		{ // non-empty lease with ignore_lease should error
 			func() error {
-				preq := putReq
+				preq := newPutReq()
 				preq.Lease = lresp.ID
 				preq.IgnoreLease = true
-				_, err := kvc.Put(t.Context(), &preq)
+				_, err := kvc.Put(t.Context(), preq)
 				return err
 			},
 			rpctypes.ErrGRPCLeaseProvided,
@@ -859,7 +878,7 @@ func TestV3PutIgnoreLease(t *testing.T) {
 		},
 		{ // overwrite with previous value, ensure no prev-kv is returned and lease is detached
 			func() error {
-				presp, err := kvc.Put(t.Context(), &putReq)
+				presp, err := kvc.Put(t.Context(), newPutReq())
 				if err != nil {
 					return err
 				}
@@ -1160,8 +1179,8 @@ func TestV3TooLargeRequest(t *testing.T) {
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 
-	// 2MB request value
-	largeV := make([]byte, 2*1024*1024)
+	// Must exceed MaxRequestBytes (1.5MB) but stay under gRPC MaxRecvMsgSize (2MB)
+	largeV := make([]byte, 1624*1024)
 	preq := &pb.PutRequest{Key: []byte("foo"), Value: largeV}
 
 	_, err := kvc.Put(t.Context(), preq)
@@ -1279,16 +1298,21 @@ func TestV3RangeRequest(t *testing.T) {
 		name string
 
 		putKeys []string
-		reqs    []pb.RangeRequest
+		reqs    []*pb.RangeRequest
 
 		wresps  [][]string
 		wmores  []bool
 		wcounts []int64
+
+		// streamUnsupported[j] marks request reqs[j] as using features that
+		// RangeStream intentionally does not support (non-key-ascending sort,
+		// min/max mod/create revision filters). Must match len(reqs).
+		streamUnsupported []bool
 	}{
 		{
 			"single key",
 			[]string{"foo", "bar"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				// exists
 				{Key: []byte("foo")},
 				// doesn't exist
@@ -1301,11 +1325,12 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{false, false},
 			[]int64{1, 0},
+			[]bool{false, false},
 		},
 		{
 			"multi-key",
 			[]string{"a", "b", "c", "d", "e"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				// all in range
 				{Key: []byte("a"), RangeEnd: []byte("z")},
 				// [b, d)
@@ -1330,11 +1355,12 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{false, false, false, false, false, false},
 			[]int64{5, 2, 0, 0, 0, 5},
+			[]bool{false, false, false, false, false, false},
 		},
 		{
 			"revision",
 			[]string{"a", "b", "c", "d", "e"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 0},
 				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 1},
 				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 2},
@@ -1349,11 +1375,12 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{false, false, false, false},
 			[]int64{5, 0, 1, 2},
+			[]bool{false, false, false, false},
 		},
 		{
 			"limit",
 			[]string{"a", "b", "c"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				// more
 				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 1},
 				// half
@@ -1372,11 +1399,31 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{true, true, false, false},
 			[]int64{3, 3, 3, 3},
+			[]bool{false, false, false, false},
+		},
+		{
+			"count only",
+			[]string{"a", "b", "c"},
+			[]*pb.RangeRequest{
+				// all match
+				{Key: []byte("a"), RangeEnd: []byte("z"), CountOnly: true},
+				// single-key match
+				{Key: []byte("b"), RangeEnd: []byte("c"), CountOnly: true},
+				// no match
+				{Key: []byte("x"), RangeEnd: []byte("z"), CountOnly: true},
+				// CountOnly with Limit: Limit must not truncate the count.
+				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 1, CountOnly: true},
+			},
+
+			[][]string{{}, {}, {}, {}},
+			[]bool{false, false, false, false},
+			[]int64{3, 1, 0, 3},
+			[]bool{false, false, false, false},
 		},
 		{
 			"sort",
 			[]string{"b", "a", "c", "d", "c"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				{
 					Key: []byte("a"), RangeEnd: []byte("z"),
 					Limit:      1,
@@ -1425,11 +1472,13 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{true, true, true, true, false, false},
 			[]int64{4, 4, 4, 4, 0, 4},
+			// Only ASCEND+KEY (index 0) and SortOrder_NONE (index 5) are supported by RangeStream.
+			[]bool{false, true, true, true, true, false},
 		},
 		{
 			"min/max mod rev",
 			[]string{"rev2", "rev3", "rev4", "rev5", "rev6"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				{
 					Key: []byte{0}, RangeEnd: []byte{0},
 					MinModRevision: 3,
@@ -1457,11 +1506,12 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{false, false, false, false},
 			[]int64{5, 5, 5, 5},
+			[]bool{true, true, true, true},
 		},
 		{
 			"min/max create rev",
 			[]string{"rev2", "rev3", "rev2", "rev2", "rev6", "rev3"},
-			[]pb.RangeRequest{
+			[]*pb.RangeRequest{
 				{
 					Key: []byte{0}, RangeEnd: []byte{0},
 					MinCreateRevision: 3,
@@ -1489,6 +1539,7 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{false, false, false, false},
 			[]int64{3, 3, 3, 3},
+			[]bool{true, true, true, true},
 		},
 	}
 
@@ -1506,11 +1557,17 @@ func TestV3RangeRequest(t *testing.T) {
 
 			for j, req := range tt.reqs {
 				kvc := integration.ToGRPC(clus.RandClient()).KV
-				resp, err := kvc.Range(t.Context(), &req)
+				resp, err := kvc.Range(t.Context(), req)
 				if err != nil {
 					t.Errorf("#%d.%d: Range error: %v", i, j, err)
 					continue
 				}
+				if !integration.ThroughProxy && !tt.streamUnsupported[j] {
+					got := rangeStream(t, kvc, req)
+					require.Emptyf(t, cmp.Diff(resp, got, protocmp.Transform()),
+						"RangeStream response must match Range response")
+				}
+
 				if len(resp.Kvs) != len(tt.wresps[j]) {
 					t.Errorf("#%d.%d: bad len(resp.Kvs). got = %d, want = %d, ", i, j, len(resp.Kvs), len(tt.wresps[j]))
 					continue
@@ -1534,6 +1591,322 @@ func TestV3RangeRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+// rangeStream calls RangeStream and returns the merged response.
+func rangeStream(t *testing.T, kvc pb.KVClient, req *pb.RangeRequest) *pb.RangeResponse {
+	t.Helper()
+
+	stream, err := kvc.RangeStream(t.Context(), req)
+	require.NoError(t, err)
+
+	got := &pb.RangeResponse{}
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			break
+		}
+		require.NoError(t, rerr)
+		proto.Merge(got, chunk.RangeResponse)
+	}
+	return got
+}
+
+// TestV3RangeStreamCount verifies Count semantics on the last streamed chunk,
+// including the case where the stream truncates at Limit with more matching
+// keys pending (exercises the CountOnly fallback query at the pinned revision).
+func TestV3RangeStreamCount(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	const nKeys = 25
+	for i := 0; i < nKeys; i++ {
+		_, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("k%02d", i)),
+			Value: []byte("v"),
+		})
+		require.NoError(t, err)
+	}
+
+	// The server-side chunker starts at Limit=10 and adapts from there, so
+	// nKeys=25 reliably produces multi-chunk responses for unlimited/large
+	// limits, while small limits fit in the first chunk.
+	tests := []struct {
+		name        string
+		limit       int64
+		wantCount   int64
+		wantMore    bool
+		wantKeys    int
+		wantMinRecv int
+	}{
+		{
+			name:        "unlimited exhausts with running count",
+			limit:       0,
+			wantCount:   nKeys,
+			wantMore:    false,
+			wantKeys:    nKeys,
+			wantMinRecv: 2,
+		},
+		{
+			name:        "limit below total truncates with fallback count",
+			limit:       5,
+			wantCount:   nKeys,
+			wantMore:    true,
+			wantKeys:    5,
+			wantMinRecv: 1,
+		},
+		{
+			name:        "limit equal to total, no truncation",
+			limit:       nKeys,
+			wantCount:   nKeys,
+			wantMore:    false,
+			wantKeys:    nKeys,
+			wantMinRecv: 2,
+		},
+		{
+			name:        "limit above total, exhausts early",
+			limit:       100,
+			wantCount:   nKeys,
+			wantMore:    false,
+			wantKeys:    nKeys,
+			wantMinRecv: 2,
+		},
+		{
+			name:        "limit at first-chunk boundary with fallback count",
+			limit:       10,
+			wantCount:   nKeys,
+			wantMore:    true,
+			wantKeys:    10,
+			wantMinRecv: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+				Key:      []byte("k00"),
+				RangeEnd: []byte("l"),
+				Limit:    tt.limit,
+			})
+			require.NoError(t, err)
+
+			merged := &pb.RangeResponse{}
+			recvs := 0
+			for {
+				chunk, rerr := stream.Recv()
+				if errors.Is(rerr, io.EOF) {
+					break
+				}
+				require.NoError(t, rerr)
+				recvs++
+				proto.Merge(merged, chunk.RangeResponse)
+			}
+			require.Equalf(t, tt.wantCount, merged.Count, "Count")
+			require.Equalf(t, tt.wantMore, merged.More, "More")
+			require.Lenf(t, merged.Kvs, tt.wantKeys, "kv count")
+			require.GreaterOrEqualf(t, recvs, tt.wantMinRecv, "chunk count")
+		})
+	}
+}
+
+// TestV3RangeStreamPartialThenCompacted verifies that once the stream has
+// emitted partial results at a pinned revision, a compaction past that
+// revision causes the next chunk to surface ErrCompacted instead of silently
+// returning inconsistent data.
+func TestV3RangeStreamPartialThenCompacted(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	value := []byte(strings.Repeat("x", 10*1024))
+	for i := 0; i < 1000; i++ {
+		_, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("stream-%04d", i)),
+			Value: value,
+		})
+		require.NoError(t, err)
+	}
+
+	stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+		Key:      []byte("stream-"),
+		RangeEnd: []byte("stream."),
+	})
+	require.NoError(t, err)
+
+	received := 0
+	for received < 10 {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			t.Fatalf("stream ended before the test could compact; received %d keys", received)
+		}
+		require.NoError(t, rerr)
+		received += len(chunk.GetRangeResponse().GetKvs())
+	}
+
+	advance, err := kvc.Put(t.Context(), &pb.PutRequest{
+		Key:   []byte("zz-advance-revision"),
+		Value: []byte("x"),
+	})
+	require.NoError(t, err)
+
+	_, err = kvc.Compact(t.Context(), &pb.CompactionRequest{
+		Revision: advance.Header.Revision,
+		Physical: true,
+	})
+	require.NoError(t, err)
+
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			t.Fatalf("expected compacted error after receiving partial keys; received %d keys", received)
+		}
+
+		if rerr != nil {
+			require.Truef(t, eqErrGRPC(rerr, rpctypes.ErrGRPCCompacted), "got %v, expected %v", rerr, rpctypes.ErrGRPCCompacted)
+			require.GreaterOrEqual(t, received, 10)
+			return
+		}
+		received += len(chunk.GetRangeResponse().GetKvs())
+	}
+}
+
+func TestV3RangeStreamWriteBetweenChunks(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+
+	integration.BeforeTest(t)
+	integration.SkipIfNoGoFail(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+
+	// Relies on an implementation detail that n > 10 yields multiple chunks.
+	const nKeys = 25
+	var pinnedRev int64
+	for i := 0; i < nKeys; i++ {
+		resp, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("k%02d", i)),
+			Value: []byte("v"),
+		})
+		require.NoError(t, err)
+		pinnedRev = resp.Header.Revision
+	}
+
+	// Sleep between chunks to prevent gRPC queueing.
+	require.NoError(t, gofail.Enable("beforeRangeStreamChunk", `sleep("1s")`))
+	defer func() { require.NoError(t, gofail.Disable("beforeRangeStreamChunk")) }()
+
+	stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+		Key:      []byte("k00"),
+		RangeEnd: []byte("l"),
+	})
+	require.NoError(t, err)
+
+	// Recv before Put so the Put is guaranteed to be after the revision pin.
+	first, err := stream.Recv()
+	require.NoError(t, err)
+	require.NotEmpty(t, first.GetRangeResponse().GetKvs())
+
+	_, err = kvc.Put(t.Context(), &pb.PutRequest{
+		Key:   []byte("k99-new"),
+		Value: []byte("v"),
+	})
+	require.NoError(t, err)
+
+	merged := &pb.RangeResponse{}
+	proto.Merge(merged, first.RangeResponse)
+	chunks := 1
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			break
+		}
+		require.NoError(t, rerr)
+		chunks++
+		proto.Merge(merged, chunk.RangeResponse)
+	}
+
+	require.GreaterOrEqualf(t, chunks, 2, "expected multi-chunk stream, got %d", chunks)
+	require.Lenf(t, merged.Kvs, nKeys, "stream must return only the keys that existed at pinned revision")
+	for i, kv := range merged.Kvs {
+		require.Equal(t, fmt.Sprintf("k%02d", i), string(kv.Key))
+		require.Equal(t, "v", string(kv.Value))
+	}
+	require.Equalf(t, pinnedRev, merged.Header.Revision, "stream header revision must equal the latest revision at stream start")
+	require.Equalf(t, int64(nKeys), merged.Count, "stream Count must reflect the pinned revision")
+}
+
+// TestV3RangeStreamLargeValues verifies the stream progresses and emits all
+// KVs when individual stored values exceed the chunk target.
+func TestV3RangeStreamLargeValues(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the gRPC proxy")
+	}
+	integration.BeforeTest(t)
+
+	const (
+		valueSize = 4 * 1024 * 1024
+		nKeys     = 20
+	)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:            1,
+		MaxRequestBytes: 8 * 1024 * 1024,
+	})
+	defer clus.Terminate(t)
+
+	kvc := integration.ToGRPC(clus.Client(0)).KV
+	value := make([]byte, valueSize)
+	for i := 0; i < nKeys; i++ {
+		_, err := kvc.Put(t.Context(), &pb.PutRequest{
+			Key:   []byte(fmt.Sprintf("big-%02d", i)),
+			Value: value,
+		})
+		require.NoError(t, err)
+	}
+
+	m := clus.Members[0]
+	m.Stop(t)
+	m.MaxRequestBytes = embed.DefaultMaxRequestBytes
+	require.Lessf(t, int(m.MaxRequestBytes), valueSize, "valueSize must exceed MaxRequestBytes to exercise large-value path")
+	require.NoError(t, m.Restart(t))
+	clus.WaitMembersForLeader(t, clus.Members)
+	kvc = integration.ToGRPC(clus.Client(0)).KV
+	waitForRestart(t, kvc)
+
+	stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+		Key:      []byte("big-"),
+		RangeEnd: []byte("big."),
+	}, grpc.MaxCallRecvMsgSize(nKeys*valueSize+512*1024))
+	require.NoError(t, err)
+
+	var kvs, recvs int
+	for {
+		chunk, rerr := stream.Recv()
+		if errors.Is(rerr, io.EOF) {
+			break
+		}
+		require.NoError(t, rerr)
+		recvs++
+		for j, kv := range chunk.GetRangeResponse().GetKvs() {
+			require.Equal(t, fmt.Sprintf("big-%02d", kvs+j), string(kv.Key))
+			require.Equal(t, value, kv.Value)
+		}
+		kvs += len(chunk.GetRangeResponse().GetKvs())
+	}
+	require.Equalf(t, nKeys, kvs, "kv count")
+	require.GreaterOrEqualf(t, recvs, 2, "expected multi-chunk stream for %d-byte values", valueSize)
 }
 
 // TestTLSGRPCRejectInsecureClient checks that connection is rejected if server is TLS but not client.
@@ -1578,12 +1951,15 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	defer clus.Terminate(t)
 
 	clus.Members[0].ClientTLSInfo = &integration.TestTLSInfo
-	clus.Members[0].DialOptions = []grpc.DialOption{grpc.WithBlock()}
 	clus.Members[0].GRPCURL = strings.Replace(clus.Members[0].GRPCURL, "http://", "https://", 1)
 	client, err := integration.NewClientV3(clus.Members[0])
-	if client != nil || err == nil {
-		client.Close()
-		t.Fatalf("expected no client")
+	require.NoError(t, err)
+	defer client.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	_, err = client.Status(ctx, client.Endpoints()[0])
+	cancel()
+	if err == nil {
+		t.Fatalf("expected error")
 	} else if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("unexpected error (%v)", err)
 	}
@@ -1712,11 +2088,15 @@ func testTLSReload(
 	})
 	defer clus.Terminate(t)
 
-	// 3. concurrent client dialing while certs become expired
+	// 3. concurrent client creation while certs become expired
 	errc := make(chan error, 1)
+	donec := make(chan struct{})
+	var tlsInvalid *tls.Config
 	go func() {
+		defer close(donec)
 		for {
-			cc, err := tlsInfo.ClientConfig()
+			var err error
+			tlsInvalid, err = tlsInfo.ClientConfig()
 			if err != nil {
 				// errors in 'go/src/crypto/tls/tls.go'
 				// tls: private key does not match public key
@@ -1727,47 +2107,69 @@ func testTLSReload(
 				continue
 			}
 			cli, cerr := integration.NewClient(t, clientv3.Config{
-				DialOptions: []grpc.DialOption{grpc.WithBlock()},
 				Endpoints:   []string{clus.Members[0].GRPCURL},
 				DialTimeout: time.Second,
-				TLS:         cc,
+				TLS:         tlsInvalid,
 			})
 			if cerr != nil {
 				errc <- cerr
-				return
 			}
 			cli.Close()
+			return
 		}
 	}()
 
 	// 4. replace certs with expired ones
 	replaceFunc()
 
-	// 5. expect dial time-out when loading expired certs
 	select {
 	case gerr := <-errc:
-		if !errors.Is(gerr, context.DeadlineExceeded) {
-			t.Fatalf("expected %v, got %v", context.DeadlineExceeded, gerr)
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("failed to receive dial timeout error")
+		t.Fatalf("expected no error, got %v", gerr)
+	case <-time.After(2 * time.Second):
 	}
+	<-donec
+
+	readTest := func(tlsCfg *tls.Config, expectedErr error) {
+		cli, cerr := integration.NewClient(t, clientv3.Config{
+			Endpoints:   []string{clus.Members[0].GRPCURL},
+			DialTimeout: time.Second,
+			TLS:         tlsCfg,
+		})
+		require.NoError(t, cerr)
+		defer func() {
+			require.NoError(t, cli.Close())
+		}()
+
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+		_, rerr := cli.Get(ctx, "foo")
+		cancel()
+		if expectedErr != nil {
+			require.ErrorIs(t, rerr, expectedErr)
+		} else {
+			require.NoError(t, rerr)
+		}
+	}
+
+	// 5. expect read request timed out when loading expired certs
+	readTest(tlsInvalid, context.DeadlineExceeded)
 
 	// 6. replace expired certs back with valid ones
 	revertFunc()
 
-	// 7. new requests should trigger listener to reload valid certs
-	tls, terr := tlsInfo.ClientConfig()
+	tlsValid, terr := tlsInfo.ClientConfig()
 	require.NoError(t, terr)
 	cl, cerr := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: 5 * time.Second,
-		TLS:         tls,
+		TLS:         tlsValid,
 	})
 	if cerr != nil {
 		t.Fatalf("expected no error, got %v", cerr)
 	}
-	cl.Close()
+	require.NoError(t, cl.Close())
+
+	// 7. new requests should trigger listener to reload valid certs
+	readTest(tlsValid, nil)
 }
 
 func TestGRPCRequireLeader(t *testing.T) {
@@ -1859,6 +2261,9 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 
 // TestV3LargeRequests ensures that configurable MaxRequestBytes works as intended.
 func TestV3LargeRequests(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("grpcproxy does not propagate MaxRequestBytes to its internal gRPC client connection")
+	}
 	integration.BeforeTest(t)
 	tests := []struct {
 		maxRequestBytes uint
@@ -1962,7 +2367,91 @@ func TestV3AdditionalGRPCOptions(t *testing.T) {
 }
 
 func eqErrGRPC(err1 error, err2 error) bool {
-	return !(err1 == nil && err2 != nil) || err1.Error() == err2.Error()
+	if err1 == nil && err2 == nil {
+		return true
+	}
+	if err1 == nil || err2 == nil {
+		return false
+	}
+	s1 := mustGRPCStatus(err1)
+	s2 := mustGRPCStatus(err2)
+	return s1.Code() == s2.Code() && s1.Message() == s2.Message()
+}
+
+func mustGRPCStatus(err error) *status.Status {
+	s, ok := status.FromError(err)
+	if ok {
+		return s
+	}
+	// In grpcproxy mode, ToGRPC adapters bypass the gRPC wire so errors
+	// arrive as rpctypes.EtcdError instead of gRPC status errors.
+	var etcdErr rpctypes.EtcdError
+	if errors.As(err, &etcdErr) {
+		return status.New(etcdErr.Code(), etcdErr.Error())
+	}
+	panic(fmt.Sprintf("eqErrGRPC: not a gRPC status error: %T %v", err, err))
+}
+
+func TestEqErrGRPC(t *testing.T) {
+	tests := []struct {
+		name     string
+		err1     error
+		err2     error
+		expected bool
+	}{
+		{
+			name:     "same error - same object",
+			err1:     rpctypes.ErrGRPCLeaseExist,
+			err2:     rpctypes.ErrGRPCLeaseExist,
+			expected: true,
+		},
+		{
+			name:     "wire reconstruction - same code and message",
+			err1:     status.Error(codes.FailedPrecondition, "etcdserver: lease already exists"),
+			err2:     rpctypes.ErrGRPCLeaseExist,
+			expected: true,
+		},
+		{
+			name:     "same code, different message",
+			err1:     status.Error(codes.FailedPrecondition, "error A"),
+			err2:     status.Error(codes.FailedPrecondition, "error B"),
+			expected: false,
+		},
+		{
+			name:     "different code, same message",
+			err1:     status.Error(codes.FailedPrecondition, "same message"),
+			err2:     status.Error(codes.NotFound, "same message"),
+			expected: false,
+		},
+		{
+			name:     "different code, different message",
+			err1:     rpctypes.ErrGRPCLeaseExist,
+			err2:     rpctypes.ErrGRPCLeaseNotFound,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if result := eqErrGRPC(tt.err1, tt.err2); result != tt.expected {
+				t.Errorf("eqErrGRPC(%v, %v) = %v, want %v", tt.err1, tt.err2, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestEqErrGRPCHandlesEtcdError(t *testing.T) {
+	require.True(t, eqErrGRPC(rpctypes.ErrUserEmpty, rpctypes.ErrGRPCUserEmpty))
+	require.False(t, eqErrGRPC(rpctypes.ErrUserEmpty, rpctypes.ErrGRPCPermissionDenied))
+}
+
+func TestEqErrGRPCPanicsOnPlainError(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("eqErrGRPC should panic on plain error")
+		}
+	}()
+	eqErrGRPC(errors.New("plain error"), rpctypes.ErrGRPCUserEmpty)
 }
 
 // waitForRestart tries a range request until the client's server responds.

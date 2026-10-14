@@ -169,7 +169,7 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 				},
 			},
 			persistedRequests: []model.EtcdRequest{putRequest("key", "value")},
-			expectError:       "watch: broke Reliable",
+			expectError:       "watch: Failure: broke Reliable",
 		},
 	}
 	for _, tc := range tcs {
@@ -186,6 +186,21 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestLinearizationVisualizeSkipsTimeout(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	path := filepath.Join(t.TempDir(), "history.html")
+	result := LinearizationResult{
+		Result: Result{
+			Status:  Timeout,
+			Message: "timed out",
+		},
+	}
+
+	require.NoError(t, result.Visualize(lg, path))
+	_, err := os.Stat(path)
+	require.Truef(t, os.IsNotExist(err), "timeout should not produce visualization")
 }
 
 func watchEvent(rev int64, isCreate bool, eventType model.OperationType, key, value string) model.WatchEvent {
@@ -225,6 +240,39 @@ func TestValidateWatch(t *testing.T) {
 				putRequest("a", "1"),
 				putRequest("b", "2"),
 			},
+		},
+		{
+			name: "Reliable - Put with non-existent lease doesn't generate watch event - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
+							Responses: []model.WatchResponse{},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				{
+					Type: model.Txn,
+					Txn: &model.TxnRequest{
+						OperationsOnSuccess: []model.EtcdOperation{
+							{
+								Type: model.PutOperation,
+								Put: model.PutOptions{
+									Key:     "a",
+									Value:   model.ToValueOrHash("1"),
+									LeaseID: 1,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: "",
 		},
 		{
 			name: "Ordered, Unique - unique ordered events in separate response - pass",
@@ -1551,7 +1599,7 @@ func TestValidateWatch(t *testing.T) {
 			},
 		},
 		{
-			name: "Resumable - missing first matching event - pass",
+			name: "Resumable - missing first matching event - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -1579,7 +1627,7 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeResumable.Error(),
 		},
 		{
-			name: "Resumable - missing first matching event with prefix - pass",
+			name: "Resumable - missing first matching event with prefix - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -1607,7 +1655,7 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeResumable.Error(),
 		},
 		{
-			name: "Resumable - missing first matching event with prefix - pass",
+			name: "Resumable - missing first matching event with prefix - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -1697,7 +1745,7 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeIsCreate.Error(),
 		},
 		{
-			name: "IsCreate - put after delete marked as not created - pass",
+			name: "IsCreate - put after delete marked as not created - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -2055,7 +2103,7 @@ func getRequest(key string) model.EtcdRequest {
 		Type: model.Range,
 		Range: &model.RangeRequest{
 			RangeOptions: model.RangeOptions{
-				Start: "key",
+				Start: key,
 			},
 		},
 	}

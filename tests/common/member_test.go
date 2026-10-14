@@ -230,6 +230,59 @@ func TestMemberRemove(t *testing.T) {
 	}
 }
 
+func TestMemberListSerializable(t *testing.T) {
+	testRunner.BeforeTest(t)
+	tcs := []struct {
+		name         string
+		serializable bool
+		timeout      time.Duration
+
+		expectedError string
+	}{
+		{
+			name:         "Serializable",
+			serializable: true,
+		},
+		{
+			name:          "Linearizable",
+			timeout:       time.Second,
+			expectedError: "context deadline exceeded",
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(1))
+			defer clus.Close()
+			cc := testutils.MustClient(clus.Client())
+
+			testutils.ExecuteUntil(ctx, t, func() {
+				resp, err := cc.MemberList(ctx, false)
+				require.NoError(t, err)
+				require.Len(t, resp.Members, 1)
+
+				_, err = cc.MemberAdd(ctx, "newmember", []string{"http://localhost:123"})
+				require.NoError(t, err)
+
+				callCtx := ctx
+				if tc.timeout != 0 {
+					var cancelCall context.CancelFunc
+					callCtx, cancelCall = context.WithTimeout(ctx, tc.timeout)
+					defer cancelCall()
+				}
+				resp, err = cc.MemberList(callCtx, tc.serializable)
+				if tc.expectedError != "" {
+					require.ErrorContains(t, err, tc.expectedError)
+					return
+				}
+				require.NoError(t, err)
+				require.Len(t, resp.Members, 2)
+			})
+		})
+	}
+}
+
 // memberToRemove chooses a member to remove.
 // If clusterSize == 1, return the only member.
 // Otherwise, return a member that client has not connected to.

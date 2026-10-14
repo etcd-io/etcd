@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -138,7 +139,7 @@ func TestStoreGet(t *testing.T) {
 				t.Fatalf("revision=%d; want %d", rev, test.expectedRev)
 			}
 
-			if diff := cmp.Diff(test.expectedKVs, kvs); diff != "" {
+			if diff := cmp.Diff(test.expectedKVs, kvs, protocmp.Transform()); diff != "" {
 				t.Fatalf("Get mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -433,7 +434,7 @@ func verifyStoreSnapshot(t *testing.T, s *store, want []*mvccpb.KeyValue, wantRe
 	if headerRev != latestRev {
 		t.Fatalf("header rev=%d; want latest %d (requestedRev=%d)", latestRev, wantRev, requestedRev)
 	}
-	if diff := cmp.Diff(want, kvs); diff != "" {
+	if diff := cmp.Diff(want, kvs, protocmp.Transform()); diff != "" {
 		t.Fatalf("snapshot mismatch (requestedRev=%d) (-want +got):\n%s", requestedRev, diff)
 	}
 }

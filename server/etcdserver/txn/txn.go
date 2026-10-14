@@ -20,16 +20,16 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor) (txnResp *pb.TxnResponse, trace *traceutil.Trace, err error) {
+func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor, skipRangeExecution bool) (txnResp *pb.TxnResponse, trace *traceutil.Trace, err error) {
 	ctx, trace = traceutil.EnsureTrace(ctx, lg, "transaction")
 	isWrite := !IsTxnReadonly(rt)
 	// When the transaction contains write operations, we use ReadTx instead of
@@ -68,7 +68,7 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	} else {
 		txnWrite = mvcc.NewReadOnlyTxnWrite(txnRead)
 	}
-	txnResp, err = txn(ctx, lg, txnWrite, rt, isWrite, txnPath)
+	txnResp, err = txn(ctx, lg, txnWrite, rt, isWrite, txnPath, skipRangeExecution)
 	txnWrite.End()
 
 	trace.AddField(
@@ -78,9 +78,9 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	return txnResp, trace, err
 }
 
-func txn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, isWrite bool, txnPath []bool) (*pb.TxnResponse, error) {
+func txn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, isWrite bool, txnPath []bool, skipRangeExecution bool) (*pb.TxnResponse, error) {
 	txnResp, _ := newTxnResp(rt, txnPath)
-	_, err := executeTxn(ctx, lg, txnWrite, rt, txnPath, txnResp)
+	_, err := executeTxn(ctx, lg, txnWrite, rt, txnPath, txnResp, skipRangeExecution)
 	if err != nil {
 		if isWrite {
 			// CAUTION: When a txn performing write operations starts, we always expect it to be successful.
@@ -132,7 +132,7 @@ func newTxnResp(rt *pb.TxnRequest, txnPath []bool) (txnResp *pb.TxnResponse, txn
 	return txnResp, txnCount
 }
 
-func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, txnPath []bool, tresp *pb.TxnResponse) (txns int, err error) {
+func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, txnPath []bool, tresp *pb.TxnResponse, skipRangeExecution bool) (txns int, err error) {
 	trace := traceutil.Get(ctx)
 	reqs := rt.Success
 	if !txnPath[0] {
@@ -147,9 +147,20 @@ func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt 
 				traceutil.Field{Key: "req_type", Value: "range"},
 				traceutil.Field{Key: "range_begin", Value: string(tv.RequestRange.Key)},
 				traceutil.Field{Key: "range_end", Value: string(tv.RequestRange.RangeEnd)})
-			resp, err := executeRange(ctx, lg, txnWrite, tv.RequestRange)
-			if err != nil {
-				return 0, fmt.Errorf("applyTxn: failed Range: %w", err)
+			var resp *pb.RangeResponse
+			if skipRangeExecution {
+				rev := txnWrite.Rev()
+				if len(txnWrite.Changes()) > 0 {
+					rev++
+				}
+				resp = &pb.RangeResponse{
+					Header: &pb.ResponseHeader{Revision: rev},
+				}
+			} else {
+				resp, err = executeRange(ctx, lg, txnWrite, tv.RequestRange, true)
+				if err != nil {
+					return 0, fmt.Errorf("applyTxn: failed Range: %w", err)
+				}
 			}
 			respi.(*pb.ResponseOp_ResponseRange).ResponseRange = resp
 			trace.StopSubTrace()
@@ -157,7 +168,7 @@ func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt 
 			trace.StartSubTrace(
 				traceutil.Field{Key: "req_type", Value: "put"},
 				traceutil.Field{Key: "key", Value: string(tv.RequestPut.Key)},
-				traceutil.Field{Key: "req_size", Value: tv.RequestPut.Size()})
+				traceutil.Field{Key: "req_size", Value: proto.Size(tv.RequestPut)})
 			prevKV, err := getPrevKV(trace, txnWrite, tv.RequestPut)
 			if err != nil {
 				return 0, fmt.Errorf("applyTxn: failed to get prevKV on put: %w", err)
@@ -173,7 +184,7 @@ func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt 
 			respi.(*pb.ResponseOp_ResponseDeleteRange).ResponseDeleteRange = resp
 		case *pb.RequestOp_RequestTxn:
 			resp := respi.(*pb.ResponseOp_ResponseTxn).ResponseTxn
-			applyTxns, err := executeTxn(ctx, lg, txnWrite, tv.RequestTxn, txnPath[1:], resp)
+			applyTxns, err := executeTxn(ctx, lg, txnWrite, tv.RequestTxn, txnPath[1:], resp, skipRangeExecution)
 			if err != nil {
 				// don't wrap the error. It's a recursive call and err should be already wrapped
 				return 0, err
@@ -270,7 +281,7 @@ func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
 			// nil == empty string in grpc; no way to represent missing value
 			return false
 		}
-		return compareKV(c, mvccpb.KeyValue{})
+		return compareKV(c, &mvccpb.KeyValue{})
 	}
 	for _, kv := range rr.KVs {
 		if !compareKV(c, kv) {
@@ -280,7 +291,7 @@ func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
 	return true
 }
 
-func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
+func compareKV(c *pb.Compare, ckv *mvccpb.KeyValue) bool {
 	var result int
 	rev := int64(0)
 	switch c.Target {
@@ -350,59 +361,4 @@ func IsTxnReadonly(r *pb.TxnRequest) bool {
 		}
 	}
 	return true
-}
-
-func CheckTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error {
-	for _, c := range rt.Compare {
-		if err := as.IsRangePermitted(ai, c.Key, c.RangeEnd); err != nil {
-			return err
-		}
-	}
-	if err := checkTxnReqsPermission(as, ai, rt.Success); err != nil {
-		return err
-	}
-	return checkTxnReqsPermission(as, ai, rt.Failure)
-}
-
-func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.RequestOp) error {
-	for _, requ := range reqs {
-		switch tv := requ.Request.(type) {
-		case *pb.RequestOp_RequestRange:
-			if tv.RequestRange == nil {
-				continue
-			}
-
-			if err := as.IsRangePermitted(ai, tv.RequestRange.Key, tv.RequestRange.RangeEnd); err != nil {
-				return err
-			}
-
-		case *pb.RequestOp_RequestPut:
-			if tv.RequestPut == nil {
-				continue
-			}
-
-			if err := as.IsPutPermitted(ai, tv.RequestPut.Key); err != nil {
-				return err
-			}
-
-		case *pb.RequestOp_RequestDeleteRange:
-			if tv.RequestDeleteRange == nil {
-				continue
-			}
-
-			if tv.RequestDeleteRange.PrevKv {
-				err := as.IsRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
-				if err != nil {
-					return err
-				}
-			}
-
-			err := as.IsDeleteRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }

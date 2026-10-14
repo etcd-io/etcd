@@ -21,7 +21,6 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/lease"
 )
 
@@ -41,7 +40,7 @@ func newAuthApplierV3(as auth.AuthStore, base applierV3, lessor lease.Lessor) *a
 	return &authApplierV3{applierV3: base, as: as, lessor: lessor}
 }
 
-func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result {
+func (aa *authApplierV3) Apply(r *InternalRaftRequestWrapper, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result {
 	aa.mu.Lock()
 	defer aa.mu.Unlock()
 	if r.Header != nil {
@@ -50,7 +49,7 @@ func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membersh
 		aa.authInfo.Username = r.Header.Username
 		aa.authInfo.Revision = r.Header.AuthRevision
 	}
-	if needAdminPermission(r) {
+	if needAdminPermission(r.InternalRaftRequest) {
 		if err := aa.as.IsAdminPermitted(&aa.authInfo); err != nil {
 			aa.authInfo.Username = ""
 			aa.authInfo.Revision = 0
@@ -64,25 +63,34 @@ func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membersh
 }
 
 func (aa *authApplierV3) Put(r *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
-	if err := aa.as.IsPutPermitted(&aa.authInfo, r.Key); err != nil {
+	if err := checkPutAuth(aa.as, &aa.authInfo, aa.lessor, r); err != nil {
 		return nil, nil, err
 	}
 
-	if err := aa.checkLeasePuts(lease.LeaseID(r.Lease)); err != nil {
+	return aa.applierV3.Put(r)
+}
+
+func checkPutAuth(as auth.AuthStore, ai *auth.AuthInfo, lessor lease.Lessor, r *pb.PutRequest) error {
+	if err := as.IsPutPermitted(ai, r.Key); err != nil {
+		return err
+	}
+
+	if err := checkLeasePuts(as, ai, lessor, lease.LeaseID(r.Lease)); err != nil {
 		// The specified lease is already attached with a key that cannot
 		// be written by this user. It means the user cannot revoke the
 		// lease so attaching the lease to the newly written key should
 		// be forbidden.
-		return nil, nil, err
+		return err
 	}
 
 	if r.PrevKv {
-		err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, nil)
+		err := as.IsRangePermitted(ai, r.Key, nil)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 	}
-	return aa.applierV3.Put(r)
+
+	return nil
 }
 
 func (aa *authApplierV3) Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
@@ -106,38 +114,105 @@ func (aa *authApplierV3) DeleteRange(r *pb.DeleteRangeRequest) (*pb.DeleteRangeR
 	return aa.applierV3.DeleteRange(r)
 }
 
-func (aa *authApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	if err := txn.CheckTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
+func (aa *authApplierV3) Txn(rt *pb.TxnRequest, skipRangeExecution bool) (*pb.TxnResponse, *traceutil.Trace, error) {
+	if err := CheckTxnAuth(aa.as, &aa.authInfo, aa.lessor, rt); err != nil {
 		return nil, nil, err
 	}
-	return aa.applierV3.Txn(rt)
+	return aa.applierV3.Txn(rt, skipRangeExecution)
 }
 
-func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	if err := aa.checkLeasePuts(lease.LeaseID(lc.ID)); err != nil {
-		return nil, err
+func CheckTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, lessor lease.Lessor, rt *pb.TxnRequest) error {
+	return checkTxnPermission(as, ai, lessor, rt)
+}
+
+func checkTxnPermission(as auth.AuthStore, ai *auth.AuthInfo, lessor lease.Lessor, rt *pb.TxnRequest) error {
+	for _, c := range rt.Compare {
+		if err := as.IsRangePermitted(ai, c.Key, c.RangeEnd); err != nil {
+			return err
+		}
 	}
-	return aa.applierV3.LeaseRevoke(lc)
+	if err := checkTxnReqsPermission(as, ai, lessor, rt.Success); err != nil {
+		return err
+	}
+	return checkTxnReqsPermission(as, ai, lessor, rt.Failure)
 }
 
-func (aa *authApplierV3) checkLeasePuts(leaseID lease.LeaseID) error {
-	l := aa.lessor.Lookup(leaseID)
-	if l != nil {
-		return aa.checkLeasePutsKeys(l)
+func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, lessor lease.Lessor, reqs []*pb.RequestOp) error {
+	for _, requ := range reqs {
+		switch tv := requ.Request.(type) {
+		case *pb.RequestOp_RequestRange:
+			if tv.RequestRange == nil {
+				continue
+			}
+
+			if err := as.IsRangePermitted(ai, tv.RequestRange.Key, tv.RequestRange.RangeEnd); err != nil {
+				return err
+			}
+
+		case *pb.RequestOp_RequestPut:
+			if tv.RequestPut == nil {
+				continue
+			}
+
+			if err := checkPutAuth(as, ai, lessor, tv.RequestPut); err != nil {
+				return err
+			}
+		case *pb.RequestOp_RequestDeleteRange:
+			if tv.RequestDeleteRange == nil {
+				continue
+			}
+
+			if tv.RequestDeleteRange.PrevKv {
+				err := as.IsRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
+				if err != nil {
+					return err
+				}
+			}
+
+			err := as.IsDeleteRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
+			if err != nil {
+				return err
+			}
+		case *pb.RequestOp_RequestTxn:
+			if tv.RequestTxn == nil {
+				continue
+			}
+
+			err := checkTxnPermission(as, ai, lessor, tv.RequestTxn)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
 }
 
-func (aa *authApplierV3) checkLeasePutsKeys(l *lease.Lease) error {
+func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
+	if err := checkLeasePuts(aa.as, &aa.authInfo, aa.lessor, lease.LeaseID(lc.ID)); err != nil {
+		return nil, err
+	}
+	return aa.applierV3.LeaseRevoke(lc)
+}
+
+func checkLeasePuts(as auth.AuthStore, ai *auth.AuthInfo, lessor lease.Lessor, leaseID lease.LeaseID) error {
+	l := lessor.Lookup(leaseID)
+	if l != nil {
+		return checkLeasePutsKeys(as, ai, l)
+	}
+
+	return nil
+}
+
+func checkLeasePutsKeys(as auth.AuthStore, ai *auth.AuthInfo, l *lease.Lease) error {
 	// early return for most-common scenario of either disabled auth or admin user.
 	// IsAdminPermitted also checks whether auth is enabled
-	if err := aa.as.IsAdminPermitted(&aa.authInfo); err == nil {
+	if err := as.IsAdminPermitted(ai); err == nil {
 		return nil
 	}
 
 	for _, key := range l.Keys() {
-		if err := aa.as.IsPutPermitted(&aa.authInfo, []byte(key)); err != nil {
+		if err := as.IsPutPermitted(ai, []byte(key)); err != nil {
 			return err
 		}
 	}

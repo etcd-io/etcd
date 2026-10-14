@@ -20,16 +20,17 @@ import (
 	"fmt"
 	"io"
 	defaultLog "log"
+	"math"
 	"net"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	gw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/soheilhy/cmux"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.uber.org/zap"
-	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -173,13 +174,11 @@ func (sctx *serveCtx) serve(
 		if httpEnabled {
 			httpmux := sctx.createMux(gwmux, handler)
 			srv = &http.Server{
-				Handler:  createAccessController(sctx.lg, s, httpmux),
-				ErrorLog: logger, // do not log user error
+				Handler:           createAccessController(sctx.lg, s, httpmux),
+				ReadHeaderTimeout: 5 * time.Minute,
+				ErrorLog:          logger, // do not log user error
 			}
-			if err = configureHTTPServer(srv, s.Cfg); err != nil {
-				sctx.lg.Error("Configure http server failed", zap.Error(err))
-				return err
-			}
+			configureHTTPServer(srv, s.Cfg)
 		}
 		if grpcEnabled {
 			gs = v3rpc.Server(s, nil, nil, gopts...)
@@ -233,6 +232,14 @@ func (sctx *serveCtx) serve(
 			return tlsErr
 		}
 
+		// In gRPC-only mode the gRPC stack owns the TLS handshake (via grpc.Creds).
+		// Wrapping sctx.l with a second TLS listener would cause a double-TLS failure,
+		// so inject CRL checking into the TLS config before the gRPC server is created
+		// (gRPC clones the config at creation time).
+		if onlyGRPC {
+			tlsinfo.ConfigureCRLVerification(tlscfg)
+		}
+
 		if grpcEnabled {
 			gs = v3rpc.Server(s, tlscfg, nil, gopts...)
 			v3electionpb.RegisterElectionServer(gs, servElection)
@@ -255,14 +262,12 @@ func (sctx *serveCtx) serve(
 			httpmux := sctx.createMux(gwmux, handler)
 
 			srv = &http.Server{
-				Handler:   createAccessController(sctx.lg, s, httpmux),
-				TLSConfig: tlscfg,
-				ErrorLog:  logger, // do not log user error
+				Handler:           createAccessController(sctx.lg, s, httpmux),
+				TLSConfig:         tlscfg,
+				ReadHeaderTimeout: 5 * time.Minute,
+				ErrorLog:          logger, // do not log user error
 			}
-			if err = configureHTTPServer(srv, s.Cfg); err != nil {
-				sctx.lg.Error("Configure https server failed", zap.Error(err))
-				return err
-			}
+			configureHTTPServer(srv, s.Cfg)
 		}
 
 		if onlyGRPC {
@@ -293,11 +298,15 @@ func (sctx *serveCtx) serve(
 	return err
 }
 
-func configureHTTPServer(srv *http.Server, cfg config.ServerConfig) error {
+func configureHTTPServer(srv *http.Server, cfg config.ServerConfig) {
 	// todo (ahrtr): should we support configuring other parameters in the future as well?
-	return http2.ConfigureServer(srv, &http2.Server{
-		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
-	})
+	// net/http replaces any MaxConcurrentStreams above math.MaxInt32 with its
+	// default (250), so clamp the uint32 value (default math.MaxUint32) to keep
+	// it effectively unlimited.
+	maxStreams := int(min(cfg.MaxConcurrentStreams, math.MaxInt32))
+	srv.HTTP2 = &http.HTTP2Config{
+		MaxConcurrentStreams: maxStreams,
+	}
 }
 
 // grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC

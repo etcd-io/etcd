@@ -62,6 +62,8 @@ func init() {
 	mixedTxnCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
 	mixedTxnCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
 	mixedTxnCmd.Flags().Float64Var(&mixedTxnReadWriteRatio, "rw-ratio", 1, "Read/write ops ratio")
+	mixedTxnCmd.Flags().BoolVar(&defrag, "defrag", false, "'true' to trigger a one-time defragmentation at approximately --defrag-trigger-percent of --total requests")
+	mixedTxnCmd.Flags().IntVar(&defragTriggerPercent, "defrag-trigger-percent", 40, "Percentage of --total requests at which --defrag triggers defragmentation")
 }
 
 type request struct {
@@ -134,6 +136,7 @@ func mixedTxnFunc(cmd *cobra.Command, _ []string) {
 				writeOpsTotal++
 			}
 			requests <- req
+			maybeTriggerDefrag(clients, i, mixedTxnTotal)
 		}
 		close(requests)
 	}()
@@ -148,4 +151,5 @@ func mixedTxnFunc(cmd *cobra.Command, _ []string) {
 	fmt.Println(<-rcRead)
 	fmt.Printf("Total Write Ops: %d\nDetails:", writeOpsTotal)
 	fmt.Println(<-rcWrite)
+	printDefragDuration()
 }

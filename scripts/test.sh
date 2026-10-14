@@ -63,6 +63,9 @@ export ETCD_VERIFY=all
 source ./scripts/test_lib.sh
 source ./scripts/build_lib.sh
 
+GOPATH_BIN=$(go env GOPATH)/bin
+export PATH="${GOPATH_BIN}:${PATH}"
+
 OUTPUT_FILE=${OUTPUT_FILE:-""}
 
 if [ -n "${OUTPUT_FILE}" ]; then
@@ -118,7 +121,7 @@ fi
 
 function build_pass {
   log_callout "Building etcd"
-  run_for_modules run go build "${@}" || return 2
+  run_for_workspace_modules run go build "${@}" ./... || return 2
   GO_BUILD_FLAGS="-v" etcd_build "${@}"
   GO_BUILD_FLAGS="-v" tools_build "${@}"
 }
@@ -128,6 +131,7 @@ function build_pass {
 function unit_pass {
   run_for_all_workspace_modules \
     run_go_tests -short \
+                 -failfast \
                  -timeout="${TIMEOUT:-3m}" \
                  "${COMMON_TEST_FLAGS[@]}" \
                  "${RUN_ARG[@]}" \
@@ -136,12 +140,11 @@ function unit_pass {
 
 function integration_extra {
   if [ -z "${PKG}" ] ; then
-    KEEP_GOING_TESTS=true \
-      run_go_tests_expanding_packages ./tests/integration/v2store/... \
-                                      -timeout="${TIMEOUT:-5m}" \
-                                      "${COMMON_TEST_FLAGS[@]}" \
-                                      "${RUN_ARG[@]}" \
-                                      "$@"
+    run_go_tests_expanding_packages ./tests/integration/v2store/... \
+                                    -timeout="${TIMEOUT:-5m}" \
+                                    "${COMMON_TEST_FLAGS[@]}" \
+                                    "${RUN_ARG[@]}" \
+                                    "$@"
   else
     log_warning "integration_extra ignored when PKG is specified"
   fi
@@ -150,45 +153,48 @@ function integration_extra {
 function integration_pass {
   run_go_tests ./tests/integration/... \
                -p=2 \
+               -failfast \
                -timeout="${TIMEOUT:-15m}" \
                "${COMMON_TEST_FLAGS[@]}" \
                "${RUN_ARG[@]}" \
-               "$@"
+               "$@" || return 2
 
   run_go_tests ./tests/common/... \
                -p=2 \
+               -failfast \
                -tags=integration \
                -timeout="${TIMEOUT:-15m}" \
                "${COMMON_TEST_FLAGS[@]}" \
                "${RUN_ARG[@]}" \
-               "$@"
+               "$@" || return 2
 
   integration_extra "$@"
 }
 
 function e2e_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu do not have any impact.
-  KEEP_GOING_TESTS=true \
-    run_go_tests_expanding_packages ./tests/e2e/... \
-                                      -timeout="${TIMEOUT:-30m}" \
-                                      "${RUN_ARG[@]}" \
-                                      "$@"
-  KEEP_GOING_TESTS=true \
-    run_go_tests_expanding_packages ./tests/common/... \
-                                      -tags=e2e \
-                                      -timeout="${TIMEOUT:-30m}" \
-                                      "${RUN_ARG[@]}" \
-                                      "$@"
+  run_go_tests_expanding_packages ./tests/e2e/... \
+                                    -timeout="${TIMEOUT:-30m}" \
+                                    "${RUN_ARG[@]}" \
+                                    "$@" || return 2
+
+  run_go_tests_expanding_packages ./tests/common/... \
+                                    -tags=e2e \
+                                    -timeout="${TIMEOUT:-30m}" \
+                                    "${RUN_ARG[@]}" \
+                                    "$@"
 }
 
 function robustness_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./robustness" "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
+  run_go_tests ./tests/robustness \
+                 -timeout="${TIMEOUT:-30m}" \
+                 "${RUN_ARG[@]}" \
+                 "$@"
 }
 
 function integration_e2e_pass {
-  run_pass "integration" "${@}"
+  run_pass "integration" "${@}" || return 2
   run_pass "e2e" "${@}"
 }
 
@@ -210,45 +216,29 @@ function generic_checker {
 }
 
 function grpcproxy_pass {
-  run_pass "grpcproxy_integration" "${@}"
+  run_pass "grpcproxy_integration" "${@}" || return 2
   run_pass "grpcproxy_e2e" "${@}"
 }
 
 function grpcproxy_integration_pass {
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./integration/..." "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
+  run_go_tests_expanding_packages ./tests/integration/... \
+               -tags=cluster_proxy \
+               -timeout="${TIMEOUT:-30m}" \
+               "${COMMON_TEST_FLAGS[@]}" \
+               "${RUN_ARG[@]}" \
+               "$@"
 }
 
 function grpcproxy_e2e_pass {
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./e2e" "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
+  run_go_tests_expanding_packages ./tests/e2e/... \
+               -tags=cluster_proxy \
+               -timeout="${TIMEOUT:-30m}" \
+               "${COMMON_TEST_FLAGS[@]}" \
+               "${RUN_ARG[@]}" \
+               "$@"
 }
 
 ################# COVERAGE #####################################################
-
-# pkg_to_coverflag [prefix] [pkgs]
-# produces name of .coverprofile file to be used for tests of this package
-function pkg_to_coverprofileflag {
-  local prefix="${1}"
-  local pkgs="${2}"
-  local pkgs_normalized
-  prefix_normalized=$(echo "${prefix}" | tr "./ " "__+")
-  if [ "${pkgs}" == "./..." ]; then
-    pkgs_normalized="all"
-  else
-    pkgs_normalized=$(echo "${pkgs}" | tr "./ " "__+")
-  fi
-  mkdir -p "${coverdir}/${prefix_normalized}"
-  echo -n "-coverprofile=${coverdir}/${prefix_normalized}/${pkgs_normalized}.coverprofile"
-}
-
-function not_test_packages {
-  for m in $(modules); do
-    if [[ $m =~ .*/etcd/tests/v3 ]]; then continue; fi
-    if [[ $m =~ .*/etcd/v3 ]]; then continue; fi
-    echo "${m}/..."
-  done
-}
 
 # split_dir [dir] [num]
 function split_dir {
@@ -293,18 +283,6 @@ function merge_cov_files {
   done
 }
 
-# merge_cov [coverdir]
-function merge_cov {
-  log_callout "[$(date)] Merging coverage files ..."
-  coverdir="${1}"
-  for d in "${coverdir}"/*/; do
-    d=${d%*/}  # remove the trailing "/"
-    merge_cov_files "${d}" "${d}.coverprofile" &
-  done
-  wait
-  merge_cov_files "${coverdir}" "${coverdir}/all.coverprofile"
-}
-
 # https://docs.codecov.com/docs/unexpected-coverage-changes#reasons-for-indirect-changes
 function cov_pass {
   # shellcheck disable=SC2153
@@ -316,49 +294,45 @@ function cov_pass {
   local coverdir
   coverdir=$(readlink -f "${COVERDIR}")
   mkdir -p "${coverdir}"
-  find "${coverdir}" -print0 -name '*.coverprofile' | xargs -0 rm
+  find "${coverdir}" -name '*.coverprofile' -delete
 
-  local covpkgs
-  covpkgs=$(not_test_packages)
+  local modules=()
+  load_workspace_relative_modules modules
+  local covpkgs=()
+  for module in "${modules[@]}"; do
+    if [[ ! "${module}" =~ ^./tests && ! "${module}" =~ ^./...$ ]]; then
+      covpkgs+=("${module}")
+    fi
+  done
+
   local coverpkg_comma
   coverpkg_comma=$(echo "${covpkgs[@]}" | xargs | tr ' ' ',')
   local gocov_build_flags=("-covermode=set" "-coverpkg=$coverpkg_comma")
 
-  local failed=""
+  local failed=()
 
   log_callout "[$(date)] Collecting coverage from unit tests ..."
-  for m in $(module_dirs); do
-    run_for_module "${m}" go_test "./..." "parallel" "pkg_to_coverprofileflag unit_${m}" -short -timeout=30m \
-       "${gocov_build_flags[@]}" "$@" || failed="$failed unit"
-  done
+  run_go_tests "${modules[@]}" -short -timeout=30m "${gocov_build_flags[@]}" -coverprofile="${coverdir}/unit.coverprofile" "$@" || failed+=("unit")
 
   log_callout "[$(date)] Collecting coverage from integration tests ..."
-  run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration" \
-      -timeout=30m "${gocov_build_flags[@]}" "$@" || failed="$failed integration"
+  run_go_tests "./tests/integration/..." -timeout=30m "${gocov_build_flags[@]}" -coverprofile="${coverdir}/integration.coverprofile" "$@" || failed+=("integration")
   # integration-store-v2
-  run_for_module "tests" go_test "./integration/v2store/..." "keep_going" "pkg_to_coverprofileflag store_v2" \
-      -timeout=5m "${gocov_build_flags[@]}" "$@" || failed="$failed integration_v2"
+  run_go_tests "./tests/integration/v2store/..." -timeout=5m "${gocov_build_flags[@]}" -coverprofile="${coverdir}/integration_v2.coverprofile" "$@" || failed+=("integration_v2")
   # integration_cluster_proxy
-  run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration_cluster_proxy" \
-      -tags cluster_proxy -timeout=30m "${gocov_build_flags[@]}" || failed="$failed integration_cluster_proxy"
+  run_go_tests "./tests/integration/..." -tags cluster_proxy -timeout=30m "${gocov_build_flags[@]}" -coverprofile="${coverdir}/integration_cluster_proxy.coverprofile" "$@" || failed+=("integration_cluster_proxy")
+  run_go_tests "./tests/common/" -tags integration -timeout=30m "${gocov_build_flags[@]}" -coverprofile="${coverdir}/common.coverprofile" "$@" || failed+=("common")
 
   local cover_out_file="${coverdir}/all.coverprofile"
-  merge_cov "${coverdir}"
+  merge_cov_files "${coverdir}" "${cover_out_file}"
 
   # strip out generated files (using GNU-style sed)
   sed --in-place -E "/[.]pb[.](gw[.])?go/d" "${cover_out_file}" || true
 
-  sed --in-place -E "s|go.etcd.io/etcd/api/v3/|api/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/client/v3/|client/v3/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/client/pkg/v3|client/pkg/v3/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/etcdctl/v3/|etcdctl/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/etcdutl/v3/|etcdutl/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/pkg/v3/|pkg/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/server/v3/|server/|g" "${cover_out_file}" || true
+  sed --in-place -E "s|go.etcd.io/etcd/(.*)/v3|\1|g" "${cover_out_file}" || true
 
   # held failures to generate the full coverage file, now fail
-  if [ -n "$failed" ]; then
-    for f in $failed; do
+  if [ "${#failed[@]}" -gt 0 ]; then
+    for f in "${failed[@]}"; do
       log_error "--- FAIL:" "$f"
     done
     log_warning "Despite failures, you can see partial report:"
@@ -384,10 +358,10 @@ function shellcheck_pass {
 }
 
 function shellws_pass {
-  log_callout "Ensuring no tab-based indention in shell scripts"
+  log_callout "Ensuring no tab-based indentation in shell scripts"
   local files
   if files=$(find . -name '*.sh' -print0 | xargs -0 grep -E -n $'^\s*\t'); then
-    log_error "FAIL: found tab-based indention in the following bash scripts. Use '  ' (double space):"
+    log_error "FAIL: found tab-based indentation in the following bash scripts. Use '  ' (double space):"
     log_error "${files}"
     log_warning "Suggestion: run \"make fix\" to address the issue."
     return 255
@@ -417,8 +391,9 @@ function markdown_marker_pass {
 }
 
 function govuln_pass {
-  run go install golang.org/x/vuln/cmd/govulncheck@latest
-  run_for_modules run govulncheck -show verbose
+  local tool_bin
+  tool_bin=$(tool_get_bin golang.org/x/vuln/cmd/govulncheck)
+  run_for_all_workspace_modules run govulncheck -show verbose
 }
 
 function lint_pass {
@@ -528,7 +503,7 @@ function release_pass {
   rm -f ./bin/etcd-last-release
 
   # Work out the previous release based on the version reported by etcd binary
-  binary_version=$(./bin/etcd --version | grep --only-matching --perl-regexp '(?<=etcd Version: )\d+\.\d+')
+  binary_version=$(./bin/etcd --version | grep --only-matching --perl-regexp '(?<=etcd Version: )v?\d+\.\d+\.\d+' | sed 's/^v//')
   binary_major=$(echo "${binary_version}" | cut -d '.' -f 1)
   binary_minor=$(echo "${binary_version}" | cut -d '.' -f 2)
   previous_minor=$((binary_minor - 1))
@@ -546,7 +521,7 @@ function release_pass {
   # Sort key is used to sort numerically by patch version
   # Latest version is then stored for use below
   UPGRADE_VER=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
-    | grep --only-matching --perl-regexp "(?<=v)${binary_major}.${previous_minor}.[\d]+?(?=[\^])" \
+    | grep --only-matching --perl-regexp "(?<=v)${binary_major}.${previous_minor}.[\d]+(?:-[\w.]+)?(?=[\^])" \
     | sort --numeric-sort --key 1.5 | tail -1 | sed 's/^/v/')
   log_callout "Found previous minor version (v${binary_major}.${previous_minor}) latest release: ${UPGRADE_VER}."
 
@@ -614,15 +589,6 @@ EOF
 
 function mod_tidy_pass {
   run_for_workspace_modules run go mod tidy -diff
-}
-
-function module_mod_tidy_fix {
-  run rm ./go.sum
-  run go mod tidy || return 2
-}
-
-function mod_tidy_fix_pass {
-  run_for_workspace_modules module_mod_tidy_fix
 }
 
 function proto_annotations_pass {

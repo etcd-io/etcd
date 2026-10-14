@@ -70,10 +70,10 @@ test-grpcproxy-e2e: build
 test-e2e-release: build
 	PASSES="release e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
 
-# When we release the first 3.7.0-alpha.0, we can remove `VERSION="3.7.99"` below.
+# When we release the first 3.8.0-alpha.0, we can remove `VERSION="3.8.99"` below.
 .PHONY: test-release
 test-release:
-	PASSES="release_tests" VERSION="3.7.99" ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="release_tests" VERSION="3.8.99" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-robustness
 test-robustness:
@@ -82,6 +82,10 @@ test-robustness:
 .PHONY: test-coverage
 test-coverage:
 	COVERDIR=covdir PASSES="build cov" ./scripts/test.sh $(GO_TEST_FLAGS)
+
+.PHONY: test-devcontainer
+test-devcontainer:
+	./scripts/test/devcontainer.sh
 
 .PHONY: upload-coverage-report
 upload-coverage-report:
@@ -99,7 +103,7 @@ fuzz:
 verify: verify-bom verify-lint verify-dep verify-shellcheck verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
 	verify-markdown-marker verify-go-versions verify-gomodguard \
-	verify-go-workspace
+	verify-go-workspace verify-grpc-experimental
 
 .PHONY: fix
 fix: fix-mod-tidy fix-bom fix-lint fix-yamllint sync-toolchain-directive \
@@ -111,7 +115,7 @@ verify-bom:
 
 .PHONY: fix-bom
 fix-bom:
-	./scripts/updatebom.sh
+	./scripts/fix/bom.sh
 
 .PHONY: verify-dep
 verify-dep:
@@ -135,7 +139,7 @@ verify-mod-tidy:
 
 .PHONY: fix-mod-tidy
 fix-mod-tidy:
-	PASSES="mod_tidy_fix" ./scripts/test.sh
+	./scripts/fix/mod-tidy.sh
 
 .PHONY: verify-shellws
 verify-shellws:
@@ -224,9 +228,13 @@ verify-gomodguard:
 verify-go-workspace:
 	PASSES="go_workspace" ./scripts/test.sh
 
+.PHONY: verify-grpc-experimental
+verify-grpc-experimental:
+	./scripts/verify_grpc_experimental.sh
+
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
-	./scripts/sync_go_toolchain_directive.sh
+	./scripts/fix/sync_go_toolchain_directive.sh
 
 .PHONY: markdown-diff-lint
 markdown-diff-lint:

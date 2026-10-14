@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -158,7 +159,7 @@ func TestIterationMethods(t *testing.T) {
 				tc := tc
 				t.Run(fmt.Sprintf("%s_pivot_%d", tc.method, tc.pivot), func(t *testing.T) {
 					got := collectRevisions(rb, tc.method, tc.pivot)
-					if diff := cmp.Diff(tc.wantIterRevisions, got); diff != "" {
+					if diff := cmp.Diff(tc.wantIterRevisions, got, protocmp.Transform()); diff != "" {
 						t.Fatalf("%s(%d) mismatch (-want +got):\n%s", tc.method, tc.pivot, diff)
 					}
 				})
@@ -245,7 +246,7 @@ func TestIterationWithBatching(t *testing.T) {
 				return true
 			})
 
-			if diff := cmp.Diff(tt.want, got); diff != "" {
+			if diff := cmp.Diff(tt.want, got, protocmp.Transform()); diff != "" {
 				t.Fatalf("Events mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -310,7 +311,7 @@ func TestIterationEarlyStop(t *testing.T) {
 				return shouldContinue
 			})
 
-			if diff := cmp.Diff(tt.want, collected); diff != "" {
+			if diff := cmp.Diff(tt.want, collected, protocmp.Transform()); diff != "" {
 				t.Fatalf("Early stop failed.\nExpected: \nDiff (-want +got):\n%s", diff)
 			}
 

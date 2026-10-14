@@ -40,7 +40,7 @@ func TestPipelineSend(t *testing.T) {
 	tp := &Transport{pipelineRt: tr}
 	p := startTestPipeline(t, tp, picker)
 
-	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
+	p.msgc <- &raftpb.Message{Type: raftpb.MsgApp.Enum()}
 	tr.rec.Wait(1)
 	p.stop()
 	if p.followerStats.Counts.Success != 1 {
@@ -58,7 +58,7 @@ func TestPipelineKeepSendingWhenPostError(t *testing.T) {
 	defer p.stop()
 
 	for i := 0; i < 50; i++ {
-		p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
+		p.msgc <- &raftpb.Message{Type: raftpb.MsgApp.Enum()}
 	}
 
 	_, err := tr.rec.Wait(50)
@@ -78,7 +78,7 @@ func TestPipelineExceedMaximumServing(t *testing.T) {
 	// nothing can go out as we block the sender
 	for i := 0; i < connPerPipeline+pipelineBufSize; i++ {
 		select {
-		case p.msgc <- raftpb.Message{}:
+		case p.msgc <- &raftpb.Message{}:
 		case <-time.After(time.Second):
 			t.Errorf("failed to send out message")
 		}
@@ -86,7 +86,7 @@ func TestPipelineExceedMaximumServing(t *testing.T) {
 
 	// try to send a data when we are sure the buffer is full
 	select {
-	case p.msgc <- raftpb.Message{}:
+	case p.msgc <- &raftpb.Message{}:
 		t.Errorf("unexpected message sendout")
 	default:
 	}
@@ -96,7 +96,7 @@ func TestPipelineExceedMaximumServing(t *testing.T) {
 
 	// It could send new data after previous ones succeed
 	select {
-	case p.msgc <- raftpb.Message{}:
+	case p.msgc <- &raftpb.Message{}:
 	case <-time.After(time.Second):
 		t.Errorf("failed to send out message")
 	}
@@ -111,7 +111,7 @@ func TestPipelineSendFailed(t *testing.T) {
 	tp := &Transport{pipelineRt: rt}
 	p := startTestPipeline(t, tp, picker)
 
-	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
+	p.msgc <- &raftpb.Message{Type: raftpb.MsgApp.Enum()}
 	if _, err := rt.rec.Wait(1); err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +219,7 @@ func TestStopBlockedPipeline(t *testing.T) {
 	p := startTestPipeline(t, tp, picker)
 	// send many messages that most of them will be blocked in buffer
 	for i := 0; i < connPerPipeline*10; i++ {
-		p.msgc <- raftpb.Message{}
+		p.msgc <- &raftpb.Message{}
 	}
 
 	done := make(chan struct{})

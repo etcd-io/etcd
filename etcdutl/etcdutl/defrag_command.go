@@ -48,10 +48,14 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func DefragData(dataDir string) error {
+	if err := validateDataDir(dataDir); err != nil {
+		return err
+	}
 	b := backend.NewDefaultBackend(
 		GetLogger(),
 		datadir.ToBackendFileName(dataDir),
 		backend.WithTimeout(FlockTimeout))
+	defer b.Close()
 
 	return b.Defrag()
 }

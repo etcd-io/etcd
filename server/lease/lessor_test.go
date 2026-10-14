@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -101,7 +101,7 @@ func TestLessorGrant(t *testing.T) {
 	defer tx.Unlock()
 	lpb := schema.MustUnsafeGetLease(tx, int64(l.ID))
 	if lpb == nil {
-		t.Errorf("lpb = %d, want not nil", lpb)
+		t.Errorf("lpb = nil, want not nil")
 	}
 }
 
@@ -205,7 +205,7 @@ func TestLessorRevoke(t *testing.T) {
 	defer tx.Unlock()
 	lpb := schema.MustUnsafeGetLease(tx, int64(l.ID))
 	if lpb != nil {
-		t.Errorf("lpb = %d, want nil", lpb)
+		t.Errorf("lpb = %s, want nil", lpb.String())
 	}
 }
 
@@ -697,11 +697,11 @@ func NewTestBackend(t *testing.T) (string, backend.Backend) {
 }
 
 func clusterLatest() cluster {
-	return fakeCluster{semver.New(version.Cluster(version.Version) + ".0")}
+	return fakeCluster{semver.MustParse(version.Cluster(version.Version) + ".0")}
 }
 
 func clusterV3_5() cluster {
-	return fakeCluster{semver.New("3.5.0")}
+	return fakeCluster{semver.MustParse("3.5.0")}
 }
 
 func clusterNil() cluster {

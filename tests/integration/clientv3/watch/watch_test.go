@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -927,6 +928,92 @@ func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
 	}
 }
 
+func TestWatchMixedPrevKVOnSameKeySeparateStreams(t *testing.T) {
+	integration.BeforeTest(t)
+
+	cluster := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
+
+	client := cluster.RandClient()
+	key := "prevkv-race-key"
+	const (
+		totalWatchers    = 10
+		watchersWithPrev = 5
+		updates          = 10
+	)
+
+	_, err := client.Put(t.Context(), key, "v0")
+	require.NoError(t, err)
+
+	type watchCase struct {
+		withPrev bool
+		cancel   context.CancelFunc
+		ch       clientv3.WatchChan
+	}
+	watches := make([]watchCase, totalWatchers)
+	for i := 0; i < totalWatchers; i++ {
+		// Different metadata forces the client to open independent watch streams.
+		md := metadata.Pairs("watch-stream-id", fmt.Sprintf("%d", i))
+		mctx := metadata.NewOutgoingContext(t.Context(), md)
+		wctx, cancel := context.WithCancel(mctx)
+
+		opts := []clientv3.OpOption{clientv3.WithCreatedNotify()}
+		withPrev := i < watchersWithPrev
+		if withPrev {
+			opts = append(opts, clientv3.WithPrevKV())
+		}
+
+		watches[i] = watchCase{
+			withPrev: withPrev,
+			cancel:   cancel,
+			ch:       client.Watch(wctx, key, opts...),
+		}
+	}
+	defer func() {
+		for _, watch := range watches {
+			watch.cancel()
+		}
+	}()
+
+	for i, watch := range watches {
+		resp := <-watch.ch
+		require.Truef(t, resp.Created, "watcher %d expected created response, got %+v", i, resp)
+		require.NoErrorf(t, resp.Err(), "watcher %d created response should not have error", i)
+	}
+
+	prevValue := "v0"
+	for rev := 1; rev <= updates; rev++ {
+		nextValue := fmt.Sprintf("v%d", rev)
+		_, err = client.Put(t.Context(), key, nextValue)
+		require.NoError(t, err)
+
+		for i, watch := range watches {
+			var resp clientv3.WatchResponse
+			select {
+			case resp = <-watch.ch:
+			case <-time.After(10 * time.Second):
+				t.Fatalf("watcher %d timed out waiting for watch response at revision %d", i, rev)
+			}
+
+			require.NoErrorf(t, resp.Err(), "watcher %d got unexpected watch error", i)
+			require.Lenf(t, resp.Events, 1, "watcher %d expected one event at revision %d", i, rev)
+
+			event := resp.Events[0]
+			require.Equalf(t, key, string(event.Kv.Key), "watcher %d received event for wrong key", i)
+			require.Equalf(t, nextValue, string(event.Kv.Value), "watcher %d got wrong value", i)
+
+			if watch.withPrev {
+				require.NotNilf(t, event.PrevKv, "watcher %d expected PrevKv", i)
+				require.Equalf(t, prevValue, string(event.PrevKv.Value), "watcher %d got wrong PrevKv value", i)
+			} else {
+				require.Nilf(t, event.PrevKv, "watcher %d should not receive PrevKv", i)
+			}
+		}
+
+		prevValue = nextValue
+	}
+}
+
 // TestWatchCancelOnServer ensures client watcher cancels propagate back to the server.
 func TestWatchCancelOnServer(t *testing.T) {
 	integration.BeforeTest(t)
@@ -1201,7 +1288,7 @@ func TestWatch(t *testing.T) {
 			} else {
 				require.ErrorContains(t, err, tc.wantError.Error())
 			}
-			if diff := cmp.Diff(tc.wantEvents, events); diff != "" {
+			if diff := cmp.Diff(tc.wantEvents, events, protocmp.Transform()); diff != "" {
 				t.Errorf("unexpected events (-want +got):\n%s", diff)
 			}
 		})

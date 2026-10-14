@@ -23,12 +23,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -47,12 +49,25 @@ func NewClient(t *testing.T, cfg Config) (*Client, error) {
 func TestDialCancel(t *testing.T) {
 	testutil.RegisterLeakDetection(t)
 
-	// accept first connection so client is created with dial timeout
-	ln, err := net.Listen("unix", "dialcancel:12345")
+	// Start a real gRPC endpoint with health service so initial dial readiness
+	// check succeeds before switching endpoints below.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	defer ln.Close()
 
-	ep := "unix://dialcancel:12345"
+	srv := grpc.NewServer()
+	healthpb.RegisterHealthServer(srv, health.NewServer())
+	serveDone := make(chan error)
+	go func() {
+		defer close(serveDone)
+		srv.Serve(ln)
+	}()
+	defer func() {
+		srv.Stop()
+		<-serveDone
+	}()
+
+	ep := ln.Addr().String()
 	cfg := Config{
 		Endpoints:   []string{ep},
 		DialTimeout: 30 * time.Second,
@@ -91,65 +106,6 @@ func TestDialCancel(t *testing.T) {
 		t.Fatalf("get failed to exit")
 	case <-getc:
 	}
-}
-
-func TestDialTimeout(t *testing.T) {
-	testutil.RegisterLeakDetection(t)
-
-	wantError := context.DeadlineExceeded
-
-	// grpc.WithBlock to block until connection up or timeout
-	testCfgs := []Config{
-		{
-			Endpoints:   []string{"http://254.0.0.1:12345"},
-			DialTimeout: 2 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
-		},
-		{
-			Endpoints:   []string{"http://254.0.0.1:12345"},
-			DialTimeout: time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
-			Username:    "abc",
-			Password:    "def",
-		},
-	}
-
-	for i, cfg := range testCfgs {
-		donec := make(chan error, 1)
-		go func(cfg Config, i int) {
-			// without timeout, dial continues forever on ipv4 black hole
-			c, err := NewClient(t, cfg)
-			if c != nil || err == nil {
-				t.Errorf("#%d: new client should fail", i)
-			}
-			donec <- err
-		}(cfg, i)
-
-		time.Sleep(10 * time.Millisecond)
-
-		select {
-		case err := <-donec:
-			t.Errorf("#%d: dial didn't wait (%v)", i, err)
-		default:
-		}
-
-		select {
-		case <-time.After(5 * time.Second):
-			t.Errorf("#%d: failed to timeout dial on time", i)
-		case err := <-donec:
-			if err.Error() != wantError.Error() {
-				t.Errorf("#%d: unexpected error '%v', want '%v'", i, err, wantError)
-			}
-		}
-	}
-}
-
-func TestDialNoTimeout(t *testing.T) {
-	cfg := Config{Endpoints: []string{"127.0.0.1:12345"}}
-	c, err := NewClient(t, cfg)
-	require.NotNilf(t, c, "new client with DialNoWait should succeed, got %v", err)
-	require.NoErrorf(t, err, "new client with DialNoWait should succeed")
-	c.Close()
 }
 
 func TestMaxUnaryRetries(t *testing.T) {
@@ -257,12 +213,12 @@ func TestCloseCtxClient(t *testing.T) {
 func TestWithLogger(t *testing.T) {
 	ctx := t.Context()
 	c := NewCtxClient(ctx)
-	if c.lg == nil {
+	if c.lg.Load() == nil {
 		t.Errorf("unexpected nil in *zap.Logger")
 	}
 
 	c.WithLogger(nil)
-	if c.lg != nil {
+	if c.GetLogger() != nil {
 		t.Errorf("WithLogger should modify *zap.Logger")
 	}
 }
@@ -272,7 +228,7 @@ func TestZapWithLogger(t *testing.T) {
 	lg := zap.NewNop()
 	c := NewCtxClient(ctx, WithZapLogger(lg))
 
-	if c.lg != lg {
+	if c.GetLogger() != lg {
 		t.Errorf("WithZapLogger should modify *zap.Logger")
 	}
 }
@@ -422,9 +378,14 @@ func TestMinSupportedVersion(t *testing.T) {
 			minSupportedVersion: version.V3_6,
 		},
 		{
+			name:                "v3.8 client should accept v3.6",
+			currentVersion:      version.V3_8,
+			minSupportedVersion: version.V3_7,
+		},
+		{
 			name:                "first minor version should accept its previous version",
 			currentVersion:      version.V4_0,
-			minSupportedVersion: version.V3_7,
+			minSupportedVersion: version.V3_8,
 		},
 		{
 			name:                "first version in list should not accept previous versions",
@@ -440,7 +401,7 @@ func TestMinSupportedVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			version.Version = tt.currentVersion.String()
-			require.True(t, minSupportedVersion().Equal(tt.minSupportedVersion))
+			require.True(t, minSupportedVersion().Equal(&tt.minSupportedVersion))
 		})
 	}
 }
@@ -546,7 +507,7 @@ func (mm mockMaintenance) Downgrade(ctx context.Context, action DowngradeAction,
 }
 
 type mockFailingAuthServer struct {
-	*etcdserverpb.UnimplementedAuthServer
+	etcdserverpb.UnimplementedAuthServer
 }
 
 func (mockFailingAuthServer) Authenticate(context.Context, *etcdserverpb.AuthenticateRequest) (*etcdserverpb.AuthenticateResponse, error) {
@@ -554,7 +515,7 @@ func (mockFailingAuthServer) Authenticate(context.Context, *etcdserverpb.Authent
 }
 
 type mockAuthServer struct {
-	*etcdserverpb.UnimplementedAuthServer
+	etcdserverpb.UnimplementedAuthServer
 }
 
 func (mockAuthServer) Authenticate(context.Context, *etcdserverpb.AuthenticateRequest) (*etcdserverpb.AuthenticateResponse, error) {

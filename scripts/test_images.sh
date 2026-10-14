@@ -92,31 +92,10 @@ function put_get_check {
   fi
 }
 
-# Verify that the images have the correct architecture.
-function verify_images_architecture {
-  local repository=$1
-  local version=$2
-  local target_arch
-  local arch_tag
-  local img_arch
-
-  for target_arch in "amd64" "arm64" "ppc64le" "s390x"; do
-    arch_tag="v${version}-${target_arch}"
-    img_arch=$(docker inspect --format '{{.Architecture}}' "${repository}:${arch_tag}")
-    if [ "${img_arch}" != "${target_arch}" ];then
-      log_error "Error: Incorrect Docker image architecture. Got ${img_arch}, expected: ${arch_tag}."
-      exit 1
-    fi
-    log_success "Correct architecture for ${arch_tag}."
-  done
-}
-
 function main {
   local version="$1"
   local repository=${REPOSITORY:-"gcr.io/etcd-development/etcd"}
-  local arch
-  arch=$(go env GOARCH)
-  local tag="v${version}-${arch}"
+  local tag="v${version}"
   local image="${TEST_IMAGE:-"${repository}:${tag}"}"
   local container_name="test_etcd"
 
@@ -137,10 +116,6 @@ function main {
   trap 'docker stop '"${container_name}" EXIT
   put_get_check "${container_name}"
   log_success "Successfully tested etcd local image ${tag}."
-
-  log_callout "Verifying images architecture."
-  verify_images_architecture "${repository}" "${version}"
-  log_success "Successfully tested images architecture."
 }
 
 if [ -z "$VERSION" ]; then

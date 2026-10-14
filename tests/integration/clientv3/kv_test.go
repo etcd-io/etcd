@@ -21,15 +21,16 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -105,71 +106,6 @@ func TestKVPutWithLease(t *testing.T) {
 	}
 	if lease.ID != clientv3.LeaseID(resp.Kvs[0].Lease) {
 		t.Errorf("val = %d, want %d", lease.ID, resp.Kvs[0].Lease)
-	}
-}
-
-// TestKVPutWithIgnoreValue ensures that Put with WithIgnoreValue does not clobber the old value.
-func TestKVPutWithIgnoreValue(t *testing.T) {
-	integration.BeforeTest(t)
-
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
-	defer clus.Terminate(t)
-
-	kv := clus.RandClient()
-
-	_, err := kv.Put(t.Context(), "foo", "", clientv3.WithIgnoreValue())
-	if !errors.Is(err, rpctypes.ErrKeyNotFound) {
-		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
-	}
-
-	_, err = kv.Put(t.Context(), "foo", "bar")
-	require.NoError(t, err)
-
-	_, err = kv.Put(t.Context(), "foo", "", clientv3.WithIgnoreValue())
-	require.NoError(t, err)
-	rr, rerr := kv.Get(t.Context(), "foo")
-	require.NoError(t, rerr)
-	if len(rr.Kvs) != 1 {
-		t.Fatalf("len(rr.Kvs) expected 1, got %d", len(rr.Kvs))
-	}
-	if !bytes.Equal(rr.Kvs[0].Value, []byte("bar")) {
-		t.Fatalf("value expected 'bar', got %q", rr.Kvs[0].Value)
-	}
-}
-
-// TestKVPutWithIgnoreLease ensures that Put with WithIgnoreLease does not affect the existing lease for the key.
-func TestKVPutWithIgnoreLease(t *testing.T) {
-	integration.BeforeTest(t)
-
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
-	defer clus.Terminate(t)
-
-	kv := clus.RandClient()
-
-	lapi := clus.RandClient()
-
-	resp, err := lapi.Grant(t.Context(), 10)
-	if err != nil {
-		t.Errorf("failed to create lease %v", err)
-	}
-
-	if _, err = kv.Put(t.Context(), "zoo", "bar", clientv3.WithIgnoreLease()); !errors.Is(err, rpctypes.ErrKeyNotFound) {
-		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
-	}
-
-	_, err = kv.Put(t.Context(), "zoo", "bar", clientv3.WithLease(resp.ID))
-	require.NoError(t, err)
-
-	_, err = kv.Put(t.Context(), "zoo", "bar1", clientv3.WithIgnoreLease())
-	require.NoError(t, err)
-
-	rr, rerr := kv.Get(t.Context(), "zoo")
-	require.NoError(t, rerr)
-	if len(rr.Kvs) != 1 {
-		t.Fatalf("len(rr.Kvs) expected 1, got %d", len(rr.Kvs))
-	}
-	if rr.Kvs[0].Lease != int64(resp.ID) {
-		t.Fatalf("lease expected %v, got %v", resp.ID, rr.Kvs[0].Lease)
 	}
 }
 
@@ -458,6 +394,81 @@ func TestKVCompact(t *testing.T) {
 	_, err = kv.Compact(ctx, 1000)
 	if err == nil || !errors.Is(err, rpctypes.ErrFutureRev) {
 		t.Fatalf("error got %v, want %v", err, rpctypes.ErrFutureRev)
+	}
+}
+
+// TestKVGetStreamCompactedError ensures GetStream surfaces the typed
+// rpctypes.ErrCompacted error from the server (matching Get's behavior),
+// rather than the raw gRPC status.
+func TestKVGetStreamCompactedError(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("RangeStream is not supported by the KV client adapter")
+	}
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clus.RandClient()
+	ctx := t.Context()
+
+	for i := 0; i < 5; i++ {
+		_, err := kv.Put(ctx, "foo", "bar")
+		require.NoError(t, err)
+	}
+	_, err := kv.Compact(ctx, 6)
+	require.NoError(t, err)
+
+	_, err = kv.Get(ctx, "foo", clientv3.WithRev(3))
+	require.ErrorIsf(t, err, rpctypes.ErrCompacted, "Get returned %T %v", err, err)
+
+	stream, err := kv.GetStream(ctx, "foo", clientv3.WithRev(3))
+	require.NoError(t, err)
+
+	_, err = clientv3.GetStreamToGetResponse(stream)
+	require.ErrorIsf(t, err, rpctypes.ErrCompacted, "GetStream returned %T %v", err, err)
+}
+
+// TestKVGetKeysOnlyWithCountOnly asserts that when a Range operation
+// with both KeysOnly and CountOnly are specified, CountOnly takes precedence.
+func TestKVGetKeysOnlyWithCountOnly(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clus.RandClient()
+	ctx := t.Context()
+
+	keySet := []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
+	for i, key := range keySet {
+		if _, err := kv.Put(ctx, key, ""); err != nil {
+			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
+		}
+	}
+	wresp, err := kv.Get(ctx, keySet[0])
+	if err != nil {
+		t.Fatalf("couldn't get key (%v)", err)
+	}
+	wheader := wresp.Header
+
+	opts := []clientv3.OpOption{
+		clientv3.WithFromKey(),
+		clientv3.WithCountOnly(),
+		clientv3.WithKeysOnly(),
+	}
+	resp, err := kv.Get(ctx, "", opts...)
+	if err != nil {
+		t.Fatalf("couldn't execute range with KeysOnly and CountOnly")
+	}
+	if !proto.Equal(wheader, resp.Header) {
+		t.Fatalf("header expected %+v, got %+v", wheader, resp.Header)
+	}
+	if int(resp.Count) != len(slices.Compact(keySet)) {
+		t.Fatalf("response count expected %d, got %d", len(keySet), resp.Count)
+	}
+	if len(resp.Kvs) > 0 {
+		t.Fatalf("response should contain CountOnly")
 	}
 }
 
@@ -780,7 +791,6 @@ func TestKVForLearner(t *testing.T) {
 	cfg := clientv3.Config{
 		Endpoints:   []string{learnerEp},
 		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	// this client only has endpoint of the learner member
 	cli, err := integration.NewClient(t, cfg)
@@ -853,7 +863,6 @@ func TestBalancerSupportLearner(t *testing.T) {
 	cfg := clientv3.Config{
 		Endpoints:   []string{learnerEp},
 		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	cli, err := integration.NewClient(t, cfg)
 	if err != nil {

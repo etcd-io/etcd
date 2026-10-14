@@ -85,7 +85,7 @@ func TestScanHistory(t *testing.T) {
 
 	e, _ = eh.scan("/foo/bar", true, 7)
 	if e != nil {
-		t.Fatalf("bad index shoud reuturn nil")
+		t.Fatalf("bad index should reuturn nil")
 	}
 }
 

@@ -39,6 +39,10 @@ const (
 	// owner: @chaochn47
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/18279
+	// TODO: with NonBlockingDefrag, most of a defrag no longer blocks this member, so the
+	// rationale for evacuating traffic via this gate is largely superseded. Revisit whether
+	// to deprecate/remove it once NonBlockingDefrag has enough soak time to confirm its
+	// stop-the-world catch-up phase reliably stays short in practice.
 	StopGRPCServiceOnDefrag featuregate.Feature = "StopGRPCServiceOnDefrag"
 	// TxnModeWriteWithSharedBuffer enables the write transaction to use a shared buffer in its readonly check operations.
 	// owner: @wilsonwang371
@@ -79,6 +83,17 @@ const (
 	// beta: v3.7
 	// main PR: https://github.com/etcd-io/etcd/pull/20589
 	FastLeaseKeepAlive featuregate.Feature = "FastLeaseKeepAlive"
+	// PriorityRequest enables certain kinds of requests(e.g. LeaseRevoke) having higher priority to be applied under overload conditions.
+	// owner: @silentred
+	// alpha: v3.7
+	// main PR: https://github.com/etcd-io/etcd/pull/20492
+	PriorityRequest featuregate.Feature = "PriorityRequest"
+	// NonBlockingDefrag enables non-blocking backend defragmentation: the bulk of the copy runs
+	// concurrently with live traffic using a read-only snapshot, followed by a short
+	// stop-the-world catch-up phase, instead of blocking all reads and writes for the whole copy.
+	// owner: @ahrtr
+	// beta: v3.8
+	NonBlockingDefrag featuregate.Feature = "NonBlockingDefrag"
 )
 
 var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
@@ -90,6 +105,8 @@ var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	LeaseCheckpointPersist:       {Default: false, PreRelease: featuregate.Alpha},
 	SetMemberLocalAddr:           {Default: false, PreRelease: featuregate.Alpha},
 	FastLeaseKeepAlive:           {Default: true, PreRelease: featuregate.Beta},
+	PriorityRequest:              {Default: false, PreRelease: featuregate.Alpha},
+	NonBlockingDefrag:            {Default: true, PreRelease: featuregate.Beta},
 }
 
 func NewDefaultServerFeatureGate(name string, lg *zap.Logger) featuregate.FeatureGate {

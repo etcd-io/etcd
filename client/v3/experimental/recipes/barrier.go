@@ -61,6 +61,6 @@ func (b *Barrier) Wait() error {
 		b.client,
 		b.key,
 		resp.Header.Revision+1,
-		[]mvccpb.Event_EventType{mvccpb.DELETE})
+		[]mvccpb.Event_EventType{mvccpb.Event_DELETE})
 	return err
 }

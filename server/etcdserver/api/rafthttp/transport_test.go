@@ -20,8 +20,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/xiang90/probing"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -38,31 +40,31 @@ func TestTransportSend(t *testing.T) {
 		ServerStats: stats.NewServerStats("", ""),
 		peers:       map[types.ID]Peer{types.ID(1): peer1, types.ID(2): peer2},
 	}
-	wmsgsIgnored := []raftpb.Message{
+	wmsgsIgnored := []*raftpb.Message{
 		// bad local message
-		{Type: raftpb.MsgBeat},
+		{Type: raftpb.MsgBeat.Enum()},
 		// bad remote message
-		{Type: raftpb.MsgProp, To: 3},
+		{Type: raftpb.MsgProp.Enum(), To: new(uint64(3))},
 	}
-	wmsgsTo1 := []raftpb.Message{
+	wmsgsTo1 := []*raftpb.Message{
 		// good message
-		{Type: raftpb.MsgProp, To: 1},
-		{Type: raftpb.MsgApp, To: 1},
+		{Type: raftpb.MsgProp.Enum(), To: new(uint64(1))},
+		{Type: raftpb.MsgApp.Enum(), To: new(uint64(1))},
 	}
-	wmsgsTo2 := []raftpb.Message{
+	wmsgsTo2 := []*raftpb.Message{
 		// good message
-		{Type: raftpb.MsgProp, To: 2},
-		{Type: raftpb.MsgApp, To: 2},
+		{Type: raftpb.MsgProp.Enum(), To: new(uint64(2))},
+		{Type: raftpb.MsgApp.Enum(), To: new(uint64(2))},
 	}
 	tr.Send(wmsgsIgnored)
 	tr.Send(wmsgsTo1)
 	tr.Send(wmsgsTo2)
 
-	if !reflect.DeepEqual(peer1.msgs, wmsgsTo1) {
-		t.Errorf("msgs to peer 1 = %+v, want %+v", peer1.msgs, wmsgsTo1)
+	if diff := cmp.Diff(wmsgsTo1, peer1.msgs, protocmp.Transform()); diff != "" {
+		t.Errorf("unexpected peer1 msgs (-want +got):\n%s", diff)
 	}
-	if !reflect.DeepEqual(peer2.msgs, wmsgsTo2) {
-		t.Errorf("msgs to peer 2 = %+v, want %+v", peer2.msgs, wmsgsTo2)
+	if diff := cmp.Diff(wmsgsTo2, peer2.msgs, protocmp.Transform()); diff != "" {
+		t.Errorf("unexpected peer2 msgs (-want +got):\n%s", diff)
 	}
 }
 
@@ -76,10 +78,10 @@ func TestTransportCutMend(t *testing.T) {
 
 	tr.CutPeer(types.ID(1))
 
-	wmsgsTo := []raftpb.Message{
+	wmsgsTo := []*raftpb.Message{
 		// good message
-		{Type: raftpb.MsgProp, To: 1},
-		{Type: raftpb.MsgApp, To: 1},
+		{Type: raftpb.MsgProp.Enum(), To: new(uint64(1))},
+		{Type: raftpb.MsgApp.Enum(), To: new(uint64(1))},
 	}
 
 	tr.Send(wmsgsTo)
@@ -90,8 +92,8 @@ func TestTransportCutMend(t *testing.T) {
 	tr.MendPeer(types.ID(1))
 
 	tr.Send(wmsgsTo)
-	if !reflect.DeepEqual(peer1.msgs, wmsgsTo) {
-		t.Errorf("msgs to peer 1 = %+v, want %+v", peer1.msgs, wmsgsTo)
+	if diff := cmp.Diff(wmsgsTo, peer1.msgs, protocmp.Transform()); diff != "" {
+		t.Errorf("unexpected peer1 msgs after mend (-want +got):\n%s", diff)
 	}
 }
 
@@ -196,7 +198,7 @@ func TestTransportErrorc(t *testing.T) {
 		t.Fatalf("received unexpected from errorc")
 	case <-time.After(10 * time.Millisecond):
 	}
-	tr.peers[1].send(raftpb.Message{})
+	tr.peers[1].send(&raftpb.Message{})
 
 	select {
 	case <-errorc:
