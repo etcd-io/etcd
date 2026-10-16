@@ -12,6 +12,8 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 ### Dependencies
 
 - Compile binaries using [go 1.26.9](https://github.com/etcd-io/etcd/pull/22555).
+- Bump [go.opentelemetry.io/otel/sdk, go.opentelemetry.io/otel/exporters/otlp/otlptrace and go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc to v1.45.0 to address GO-2026-6505](https://github.com/etcd-io/etcd/pull/22552).
+- Bump [golang.org/x/net to v0.61.0 to address GO-2026-6617, GO-2026-6612, GO-2026-6611 and GO-2026-6603](https://github.com/etcd-io/etcd/pull/22583).
 
 ---
 
