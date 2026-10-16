@@ -250,6 +250,10 @@ type Config struct {
 	// Note that cipher suites are prioritized in the given order.
 	CipherSuites []string `json:"cipher-suites"`
 
+	// CurvePreferences is a list of supported elliptic curves (TLS key exchange groups) between
+	// client/server and peers. If empty, Go's default selection is used.
+	CurvePreferences []string `json:"curve-preferences"`
+
 	// TlsMinVersion is the minimum accepted TLS version between client/server and peers.
 	//revive:disable-next-line:var-naming
 	TlsMinVersion string `json:"tls-min-version"`
@@ -692,6 +696,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.Var(flags.NewStringsValue(""), "peer-cert-allowed-cn", "Comma-separated list of allowed CNs for inter-peer TLS authentication.")
 	fs.Var(flags.NewStringsValue(""), "peer-cert-allowed-hostname", "Comma-separated list of allowed SAN hostnames for inter-peer TLS authentication.")
 	fs.Var(flags.NewStringsValue(""), "cipher-suites", "Comma-separated list of supported TLS cipher suites between client/server and peers (empty will be auto-populated by Go).")
+	fs.Var(flags.NewStringsValue(""), "curve-preferences", "Comma-separated list of supported elliptic curves between client/server and peers (empty will be auto-populated by Go).")
 	fs.BoolVar(&cfg.PeerTLSInfo.SkipClientSANVerify, "peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.")
 	fs.StringVar(&cfg.TlsMinVersion, "tls-min-version", string(tlsutil.TLSVersion12), "Minimum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3.")
 	fs.StringVar(&cfg.TlsMaxVersion, "tls-max-version", string(tlsutil.TLSVersionDefault), "Maximum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3 (empty defers to Go).")
@@ -908,6 +913,25 @@ func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
 		}
 		tls.CipherSuites = cs
 	}
+	return nil
+}
+
+func updateCurvePreferences(info *transport.TLSInfo, names []string) error {
+	if len(names) == 0 {
+		return nil
+	}
+	if len(info.CurvePreferences) > 0 {
+		return fmt.Errorf("TLSInfo.CurvePreferences is already specified (given %v)", names)
+	}
+	curveIDs := make([]tls.CurveID, 0, len(names))
+	for _, name := range names {
+		if id, ok := tlsutil.GetCurveID(name); ok {
+			curveIDs = append(curveIDs, id)
+			continue
+		}
+		return fmt.Errorf("unexpected TLS curve %q", name)
+	}
+	info.CurvePreferences = curveIDs
 	return nil
 }
 
@@ -1230,7 +1254,11 @@ func (cfg *Config) ClientSelfCert() (err error) {
 	if err != nil {
 		return err
 	}
-	return updateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites)
+	err = updateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites)
+	if err != nil {
+		return err
+	}
+	return updateCurvePreferences(&cfg.ClientTLSInfo, cfg.CurvePreferences)
 }
 
 func (cfg *Config) PeerSelfCert() (err error) {
@@ -1249,7 +1277,11 @@ func (cfg *Config) PeerSelfCert() (err error) {
 	if err != nil {
 		return err
 	}
-	return updateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites)
+	err = updateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites)
+	if err != nil {
+		return err
+	}
+	return updateCurvePreferences(&cfg.PeerTLSInfo, cfg.CurvePreferences)
 }
 
 // UpdateDefaultClusterFromName updates cluster advertise URLs with, if available, default host,
