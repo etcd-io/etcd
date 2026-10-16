@@ -243,7 +243,9 @@ func (s *EtcdServer) rangeStream(ctx context.Context, r *pb.RangeRequest, rs pb.
 
 		var nextKey []byte
 		if resp.More {
-			nextKey = append(resp.Kvs[len(resp.Kvs)-1].Key, '\x00')
+			key := make([]byte, len(resp.Kvs[len(resp.Kvs)-1].Key))
+			copy(key, resp.Kvs[len(resp.Kvs)-1].Key)
+			nextKey = append(key, '\x00')
 		}
 		out := &pb.RangeResponse{Kvs: resp.Kvs}
 		done := !resp.More || count == totalLimit
