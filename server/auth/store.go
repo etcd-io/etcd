@@ -177,6 +177,10 @@ type AuthStore interface {
 	// WithRoot generates and installs a token that can be used as a root credential
 	WithRoot(ctx context.Context) context.Context
 
+	// RenewToken re-issues a valid token for an expired or active token
+	// if the token is authentic and the user still exists.
+	RenewToken(ctx context.Context, token string) (string, error)
+
 	// HasRole checks that user has role
 	HasRole(user, role string) bool
 
@@ -187,6 +191,7 @@ type AuthStore interface {
 type TokenProvider interface {
 	info(ctx context.Context, token string, revision uint64) (*AuthInfo, bool)
 	assign(ctx context.Context, username string, revision uint64) (string, error)
+	renew(ctx context.Context, token string, revision uint64) (string, error)
 	enable()
 	disable()
 
@@ -1194,6 +1199,36 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 
 	// use "mdIncomingKey{}" since it's called from local etcdserver
 	return metadata.NewIncomingContext(ctx, tokenMD)
+}
+
+func (as *authStore) RenewToken(ctx context.Context, token string) (string, error) {
+	if !as.IsAuthEnabled() {
+		return token, nil
+	}
+
+	token = strings.TrimPrefix(token, "Bearer ")
+	newToken, err := as.tokenProvider.renew(ctx, token, as.Revision())
+	if err != nil {
+		return "", err
+	}
+
+	ai, ok := as.tokenProvider.info(ctx, newToken, as.Revision())
+	if !ok || ai == nil {
+		return "", ErrInvalidAuthToken
+	}
+
+	if as.be != nil {
+		tx := as.be.ReadTx()
+		tx.RLock()
+		u := tx.UnsafeGetUser(ai.Username)
+		tx.RUnlock()
+		if u == nil {
+			as.tokenProvider.invalidateUser(ai.Username)
+			return "", ErrUserNotFound
+		}
+	}
+
+	return newToken, nil
 }
 
 func (as *authStore) HasRole(user, role string) bool {

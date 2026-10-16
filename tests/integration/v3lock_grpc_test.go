@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	lockpb "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -66,5 +67,66 @@ func TestV3LockLockWaiter(t *testing.T) {
 	case <-time.After(200 * time.Millisecond):
 		t.Fatalf("waiter did not lock after unlock")
 	case <-lockc:
+	}
+}
+
+func TestV3LockLockAuthTokenExpiration(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:      1,
+		AuthToken: integration.DefaultTokenJWT,
+	})
+	defer clus.Terminate(t)
+
+	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
+
+	rootc1, cerr1 := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, cerr1)
+	defer rootc1.Close()
+
+	authResp, aerr := rootc1.Authenticate(t.Context(), "root", "123")
+	require.NoError(t, aerr)
+
+	rootc2, cerr2 := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Token:     authResp.Token,
+	})
+	require.NoError(t, cerr2)
+	defer rootc2.Close()
+
+	lease1, err1 := rootc1.Grant(t.Context(), 30)
+	require.NoError(t, err1)
+	lease2, err2 := rootc2.Grant(t.Context(), 30)
+	require.NoError(t, err2)
+
+	lc1 := integration.ToGRPC(rootc1).Lock
+	lc2 := integration.ToGRPC(rootc2).Lock
+
+	req1 := &lockpb.LockRequest{Name: []byte("foo"), Lease: int64(lease1.ID)}
+	l1, lerr1 := lc1.Lock(t.Context(), req1)
+	require.NoError(t, lerr1)
+
+	lockc := make(chan error, 1)
+	go func() {
+		req2 := &lockpb.LockRequest{Name: []byte("foo"), Lease: int64(lease2.ID)}
+		_, lerr2 := lc2.Lock(t.Context(), req2)
+		lockc <- lerr2
+	}()
+
+	// Wait 3 seconds so the JWT auth token (ttl=2s) expires while waiter is blocked in Lock
+	time.Sleep(3 * time.Second)
+
+	_, uerr := lc1.Unlock(t.Context(), &lockpb.UnlockRequest{Key: l1.Key})
+	require.NoError(t, uerr)
+
+	select {
+	case err := <-lockc:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatalf("lock waiter timed out after unlock")
 	}
 }
