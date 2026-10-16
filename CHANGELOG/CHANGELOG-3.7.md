@@ -5,6 +5,10 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 ## v3.7.3 (TBC)
 
+### etcd server
+
+- [Fix data race in keys-only `RangeStream`](https://github.com/etcd-io/etcd/pull/22601)
+
 ### Deprecations
 
 - Deprecated [NewJournalWriter in client/pkg/v3/logutil](https://github.com/etcd-io/etcd/pull/22530). It will be removed in v3.8, so that `client/pkg/v3` no longer depends on `github.com/coreos/go-systemd/v22`.
