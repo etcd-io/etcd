@@ -74,6 +74,29 @@ var (
 			{Choice: KubernetesCreate, Weight: 60},
 		},
 	}
+
+	// KubernetesEvents models the events resource, which is NOT served from the
+	// apiserver watch cache. Request handlers watch etcd directly, so watches use
+	// ProgressNotify=false (the direct/uncached path).
+	KubernetesEvents Traffic = kubernetesTraffic{
+		averageKeyCount: 10,
+		resource:        "events",
+		namespace:       "default",
+		// Please keep the sum of weights equal 100.
+		readChoices: []random.ChoiceWeight[KubernetesRequestType]{
+			{Choice: KubernetesGet, Weight: 5},
+			{Choice: KubernetesGetStale, Weight: 2},
+			{Choice: KubernetesGetRev, Weight: 8},
+			{Choice: KubernetesListStale, Weight: 5},
+			{Choice: KubernetesListAndWatch, Weight: 80},
+		},
+		// Please keep the sum of weights equal 100.
+		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
+			{Choice: KubernetesUpdate, Weight: 90},
+			{Choice: KubernetesDelete, Weight: 5},
+			{Choice: KubernetesCreate, Weight: 5},
+		},
+	}
 )
 
 type kubernetesTraffic struct {
@@ -82,6 +105,16 @@ type kubernetesTraffic struct {
 	namespace       string
 	readChoices     []random.ChoiceWeight[KubernetesRequestType]
 	writeChoices    []random.ChoiceWeight[KubernetesRequestType]
+}
+
+// progressNotify reports whether this resource's List+Watch requests ProgressNotify.
+// It is derived from the resource: cached resources are watched via the apiserver
+// watch cache, whose internal etcd watch sets ProgressNotify=true, while uncached
+// resources (events) are watched directly by request handlers, which cannot set it.
+// https://github.com/kubernetes/kubernetes/blob/2016fab3085562b4132e6d3774b6ded5ba9939fd/staging/src/k8s.io/apiserver/pkg/storage/etcd3/watcher.go
+func (t kubernetesTraffic) progressNotify() bool {
+	// The events resource disables the watch cache in the apiserver.
+	return t.resource != "events"
 }
 
 func (t kubernetesTraffic) ExpectUniqueRevision() bool {
@@ -140,6 +173,7 @@ func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, c *client.Recording
 	runWatchLoop(ctx, c, p, watchLoopConfig{
 		key:           "/registry/" + t.resource + "/",
 		requireLeader: true,
+		recursive:     true,
 	})
 }
 
@@ -267,8 +301,11 @@ func (t kubernetesTraffic) Watch(ctx context.Context, c *client.RecordingClient,
 	// Kubernetes issues Watch requests by requiring a leader to exist
 	// in the cluster:
 	// https://github.com/kubernetes/kubernetes/blob/2016fab3085562b4132e6d3774b6ded5ba9939fd/staging/src/k8s.io/apiserver/pkg/storage/etcd3/store.go#L872
+	// ProgressNotify depends on whether the resource is served from the watch
+	// cache (see kubernetesTraffic.progressNotify). PrevKV is always set, matching
+	// the apiserver, which passes clientv3.WithPrevKV() unconditionally.
 	watchCtx = clientv3.WithRequireLeader(watchCtx)
-	for e := range c.Watch(watchCtx, keyPrefix, revision, true, true, true) {
+	for e := range c.Watch(watchCtx, keyPrefix, revision, true, t.progressNotify(), true) {
 		s.Update(e)
 	}
 	limiter.Wait(ctx)
