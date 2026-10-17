@@ -339,7 +339,6 @@ func TestProcessMessagesOrder(t *testing.T) {
 		return out
 	}
 
-	// processMessages currently returns the kept messages in reverse Ready order, see https://github.com/etcd-io/etcd/issues/22483.
 	tests := []struct {
 		name         string
 		messages     []*raftpb.Message
@@ -348,22 +347,22 @@ func TestProcessMessagesOrder(t *testing.T) {
 		{
 			name:         "MsgApp",
 			messages:     []*raftpb.Message{app(peer2, 10), app(peer2, 11), app(peer2, 12), app(peer3, 10), app(peer5, 10)},
-			wantMessages: []msg{{raftpb.MsgApp, peer3, 10}, {raftpb.MsgApp, peer2, 12}, {raftpb.MsgApp, peer2, 11}, {raftpb.MsgApp, peer2, 10}},
+			wantMessages: []msg{{raftpb.MsgApp, peer2, 10}, {raftpb.MsgApp, peer2, 11}, {raftpb.MsgApp, peer2, 12}, {raftpb.MsgApp, peer3, 10}},
 		},
 		{
 			name:         "MsgAppResp",
 			messages:     []*raftpb.Message{resp(lead, 1), app(peer2, 10), resp(lead, 2), resp(lead, 3)},
-			wantMessages: []msg{{raftpb.MsgAppResp, lead, 3}, {raftpb.MsgApp, peer2, 10}},
+			wantMessages: []msg{{raftpb.MsgApp, peer2, 10}, {raftpb.MsgAppResp, lead, 3}},
 		},
 		{
 			name:         "MsgAppResp to different peers",
 			messages:     []*raftpb.Message{resp(lead, 1), resp(peer3, 2), app(peer2, 10), resp(peer2, 3)},
-			wantMessages: []msg{{raftpb.MsgAppResp, peer2, 3}, {raftpb.MsgApp, peer2, 10}},
+			wantMessages: []msg{{raftpb.MsgApp, peer2, 10}, {raftpb.MsgAppResp, peer2, 3}},
 		},
 		{
 			name:         "mixed",
 			messages:     []*raftpb.Message{app(peer2, 10), app(peer2, 11), app(peer2, 12), resp(lead, 1), resp(lead, 2), app(peer5, 10)},
-			wantMessages: []msg{{raftpb.MsgAppResp, lead, 2}, {raftpb.MsgApp, peer2, 12}, {raftpb.MsgApp, peer2, 11}, {raftpb.MsgApp, peer2, 10}},
+			wantMessages: []msg{{raftpb.MsgApp, peer2, 10}, {raftpb.MsgApp, peer2, 11}, {raftpb.MsgApp, peer2, 12}, {raftpb.MsgAppResp, lead, 2}},
 		},
 	}
 	for _, tt := range tests {
