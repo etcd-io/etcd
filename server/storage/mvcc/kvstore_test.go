@@ -711,6 +711,36 @@ func TestHashKVZeroRevision(t *testing.T) {
 	}
 }
 
+// TestHashConcurrentWithRestore ensures that Hash does not race with Restore
+// replacing the backend. The race detector reports a failure if it does.
+func TestHashConcurrentWithRestore(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+
+	newBackend, _ := betesting.NewDefaultTmpBackend(t)
+	s2 := NewStore(zaptest.NewLogger(t), newBackend, &lease.FakeLessor{}, StoreConfig{})
+	s2.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
+	s2.Close()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if _, _, err := s.HashStorage().Hash(); err != nil {
+			t.Error(err)
+		}
+	}()
+	err := s.Restore(newBackend)
+	wg.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cleanup(s, newBackend)
+	b.Close()
+}
+
 func TestTxnPut(t *testing.T) {
 	// assign arbitrary size
 	bytesN := 30
