@@ -8,6 +8,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 ### etcd server
 
 - [Fix data race in keys-only `RangeStream`](https://github.com/etcd-io/etcd/pull/22601)
+- Fix [performance regression caused by the leader sending `MsgApp` messages to followers in reverse order](https://github.com/etcd-io/etcd/pull/22607)
 
 ### Deprecations
 
