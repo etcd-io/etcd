@@ -96,10 +96,10 @@ func rangeLimit(r *pb.RangeRequest) int64 {
 
 func IsDefaultOrdering(sortTarget pb.RangeRequest_SortTarget, sortOrder pb.RangeRequest_SortOrder) bool {
 	// Since current mvcc.Range implementation returns results
-	// sorted by keys in lexiographically ascending order,
-	// don't re-sort when target is 'KEY' and order is ASCEND
-	return sortOrder == pb.RangeRequest_NONE ||
-		(sortTarget == pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_ASCEND)
+	// sorted by keys in lexicographically ascending order,
+	// don't re-sort when target is 'KEY' and order is NONE or ASCEND.
+	return sortTarget == pb.RangeRequest_KEY &&
+		(sortOrder == pb.RangeRequest_NONE || sortOrder == pb.RangeRequest_ASCEND)
 }
 
 func HasRevisionFilters(r *pb.RangeRequest) bool {
