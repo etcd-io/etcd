@@ -18,6 +18,7 @@ Previous change logs can be found at [CHANGELOG-3.7](https://github.com/etcd-io/
 ### Package `clientv3`
 
 - [Emit a single resolver update in EtcdManualResolver.Build](https://github.com/etcd-io/etcd/pull/22133) to avoid spurious "operation was canceled" dial warnings.
+- [Add a timeout for concurrent session creation.](https://github.com/etcd-io/etcd/pull/16385)
 
 ### Dependencies
 
