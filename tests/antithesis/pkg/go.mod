@@ -2,6 +2,6 @@ module go.etcd.io/etcd/tests/v3/pkg
 
 go 1.27
 
-toolchain go1.27.2
+toolchain go1.27.3
 
 require github.com/antithesishq/antithesis-sdk-go v0.8.0
