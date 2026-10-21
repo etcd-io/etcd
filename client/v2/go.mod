@@ -2,7 +2,7 @@ module go.etcd.io/etcd/client/v2
 
 go 1.26.0
 
-toolchain go1.26.9
+toolchain go1.26.10
 
 require (
 	github.com/json-iterator/go v1.1.11
