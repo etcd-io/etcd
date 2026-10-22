@@ -40,14 +40,16 @@ type encoder struct {
 	bw *ioutil.PageWriter
 
 	crc       hash.Hash32
+	offset    int64
 	buf       []byte
 	uint64buf []byte
 }
 
 func newEncoder(w io.Writer, prevCrc uint32, pageOffset int) *encoder {
 	return &encoder{
-		bw:  ioutil.NewPageWriter(w, walPageBytes, pageOffset),
-		crc: crc.New(prevCrc, crcTable),
+		bw:     ioutil.NewPageWriter(w, walPageBytes, pageOffset),
+		crc:    crc.New(prevCrc, crcTable),
+		offset: int64(pageOffset),
 		// 1MB buffer
 		buf:       make([]byte, 1024*1024),
 		uint64buf: make([]byte, 8),
@@ -94,7 +96,17 @@ func (e *encoder) encode(rec *walpb.Record) error {
 
 	data, lenField := prepareDataWithPadding(data)
 
-	return write(e.bw, e.uint64buf, data, lenField)
+	if err := write(e.bw, e.uint64buf, data, lenField); err != nil {
+		return err
+	}
+	e.offset += int64(frameSizeBytes + len(data))
+	return nil
+}
+
+func (e *encoder) Offset() int64 {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.offset
 }
 
 func encodeFrameSize(dataBytes int) (lenField uint64, padBytes int) {

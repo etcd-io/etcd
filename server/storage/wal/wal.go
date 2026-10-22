@@ -16,6 +16,7 @@ package wal
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"hash/crc32"
@@ -33,6 +34,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -92,6 +94,13 @@ type WAL struct {
 
 	locks []*fileutil.LockedFile // the locked files the WAL holds (the name is increasing)
 	fp    *filePipeline
+}
+
+// EntryRef identifies a raft entry persisted in the WAL.
+type EntryRef struct {
+	RecordRef
+	Index uint64
+	Term  uint64
 }
 
 // Create creates a WAL ready for appending records. The given metadata is
@@ -593,6 +602,120 @@ func (w *WAL) ReadAll() (metadata []byte, state *raftpb.HardState, ents []*raftp
 	return metadata, state, ents, err
 }
 
+// ReadAllEntries replays the WAL without retaining all entry payloads. The
+// callback receives each validated entry and its segment offset.
+func (w *WAL) ReadAllEntries(visit func(*raftpb.Entry, EntryRef) error) (metadata []byte, state *raftpb.HardState, err error) {
+	state = &raftpb.HardState{}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.decoder == nil {
+		return nil, state, ErrDecoderNotFound
+	}
+	decoder := w.decoder
+	rec := &walpb.Record{}
+	var match bool
+	for err = decoder.Decode(rec); err == nil; err = decoder.Decode(rec) {
+		switch rec.GetType() {
+		case EntryType:
+			e := MustUnmarshalEntry(rec.Data)
+			w.enti = e.GetIndex()
+			if err = visit(e, EntryRef{RecordRef: decoder.LastRef(), Index: e.GetIndex(), Term: e.GetTerm()}); err != nil {
+				return nil, state, err
+			}
+		case StateType:
+			state = MustUnmarshalState(rec.Data)
+		case MetadataType:
+			if metadata != nil && !bytes.Equal(metadata, rec.Data) {
+				state.Reset()
+				return nil, state, ErrMetadataConflict
+			}
+			metadata = rec.Data
+		case CrcType:
+			crc := decoder.LastCRC()
+			if crc != 0 && rec.Validate(crc) != nil {
+				state.Reset()
+				return nil, state, ErrCRCMismatch
+			}
+			decoder.UpdateCRC(rec.GetCrc())
+		case SnapshotType:
+			var snap walpb.Snapshot
+			pbutil.MustUnmarshalMessage(&snap, rec.Data)
+			if snap.GetIndex() == w.start.GetIndex() {
+				if snap.GetTerm() != w.start.GetTerm() {
+					state.Reset()
+					return nil, state, ErrSnapshotMismatch
+				}
+				match = true
+			}
+		default:
+			state.Reset()
+			return nil, state, fmt.Errorf("unexpected block type %d", rec.Type)
+		}
+	}
+	if w.tail() == nil {
+		if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+			state.Reset()
+			return nil, state, err
+		}
+	} else {
+		if !errors.Is(err, io.EOF) {
+			state.Reset()
+			return nil, state, err
+		}
+		if _, err = w.tail().Seek(w.decoder.LastOffset(), io.SeekStart); err != nil {
+			return nil, state, err
+		}
+		if err = fileutil.ZeroToEnd(w.tail().File); err != nil {
+			return nil, state, err
+		}
+	}
+	err = nil
+	if !match {
+		err = ErrSnapshotNotFound
+	}
+	if w.readClose != nil {
+		_ = w.readClose()
+		w.readClose = nil
+	}
+	w.start = &walpb.Snapshot{}
+	w.metadata = metadata
+	if w.tail() != nil {
+		w.encoder, err = newFileEncoder(w.tail().File, w.decoder.LastCRC())
+		if err != nil {
+			return nil, state, err
+		}
+	}
+	w.decoder = nil
+	return metadata, state, err
+}
+
+// ReadEntry reads one entry record using its indexed file offset.
+func ReadEntry(ref EntryRef) (*raftpb.Entry, error) {
+	f, err := os.Open(ref.Path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	var header [frameSizeBytes]byte
+	if _, err = f.ReadAt(header[:], ref.Offset); err != nil {
+		return nil, err
+	}
+	frame := int64(binary.LittleEndian.Uint64(header[:]))
+	recBytes, _ := decodeFrameSize(frame)
+	data := make([]byte, recBytes)
+	if _, err = f.ReadAt(data, ref.Offset+frameSizeBytes); err != nil {
+		return nil, err
+	}
+	var rec walpb.Record
+	if err = proto.Unmarshal(data, &rec); err != nil {
+		return nil, err
+	}
+	if rec.GetType() != EntryType {
+		return nil, fmt.Errorf("record at %s:%d is not an entry", ref.Path, ref.Offset)
+	}
+	return MustUnmarshalEntry(rec.GetData()), nil
+}
+
 // ValidSnapshotEntries returns all the valid snapshot entries in the wal logs in the given directory.
 // Snapshot entries are valid if their index is less than or equal to the most recent committed hardstate.
 func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]*walpb.Snapshot, error) {
@@ -956,12 +1079,19 @@ func (w *WAL) saveState(s *raftpb.HardState) error {
 }
 
 func (w *WAL) Save(st *raftpb.HardState, ents []*raftpb.Entry) error {
+	_, err := w.SaveEntries(st, ents)
+	return err
+}
+
+// SaveEntries is Save plus the on-disk locations of the entries written.
+func (w *WAL) SaveEntries(st *raftpb.HardState, ents []*raftpb.Entry) ([]EntryRef, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	refs := make([]EntryRef, 0, len(ents))
 
 	// short cut, do not call sync
 	if raft.IsEmptyHardState(st) && len(ents) == 0 {
-		return nil
+		return nil, nil
 	}
 	if st == nil {
 		st = &raftpb.HardState{}
@@ -974,29 +1104,31 @@ func (w *WAL) Save(st *raftpb.HardState, ents []*raftpb.Entry) error {
 
 	// TODO(xiangli): no more reference operator
 	for i := range ents {
+		refOffset := w.encoder.Offset()
 		if err := w.saveEntry(ents[i]); err != nil {
-			return err
+			return nil, err
 		}
+		refs = append(refs, EntryRef{RecordRef: RecordRef{Path: w.tail().Name(), Offset: refOffset}, Index: ents[i].GetIndex(), Term: ents[i].GetTerm()})
 	}
 	if err := w.saveState(st); err != nil {
-		return err
+		return nil, err
 	}
 
 	curOff, err := w.tail().Seek(0, io.SeekCurrent)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if curOff < SegmentSizeBytes {
 		if mustSync {
 			// gofail: var walBeforeSync struct{}
 			err = w.sync()
 			// gofail: var walAfterSync struct{}
-			return err
+			return refs, err
 		}
-		return nil
+		return refs, nil
 	}
 
-	return w.cut()
+	return refs, w.cut()
 }
 
 func (w *WAL) SaveSnapshot(e *walpb.Snapshot) error {

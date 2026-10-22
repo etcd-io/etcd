@@ -39,8 +39,15 @@ const frameSizeBytes = 8
 type Decoder interface {
 	Decode(rec *walpb.Record) error
 	LastOffset() int64
+	LastRef() RecordRef
 	LastCRC() uint32
 	UpdateCRC(prevCrc uint32)
+}
+
+// RecordRef identifies a record inside a WAL segment.
+type RecordRef struct {
+	Path   string
+	Offset int64
 }
 
 type decoder struct {
@@ -49,6 +56,7 @@ type decoder struct {
 
 	// lastValidOff file offset following the last valid decoded record
 	lastValidOff int64
+	lastRef      RecordRef
 	crc          hash.Hash32
 
 	// continueOnCrcError - causes the decoder to continue working even in case of crc mismatch.
@@ -91,6 +99,7 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 	}
 
 	fileBufReader := d.brs[0]
+	recordOffset := d.lastValidOff
 	l, err := readInt64(fileBufReader)
 	if errors.Is(err, io.EOF) || (err == nil && l == 0) {
 		// hit end of file or preallocated space
@@ -150,6 +159,7 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 		}
 	}
 	// record decoded as valid; point last valid offset to end of record
+	d.lastRef = RecordRef{Path: fileBufReader.FileInfo().Name(), Offset: recordOffset}
 	d.lastValidOff += frameSizeBytes + recBytes + padBytes
 	return nil
 }
@@ -211,6 +221,8 @@ func (d *decoder) LastCRC() uint32 {
 }
 
 func (d *decoder) LastOffset() int64 { return d.lastValidOff }
+
+func (d *decoder) LastRef() RecordRef { return d.lastRef }
 
 func MustUnmarshalEntry(d []byte) *raftpb.Entry {
 	var e raftpb.Entry
