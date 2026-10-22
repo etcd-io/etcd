@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.16 (TBC)
+## v3.6.17 (TBC)
+
+---
+
+## v3.6.16 (2026-10-22)
 
 ### etcd server
 
@@ -16,9 +20,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ### Dependencies
 
-- Compile binaries using [go 1.26.9](https://github.com/etcd-io/etcd/pull/22556).
+- Compile binaries using [go 1.26.10](https://github.com/etcd-io/etcd/pull/22631).
 - Bump [go.opentelemetry.io/otel/sdk, go.opentelemetry.io/otel/exporters/otlp/otlptrace and go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc to v1.45.0 to address GO-2026-6505](https://github.com/etcd-io/etcd/pull/22554).
 - Bump [golang.org/x/net to v0.61.0 to address GO-2026-6617, GO-2026-6612, GO-2026-6611 and GO-2026-6603](https://github.com/etcd-io/etcd/pull/22590).
+- Bump [bump github.com/klauspost/compress from v1.17.9 to v1.18.7 to address CVE-2026-63209](https://github.com/etcd-io/etcd/pull/22647).
 
 ---
 
