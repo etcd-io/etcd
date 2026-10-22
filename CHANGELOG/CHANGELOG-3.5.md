@@ -8,6 +8,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### etcd server
 
+- Fix [data race between `Hash` and `Restore` in the MVCC store](https://github.com/etcd-io/etcd/pull/22640)
 - [Fix fsync snap directory when saving a received snapshot db](https://github.com/etcd-io/etcd/pull/22472)
 
 ### Dependencies
