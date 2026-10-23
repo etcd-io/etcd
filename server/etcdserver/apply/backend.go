@@ -75,7 +75,10 @@ func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.Com
 		return nil, ch, nil, err
 	}
 	// get the current revision. which key to get is not important.
-	rr, _ := a.options.KV.Range(ctx, []byte("compaction"), nil, mvcc.RangeOptions{})
+	rr, rerr := a.options.KV.Range(ctx, []byte("compaction"), nil, mvcc.RangeOptions{})
+	if rerr != nil {
+		return nil, ch, nil, rerr
+	}
 	resp.Header.Revision = rr.Rev
 	return resp, ch, trace, err
 }

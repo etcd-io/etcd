@@ -2277,9 +2277,11 @@ func (s *EtcdServer) monitorCompactHash() {
 		return
 	}
 	t := s.Cfg.CompactHashCheckTime
+	ticker := time.NewTicker(t)
+	defer ticker.Stop()
 	for {
 		select {
-		case <-time.After(t):
+		case <-ticker.C:
 		case <-s.stopping:
 			lg := s.Logger()
 			lg.Info("server has stopped; stopping compact hash's monitor")
@@ -2335,9 +2337,11 @@ func (s *EtcdServer) monitorDowngrade() {
 	if t == 0 {
 		return
 	}
+	ticker := time.NewTicker(t)
+	defer ticker.Stop()
 	for {
 		select {
-		case <-time.After(t):
+		case <-ticker.C:
 		case <-s.stopping:
 			return
 		}
