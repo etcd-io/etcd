@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,6 +27,7 @@ import (
 
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/raft/v3/raftpb"
@@ -139,4 +141,31 @@ type syncHandler struct {
 func (sh *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sh.h.ServeHTTP(w, r)
 	sh.ch <- struct{}{}
+}
+
+func TestSnapshotHandlerNilSnapshot(t *testing.T) {
+	d := t.TempDir()
+	r := &fakeRaft{}
+	tr := &Transport{pipelineRt: &http.Transport{}, ClusterID: types.ID(1), Raft: r}
+	h := newSnapshotHandler(tr, r, snap.New(zaptest.NewLogger(t), d), types.ID(1))
+
+	msg := &raftpb.Message{Type: raftpb.MsgSnap.Enum(), From: new(uint64(1)), To: new(uint64(2))}
+
+	buf := new(bytes.Buffer)
+	enc := &messageEncoder{w: buf}
+	if err := enc.encode(msg); err != nil {
+		t.Fatalf("failed to encode message: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, RaftSnapshotPrefix, buf)
+	req.Header.Set("X-Server-From", "1")
+	req.Header.Set("X-Server-Version", version.Version)
+	req.Header.Set("X-Etcd-Cluster-ID", "1")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rec.Code)
+	}
 }
