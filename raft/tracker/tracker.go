@@ -159,6 +159,14 @@ func (p *ProgressTracker) IsSingleton() bool {
 	return len(p.Voters[0]) == 1 && len(p.Voters[1]) == 0
 }
 
+// IsVoter returns true if (and only if) id is a voting member of the current
+// configuration, i.e. it is in either half of a joint configuration.
+func (p *ProgressTracker) IsVoter(id uint64) bool {
+	_, ok0 := p.Voters[0][id]
+	_, ok1 := p.Voters[1][id]
+	return ok0 || ok1
+}
+
 type matchAckIndexer map[uint64]*Progress
 
 var _ quorum.AckedIndexer = matchAckIndexer(nil)
