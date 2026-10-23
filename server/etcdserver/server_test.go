@@ -56,6 +56,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
@@ -699,6 +700,8 @@ func TestSnapshotOrdering(t *testing.T) {
 		SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries,
 		ServerFeatureGate:      features.NewDefaultServerFeatureGate("test", lg),
 	}
+	alarmStore, err := v3alarm.NewAlarmStore(lg, schema.NewAlarmBackend(lg, be))
+	require.NoError(t, err)
 
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -709,6 +712,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		cluster:      cl,
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
+		alarmStore:   alarmStore,
 	}
 
 	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.StoreConfig{})
@@ -786,6 +790,8 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		raftStorage: rs,
 	})
 	ci := cindex.NewConsistentIndex(be)
+	alarmStore, err := v3alarm.NewAlarmStore(lg, schema.NewAlarmBackend(lg, be))
+	require.NoError(t, err)
 	s := &EtcdServer{
 		lgMu: new(sync.RWMutex),
 		lg:   lg,
@@ -804,6 +810,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		lessor:            &lease.FakeLessor{},
 		uberApply:         uberApplierMock{},
 		authStore:         auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 1),
+		alarmStore:        alarmStore,
 	}
 
 	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.StoreConfig{})
