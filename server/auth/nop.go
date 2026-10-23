@@ -32,6 +32,10 @@ func (t *tokenNop) assign(ctx context.Context, username string, revision uint64)
 	return "", ErrAuthFailed
 }
 
+func (t *tokenNop) renew(ctx context.Context, token string, revision uint64) (string, error) {
+	return "", ErrAuthFailed
+}
+
 func newTokenProviderNop() (*tokenNop, error) {
 	return &tokenNop{}, nil
 }
