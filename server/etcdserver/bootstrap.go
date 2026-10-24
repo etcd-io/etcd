@@ -625,6 +625,7 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 
 		// discard the previously uncommitted entries
 		bwal.ents = bwal.CommitedEntries()
+		bwal.fillBackendAheadGap()
 		entries := bwal.NewConfigChangeEntries()
 		// force commit config change entries
 		bwal.AppendAndCommitEntries(entries)
@@ -759,6 +760,34 @@ func (wal *bootstrappedWAL) NewConfigChangeEntries() []*raftpb.Entry {
 		wal.st.GetTerm(),
 		wal.st.GetCommit(),
 	)
+}
+
+func (wal *bootstrappedWAL) fillBackendAheadGap() {
+	var lastIndex uint64
+	if len(wal.ents) > 0 {
+		lastIndex = wal.ents[len(wal.ents)-1].GetIndex()
+	} else {
+		lastIndex = wal.snapshot.GetMetadata().GetIndex()
+	}
+	commit := wal.st.GetCommit()
+	if commit <= lastIndex {
+		return
+	}
+	wal.lg.Info(
+		"backend consistent index is ahead of the WAL, filling the gap with empty entries",
+		zap.Uint64("last-wal-entry-index", lastIndex),
+		zap.Uint64("commit-index", commit),
+		zap.Uint64("number-of-filled-entries", commit-lastIndex),
+	)
+	var gapEnts []*raftpb.Entry
+	for idx := lastIndex + 1; idx <= commit; idx++ {
+		gapEnts = append(gapEnts, &raftpb.Entry{
+			Type:  raftpb.EntryNormal.Enum(),
+			Term:  new(wal.st.GetTerm()),
+			Index: new(idx),
+		})
+	}
+	wal.AppendAndCommitEntries(gapEnts)
 }
 
 func (wal *bootstrappedWAL) AppendAndCommitEntries(ents []*raftpb.Entry) {

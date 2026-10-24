@@ -34,8 +34,10 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -292,4 +294,92 @@ func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotI
 	schema.CreateMetaBucket(be.BatchTx())
 	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), 1, 1)
 	return be.Close()
+}
+
+func TestBootstrapWALFromSnapshotBackendAheadOfWAL(t *testing.T) {
+	dataDir, err := createDataDir(t)
+	require.NoError(t, err)
+
+	cfg := config.ServerConfig{
+		Logger:          zaptest.NewLogger(t),
+		DataDir:         dataDir,
+		ForceNewCluster: true,
+	}
+
+	var ents []*raftpb.Entry
+	for idx := uint64(28); idx <= 31; idx++ {
+		ents = append(ents, &raftpb.Entry{
+			Type:  raftpb.EntryNormal.Enum(),
+			Data:  []byte("foo"),
+			Term:  new(uint64(2)),
+			Index: new(idx),
+		})
+	}
+
+	metadata := pbutil.MustMarshalMessage(
+		&etcdserverpb.Metadata{
+			NodeID:    new(uint64(1)),
+			ClusterID: new(uint64(1)),
+		},
+	)
+	w, err := wal.Create(cfg.Logger, cfg.WALDir(), metadata)
+	require.NoError(t, err)
+	snapshot := &raftpb.Snapshot{
+		Metadata: &raftpb.SnapshotMetadata{
+			ConfState: &raftpb.ConfState{Voters: []uint64{1, 2, 3}},
+			Index:     new(uint64(27)),
+			Term:      new(uint64(2)),
+		},
+	}
+	require.NoError(t, w.SaveSnapshot(&walpb.Snapshot{
+		Index:     snapshot.Metadata.Index,
+		Term:      snapshot.Metadata.Term,
+		ConfState: snapshot.Metadata.ConfState,
+	}))
+	err = w.Save(&raftpb.HardState{Term: new(uint64(2)), Commit: new(uint64(28))}, ents)
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+
+	bwal := bootstrapWALFromSnapshot(cfg, snapshot, cindex.NewFakeConsistentIndex(49))
+
+	allEnts := bwal.ents
+	require.NotEmpty(t, allEnts)
+	for i := 1; i < len(allEnts); i++ {
+		require.Equalf(t, allEnts[i-1].GetIndex()+1, allEnts[i].GetIndex(), "entries must be contiguous at position %d", i)
+	}
+	require.Equal(t, allEnts[len(allEnts)-1].GetIndex(), bwal.st.GetCommit(), "commit index must not exceed the last entry index")
+
+	var fillerCount int
+	for _, e := range allEnts {
+		if e.GetIndex() >= 32 && e.GetIndex() <= 49 {
+			fillerCount++
+			require.Equal(t, raftpb.EntryNormal, e.GetType())
+			require.Empty(t, e.Data)
+		}
+	}
+	require.Equal(t, 18, fillerCount)
+
+	last := allEnts[len(allEnts)-1]
+	require.Equal(t, raftpb.EntryConfChange, last.GetType())
+
+	require.NoError(t, bwal.w.Close())
+	st2, ents2, err := func() (*raftpb.HardState, []*raftpb.Entry, error) {
+		w2, err := wal.Open(cfg.Logger, cfg.WALDir(), &walpb.Snapshot{
+			Index: snapshot.Metadata.Index,
+			Term:  snapshot.Metadata.Term,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		defer w2.Close()
+		_, st2, ents2, err := w2.ReadAll()
+		return st2, ents2, err
+	}()
+	require.NoError(t, err)
+	require.NotEmpty(t, ents2)
+	for i := 1; i < len(ents2); i++ {
+		require.Equalf(t, ents2[i-1].GetIndex()+1, ents2[i].GetIndex(), "WAL entries must be contiguous on disk at position %d", i)
+	}
+	require.Equal(t, allEnts[len(allEnts)-1].GetIndex(), ents2[len(ents2)-1].GetIndex())
+	require.Equal(t, uint64(2), st2.GetTerm())
 }
