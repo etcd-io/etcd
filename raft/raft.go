@@ -1070,8 +1070,10 @@ func stepLeader(r *raft, m pb.Message) error {
 		r.bcastAppend()
 		return nil
 	case pb.MsgReadIndex:
-		// only one voting member (the leader) in the cluster
-		if r.prs.IsSingleton() {
+		// only one voting member (the leader) in the cluster. A leader that
+		// removed itself from the configuration is not a voter, so it can't
+		// answer at once: another node may have been elected.
+		if r.prs.IsVoter(r.id) && r.prs.IsSingleton() {
 			if resp := r.responseToReadIndexReq(m, r.raftLog.committed); resp.To != None {
 				r.send(resp)
 			}
