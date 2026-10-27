@@ -23,8 +23,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/mvcc"
@@ -134,6 +136,35 @@ func TestV3StorageQuotaApply(t *testing.T) {
 
 	if _, err := kvc1.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
 		t.Fatalf("alarmed instance should reject put after reset")
+	}
+}
+
+// TestV3AlarmKeepsAuth ensures that auth is still enforced after an alarm is raised.
+func TestV3AlarmKeepsAuth(t *testing.T) {
+	for _, alarm := range []pb.AlarmType{pb.AlarmType_NOSPACE, pb.AlarmType_CORRUPT} {
+		t.Run(alarm.String(), func(t *testing.T) {
+			BeforeTest(t)
+			clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+			defer clus.Terminate(t)
+
+			authSetupUsers(t, toGRPC(clus.Client(0)).Auth, []user{{name: "user1", password: "user1-123", role: "role1"}})
+			authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
+
+			cli, err := NewClient(t, clientv3.Config{
+				Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "user1-123"})
+			require.NoError(t, err)
+			defer cli.Close()
+
+			_, err = clus.Members[0].s.Alarm(t.Context(), &pb.AlarmRequest{
+				MemberID: uint64(clus.Members[0].s.ID()),
+				Action:   pb.AlarmRequest_ACTIVATE,
+				Alarm:    alarm,
+			})
+			require.NoError(t, err)
+
+			_, err = cli.AuthDisable(t.Context())
+			require.ErrorIs(t, err, rpctypes.ErrPermissionDenied)
+		})
 	}
 }
 
