@@ -16,6 +16,7 @@ package apply
 
 import (
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
@@ -26,7 +27,11 @@ import (
 
 func Apply(lg *zap.Logger, e *raftpb.Entry, uberApply UberApplier, w wait.Wait, shouldApplyV3 membership.ShouldApplyV3) (ar *Result, id uint64) {
 	var raftReq pb.InternalRaftRequest
-	pbutil.MustUnmarshalMessage(&raftReq, e.Data)
+	if err := proto.Unmarshal(e.Data, &raftReq); err != nil {
+		var legacyReq requestV2
+		pbutil.MustUnmarshal(&legacyReq, e.Data)
+		raftReq = legacyReq.toInternalRaftRequest(lg)
+	}
 	lg.Debug("Apply", zap.Stringer("raftReq", &raftReq))
 
 	id = raftReq.ID
