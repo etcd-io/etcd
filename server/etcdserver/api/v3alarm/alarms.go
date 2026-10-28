@@ -50,6 +50,15 @@ func NewAlarmStore(lg *zap.Logger, be schema.AlarmBackend) (*AlarmStore, error) 
 	return ret, err
 }
 
+func (a *AlarmStore) Recover(be schema.AlarmBackend) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.be = be
+	a.types = make(map[pb.AlarmType]alarmSet)
+	return a.restore()
+}
+
 func (a *AlarmStore) Activate(id types.ID, at pb.AlarmType) *pb.AlarmMember {
 	a.mu.Lock()
 	defer a.mu.Unlock()

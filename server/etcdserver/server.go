@@ -388,7 +388,8 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		srv.compactor.Run()
 	}
 
-	if err = srv.restoreAlarms(); err != nil {
+	srv.alarmStore, err = v3alarm.NewAlarmStore(srv.lg, schema.NewAlarmBackend(srv.lg, srv.be))
+	if err != nil {
 		return nil, err
 	}
 	srv.uberApply = srv.NewUberApplier()
@@ -1099,7 +1100,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 
 	lg.Info("restoring alarm store")
 
-	if err := s.restoreAlarms(); err != nil {
+	if err := s.alarmStore.Recover(schema.NewAlarmBackend(lg, newbe)); err != nil {
 		lg.Panic("failed to restore alarm store", zap.Error(err))
 	}
 
@@ -1143,8 +1144,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	ep.memorySnapshotIndex = ep.appliedi
 	ep.confState = toApply.snapshot.Metadata.ConfState
 
-	// As backends and implementations like alarmsStore changed, we need
-	// to re-bootstrap Appliers.
+	// As the backend and the alarms changed, we need to re-bootstrap Appliers.
 	s.uberApply = s.NewUberApplier()
 }
 
@@ -2390,15 +2390,6 @@ func (s *EtcdServer) Backend() backend.Backend {
 }
 
 func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
-
-func (s *EtcdServer) restoreAlarms() error {
-	as, err := v3alarm.NewAlarmStore(s.lg, schema.NewAlarmBackend(s.lg, s.be))
-	if err != nil {
-		return err
-	}
-	s.alarmStore = as
-	return nil
-}
 
 // GoAttach creates a goroutine on a given function and tracks it using
 // the etcdserver waitgroup.
