@@ -104,6 +104,7 @@ type tokenSimple struct {
 	simpleTokenKeeper *simpleTokenTTLKeeper
 	simpleTokensMu    sync.Mutex
 	simpleTokens      map[string]string // token -> username
+	expiredTokens     map[string]string // expired token -> username
 	simpleTokenTTL    time.Duration
 }
 
@@ -139,6 +140,9 @@ func (t *tokenSimple) assignSimpleTokenToUser(username, token string) {
 		)
 	}
 
+	if t.expiredTokens != nil {
+		delete(t.expiredTokens, token)
+	}
 	t.simpleTokens[token] = username
 	t.simpleTokenKeeper.addSimpleToken(token)
 }
@@ -152,6 +156,11 @@ func (t *tokenSimple) invalidateUser(username string) {
 		if name == username {
 			delete(t.simpleTokens, token)
 			t.simpleTokenKeeper.deleteSimpleToken(token)
+		}
+	}
+	for token, name := range t.expiredTokens {
+		if name == username {
+			delete(t.expiredTokens, token)
 		}
 	}
 	t.simpleTokensMu.Unlock()
@@ -175,6 +184,15 @@ func (t *tokenSimple) enable() {
 				zap.String("token", tk),
 			)
 			delete(t.simpleTokens, tk)
+			if t.expiredTokens != nil {
+				if len(t.expiredTokens) > 10000 {
+					for k := range t.expiredTokens {
+						delete(t.expiredTokens, k)
+						break
+					}
+				}
+				t.expiredTokens[tk] = username
+			}
 		}
 	}
 	t.simpleTokenKeeper = &simpleTokenTTLKeeper{
@@ -193,6 +211,7 @@ func (t *tokenSimple) disable() {
 	tk := t.simpleTokenKeeper
 	t.simpleTokenKeeper = nil
 	t.simpleTokens = make(map[string]string) // invalidate all tokens
+	t.expiredTokens = make(map[string]string)
 	t.simpleTokensMu.Unlock()
 	if tk != nil {
 		tk.stop()
@@ -226,6 +245,28 @@ func (t *tokenSimple) assign(ctx context.Context, username string, rev uint64) (
 	return token, nil
 }
 
+func (t *tokenSimple) renew(ctx context.Context, token string, revision uint64) (string, error) {
+	t.simpleTokensMu.Lock()
+	defer t.simpleTokensMu.Unlock()
+	if t.simpleTokenKeeper == nil {
+		return "", ErrAuthFailed
+	}
+
+	if _, ok := t.simpleTokens[token]; ok {
+		t.simpleTokenKeeper.resetSimpleToken(token)
+		return token, nil
+	}
+
+	if username, ok := t.expiredTokens[token]; ok {
+		delete(t.expiredTokens, token)
+		t.simpleTokens[token] = username
+		t.simpleTokenKeeper.addSimpleToken(token)
+		return token, nil
+	}
+
+	return "", ErrInvalidAuthToken
+}
+
 func (t *tokenSimple) isValidSimpleToken(ctx context.Context, token string) bool {
 	splitted := strings.Split(token, ".")
 	if len(splitted) != 2 {
@@ -252,6 +293,7 @@ func newTokenProviderSimple(lg *zap.Logger, indexWaiter func(uint64) <-chan stru
 	return &tokenSimple{
 		lg:             lg,
 		simpleTokens:   make(map[string]string),
+		expiredTokens:  make(map[string]string),
 		indexWaiter:    indexWaiter,
 		simpleTokenTTL: TokenTTL,
 	}

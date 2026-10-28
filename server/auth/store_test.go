@@ -1177,3 +1177,83 @@ func TestUserChangePasswordWithOldLog(t *testing.T) {
 	require.Errorf(t, err, "expected %v, got %v", ErrUserNotFound, err)
 	require.ErrorIsf(t, err, ErrUserNotFound, "expected %v, got %v", ErrUserNotFound, err)
 }
+
+func TestRenewTokenAuthDisabled(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	as.AuthDisable()
+
+	// When auth is disabled, RenewToken returns the original token with nil error
+	renewed, err := as.RenewToken(t.Context(), "dummy-token")
+	require.NoError(t, err)
+	require.Equal(t, "dummy-token", renewed)
+}
+
+func TestRenewTokenSimple(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "testuser", Password: "pwd"})
+	require.NoError(t, err)
+
+	ctx := context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "pfx")
+	authResp, err := as.Authenticate(ctx, "testuser", "pwd")
+	require.NoError(t, err)
+
+	// Renew active token
+	renewed, err := as.RenewToken(t.Context(), authResp.Token)
+	require.NoError(t, err)
+	require.Equal(t, authResp.Token, renewed)
+
+	// Invalidate user and ensure renewal fails
+	_, err = as.UserDelete(&pb.AuthUserDeleteRequest{Name: "testuser"})
+	require.NoError(t, err)
+
+	_, err = as.RenewToken(t.Context(), authResp.Token)
+	require.Error(t, err)
+
+	// Random non-existent token fails
+	_, err = as.RenewToken(t.Context(), "non.existent")
+	require.Error(t, err)
+}
+
+func TestRenewTokenJWT(t *testing.T) {
+	opts := testJWTOpts()
+	tp, err := NewTokenProvider(zaptest.NewLogger(t), opts, dummyIndexWaiter, simpleTokenTTLDefault)
+	require.NoError(t, err)
+	as := NewAuthStore(zaptest.NewLogger(t), newBackendMock(), tp, bcrypt.MinCost)
+	defer as.Close()
+
+	err = enableAuthAndCreateRoot(as)
+	require.NoError(t, err)
+
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: "jwtuser", Password: "pwd"})
+	require.NoError(t, err)
+
+	authResp, err := as.Authenticate(t.Context(), "jwtuser", "pwd")
+	require.NoError(t, err)
+
+	// Renew token
+	renewed, err := as.RenewToken(t.Context(), authResp.Token)
+	require.NoError(t, err)
+	require.NotEmpty(t, renewed)
+
+	// Verify renewed token can be parsed and authenticated
+	ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs(rpctypes.TokenFieldNameGRPC, renewed))
+	ai, err := as.AuthInfoFromCtx(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, ai)
+	require.Equal(t, "jwtuser", ai.Username)
+
+	// Invalid/tampered token fails renewal
+	_, err = as.RenewToken(t.Context(), "invalid.jwt.token")
+	require.Error(t, err)
+
+	// Deleted user fails renewal
+	_, err = as.UserDelete(&pb.AuthUserDeleteRequest{Name: "jwtuser"})
+	require.NoError(t, err)
+
+	_, err = as.RenewToken(t.Context(), renewed)
+	require.ErrorIs(t, err, ErrUserNotFound)
+}
