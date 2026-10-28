@@ -260,6 +260,17 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if m.Snapshot == nil {
+		h.lg.Warn(
+			"missing snapshot in Raft message",
+			zap.String("local-member-id", h.localID.String()),
+			zap.String("remote-snapshot-sender-id", from),
+		)
+		http.Error(w, "missing snapshot in raft message", http.StatusBadRequest)
+		snapshotReceiveFailures.WithLabelValues(from).Inc()
+		return
+	}
+
 	snapshotReceiveInflights.WithLabelValues(from).Inc()
 	defer func() {
 		snapshotReceiveInflights.WithLabelValues(from).Dec()
