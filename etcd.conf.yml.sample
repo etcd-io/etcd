@@ -131,6 +131,12 @@ cipher-suites: [
   TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 ]
 
+# Limit etcd to a specific set of tls curve preferences
+curve-preferences: [
+  X25519MLKEM768,
+  X25519
+]
+
 # Limit etcd to specific TLS protocol versions 
 tls-min-version: 'TLS1.2'
 tls-max-version: 'TLS1.3'

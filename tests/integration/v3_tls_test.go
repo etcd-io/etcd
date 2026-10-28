@@ -84,6 +84,54 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 	}
 }
 
+func TestTLSClientCurvePreferencesValid(t *testing.T)    { testTLSCurvePreferences(t, true) }
+func TestTLSClientCurvePreferencesMismatch(t *testing.T) { testTLSCurvePreferences(t, false) }
+
+// testTLSCurvePreferences ensures mismatching client-side curve preferences
+// fail TLS handshake with the server.
+func testTLSCurvePreferences(t *testing.T, valid bool) {
+	integration.BeforeTest(t)
+
+	curves := []tls.CurveID{
+		tls.X25519,
+		tls.CurveP256,
+		tls.CurveP384,
+		tls.CurveP521,
+	}
+	srvTLS, cliTLS := integration.TestTLSInfo, integration.TestTLSInfo
+	if valid {
+		srvTLS.CurvePreferences, cliTLS.CurvePreferences = curves, curves
+	} else {
+		srvTLS.CurvePreferences, cliTLS.CurvePreferences = curves[:2], curves[2:]
+	}
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, ClientTLS: &srvTLS})
+	defer clus.Terminate(t)
+
+	cc, err := cliTLS.ClientConfig()
+	require.NoError(t, err)
+	cli, cerr := integration.NewClient(t, clientv3.Config{
+		Endpoints:   []string{clus.Members[0].GRPCURL},
+		DialTimeout: time.Second,
+		TLS:         cc,
+	})
+	require.NoError(t, cerr)
+	defer func() {
+		require.NoError(t, cli.Close())
+	}()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	_, rerr := cli.Get(ctx, "foo")
+	cancel()
+	if valid {
+		require.NoError(t, rerr)
+	} else {
+		if !errors.Is(rerr, context.DeadlineExceeded) {
+			t.Fatalf("expected %v with TLS handshake failure, got %v", context.DeadlineExceeded, rerr)
+		}
+	}
+}
+
 func TestTLSMinMaxVersion(t *testing.T) {
 	integration.BeforeTest(t)
 
