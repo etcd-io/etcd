@@ -192,3 +192,13 @@ Please see the table below:
 | 3.5.x         | v1.3.x         | N/A           |
 | 3.6.x         | v1.4.x         | v3.6.x        |
 | 3.7.x         | v1.5.x         | v3.7.x        |
+
+## etcd and Kubernetes version matrix
+
+The table below shows which Kubernetes releases are tested with each etcd minor version.
+
+| etcd versions | Kubernetes versions    |
+|---------------|------------------------|
+| 3.5.x         | v1.33 and old versions |
+| 3.6.x         | v1.34 - v1.36          |
+| 3.7.x         | v1.37 - ?              |
