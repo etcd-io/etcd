@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/protobuf/testing/protocmp"
 
@@ -299,6 +300,78 @@ func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 	got, want := <-sendc, 1
 	if got != want {
 		t.Errorf("count = %d, want %d", got, want)
+	}
+}
+
+func TestProcessMessagesOrder(t *testing.T) {
+	r := newRaftNode(raftNodeConfig{
+		lg:          zaptest.NewLogger(t),
+		isIDRemoved: func(id uint64) bool { return id == 5 },
+		Node:        newNopReadyNode(),
+		storage:     mockstorage.NewStorageRecorder(""),
+		raftStorage: raft.NewMemoryStorage(),
+		transport:   newNopTransporter(),
+	})
+
+	const (
+		lead  = uint64(1)
+		peer2 = uint64(2)
+		peer3 = uint64(3)
+		peer5 = uint64(5)
+	)
+	app := func(to, index uint64) *raftpb.Message {
+		return &raftpb.Message{Type: raftpb.MsgApp.Enum(), To: new(to), Term: new(uint64(1)), Index: new(index)}
+	}
+	resp := func(to, index uint64) *raftpb.Message {
+		return &raftpb.Message{Type: raftpb.MsgAppResp.Enum(), To: new(to), Term: new(uint64(1)), Index: new(index)}
+	}
+
+	type msg struct {
+		typ   raftpb.MessageType
+		to    uint64
+		index uint64
+	}
+	summarize := func(ms []*raftpb.Message) []msg {
+		out := make([]msg, 0, len(ms))
+		for _, m := range ms {
+			out = append(out, msg{m.GetType(), m.GetTo(), m.GetIndex()})
+		}
+		return out
+	}
+
+	tests := []struct {
+		name         string
+		messages     []*raftpb.Message
+		wantMessages []msg
+	}{
+		{
+			name:         "MsgApp",
+			messages:     []*raftpb.Message{app(peer2, 10), app(peer2, 11), app(peer2, 12), app(peer3, 10), app(peer5, 10)},
+			wantMessages: []msg{{raftpb.MsgApp, peer2, 10}, {raftpb.MsgApp, peer2, 11}, {raftpb.MsgApp, peer2, 12}, {raftpb.MsgApp, peer3, 10}},
+		},
+		{
+			name:         "MsgAppResp",
+			messages:     []*raftpb.Message{resp(lead, 1), app(peer2, 10), resp(lead, 2), resp(lead, 3)},
+			wantMessages: []msg{{raftpb.MsgApp, peer2, 10}, {raftpb.MsgAppResp, lead, 3}},
+		},
+		{
+			name:         "MsgAppResp to different peers",
+			messages:     []*raftpb.Message{resp(lead, 1), resp(peer3, 2), app(peer2, 10), resp(peer2, 3)},
+			wantMessages: []msg{{raftpb.MsgApp, peer2, 10}, {raftpb.MsgAppResp, peer2, 3}},
+		},
+		{
+			name:         "mixed",
+			messages:     []*raftpb.Message{app(peer2, 10), app(peer2, 11), app(peer2, 12), resp(lead, 1), resp(lead, 2), app(peer5, 10)},
+			wantMessages: []msg{{raftpb.MsgApp, peer2, 10}, {raftpb.MsgApp, peer2, 11}, {raftpb.MsgApp, peer2, 12}, {raftpb.MsgAppResp, lead, 2}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := summarize(tt.messages)
+			sent := summarize(r.processMessages(tt.messages))
+			require.Equal(t, tt.wantMessages, sent)
+			require.Equalf(t, before, summarize(tt.messages), "processMessages modified its input messages")
+		})
 	}
 }
 

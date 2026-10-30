@@ -4,15 +4,22 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.35 (TBC)
+## v3.5.36 (TBC)
+
+---
+
+## v3.5.35 (2026-10-22)
 
 ### etcd server
 
+- Fix [data race between `Hash` and `Restore` in the MVCC store](https://github.com/etcd-io/etcd/pull/22640)
 - [Fix fsync snap directory when saving a received snapshot db](https://github.com/etcd-io/etcd/pull/22472)
 
 ### Dependencies
 
-- Compile binaries using [go 1.26.9](https://github.com/etcd-io/etcd/pull/22557).
+- Compile binaries using [go 1.26.10](https://github.com/etcd-io/etcd/pull/22632).
+- Bump [go.opentelemetry.io/otel/sdk, go.opentelemetry.io/otel/exporters/otlp/otlptrace and go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc to v1.45.0 to address GO-2026-6505](https://github.com/etcd-io/etcd/pull/22558).
+- Bump [golang.org/x/net to v0.61.0 to address GO-2026-6617, GO-2026-6612, GO-2026-6611 and GO-2026-6603](https://github.com/etcd-io/etcd/pull/22591).
 
 ---
 

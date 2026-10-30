@@ -3106,7 +3106,7 @@
           "type": "string"
         }
       },
-      "additionalProperties": {}
+      "additionalProperties": true
     }
   },
   "securityDefinitions": {

@@ -1621,7 +1621,7 @@ func TestV3RangeStreamCount(t *testing.T) {
 	}
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
-	defer clus.Terminate(t)
+	t.Cleanup(func() { clus.Terminate(t) })
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 	const nKeys = 25
@@ -1688,28 +1688,32 @@ func TestV3RangeStreamCount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
-				Key:      []byte("k00"),
-				RangeEnd: []byte("l"),
-				Limit:    tt.limit,
-			})
-			require.NoError(t, err)
+			t.Parallel()
+			for _, keysOnly := range []bool{false, true} {
+				stream, err := kvc.RangeStream(t.Context(), &pb.RangeRequest{
+					Key:      []byte("k00"),
+					RangeEnd: []byte("l"),
+					Limit:    tt.limit,
+					KeysOnly: keysOnly,
+				})
+				require.NoError(t, err)
 
-			merged := &pb.RangeResponse{}
-			recvs := 0
-			for {
-				chunk, rerr := stream.Recv()
-				if errors.Is(rerr, io.EOF) {
-					break
+				merged := &pb.RangeResponse{}
+				recvs := 0
+				for {
+					chunk, rerr := stream.Recv()
+					if errors.Is(rerr, io.EOF) {
+						break
+					}
+					require.NoError(t, rerr)
+					recvs++
+					proto.Merge(merged, chunk.RangeResponse)
 				}
-				require.NoError(t, rerr)
-				recvs++
-				proto.Merge(merged, chunk.RangeResponse)
+				require.Equalf(t, tt.wantCount, merged.Count, "Count")
+				require.Equalf(t, tt.wantMore, merged.More, "More")
+				require.Lenf(t, merged.Kvs, tt.wantKeys, "kv count")
+				require.GreaterOrEqualf(t, recvs, tt.wantMinRecv, "chunk count")
 			}
-			require.Equalf(t, tt.wantCount, merged.Count, "Count")
-			require.Equalf(t, tt.wantMore, merged.More, "More")
-			require.Lenf(t, merged.Kvs, tt.wantKeys, "kv count")
-			require.GreaterOrEqualf(t, recvs, tt.wantMinRecv, "chunk count")
 		})
 	}
 }
