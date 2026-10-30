@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -715,17 +716,46 @@ func (epc *EtcdProcessCluster) MinServerVersion() (*semver.Version, error) {
 }
 
 func values(cfg embed.Config) map[string]string {
+	// AddFlags registers many flags as fs.XxxVar(&cfg.Field, name, <constant default>, ...), which
+	// resets cfg.Field to that constant, so read the configured values before calling it.
+	configured := configuredScalarValues(cfg)
 	fs := flag.NewFlagSet("etcd", flag.ContinueOnError)
 	cfg.AddFlags(fs)
 	values := map[string]string{}
 	fs.VisitAll(func(f *flag.Flag) {
 		value := f.Value.String()
+		if v, ok := configured[f.Name]; ok {
+			value = v
+		}
 		if value == "false" || value == "0" {
 			value = ""
 		}
 		values[f.Name] = value
 	})
 	return values
+}
+
+// configuredScalarValues returns the string, bool, numeric and duration fields of cfg keyed by
+// their json tag, which matches the name of the corresponding etcd flag.
+func configuredScalarValues(cfg embed.Config) map[string]string {
+	result := map[string]string{}
+	rv := reflect.ValueOf(cfg)
+	rt := rv.Type()
+	for i := range rt.NumField() {
+		field := rt.Field(i)
+		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+		if !field.IsExported() || name == "" || name == "-" {
+			continue
+		}
+		switch rv.Field(i).Kind() {
+		case reflect.String, reflect.Bool,
+			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+			reflect.Float32, reflect.Float64:
+			result[name] = fmt.Sprint(rv.Field(i).Interface())
+		}
+	}
+	return result
 }
 
 func clientURL(scheme string, port int, connType ClientConnType) string {
