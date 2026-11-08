@@ -143,7 +143,7 @@ func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, c *client.Recording
 	})
 }
 
-func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, s *storage, limiter *rate.Limiter, keyPrefix string) error {
+func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, s *KubernetesStorage, limiter *rate.Limiter, keyPrefix string) error {
 	kc := kubernetes.Client{Client: &clientv3.Client{KV: c}}
 	op := random.PickRandom(t.readChoices)
 	switch op {
@@ -174,13 +174,13 @@ func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, 
 	}
 }
 
-func (t kubernetesTraffic) Get(ctx context.Context, kc kubernetes.Interface, s *storage, limiter *rate.Limiter, key string, rev int64) error {
+func (t kubernetesTraffic) Get(ctx context.Context, kc kubernetes.Interface, s *KubernetesStorage, limiter *rate.Limiter, key string, rev int64) error {
 	_, err := kc.Get(ctx, key, kubernetes.GetOptions{Revision: rev})
 	limiter.Wait(ctx)
 	return err
 }
 
-func (t kubernetesTraffic) List(ctx context.Context, kc kubernetes.Interface, s *storage, limiter *rate.Limiter, keyPrefix string, limit int, revision int64) (rev int64, err error) {
+func (t kubernetesTraffic) List(ctx context.Context, kc kubernetes.Interface, s *KubernetesStorage, limiter *rate.Limiter, keyPrefix string, limit int, revision int64) (rev int64, err error) {
 	hasMore := true
 	var kvs []*mvccpb.KeyValue
 	var cont string
@@ -207,7 +207,7 @@ func (t kubernetesTraffic) List(ctx context.Context, kc kubernetes.Interface, s 
 	return revision, nil
 }
 
-func (t kubernetesTraffic) Write(ctx context.Context, kc kubernetes.Interface, ids identity.Provider, s *storage, limiter *rate.Limiter, nonUniqueWriteLimiter ConcurrencyLimiter) (err error) {
+func (t kubernetesTraffic) Write(ctx context.Context, kc kubernetes.Interface, ids identity.Provider, s *KubernetesStorage, limiter *rate.Limiter, nonUniqueWriteLimiter ConcurrencyLimiter) (err error) {
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	defer cancel()
 	count := s.Count()
@@ -260,7 +260,7 @@ func filterOutNonUniqueKubernetesWrites(choices []random.ChoiceWeight[Kubernetes
 	return resp
 }
 
-func (t kubernetesTraffic) Watch(ctx context.Context, c *client.RecordingClient, s *storage, limiter *rate.Limiter, keyPrefix string, revision int64) {
+func (t kubernetesTraffic) Watch(ctx context.Context, c *client.RecordingClient, s *KubernetesStorage, limiter *rate.Limiter, keyPrefix string, revision int64) {
 	watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
 	defer cancel()
 
@@ -345,7 +345,7 @@ const (
 	KubernetesListAndWatch KubernetesRequestType = "list_watch"
 )
 
-type storage struct {
+type KubernetesStorage struct {
 	mux         sync.RWMutex
 	keyRevision map[string]int64
 	revision    int64
@@ -353,13 +353,13 @@ type storage struct {
 
 // NewKubernetesStorage creates a new storage instance for tracking Kubernetes resource revisions.
 // This storage is used by Kubernetes traffic to maintain consistency in read and write operations.
-func NewKubernetesStorage() *storage {
-	return &storage{
+func NewKubernetesStorage() *KubernetesStorage {
+	return &KubernetesStorage{
 		keyRevision: map[string]int64{},
 	}
 }
 
-func (s *storage) Update(resp clientv3.WatchResponse) {
+func (s *KubernetesStorage) Update(resp clientv3.WatchResponse) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	for _, e := range resp.Events {
@@ -376,7 +376,7 @@ func (s *storage) Update(resp clientv3.WatchResponse) {
 	}
 }
 
-func (s *storage) Reset(revision int64, kvs []*mvccpb.KeyValue) {
+func (s *KubernetesStorage) Reset(revision int64, kvs []*mvccpb.KeyValue) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if revision <= s.revision {
@@ -389,19 +389,19 @@ func (s *storage) Reset(revision int64, kvs []*mvccpb.KeyValue) {
 	s.revision = revision
 }
 
-func (s *storage) Count() int {
+func (s *KubernetesStorage) Count() int {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	return len(s.keyRevision)
 }
 
-func (s *storage) PickRandom() (key string, rev int64) {
+func (s *KubernetesStorage) PickRandom() (key string, rev int64) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	return s.pickRandomLocked()
 }
 
-func (s *storage) pickRandomLocked() (key string, rev int64) {
+func (s *KubernetesStorage) pickRandomLocked() (key string, rev int64) {
 	l := len(s.keyRevision)
 	if l == 0 {
 		return "", 0
@@ -417,7 +417,7 @@ func (s *storage) pickRandomLocked() (key string, rev int64) {
 	return "", 0
 }
 
-func (s *storage) KeyWithUnrelatedRev() (key string, rev int64) {
+func (s *KubernetesStorage) KeyWithUnrelatedRev() (key string, rev int64) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	l := len(s.keyRevision)

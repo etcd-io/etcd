@@ -207,7 +207,7 @@ func filterOutNonUniqueEtcdWrites(choices []random.ChoiceWeight[etcdRequestType]
 
 type etcdTrafficClient struct {
 	etcdTraffic
-	keyStore     *keyStore
+	keyStore     *KeyStore
 	client       *client.RecordingClient
 	limiter      *rate.Limiter
 	idProvider   identity.Provider
@@ -367,7 +367,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	return rev, err
 }
 
-func (c etcdTrafficClient) pickMultiTxnOps(keyStore *keyStore) (ops []clientv3.Op) {
+func (c etcdTrafficClient) pickMultiTxnOps(keyStore *KeyStore) (ops []clientv3.Op) {
 	opTypes := make([]model.OperationType, 4)
 
 	atLeastOnePut := false

@@ -27,7 +27,7 @@ import (
 )
 
 // Stores the key pool to use for operations. This allows keys used in Put and Delete operations to be more unique by probabilistically swapping out used keys.
-type keyStore struct {
+type KeyStore struct {
 	mu sync.Mutex
 
 	counter        int
@@ -36,8 +36,8 @@ type keyStore struct {
 	latestRevision int64
 }
 
-func NewKeyStore(size int, keyPrefix string) *keyStore {
-	k := &keyStore{
+func NewKeyStore(size int, keyPrefix string) *KeyStore {
+	k := &KeyStore{
 		keys:      make([]string, size),
 		counter:   0,
 		keyPrefix: keyPrefix,
@@ -51,7 +51,7 @@ func NewKeyStore(size int, keyPrefix string) *keyStore {
 	return k
 }
 
-func (k *keyStore) GetKey() string {
+func (k *KeyStore) GetKey() string {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 
@@ -60,7 +60,7 @@ func (k *keyStore) GetKey() string {
 	return useKey
 }
 
-func (k *keyStore) GetKeyForDelete() string {
+func (k *KeyStore) GetKeyForDelete() string {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 
@@ -72,7 +72,7 @@ func (k *keyStore) GetKeyForDelete() string {
 	return useKey
 }
 
-func (k *keyStore) GetKeysForMultiTxnOps(ops []model.OperationType) []string {
+func (k *KeyStore) GetKeysForMultiTxnOps(ops []model.OperationType) []string {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 
@@ -96,7 +96,7 @@ func (k *keyStore) GetKeysForMultiTxnOps(ops []model.OperationType) []string {
 	return keys
 }
 
-func (k *keyStore) GetPrefix() string {
+func (k *KeyStore) GetPrefix() string {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 
@@ -113,7 +113,7 @@ func (k *keyStore) GetPrefix() string {
 // Notice that higher numbered keys will eventually be added
 // again into the keystore, so it is safe to temporarily remove them from the
 // key store.
-func (k *keyStore) SyncKeys(resp *clientv3.GetResponse) {
+func (k *KeyStore) SyncKeys(resp *clientv3.GetResponse) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 
@@ -146,7 +146,7 @@ func (k *keyStore) SyncKeys(resp *clientv3.GetResponse) {
 	k.counter = lastKeyNum + 1
 }
 
-func (k *keyStore) getKeyNum(key string) int {
+func (k *KeyStore) getKeyNum(key string) int {
 	if len(key) < len(k.keyPrefix) {
 		return 0
 	}
@@ -156,7 +156,7 @@ func (k *keyStore) getKeyNum(key string) int {
 	return num
 }
 
-func (k *keyStore) replaceKey(index int) {
+func (k *KeyStore) replaceKey(index int) {
 	if rand.Intn(100) < 90 {
 		k.keys[index] = fmt.Sprintf("%s%d", k.keyPrefix, k.counter)
 		k.counter++

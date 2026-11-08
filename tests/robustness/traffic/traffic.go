@@ -391,8 +391,8 @@ type RunTrafficLoopParam struct {
 	IDs                                identity.Provider
 	LeaseIDStorage                     identity.LeaseIDStorage
 	NonUniqueRequestConcurrencyLimiter ConcurrencyLimiter
-	KeyStore                           *keyStore
-	Storage                            *storage
+	KeyStore                           *KeyStore
+	Storage                            *KubernetesStorage
 	Finish                             <-chan struct{}
 }
 
@@ -405,8 +405,8 @@ type RunWatchLoopParam struct {
 	Config     Watch
 	QPSLimiter *rate.Limiter
 	// TODO: merge 2 key stores into 1
-	KeyStore *keyStore
-	Storage  *storage
+	KeyStore *KeyStore
+	Storage  *KubernetesStorage
 	Finish   <-chan struct{}
 	Logger   *zap.Logger
 }
