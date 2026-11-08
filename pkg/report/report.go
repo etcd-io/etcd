@@ -192,6 +192,11 @@ func (r *report) processResults() {
 	}
 	r.stats.Total = time.Since(st)
 
+	// With no successful results there is nothing to divide by; leave the
+	// aggregate statistics at their zero values instead of producing NaN.
+	if len(r.stats.Lats) == 0 {
+		return
+	}
 	r.stats.RPS = float64(len(r.stats.Lats)) / r.stats.Total.Seconds()
 	r.stats.Average = r.stats.AvgTotal / float64(len(r.stats.Lats))
 	for i := range r.stats.Lats {
