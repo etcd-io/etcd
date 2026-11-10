@@ -33,16 +33,17 @@ go_line_violation="false"
 #  (1) go directive <= version in .go-version
 #  (2) toolchain directive == version in .go-version
 function verify_go_versions() {
+    local mod_file=$1
     # shellcheck disable=SC2086
-    toolchain_version="$(go mod edit -json $1 | jq -r .Toolchain)"
+    toolchain_version="$(go mod edit -json "${mod_file}" | jq -r .Toolchain)"
     # shellcheck disable=SC2086
-    go_line_version="$(go mod edit -json $1 | jq -r .Go)"
+    go_line_version="$(go mod edit -json "${mod_file}" | jq -r .Go)"
     if [[ "go${target_go_version}" != "${toolchain_version}" ]]; then
-        log_error "go toolchain directive out of sync for $1, got: ${toolchain_version}"
+        log_error "go toolchain directive out of sync for ${mod_file}, got: ${toolchain_version}"
         toolchain_out_of_sync="true"
     fi
     if ! printf '%s\n' "${go_line_version}" "${target_go_version}" | sort --check=silent --version-sort; then
-        log_error "go directive in $1 is greater than maximum allowed: go${target_go_version}"
+        log_error "go directive in ${mod_file} is greater than maximum allowed: go${target_go_version}"
         go_line_violation="true"
     fi
 }
