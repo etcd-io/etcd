@@ -31,7 +31,10 @@ func TestRenewHTTP(t *testing.T) {
 	be, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 	defer betesting.Close(t, be)
 
-	le := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
+	le, err := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
+	if err != nil {
+		t.Fatalf("failed to create lessor: %v", err)
+	}
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
@@ -55,7 +58,10 @@ func TestTimeToLiveHTTP(t *testing.T) {
 	be, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 	defer betesting.Close(t, be)
 
-	le := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
+	le, err := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
+	if err != nil {
+		t.Fatalf("failed to create lessor: %v", err)
+	}
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
@@ -96,7 +102,10 @@ func testApplyTimeout(t *testing.T, f func(*lease.Lease, string) error) {
 	be, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 	defer betesting.Close(t, be)
 
-	le := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
+	le, err := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
+	if err != nil {
+		t.Fatalf("failed to create lessor: %v", err)
+	}
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {

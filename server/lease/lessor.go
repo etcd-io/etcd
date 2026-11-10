@@ -205,11 +205,11 @@ type LessorConfig struct {
 	leaseRevokeRate int
 }
 
-func NewLessor(lg *zap.Logger, b backend.Backend, cluster cluster, cfg LessorConfig) Lessor {
+func NewLessor(lg *zap.Logger, b backend.Backend, cluster cluster, cfg LessorConfig) (Lessor, error) {
 	return newLessor(lg, b, cluster, cfg)
 }
 
-func newLessor(lg *zap.Logger, b backend.Backend, cluster cluster, cfg LessorConfig) *lessor {
+func newLessor(lg *zap.Logger, b backend.Backend, cluster cluster, cfg LessorConfig) (*lessor, error) {
 	checkpointInterval := cfg.CheckpointInterval
 	expiredLeaseRetryInterval := cfg.ExpiredLeasesRetryInterval
 	leaseRevokeRate := cfg.leaseRevokeRate
@@ -240,11 +240,13 @@ func newLessor(lg *zap.Logger, b backend.Backend, cluster cluster, cfg LessorCon
 		lg:       lg,
 		cluster:  cluster,
 	}
-	l.initAndRecover()
+	if err := l.initAndRecover(); err != nil {
+		return nil, err
+	}
 
 	go l.runLoop()
 
-	return l
+	return l, nil
 }
 
 // isPrimary indicates if this lessor is the primary lessor. The primary
@@ -805,13 +807,16 @@ func (le *lessor) findDueScheduledCheckpoints(checkpointLimit int) []*pb.LeaseCh
 	return cps
 }
 
-func (le *lessor) initAndRecover() {
+func (le *lessor) initAndRecover() error {
 	tx := le.b.BatchTx()
 
 	tx.LockOutsideApply()
 	schema.UnsafeCreateLeaseBucket(tx)
-	lpbs := schema.MustUnsafeGetAllLeases(tx)
+	lpbs, err := schema.UnsafeGetAllLeases(tx)
 	tx.Unlock()
+	if err != nil {
+		return err
+	}
 	for _, lpb := range lpbs {
 		ID := LeaseID(lpb.ID)
 		if lpb.TTL < le.minLeaseTTL {
@@ -832,6 +837,7 @@ func (le *lessor) initAndRecover() {
 	heap.Init(&le.leaseCheckpointHeap)
 
 	le.b.ForceCommit()
+	return nil
 }
 
 // FakeLessor is a fake implementation of Lessor interface.
