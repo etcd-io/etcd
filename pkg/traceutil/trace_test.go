@@ -17,6 +17,7 @@ package traceutil
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,6 +26,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 )
@@ -297,4 +301,172 @@ func TestLogIfLong(t *testing.T) {
 			}
 		})
 	}
+}
+
+type recordedEvent struct {
+	name       string
+	attributes []attribute.KeyValue
+}
+
+type recordingSpan struct {
+	noop.Span
+	tp         trace.TracerProvider
+	name       string
+	attributes []attribute.KeyValue
+	events     []recordedEvent
+	errs       []error
+	ended      bool
+}
+
+func (s *recordingSpan) IsRecording() bool {
+	return !s.ended
+}
+
+func (s *recordingSpan) End(_ ...trace.SpanEndOption) {
+	s.ended = true
+}
+
+func (s *recordingSpan) AddEvent(name string, options ...trace.EventOption) {
+	cfg := trace.NewEventConfig(options...)
+	s.events = append(s.events, recordedEvent{
+		name:       name,
+		attributes: cfg.Attributes(),
+	})
+}
+
+func (s *recordingSpan) SetAttributes(kv ...attribute.KeyValue) {
+	s.attributes = append(s.attributes, kv...)
+}
+
+func (s *recordingSpan) RecordError(err error, _ ...trace.EventOption) {
+	if err != nil {
+		s.errs = append(s.errs, err)
+	}
+}
+
+func (s *recordingSpan) TracerProvider() trace.TracerProvider {
+	return s.tp
+}
+
+type recordingTracer struct {
+	noop.Tracer
+	tp    *recordingTracerProvider
+	spans []*recordingSpan
+}
+
+func (rt *recordingTracer) Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	cfg := trace.NewSpanStartConfig(opts...)
+	sp := &recordingSpan{
+		tp:         rt.tp,
+		name:       spanName,
+		attributes: cfg.Attributes(),
+	}
+	rt.spans = append(rt.spans, sp)
+	return trace.ContextWithSpan(ctx, sp), sp
+}
+
+type recordingTracerProvider struct {
+	noop.TracerProvider
+	tracer *recordingTracer
+}
+
+func newRecordingTracerProvider() *recordingTracerProvider {
+	tp := &recordingTracerProvider{}
+	tp.tracer = &recordingTracer{tp: tp}
+	return tp
+}
+
+func (tp *recordingTracerProvider) Tracer(_ string, _ ...trace.TracerOption) trace.Tracer {
+	return tp.tracer
+}
+
+func TestOpenTelemetryBridge(t *testing.T) {
+	tp := newRecordingTracerProvider()
+	Init(tp)
+	defer Init(noop.NewTracerProvider())
+	assert.Equal(t, tp.tracer, Tracer)
+
+	// 1. Without a parent span in context, EnsureTrace does not create an OTel span.
+	_, noopTr := EnsureTrace(t.Context(), nil, "untraced_op", Field{Key: "k", Value: "v"})
+	noopTr.Step("untraced_step")
+	noopTr.AddField(Field{Key: "extra", Value: 1})
+	noopTr.End()
+	require.Empty(t, tp.tracer.spans)
+
+	// 2. With a parent span in context, Get(parentCtx) bridges events/errors to the
+	// parent span without ending it, and EnsureTrace creates a child OTel span.
+	parentCtx, parentSpan := tp.Tracer("test").Start(t.Context(), "parent")
+	defer parentSpan.End()
+	require.Len(t, tp.tracer.spans, 1)
+
+	fallbackTr := Get(parentCtx)
+	assert.True(t, fallbackTr.IsEmpty())
+	fallbackTr.Step("parent_step")
+	fallbackErr := errors.New("parent error")
+	fallbackTr.RecordError(fallbackErr)
+	fallbackTr.End()
+	assert.False(t, tp.tracer.spans[0].ended)
+	assert.Equal(t, []recordedEvent{{name: "parent_step"}}, tp.tracer.spans[0].events)
+	assert.Equal(t, []error{fallbackErr}, tp.tracer.spans[0].errs)
+
+	ctx, tr := EnsureTrace(parentCtx, nil, "range",
+		Field{Key: "str_key", Value: "val"},
+		Field{Key: "bool_key", Value: true},
+		Field{Key: "int_key", Value: 42},
+		Field{Key: "int64_key", Value: int64(64)},
+		Field{Key: "uint64_key", Value: uint64(128)},
+		Field{Key: "float64_key", Value: 3.14},
+		Field{Key: "slice_key", Value: []string{"a", "b"}},
+		Field{Key: "other_key", Value: struct{ X int }{X: 7}},
+	)
+
+	// Calling EnsureTrace again on ctx reuses the existing Trace and does not start another span.
+	_, tr2 := EnsureTrace(ctx, nil, "nested_ignored")
+	require.Same(t, tr, tr2)
+	require.Len(t, tp.tracer.spans, 2)
+
+	childSpan := tp.tracer.spans[1]
+	assert.Equal(t, "range", childSpan.name)
+	assert.Equal(t, []attribute.KeyValue{
+		attribute.String("str_key", "val"),
+		attribute.Bool("bool_key", true),
+		attribute.Int("int_key", 42),
+		attribute.Int64("int64_key", 64),
+		attribute.Int64("uint64_key", 128),
+		attribute.Float64("float64_key", 3.14),
+		attribute.StringSlice("slice_key", []string{"a", "b"}),
+		attribute.String("other_key", "{7}"),
+	}, childSpan.attributes)
+
+	tr.StartSubTrace(Field{Key: "sub", Value: "start"})
+	tr.StepWithFunction(func() {
+		// Steps inside StepWithFunction are disabled.
+		tr.Step("ignored_inner_step")
+	}, "step_with_fn", Field{Key: "fn_attr", Value: "ok"})
+	tr.StopSubTrace(Field{Key: "sub", Value: "end"})
+
+	insertTime := tr.GetStartTime().Add(time.Millisecond)
+	tr.SetStartTime(tr.GetStartTime())
+	tr.InsertStep(0, insertTime, "inserted_step", Field{Key: "ins", Value: 1})
+	tr.InsertStep(10, insertTime, "appended_step")
+
+	tr.AddField(
+		Field{Key: "str_key", Value: "updated"},
+		Field{Key: "new_key", Value: 99},
+	)
+
+	wantErr := errors.New("raft error")
+	tr.RecordError(wantErr)
+
+	require.False(t, childSpan.ended)
+	tr.LogAllStepsIfLong(time.Hour)
+	assert.True(t, childSpan.ended)
+	tr.LogAllStepsIfLong(-time.Second)
+
+	assert.Equal(t, []recordedEvent{
+		{name: "step_with_fn", attributes: []attribute.KeyValue{attribute.String("fn_attr", "ok")}},
+		{name: "inserted_step", attributes: []attribute.KeyValue{attribute.Int("ins", 1)}},
+		{name: "appended_step", attributes: nil},
+	}, childSpan.events)
+	assert.Equal(t, []error{wantErr}, childSpan.errs)
 }
