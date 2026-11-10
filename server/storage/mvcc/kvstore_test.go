@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -433,6 +434,102 @@ func TestStoreRestore(t *testing.T) {
 	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
 	}
+}
+
+func TestStoreRestoreOutOfOrderRevision(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	s := newFakeStore(lg)
+	b := s.b.(*fakeBackend)
+	defer s.Close()
+
+	// A put and a tombstone for the same key sharing one revision:
+	// the 17-byte put key sorts before the 18-byte tombstone key, so
+	// restore replays the put first and then the tombstone with a
+	// revision that is not greater than the last restored one.
+	putkey := newTestRevBytes(Revision{Main: 5})
+	putkv := mvccpb.KeyValue{
+		Key:            []byte("foo"),
+		Value:          []byte("bar"),
+		CreateRevision: 5,
+		ModRevision:    5,
+		Version:        1,
+	}
+	putkvb, err := proto.Marshal(&putkv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	delkey := newTestBucketKeyBytes(newBucketKey(5, 0, true))
+	delkv := mvccpb.KeyValue{
+		Key: []byte("foo"),
+	}
+	delkvb, err := proto.Marshal(&delkv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.tx.rangeRespc <- rangeResp{[][]byte{schema.FinishedCompactKeyName}, [][]byte{newTestRevBytes(Revision{Main: 3})}}
+	b.tx.rangeRespc <- rangeResp{[][]byte{schema.ScheduledCompactKeyName}, [][]byte{newTestRevBytes(Revision{Main: 3})}}
+
+	b.tx.rangeRespc <- rangeResp{[][]byte{putkey, delkey}, [][]byte{putkvb, delkvb}}
+	b.tx.rangeRespc <- rangeResp{nil, nil}
+
+	err = s.restore()
+	if err == nil {
+		t.Fatal("expected restore to fail on out-of-order revisions, got nil error")
+	}
+	if !strings.Contains(err.Error(), "foo") {
+		t.Errorf("restore error = %v, want it to name the offending key", err)
+	}
+	if !strings.Contains(err.Error(), "{5 0}") {
+		t.Errorf("restore error = %v, want it to name the offending revision", err)
+	}
+}
+
+func TestStoreRestoreOutOfOrderRevisionRealBackend(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer b.Close()
+
+	putkey := newTestRevBytes(Revision{Main: 5})
+	putkv := mvccpb.KeyValue{
+		Key:            []byte("foo"),
+		Value:          []byte("bar"),
+		CreateRevision: 5,
+		ModRevision:    5,
+		Version:        1,
+	}
+	putkvb, err := proto.Marshal(&putkv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	delkey := newTestBucketKeyBytes(newBucketKey(5, 0, true))
+	delkv := mvccpb.KeyValue{
+		Key: []byte("foo"),
+	}
+	delkvb, err := proto.Marshal(&delkv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx := b.BatchTx()
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Key)
+	tx.UnsafePut(schema.Key, putkey, putkvb)
+	tx.UnsafePut(schema.Key, delkey, delkvb)
+	tx.Unlock()
+	b.ForceCommit()
+
+	func() {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Error("expected NewStore to panic on out-of-order revisions")
+				return
+			}
+			if msg := fmt.Sprint(r); !strings.Contains(msg, "foo") || !strings.Contains(msg, "{5 0}") {
+				t.Errorf("panic = %v, want it to name the offending key and revision", r)
+			}
+		}()
+		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		defer s.Close()
+	}()
 }
 
 func TestRestoreDelete(t *testing.T) {
