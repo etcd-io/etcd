@@ -196,7 +196,12 @@ func TestMemberRemove(t *testing.T) {
 				clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(c))
 				defer clus.Close()
 				// client connects to a specific member which won't be removed from cluster
-				cc := clus.Members()[0].Client()
+				members := clus.Members()
+				cc := members[0].Client()
+
+				if c.ClusterSize > 1 && quorumTc.expectClusterError {
+					resetActiveSince(ctx, t, members[1])
+				}
 
 				testutils.ExecuteUntil(ctx, t, func() {
 					if quorumTc.waitForQuorum {
@@ -204,7 +209,14 @@ func TestMemberRemove(t *testing.T) {
 						time.Sleep(etcdserver.HealthInterval + 2*time.Second)
 					}
 
-					memberID, clusterID := memberToRemove(ctx, t, cc, c.ClusterSize)
+					var memberID, clusterID uint64
+					if c.ClusterSize > 1 && quorumTc.expectClusterError {
+						// Remove a different peer; removing the restarted peer while its
+						// transport is still inactive is intentionally allowed.
+						memberID, clusterID = memberAndClusterID(ctx, t, members[2].Client())
+					} else {
+						memberID, clusterID = memberToRemove(ctx, t, cc, c.ClusterSize)
+					}
 					removeResp, err := cc.MemberRemove(ctx, memberID)
 
 					if c.ClusterSize == 1 && quorumTc.expectSingleNodeError {
@@ -309,6 +321,19 @@ func memberToRemove(ctx context.Context, t *testing.T, client intf.Client, clust
 		require.NotZerof(t, memberID, "memberToRemove failed. listResp:%v, statusResp:%v", listResp, statusResp)
 	}
 	return memberID, clusterID
+}
+
+func memberAndClusterID(ctx context.Context, t *testing.T, client intf.Client) (memberID uint64, clusterID uint64) {
+	statusResp, err := client.Status(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, statusResp)
+	return statusResp[0].Header.MemberId, statusResp[0].Header.ClusterId
+}
+
+func resetActiveSince(ctx context.Context, t *testing.T, member intf.Member) {
+	t.Helper()
+	member.Stop()
+	require.NoError(t, member.Start(ctx))
 }
 
 func getMemberIDToEndpoints(ctx context.Context, t *testing.T, clus intf.Cluster) (memberIDToEndpoints map[uint64]string) {
