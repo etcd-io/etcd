@@ -519,11 +519,9 @@ func (s *watchableStore) progressIfSync(watchers map[WatchID]*watcher, responseW
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	// Read rev under revMu, not via s.rev(): that takes store.mu while holding
-	// watchable.mu, the reverse of the write path's order (deadlock, #22184).
-	s.store.revMu.RLock()
-	rev := s.store.currentRev
-	s.store.revMu.RUnlock()
+	// Not s.rev(): that takes store.mu while holding watchable.mu, the reverse
+	// of the write path's order (deadlock, #22184).
+	rev := s.store.CurrentRev()
 	// Any watcher unsynced?
 	for _, w := range watchers {
 		if _, ok := s.synced.watchers[w]; !ok {

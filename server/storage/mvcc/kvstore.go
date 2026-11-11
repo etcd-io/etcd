@@ -283,6 +283,12 @@ func (s *store) Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 	return s.compact(trace, rev, prevCompactRev, prevCompactionCompleted), nil
 }
 
+func (s *store) CurrentRev() int64 {
+	s.revMu.RLock()
+	defer s.revMu.RUnlock()
+	return s.currentRev
+}
+
 func (s *store) Commit() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
