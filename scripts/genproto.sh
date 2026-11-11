@@ -47,9 +47,10 @@ source ./scripts/test_lib.sh
 
 PATH=$(pwd)/bin:$(go env GOPATH)/bin:$PATH
 export PATH
+export PROTOC_VERSION="36.2"
 
-if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
-  echo "Could not find protoc 3.20.3, installing now..."
+if [[ $(protoc --version | cut -f2 -d' ') != "${PROTOC_VERSION}" ]]; then
+  echo "Could not find protoc ${PROTOC_VERSION}, installing now..."
 
   arch=$(go env GOARCH)
 
@@ -62,12 +63,13 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
       ;;
   esac
 
-  protoc_download_file="protoc-3.20.3-linux-${file}.zip"
+  protoc_download_file="protoc-${PROTOC_VERSION}-linux-${file}.zip"
   if [ "$OS" == "darwin" ]; then
-    # protoc-3.20.3 does not have pre-built binaries for darwin_arm64. Thanks to Rosetta, we could use x86_64 binary.
-    protoc_download_file="protoc-3.20.3-osx-x86_64.zip"
+    # protoc has a universal binary for only macos that works for both x64 and aarch64.
+    # We can use that intead of needing to use an arch-specific.
+    protoc_download_file="protoc-${PROTOC_VERSION}-osx-universal_binary.zip"
   fi
-  download_url="https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/${protoc_download_file}"
+  download_url="https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${protoc_download_file}"
   echo "Running on ${OS} ${arch}. Downloading ${protoc_download_file}"
   mkdir -p bin
   wget ${download_url} && unzip -p ${protoc_download_file} bin/protoc > tmpFile && mv tmpFile bin/protoc
