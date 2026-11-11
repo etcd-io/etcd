@@ -111,7 +111,7 @@ fix: fix-mod-tidy fix-dep fix-bom fix-lint fix-yamllint sync-toolchain-directive
 
 .PHONY: verify-bom
 verify-bom:
-	PASSES="bom" ./scripts/test.sh
+	./scripts/verify/bom.sh
 
 .PHONY: fix-bom
 fix-bom:
