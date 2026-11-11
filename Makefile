@@ -226,7 +226,7 @@ verify-go-versions:
 
 .PHONY: verify-gomodguard
 verify-gomodguard:
-	PASSES="gomodguard" ./scripts/test.sh
+	./scripts/verify/gomodguard.sh
 
 .PHONY: verify-go-workspace
 verify-go-workspace:
