@@ -234,7 +234,7 @@ verify-go-workspace:
 
 .PHONY: verify-grpc-experimental
 verify-grpc-experimental:
-	./scripts/verify_grpc_experimental.sh
+	./scripts/verify/grpc_experimental.sh
 
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
