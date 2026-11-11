@@ -45,7 +45,7 @@ func (r ClientReport) WatchEventCount() int {
 	return count
 }
 
-func persistClientReports(lg *zap.Logger, path string, reports []ClientReport) error {
+func PersistClientReports(lg *zap.Logger, path string, reports []ClientReport) error {
 	sort.Slice(reports, func(i, j int) bool {
 		return reports[i].ClientID < reports[j].ClientID
 	})
@@ -71,6 +71,10 @@ func persistClientReports(lg *zap.Logger, path string, reports []ClientReport) e
 		}
 	}
 	return nil
+}
+
+func persistClientReports(lg *zap.Logger, path string, reports []ClientReport) error {
+	return PersistClientReports(lg, path, reports)
 }
 
 func LoadClientReports(path string) ([]ClientReport, error) {

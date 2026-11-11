@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build cgo && amd64
+//go:build (cgo && amd64) || (cgo && arm64)
 
 package main
 
@@ -22,9 +22,14 @@ import (
 	"time"
 
 	"github.com/antithesishq/antithesis-sdk-go/lifecycle"
+	"go.uber.org/zap"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/antithesis/test-template/robustness/common"
+	"go.etcd.io/etcd/tests/v3/robustness/client"
+	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
+	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
 // Sleep duration
@@ -70,6 +75,16 @@ func CheckHealth() bool {
 func main() {
 	fmt.Println("Client [entrypoint]: starting...")
 
+	hosts, reportPath, _ := common.GetPaths()
+
+	lg, err := zap.NewProduction()
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		_ = lg.Sync()
+	}()
+
 	// run loop until all nodes are healthy
 	for {
 		fmt.Println("Client [entrypoint]: checking cluster health...")
@@ -80,6 +95,28 @@ func main() {
 		fmt.Printf("Client [entrypoint]: cluster is not healthy. retrying in %d seconds...\n", SLEEP)
 		time.Sleep(SLEEP * time.Second)
 	}
+
+	fmt.Println("Client [entrypoint]: checking empty database at start...")
+	baseTime := time.Now()
+	ids := identity.NewIDProvider()
+	trafficSet := client.NewSet(ids, baseTime)
+	defer trafficSet.Close()
+
+	if err := traffic.CheckEmptyDatabaseAtStart(context.Background(), lg, hosts, trafficSet); err != nil {
+		lg.Fatal("Failed empty database at start check", zap.Error(err))
+	}
+
+	reports := trafficSet.Reports()
+	for i := range reports {
+		reports[i].ClientID = 0
+		for j := range reports[i].KeyValue {
+			reports[i].KeyValue[j].ClientId = 0
+		}
+	}
+	if err := report.PersistClientReports(lg, reportPath, reports); err != nil {
+		lg.Fatal("Failed to persist initial client report", zap.Error(err))
+	}
+	fmt.Printf("Client [entrypoint]: initial client report persisted to %s\n", reportPath)
 
 	// signal that the setup looks complete
 	lifecycle.SetupComplete(
