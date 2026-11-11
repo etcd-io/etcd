@@ -76,7 +76,6 @@ fi
 PASSES=${PASSES:-"bom dep build unit"}
 KEEP_GOING_SUITE=${KEEP_GOING_SUITE:-false}
 PKG=${PKG:-}
-SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
 MARKDOWN_MARKER_VERSION=${MARKDOWN_MARKER_VERSION:="v0.10.0"}
 
 if [ -z "${GOARCH:-}" ]; then
@@ -344,18 +343,6 @@ function cov_pass {
 }
 
 ######### Code formatting checkers #############################################
-
-function shellcheck_pass {
-  SHELLCHECK=shellcheck
-  if ! tool_exists "shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
-    log_callout "Installing shellcheck $SHELLCHECK_VERSION"
-    wget -qO- "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.${OS}.${ARCH}.tar.xz" | tar -xJv -C /tmp/ --strip-components=1
-    mkdir -p ./bin
-    mv /tmp/shellcheck ./bin/
-    SHELLCHECK=./bin/shellcheck
-  fi
-  generic_checker run ${SHELLCHECK} -fgcc scripts/*.sh
-}
 
 function shellws_pass {
   log_callout "Ensuring no tab-based indentation in shell scripts"

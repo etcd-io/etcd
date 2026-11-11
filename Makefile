@@ -135,7 +135,7 @@ fix-lint: install-golangci-lint
 
 .PHONY: verify-shellcheck
 verify-shellcheck:
-	PASSES="shellcheck" ./scripts/test.sh
+	./scripts/verify/shellcheck.sh
 
 .PHONY: verify-mod-tidy
 verify-mod-tidy:
