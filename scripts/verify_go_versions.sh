@@ -33,36 +33,28 @@ go_line_violation="false"
 #  (1) go directive <= version in .go-version
 #  (2) toolchain directive == version in .go-version
 function verify_go_versions() {
+    local go_command=$1
+    local mod_file=$2
     # shellcheck disable=SC2086
-    toolchain_version="$(go mod edit -json $1 | jq -r .Toolchain)"
+    toolchain_version="$(go "${go_command}" edit -json "${mod_file}" | jq -r .Toolchain)"
     # shellcheck disable=SC2086
-    go_line_version="$(go mod edit -json $1 | jq -r .Go)"
+    go_line_version="$(go "${go_command}" edit -json "${mod_file}" | jq -r .Go)"
     if [[ "go${target_go_version}" != "${toolchain_version}" ]]; then
-        log_error "go toolchain directive out of sync for $1, got: ${toolchain_version}"
+        log_error "go toolchain directive out of sync for ${mod_file}, got: ${toolchain_version}"
         toolchain_out_of_sync="true"
     fi
     if ! printf '%s\n' "${go_line_version}" "${target_go_version}" | sort --check=silent --version-sort; then
-        log_error "go directive in $1 is greater than maximum allowed: go${target_go_version}"
+        log_error "go directive in ${mod_file} is greater than maximum allowed: go${target_go_version}"
         go_line_violation="true"
     fi
 }
 
-# Workaround to get go.work's toolchain, as go work edit -json doesn't return
-# the toolchain as of Go 1.24. When this is fixed, we can replace these two
-# checks with verify_go_versions go.work
-toolchain_version="$(grep toolchain go.work | cut -d' ' -f2)"
-if [[ "go${target_go_version}" != "${toolchain_version}" ]]; then
-    log_error "go toolchain directive out of sync for go.work, got: ${toolchain_version}"
-    toolchain_out_of_sync="true"
-fi
-go_line_version="$(go work edit -json | jq -r .Go)"
-if ! printf '%s\n' "${go_line_version}" "${target_go_version}" | sort --check=silent --version-sort; then
-    log_error "go directive in go.work is greater than maximum allowed: go${target_go_version}"
-    go_line_violation="true"
-fi
+# Sync workspace Go version.
+verify_go_versions work go.work
 
+# Sync sumobuldes Go version.
 while read -r mod; do
-    verify_go_versions "${mod}";
+    verify_go_versions mod "${mod}"
 done < <(find . -name 'go.mod')
 
 if [[ "${toolchain_out_of_sync}" == "true" ]]; then
