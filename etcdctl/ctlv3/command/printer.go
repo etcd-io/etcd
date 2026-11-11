@@ -75,7 +75,7 @@ type printer interface {
 	AuthStatus(r *v3.AuthStatusResponse)
 }
 
-func NewPrinter(printerType string, isHex bool) printer {
+func newPrinter(printerType string, isHex bool) printer {
 	switch printerType {
 	case "simple":
 		return &simplePrinter{isHex: isHex}
