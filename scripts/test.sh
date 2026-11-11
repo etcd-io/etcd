@@ -569,7 +569,7 @@ EOF
 }
 
 function proto_annotations_pass {
-  "${ETCD_ROOT_DIR}/scripts/verify_proto_annotations.sh"
+  "${ETCD_ROOT_DIR}/scripts/verify/proto-annotations.sh"
 }
 
 function genproto_pass {
