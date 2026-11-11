@@ -28,8 +28,6 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 	return newTransport(info, dialtimeoutd, 0, 0)
 }
 
-// newTransport is NewTransport whose connections, TCP and unix alike, apply
-// the given read and write timeouts.
 func newTransport(info TLSInfo, dialtimeoutd, rdtimeoutd, wtimeoutd time.Duration) (*http.Transport, error) {
 	cfg, err := info.ClientConfig()
 	if err != nil {

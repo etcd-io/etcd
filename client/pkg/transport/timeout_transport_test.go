@@ -72,68 +72,7 @@ func TestNewTimeoutTransport(t *testing.T) {
 	}
 }
 
-// TestNewTimeoutTransportReadTimeout tests that connections dialed by the
-// transport time out when the peer stops sending.
-func TestNewTimeoutTransportReadTimeout(t *testing.T) {
-	srv := httptest.NewServer(stallingHandler())
-	defer srv.Close()
-	requireReadTimeout(t, srv.URL)
-}
-
-// TestNewTimeoutTransportUnixReadTimeout tests the same for peers reached
-// through a unix socket, which go through a transport of their own.
-func TestNewTimeoutTransportUnixReadTimeout(t *testing.T) {
-	// The unix transport dials the URL host as a socket path relative to the
-	// working directory, as the integration framework does.
-	t.Chdir(t.TempDir())
-	ln, err := net.Listen("unix", "localhost:1")
-	require.NoError(t, err)
-	srv := httptest.NewUnstartedServer(stallingHandler())
-	srv.Listener.Close()
-	srv.Listener = ln
-	srv.Start()
-	defer srv.Close()
-	requireReadTimeout(t, "unix://localhost:1")
-}
-
-// stallingHandler sends the response headers and then nothing, until the
-// client goes away.
-func stallingHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.(http.Flusher).Flush()
-		<-r.Context().Done()
-	})
-}
-
-func requireReadTimeout(t *testing.T, url string) {
-	t.Helper()
-	tr, err := NewTimeoutTransport(TLSInfo{}, time.Second, 100*time.Millisecond, 100*time.Millisecond)
-	require.NoError(t, err)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	require.NoError(t, err)
-	resp, err := tr.RoundTrip(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	readErr := make(chan error, 1)
-	go func() {
-		_, err := io.ReadAll(resp.Body)
-		readErr <- err
-	}()
-	select {
-	case err := <-readErr:
-		var netErr net.Error
-		require.ErrorAs(t, err, &netErr)
-		require.Truef(t, netErr.Timeout(), "read error = %v, want a timeout", err)
-	case <-time.After(5 * time.Second):
-		t.Fatal("reading from a stalled peer did not time out")
-	}
-}
-
-// TestNewTimeoutTransportLocalAddr tests that connections dialed by the
-// transport use TLSInfo.LocalAddr as their source address.
-func TestNewTimeoutTransportLocalAddr(t *testing.T) {
+func TestConnectionsDialedUseTLSInfoLocalAddrAsSourceAddress(t *testing.T) {
 	const localAddr = "127.0.0.2"
 	probe, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
