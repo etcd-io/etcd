@@ -396,9 +396,6 @@ function govuln_pass {
   run_for_all_workspace_modules run govulncheck -show verbose
 }
 
-function lint_pass {
-  run_for_all_workspace_modules golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
-}
 
 function lint_fix_pass {
   run_for_all_workspace_modules golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
