@@ -25,7 +25,6 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -150,6 +149,82 @@ func TestMemberAdd(t *testing.T) {
 		}
 	}
 }
+
+
+// TestCtlV3MemberAddAsLearnerWithOneMemberDown verifies the case
+// of adding new member when one or two existing members are down.
+// Refer to https://github.com/etcd-io/etcd/issues/21640
+func TestCtlV3MemberAddAsLearnerWithOneMemberDown(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	testCases := []struct {
+		name        string
+		clusterSize int
+		downMembers int
+		expectErr   bool
+	}{
+		{
+			name:        "0 out of 1 member is down, allow adding member",
+			clusterSize: 1,
+			downMembers: 0,
+			expectErr:   false,
+		},
+		{
+			name:        "1 out of 3 members is down, reject adding member",
+			clusterSize: 3,
+			downMembers: 1,
+			expectErr:   true,
+		},
+		{
+			name:        "1 out of 4 members is down, allow adding member",
+			clusterSize: 4,
+			downMembers: 1,
+			expectErr:   false,
+		},
+		{
+			name:        "1 out of 5 members is down, allow adding member",
+			clusterSize: 5,
+			downMembers: 1,
+			expectErr:   false,
+		},
+		{
+			name:        "2 out of 5 members are down, reject adding member",
+			clusterSize: 5,
+			downMembers: 2,
+			expectErr:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), etcdserver.HealthInterval+15*time.Second) // ctx requires longer deadline due to the sleep below
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(tc.clusterSize))
+			defer clus.Close()
+			// use the last member since it will not be stopped
+			cc := clus.Members()[len(clus.Members())-1].Client()
+
+			testutils.ExecuteUntil(ctx, t, func() {
+				t.Logf("Stopping %d member", tc.downMembers)
+				for i := 0; i < tc.downMembers; i++ {
+					t.Logf("Stopping member %d", i)
+					clus.Members()[i].Stop()
+				}
+
+				time.Sleep(etcdserver.HealthInterval + 2*time.Second)
+
+				t.Log("Adding a new learner")
+				_, err := cc.MemberAddAsLearner(ctx, "new-learner", []string{"http://10.0.0.12:2380"})
+				if tc.expectErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		})
+	}
+}
+
 
 func TestMemberRemove(t *testing.T) {
 	testRunner.BeforeTest(t)
