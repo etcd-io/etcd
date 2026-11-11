@@ -9,6 +9,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 - Fix [`--force-new-cluster` permanently bricking a member whose backend consistent index is ahead of its WAL](https://github.com/etcd-io/etcd/pull/22685)
 - [Define `alarmStore` as an `atomic.Pointer` to avoid race condition](https://github.com/etcd-io/etcd/pull/22705)
+- Fix [etcd panics on startup replaying legacy v2 member-attribute WAL entries](https://github.com/etcd-io/etcd/pull/22804)
 
 ---
 
