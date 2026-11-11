@@ -393,7 +393,7 @@ function markdown_marker_pass {
 function govuln_pass {
   local tool_bin
   tool_bin=$(tool_get_bin golang.org/x/vuln/cmd/govulncheck)
-  run_for_all_workspace_modules run govulncheck -show verbose
+  run_for_all_workspace_modules run "${tool_bin}" -show verbose
 }
 
 function lint_pass {
@@ -440,22 +440,6 @@ function bom_pass {
     return 255
   fi
   rm bom-now.json.tmp
-}
-
-function module_gomodguard {
-  if [ ! -f .gomodguard.yaml ]; then
-    # Nothing to validate, return.
-    return
-  fi
-
-  local tool_bin="$1"
-  run "${tool_bin}"
-}
-
-function gomodguard_pass {
-  local tool_bin
-  tool_bin=$(tool_get_bin github.com/ryancurrah/gomodguard/cmd/gomodguard)
-  run_for_workspace_modules module_gomodguard "${tool_bin}"
 }
 
 ######## VARIOUS CHECKERS ######################################################
