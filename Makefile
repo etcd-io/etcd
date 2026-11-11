@@ -139,7 +139,7 @@ verify-shellcheck:
 
 .PHONY: verify-mod-tidy
 verify-mod-tidy:
-	PASSES="mod_tidy" ./scripts/test.sh
+	./scripts/verify/mod_tidy.sh
 
 .PHONY: fix-mod-tidy
 fix-mod-tidy:

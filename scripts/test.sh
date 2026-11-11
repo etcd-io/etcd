@@ -587,10 +587,6 @@ EOF
   VERSION="${VERSION}" run "${ETCD_ROOT_DIR}/scripts/test_images.sh"
 }
 
-function mod_tidy_pass {
-  run_for_workspace_modules run go mod tidy -diff
-}
-
 function proto_annotations_pass {
   "${ETCD_ROOT_DIR}/scripts/verify_proto_annotations.sh"
 }
