@@ -32,7 +32,7 @@ type printer interface {
 	DBHashKV(HashKV)
 }
 
-func NewPrinter(printerType string) printer {
+func newPrinter(printerType string) printer {
 	switch printerType {
 	case "simple":
 		return &simplePrinter{}
@@ -92,7 +92,7 @@ func initPrinterFromCmd(cmd *cobra.Command) (p printer) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-	if p = NewPrinter(outputType); p == nil {
+	if p = newPrinter(outputType); p == nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadFeature, errors.New("unsupported output format"))
 	}
 	return p
