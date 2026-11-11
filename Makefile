@@ -222,7 +222,7 @@ clean:
 
 .PHONY: verify-go-versions
 verify-go-versions:
-	./scripts/verify_go_versions.sh
+	./scripts/verify/go_versions.sh
 
 .PHONY: verify-gomodguard
 verify-gomodguard:
