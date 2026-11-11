@@ -25,6 +25,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -228,6 +229,28 @@ func TestMemberRemove(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestRemoveNonExistingMember(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(1))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+
+	testutils.ExecuteUntil(ctx, t, func() {
+		_, err := cc.MemberRemove(ctx, 1)
+		require.Error(t, err)
+
+		// Ensure that membership is properly bootstrapped.
+		members := clus.Members()
+		require.NotEmpty(t, members)
+		member := members[0]
+		member.Stop()
+		assert.NoError(t, member.Start(ctx))
+	})
 }
 
 func TestMemberListSerializable(t *testing.T) {

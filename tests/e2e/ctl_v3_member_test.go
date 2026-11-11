@@ -323,23 +323,6 @@ func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: " updated in cluster "})
 }
 
-func TestRemoveNonExistingMember(t *testing.T) {
-	e2e.BeforeTest(t)
-	ctx := t.Context()
-
-	cfg := e2e.ConfigStandalone(*e2e.NewConfig())
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(cfg))
-	require.NoError(t, err)
-	defer epc.Close()
-	c := epc.Etcdctl()
-
-	_, err = c.MemberRemove(ctx, 1)
-	require.Error(t, err)
-
-	// Ensure that membership is properly bootstrapped.
-	assert.NoError(t, epc.Restart(ctx))
-}
-
 // TestCtlV3MemberAddAsLearnerWithOneMemberDown verifies the case
 // of adding new member when one or two existing members are down.
 // Refer to https://github.com/etcd-io/etcd/issues/21640
