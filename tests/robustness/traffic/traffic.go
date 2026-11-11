@@ -172,7 +172,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	lg.Info("Reporting traffic during failure injection", zap.Int("successes", duringFailpointStats.Successes), zap.Int("failures", duringFailpointStats.Failures), zap.Float64("successRate", duringFailpointStats.SuccessRate()), zap.Duration("period", duringFailpointStats.Period), zap.Float64("qps", duringFailpointStats.QPS()))
 	lg.Info("Reporting traffic after failure injection", zap.Int("successes", afterFailpointStats.Successes), zap.Int("failures", afterFailpointStats.Failures), zap.Float64("successRate", afterFailpointStats.SuccessRate()), zap.Duration("period", afterFailpointStats.Period), zap.Float64("qps", afterFailpointStats.QPS()))
 
-	watchTotal := CalculateWatchStats(reports, startTime, endTime)
+	watchTotal := calculateWatchStats(reports, startTime, endTime)
 	lg.Info("Reporting complete watch", zap.Int("requests", watchTotal.Requests), zap.Int("events", watchTotal.Events), zap.Float64("eventsQPS", watchTotal.EventsQPS()), zap.Int("progressNotifies", watchTotal.ProgressNotifies), zap.Int("immediateClosures", watchTotal.ImmediateClosures), zap.Duration("period", watchTotal.Period), zap.Duration("avgDuration", watchTotal.AvgDuration()))
 
 	if beforeFailpointStats.QPS() < profile.KeyValue.MinimalQPS {
@@ -254,7 +254,7 @@ func SimulateCompactionTraffic(ctx context.Context, wg *sync.WaitGroup, profile 
 	return nil
 }
 
-func CalculateWatchStats(reports []report.ClientReport, start, end time.Duration) (ws watchStats) {
+func calculateWatchStats(reports []report.ClientReport, start, end time.Duration) (ws watchStats) {
 	ws.Period = end - start
 	if ws.Period <= 0 {
 		return ws
@@ -329,7 +329,7 @@ func (ws *watchStats) EventsQPS() float64 {
 	return float64(ws.Events) / ws.Period.Seconds()
 }
 
-func CalculateStats(reports []report.ClientReport, start, end time.Duration) (ts trafficStats) {
+func CalculateStats(reports []report.ClientReport, start, end time.Duration) (ts TrafficStats) {
 	ts.Period = end - start
 
 	for _, r := range reports {
@@ -348,16 +348,16 @@ func CalculateStats(reports []report.ClientReport, start, end time.Duration) (ts
 	return ts
 }
 
-type trafficStats struct {
+type TrafficStats struct {
 	Successes, Failures int
 	Period              time.Duration
 }
 
-func (ts *trafficStats) SuccessRate() float64 {
+func (ts *TrafficStats) SuccessRate() float64 {
 	return float64(ts.Successes) / float64(ts.Successes+ts.Failures)
 }
 
-func (ts *trafficStats) QPS() float64 {
+func (ts *TrafficStats) QPS() float64 {
 	return float64(ts.Successes) / ts.Period.Seconds()
 }
 
