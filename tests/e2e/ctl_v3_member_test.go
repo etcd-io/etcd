@@ -31,7 +31,6 @@ import (
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/expect"
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -41,30 +40,12 @@ func TestCtlV3MemberListWithHex(t *testing.T) { testCtl(t, memberListWithHexTest
 func TestCtlV3MemberAdd(t *testing.T)          { testCtl(t, memberAddTest) }
 func TestCtlV3MemberAddAsLearner(t *testing.T) { testCtl(t, memberAddAsLearnerTest) }
 
-func TestCtlV3MemberUpdate(t *testing.T) { testCtl(t, memberUpdateTest) }
-
 func TestCtlV3MemberPromoteWithAuthFromLeader(t *testing.T) {
 	testCtl(t, memberPromoteWithAuth(false), withTestTimeout(30*time.Second))
 }
 
 func TestCtlV3MemberPromoteWithAuthFromFollower(t *testing.T) {
 	testCtl(t, memberPromoteWithAuth(true), withTestTimeout(30*time.Second))
-}
-
-func TestCtlV3MemberUpdateNoTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigNoTLS()))
-}
-
-func TestCtlV3MemberUpdateClientTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigClientTLS()))
-}
-
-func TestCtlV3MemberUpdateClientAutoTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-
-func TestCtlV3MemberUpdatePeerTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigPeerTLS()))
 }
 
 // TestCtlV3ConsistentMemberList requires the gofailpoint to be enabled.
@@ -307,15 +288,6 @@ func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {
 		asLearner = " as learner "
 	}
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: fmt.Sprintf(" added%sto cluster ", asLearner)})
-}
-
-func memberUpdateTest(cx ctlCtx) {
-	mr, err := getMemberList(cx, false)
-	require.NoError(cx.t, err)
-
-	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
-	memberID := fmt.Sprintf("%x", mr.Members[0].ID)
-	require.NoError(cx.t, ctlV3MemberUpdate(cx, memberID, peerURL))
 }
 
 func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {

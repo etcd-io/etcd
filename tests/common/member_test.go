@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -150,7 +151,6 @@ func TestMemberAdd(t *testing.T) {
 	}
 }
 
-
 // TestCtlV3MemberAddAsLearnerWithOneMemberDown verifies the case
 // of adding new member when one or two existing members are down.
 // Refer to https://github.com/etcd-io/etcd/issues/21640
@@ -224,7 +224,6 @@ func TestCtlV3MemberAddAsLearnerWithOneMemberDown(t *testing.T) {
 		})
 	}
 }
-
 
 func TestMemberRemove(t *testing.T) {
 	testRunner.BeforeTest(t)
@@ -326,6 +325,42 @@ func TestRemoveNonExistingMember(t *testing.T) {
 		member.Stop()
 		assert.NoError(t, member.Start(ctx))
 	})
+}
+
+func TestMemberUpdate(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	for _, tc := range clusterTestCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
+			defer clus.Close()
+			cc := testutils.MustClient(clus.Client())
+
+			testutils.ExecuteUntil(ctx, t, func() {
+				listResp, err := cc.MemberList(ctx, false)
+				require.NoError(t, err)
+				require.NotEmptyf(t, listResp.Members, "listResp members should not be empty")
+				member := listResp.Members[0]
+
+				peerURLs := []string{"http://localhost:123"}
+				resp, err := cc.MemberUpdate(ctx, member.ID, peerURLs)
+				require.NoErrorf(t, err, "could not update member")
+				require.NotNilf(t, resp, "update response should not be nil")
+
+				// validate that the member peer-urls were updated
+				var updatedMember *etcdserverpb.Member
+				for _, m := range resp.Members {
+					if m.ID == member.ID {
+						updatedMember = m
+					}
+				}
+				require.NotNilf(t, updatedMember, "updated member not included in update response")
+				require.ElementsMatchf(t, updatedMember.PeerURLs, peerURLs, "updated member.PeerURLs do not match expected urls")
+			})
+		})
+	}
 }
 
 func TestMemberListSerializable(t *testing.T) {

@@ -523,3 +523,7 @@ func (c integrationClient) MemberList(ctx context.Context, serializable bool) (*
 	}
 	return c.Client.MemberList(ctx)
 }
+
+func (c integrationClient) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*clientv3.MemberUpdateResponse, error) {
+	return c.Client.MemberUpdate(ctx, id, peerAddrs)
+}
