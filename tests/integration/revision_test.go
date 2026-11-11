@@ -156,6 +156,7 @@ var connectionErrorMessages = []string{
 	"context deadline exceeded",
 	"etcdserver: request timed out",
 	"error reading from server: EOF",
+	"error reading from server: connection reset by peer",
 	"read: connection reset by peer",
 	"use of closed network connection",
 }
