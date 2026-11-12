@@ -28,21 +28,24 @@ func UnsafeCreateLeaseBucket(tx backend.UnsafeWriter) {
 	tx.UnsafeCreateBucket(Lease)
 }
 
-func MustUnsafeGetAllLeases(tx backend.UnsafeReader) []*leasepb.Lease {
+func UnsafeGetAllLeases(tx backend.UnsafeReader) ([]*leasepb.Lease, error) {
 	ls := make([]*leasepb.Lease, 0)
 	err := tx.UnsafeForEach(Lease, func(k, v []byte) error {
+		if len(k) != 8 {
+			return fmt.Errorf("lease key has unexpected length %d, want 8 bytes; lease key=%x", len(k), k)
+		}
 		var lpb leasepb.Lease
 		err := proto.Unmarshal(v, &lpb)
 		if err != nil {
-			return fmt.Errorf("failed to Unmarshal lease proto item; lease ID=%016x", bytesToLeaseID(k))
+			return fmt.Errorf("failed to Unmarshal lease proto item; lease ID=%016x: %w", bytesToLeaseID(k), err)
 		}
 		ls = append(ls, &lpb)
 		return nil
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return ls
+	return ls, nil
 }
 
 func MustUnsafePutLease(tx backend.UnsafeWriter, lpb *leasepb.Lease) {

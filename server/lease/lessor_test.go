@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -50,7 +51,7 @@ func TestLessorGrant(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	le.Promote(0)
 
@@ -113,7 +114,7 @@ func TestLeaseConcurrentKeys(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
 
@@ -162,7 +163,7 @@ func TestLessorRevoke(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	var fd *fakeDeleter
 	le.SetRangeDeleter(func() TxnDelete {
@@ -239,7 +240,7 @@ func TestLessorRenew(t *testing.T) {
 	defer be.Close()
 	defer os.RemoveAll(dir)
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	le.Promote(0)
 
@@ -269,7 +270,7 @@ func TestLessorRenewWithCheckpointer(t *testing.T) {
 	defer be.Close()
 	defer os.RemoveAll(dir)
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
 	fakerCheckerpointer := func(ctx context.Context, cp *pb.LeaseCheckpointRequest) error {
 		for _, cp := range cp.GetCheckpoints() {
 			le.Checkpoint(LeaseID(cp.GetID()), cp.GetRemaining_TTL())
@@ -314,7 +315,7 @@ func TestLessorRenewExtendPileup(t *testing.T) {
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL, leaseRevokeRate: leaseRevokeRate})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL, leaseRevokeRate: leaseRevokeRate})
 	ttl := int64(10)
 	for i := 1; i <= le.leaseRevokeRate*10; i++ {
 		if _, err := le.Grant(LeaseID(2*i), ttl); err != nil {
@@ -333,7 +334,7 @@ func TestLessorRenewExtendPileup(t *testing.T) {
 	bcfg.Path = filepath.Join(dir, "be")
 	be = backend.New(bcfg)
 	defer be.Close()
-	le = newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL, leaseRevokeRate: leaseRevokeRate})
+	le = newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL, leaseRevokeRate: leaseRevokeRate})
 	defer le.Stop()
 
 	// extend after recovery should extend expiration on lease pile-up
@@ -363,7 +364,7 @@ func TestLessorDetach(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
 
@@ -404,7 +405,7 @@ func TestLessorRecover(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	l1, err1 := le.Grant(1, 10)
 	l2, err2 := le.Grant(2, 20)
@@ -413,7 +414,7 @@ func TestLessorRecover(t *testing.T) {
 	}
 
 	// Create a new lessor with the same backend
-	nle := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	nle := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer nle.Stop()
 	nl1 := nle.Lookup(l1.ID)
 	if nl1 == nil || nl1.ttl != l1.ttl {
@@ -434,7 +435,7 @@ func TestLessorExpire(t *testing.T) {
 
 	testMinTTL := int64(1)
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: testMinTTL})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: testMinTTL})
 	defer le.Stop()
 
 	le.Promote(1 * time.Second)
@@ -487,7 +488,7 @@ func TestLessorExpireAndDemote(t *testing.T) {
 
 	testMinTTL := int64(1)
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: testMinTTL})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: testMinTTL})
 	defer le.Stop()
 
 	le.Promote(1 * time.Second)
@@ -536,7 +537,7 @@ func TestLessorMaxTTL(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 
 	_, err := le.Grant(1, MaxLeaseTTL+1)
@@ -552,7 +553,7 @@ func TestLessorCheckpointScheduling(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL, CheckpointInterval: 1 * time.Second})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL, CheckpointInterval: 1 * time.Second})
 	defer le.Stop()
 	le.minLeaseTTL = 1
 	checkpointedC := make(chan struct{})
@@ -587,7 +588,7 @@ func TestLessorCheckpointsRestoredOnPromote(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	le := newTestLessor(t, lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
 	defer le.Stop()
 	l, err := le.Grant(1, 10)
 	if err != nil {
@@ -648,7 +649,7 @@ func TestLessorCheckpointPersistenceAfterRestart(t *testing.T) {
 
 			cfg := LessorConfig{MinLeaseTTL: minLeaseTTL}
 			cfg.CheckpointPersist = tc.checkpointPersist
-			le := newLessor(lg, be, tc.cluster, cfg)
+			le := newTestLessor(t, lg, be, tc.cluster, cfg)
 			l, err := le.Grant(2, ttl)
 			if err != nil {
 				t.Fatal(err)
@@ -661,7 +662,7 @@ func TestLessorCheckpointPersistenceAfterRestart(t *testing.T) {
 				t.Errorf("getRemainingTTL() = %d, expected: %d", l.getRemainingTTL(), checkpointTTL)
 			}
 			le.Stop()
-			le2 := newLessor(lg, be, clusterLatest(), cfg)
+			le2 := newTestLessor(t, lg, be, clusterLatest(), cfg)
 			l = le2.Lookup(2)
 			if l.getRemainingTTL() != tc.expectRemainingTTL {
 				t.Errorf("getRemainingTTL() = %d, expected: %d", l.getRemainingTTL(), tc.expectRemainingTTL)
@@ -686,6 +687,67 @@ func (fd *fakeDeleter) End() { fd.tx.Unlock() }
 func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 	fd.deleted = append(fd.deleted, string(key)+"_"+string(end))
 	return 0, 0
+}
+
+func newTestLessor(t *testing.T, lg *zap.Logger, be backend.Backend, cluster cluster, cfg LessorConfig) *lessor {
+	t.Helper()
+	le, err := newLessor(lg, be, cluster, cfg)
+	if err != nil {
+		t.Fatalf("could not create lessor (%v)", err)
+	}
+	return le
+}
+
+// TestNewLessorCorruptedLeaseBucket ensures that a corrupted lease bucket
+// surfaces as an error from NewLessor instead of panicking the process
+// at startup (https://github.com/etcd-io/etcd/issues/22748).
+func TestNewLessorCorruptedLeaseBucket(t *testing.T) {
+	tcs := []struct {
+		name    string
+		key     []byte
+		value   []byte
+		wantErr string
+	}{
+		{
+			name:    "Unparseable value",
+			key:     []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11},
+			value:   []byte{0xff, 0xff},
+			wantErr: "failed to Unmarshal lease proto item; lease ID=0000000000000011",
+		},
+		{
+			name:    "Short key with unparseable value",
+			key:     []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11},
+			value:   []byte{0xff, 0xff},
+			wantErr: "lease key has unexpected length 7, want 8 bytes",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zap.NewNop()
+			dir, be := NewTestBackend(t)
+			defer os.RemoveAll(dir)
+			defer be.Close()
+
+			tx := be.BatchTx()
+			tx.Lock()
+			schema.UnsafeCreateLeaseBucket(tx)
+			tx.UnsafePut(schema.Lease, tc.key, tc.value)
+			tx.Unlock()
+			be.ForceCommit()
+
+			le, err := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+			if err == nil {
+				if le != nil {
+					le.Stop()
+				}
+				t.Fatalf("expected error for corrupted lease bucket, got nil")
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("error = %v, want it to contain %q", err, tc.wantErr)
+			}
+		})
+	}
 }
 
 func NewTestBackend(t *testing.T) (string, backend.Backend) {
