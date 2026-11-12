@@ -128,7 +128,8 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 	defer s.mu.Unlock()
 	if err := s.restore(); err != nil {
 		// TODO: return the error instead of panic here?
-		panic("failed to recover store from backend")
+		lg.Error("failed to recover store from backend", zap.Error(err))
+		panic(fmt.Sprintf("failed to recover store from backend: %v", err))
 	}
 
 	return s
@@ -352,7 +353,7 @@ func (s *store) restore() error {
 	scheduledCompact, _ := UnsafeReadScheduledCompact(tx)
 	// index keys concurrently as they're loaded in from tx
 	keysGauge.Set(0)
-	rkvc, revc := restoreIntoIndex(s.lg, s.kvindex)
+	rkvc, revc, errc := restoreIntoIndex(s.lg, s.kvindex)
 	for {
 		keys, vals := tx.UnsafeRange(schema.Key, min, max, int64(restoreChunkKeys))
 		if len(keys) == 0 {
@@ -372,9 +373,15 @@ func (s *store) restore() error {
 	}
 	close(rkvc)
 
+	restoredRev := <-revc
+	if err := <-errc; err != nil {
+		tx.RUnlock()
+		return err
+	}
+
 	{
 		s.revMu.Lock()
-		s.currentRev = <-revc
+		s.currentRev = restoredRev
 
 		// keys in the range [compacted revision -N, compaction] might all be deleted due to compaction.
 		// the correct revision should be set to compaction revision in the case, not the largest revision
@@ -441,14 +448,24 @@ type revKeyValue struct {
 	kstr string
 }
 
-func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int64) {
+func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int64, <-chan error) {
 	rkvc, revc := make(chan revKeyValue, restoreChunkKeys), make(chan int64, 1)
+	errc := make(chan error, 1)
 	go func() {
 		currentRev := int64(1)
-		defer func() { revc <- currentRev }()
+		var restoreErr error
+		defer func() {
+			revc <- currentRev
+			errc <- restoreErr
+		}()
 		// restore the tree index from streaming the unordered index.
 		kiCache := make(map[string]*keyIndex, restoreChunkKeys)
 		for rkv := range rkvc {
+			if restoreErr != nil {
+				// Keep draining the channel so the sender does not
+				// block once restore has already failed.
+				continue
+			}
 			ki, ok := kiCache[rkv.kstr]
 			// purge kiCache if many keys but still missing in the cache
 			if !ok && len(kiCache) >= restoreChunkKeys {
@@ -479,6 +496,14 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 			currentRev = rev.Main
 
 			if ok {
+				if !rev.GreaterThan(ki.modified) {
+					// The key bucket holds revisions out of order,
+					// which means the backend is corrupt. Report it
+					// as an error naming the offending key and both
+					// revisions instead of panicking in keyIndex.put.
+					restoreErr = fmt.Errorf("mvcc: restore found revision %v for key %q out of order, last restored revision is %v", rev, rkv.kstr, ki.modified)
+					continue
+				}
 				if isTombstone(rkv.key) {
 					if err := ki.tombstone(lg, rev.Main, rev.Sub); err != nil {
 						lg.Warn("tombstone encountered error", zap.Error(err))
@@ -497,7 +522,7 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 			}
 		}
 	}()
-	return rkvc, revc
+	return rkvc, revc, errc
 }
 
 func restoreChunk(lg *zap.Logger, kvc chan<- revKeyValue, keys, vals [][]byte, keyToLease map[string]lease.LeaseID) {
