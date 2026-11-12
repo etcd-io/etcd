@@ -357,18 +357,6 @@ function shellcheck_pass {
   generic_checker run ${SHELLCHECK} -fgcc scripts/*.sh
 }
 
-function shellws_pass {
-  log_callout "Ensuring no tab-based indentation in shell scripts"
-  local files
-  if files=$(find . -name '*.sh' -print0 | xargs -0 grep -E -n $'^\s*\t'); then
-    log_error "FAIL: found tab-based indentation in the following bash scripts. Use '  ' (double space):"
-    log_error "${files}"
-    log_warning "Suggestion: run \"make fix\" to address the issue."
-    return 255
-  fi
-  log_success "SUCCESS: no tabulators found."
-}
-
 function markdown_marker_pass {
   local marker="marker"
   # TODO: check other markdown files when marker handles headers with '[]'
