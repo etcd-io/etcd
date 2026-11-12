@@ -8,7 +8,7 @@ require (
 	github.com/creack/pty v1.1.18
 	github.com/dustin/go-humanize v1.1.0
 	github.com/spf13/cobra v1.10.2
-	github.com/spf13/pflag v1.0.10
+	github.com/spf13/pflag v1.1.0
 	github.com/stretchr/testify v1.12.1
 	go.etcd.io/etcd/client/pkg/v3 v3.8.0-alpha.0
 	go.opentelemetry.io/otel/trace v1.47.0
