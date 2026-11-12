@@ -16,6 +16,8 @@ package rafthttp
 
 import (
 	"bytes"
+	"encoding/binary"
+	"slices"
 	"testing"
 
 	"google.golang.org/protobuf/proto"
@@ -122,5 +124,42 @@ func TestMsgAppV2(t *testing.T) {
 		if !proto.Equal(m, tt) {
 			t.Errorf("#%d: message = %+v, want %+v", i, m, tt)
 		}
+	}
+}
+
+func TestMsgAppV2DecodeMalformedProtobuf(t *testing.T) {
+	// A zero tag is invalid in the protobuf wire format.
+	malformed := []byte{0x00}
+
+	tests := []struct {
+		name string
+		data []byte
+	}{
+		{
+			name: "app entries",
+			data: slices.Concat(
+				[]byte{msgTypeAppEntries},
+				binary.BigEndian.AppendUint64(nil, 1),
+				binary.BigEndian.AppendUint64(nil, uint64(len(malformed))),
+				malformed,
+			),
+		},
+		{
+			name: "app",
+			data: slices.Concat(
+				[]byte{msgTypeApp},
+				binary.BigEndian.AppendUint64(nil, uint64(len(malformed))),
+				malformed,
+			),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dec := newMsgAppV2Decoder(bytes.NewReader(tt.data), types.ID(2), types.ID(1))
+			m, err := dec.decode()
+			if err == nil {
+				t.Fatalf("decode() = %v, want error", m)
+			}
+		})
 	}
 }
