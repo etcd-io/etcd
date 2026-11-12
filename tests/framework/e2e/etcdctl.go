@@ -384,6 +384,12 @@ func (ctl *EtcdctlV3) MemberPromote(ctx context.Context, id uint64) (*clientv3.M
 	return &resp, err
 }
 
+func (ctl *EtcdctlV3) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*clientv3.MemberUpdateResponse, error) {
+	var resp clientv3.MemberUpdateResponse
+	err := ctl.spawnJSONCmd(ctx, &resp, "member", "update", fmt.Sprintf("%x", id), "--peer-urls", strings.Join(peerAddrs, ","))
+	return &resp, err
+}
+
 // MoveLeader requests current leader to transfer its leadership to the transferee.
 // Request must be made to the leader.
 func (ctl *EtcdctlV3) MoveLeader(ctx context.Context, transfereeID uint64) error {
