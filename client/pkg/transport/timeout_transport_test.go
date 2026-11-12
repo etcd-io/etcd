@@ -16,7 +16,9 @@ package transport
 
 import (
 	"bytes"
+	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -37,7 +39,7 @@ func TestNewTimeoutTransport(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(remoteAddr))
 
 	defer srv.Close()
-	conn, err := tr.Dial("tcp", srv.Listener.Addr().String()) //nolint:staticcheck // TODO: remove for a supported version
+	conn, err := tr.DialContext(context.Background(), "tcp", srv.Listener.Addr().String())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -68,4 +70,36 @@ func TestNewTimeoutTransport(t *testing.T) {
 	if bytes.Equal(addr0, addr1) {
 		t.Errorf("addr0 = %s addr1= %s, want not equal", addr0, addr1)
 	}
+}
+
+func TestConnectionsDialedUseTLSInfoLocalAddrAsSourceAddress(t *testing.T) {
+	const localAddr = "127.0.0.2"
+	probe, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	d := net.Dialer{LocalAddr: &net.TCPAddr{IP: net.ParseIP(localAddr)}}
+	conn, err := d.Dial("tcp", probe.Addr().String())
+	probe.Close()
+	if err != nil {
+		t.Skipf("%s is not assignable on this host (Linux assigns all of 127.0.0.0/8 to loopback): %v", localAddr, err)
+	}
+	conn.Close()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(r.RemoteAddr))
+	}))
+	defer srv.Close()
+
+	tr, err := NewTimeoutTransport(TLSInfo{LocalAddr: localAddr}, time.Second, time.Hour, time.Hour)
+	require.NoError(t, err)
+	req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+	resp, err := tr.RoundTrip(req)
+	require.NoError(t, err)
+	remote, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	require.NoError(t, err)
+
+	host, _, err := net.SplitHostPort(string(remote))
+	require.NoError(t, err)
+	require.Equal(t, localAddr, host)
 }
