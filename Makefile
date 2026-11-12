@@ -230,7 +230,7 @@ verify-gomodguard:
 
 .PHONY: verify-go-workspace
 verify-go-workspace:
-	PASSES="go_workspace" ./scripts/test.sh
+	./scripts/verify/go-workspace.sh
 
 .PHONY: verify-grpc-experimental
 verify-grpc-experimental:
