@@ -20,6 +20,6 @@ ETCD_ROOT_DIR=${ETCD_ROOT_DIR:-$(git rev-parse --show-toplevel)}
 source "${ETCD_ROOT_DIR}/scripts/test_lib.sh"
 
 log_callout "Running golangci-lint"
-golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
+run_for_all_workspace_modules golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
 log_success "golangci-lint ran successfully"
 
