@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,7 +31,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	v3rpc "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -289,6 +292,85 @@ func snapshotVersionTest(cx ctlCtx) {
 	if st.Version != "3.8.0" {
 		cx.t.Fatalf("expected %q, got %q", "3.8.0", st.Version)
 	}
+}
+
+// TestSnapshotRemainingBytesInvariant verifies that for every SnapshotResponse
+// message carrying snapshot data, len(Blob) + RemainingBytes == totalByteToSend,
+// where totalByteToSend = snap.Size() + sha256.Size (the SHA digest appended at the end).
+func TestSnapshotRemainingBytesInvariant(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
+		e2e.WithClusterSize(1),
+	)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, epc.Close())
+	}()
+
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   epc.EndpointsGRPC(),
+		DialTimeout: 5 * time.Second,
+	})
+	require.NoError(t, err)
+	defer cli.Close()
+
+	// Use the raw gRPC maintenance client so we can inspect each SnapshotResponse.
+	mc := pb.NewMaintenanceClient(cli.ActiveConnection())
+
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+
+	stream, err := mc.Snapshot(ctx, &pb.SnapshotRequest{})
+	require.NoError(t, err)
+
+	var (
+		totalByteToSend int64
+		totalReceived   int64
+		first           = true
+		responses       []*pb.SnapshotResponse
+	)
+
+	for {
+		resp, recvErr := stream.Recv()
+		if recvErr != nil {
+			if errors.Is(recvErr, io.EOF) {
+				break
+			}
+			require.NoError(t, recvErr)
+		}
+		responses = append(responses, resp)
+		if first {
+			// The first response carries RemainingBytes = totalByteToSend - len(firstBlob).
+			// totalByteToSend = snap.Size() + sha256.Size, so we reconstruct it here.
+			totalByteToSend = int64(len(resp.Blob)) + int64(resp.RemainingBytes)
+			first = false
+		}
+		totalReceived += int64(len(resp.Blob))
+	}
+
+	require.NotEmpty(t, responses, "expected at least one SnapshotResponse")
+
+	// totalByteToSend must equal snap.Size() + sha256.Size.
+	// We can verify this by checking totalReceived at the end matches totalByteToSend.
+	require.Equal(t, totalByteToSend, totalReceived,
+		"total bytes received must equal totalByteToSend (snap.Size() + sha256.Size)")
+
+	// For every data response (all but the last SHA chunk), verify the invariant:
+	// len(Blob) + RemainingBytes == totalByteToSend.
+	for i, resp := range responses[:len(responses)-1] {
+		got := int64(len(resp.Blob)) + int64(resp.RemainingBytes)
+		require.Equal(t, totalByteToSend, got,
+			"response[%d]: len(Blob)=%d + RemainingBytes=%d = %d, want totalByteToSend=%d",
+			i, len(resp.Blob), resp.RemainingBytes, got, totalByteToSend)
+	}
+
+	// The final response is the SHA256 digest; RemainingBytes must be 0.
+	last := responses[len(responses)-1]
+	require.EqualValues(t, 0, last.RemainingBytes,
+		"last response (SHA256 digest) must have RemainingBytes=0")
+	require.Len(t, last.Blob, sha256.Size,
+		"last response Blob must be exactly sha256.Size bytes")
 }
 
 func TestRestoreCompactionRevBump(t *testing.T) {
