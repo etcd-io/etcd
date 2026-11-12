@@ -72,6 +72,23 @@ function run {
   fi
 }
 
+# generic_checker [cmd...]
+# executes given command in the current module, and clearly fails if it
+# failed or returned output.
+function generic_checker {
+  local cmd=("$@")
+  if ! output=$("${cmd[@]}"); then
+    echo "${output}"
+    log_error -e "FAIL: '${cmd[*]}' checking failed (!=0 return code)"
+    return 255
+  fi
+  if [ -n "${output}" ]; then
+    echo "${output}"
+    log_error -e "FAIL: '${cmd[*]}' checking failed (printed output)"
+    return 255
+  fi
+}
+
 # run_for_module [module] [cmd]
 # executes given command in the given module for given pkgs.
 #   module_name - "." (in future: tests, client, server)
