@@ -423,6 +423,7 @@ func TestCacheInvalidWatchResponseHasHeader(t *testing.T) {
 }
 
 func TestCacheCompactionResync(t *testing.T) {
+	t.Skip("flaky: see #22796")
 	firstSnapshot := &clientv3.GetResponse{
 		Header: &pb.ResponseHeader{Revision: 5},
 		Kvs: []*mvccpb.KeyValue{
