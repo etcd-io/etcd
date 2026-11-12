@@ -572,10 +572,6 @@ function proto_annotations_pass {
   "${ETCD_ROOT_DIR}/scripts/verify/proto-annotations.sh"
 }
 
-function genproto_pass {
-  "${ETCD_ROOT_DIR}/scripts/verify_genproto.sh"
-}
-
 function go_workspace_pass {
   log_callout "Ensuring go workspace is in sync."
 
