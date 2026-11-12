@@ -877,6 +877,28 @@ func (s *EtcdServer) revokeExpiredLeases(leases []*lease.Lease) {
 
 			f := func(lid int64) {
 				s.GoAttach(func() {
+					defer func() { <-c }()
+
+					// The leadership check above runs once for the whole batch and can
+					// be stale by now: this goroutine may have queued behind the
+					// semaphore while the member was deposed, and proposals made
+					// after that are forwarded to and committed by the new leader.
+					// Re-check per proposal that the member is still the leader and
+					// the lease is still expired (a demoted lessor marks leases as
+					// forever; a renewal may already have extended this lease).
+					// Refer to https://github.com/etcd-io/etcd/issues/22714
+					if !s.isLeader() {
+						lg.Debug("skip revoking lease: member is no longer the leader",
+							zap.String("lease-id", fmt.Sprintf("%016x", lid)))
+						return
+					}
+					l := s.lessor.Lookup(lease.LeaseID(lid))
+					if l == nil || l.Remaining() > 0 {
+						lg.Debug("skip revoking lease: lease is no longer expired",
+							zap.String("lease-id", fmt.Sprintf("%016x", lid)))
+						return
+					}
+
 					ctx := s.authStore.WithRoot(s.ctx)
 					_, lerr := s.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lid})
 					if lerr == nil {
@@ -888,8 +910,6 @@ func (s *EtcdServer) revokeExpiredLeases(leases []*lease.Lease) {
 							zap.Error(lerr),
 						)
 					}
-
-					<-c
 				})
 			}
 
