@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
@@ -64,6 +65,38 @@ func writeFields(fields []Field) string {
 	return buf.String()
 }
 
+func fieldToAttribute(f Field) attribute.KeyValue {
+	switch v := f.Value.(type) {
+	case string:
+		return attribute.String(f.Key, v)
+	case bool:
+		return attribute.Bool(f.Key, v)
+	case int:
+		return attribute.Int(f.Key, v)
+	case int64:
+		return attribute.Int64(f.Key, v)
+	case uint64:
+		return attribute.Int64(f.Key, int64(v))
+	case float64:
+		return attribute.Float64(f.Key, v)
+	case []string:
+		return attribute.StringSlice(f.Key, v)
+	default:
+		return attribute.String(f.Key, fmt.Sprintf("%v", v))
+	}
+}
+
+func fieldsToAttributes(fields []Field) []attribute.KeyValue {
+	if len(fields) == 0 {
+		return nil
+	}
+	attrs := make([]attribute.KeyValue, len(fields))
+	for i, f := range fields {
+		attrs[i] = fieldToAttribute(f)
+	}
+	return attrs
+}
+
 type Trace struct {
 	operation    string
 	lg           *zap.Logger
@@ -72,6 +105,7 @@ type Trace struct {
 	steps        []step
 	stepDisabled bool
 	isEmpty      bool
+	span         trace.Span
 }
 
 type step struct {
@@ -82,8 +116,8 @@ type step struct {
 	isSubTraceEnd   bool
 }
 
-func newTrace(op string, lg *zap.Logger, fields ...Field) *Trace {
-	return &Trace{operation: op, lg: lg, startTime: time.Now(), fields: fields}
+func newTrace(op string, lg *zap.Logger, span trace.Span, fields ...Field) *Trace {
+	return &Trace{operation: op, lg: lg, startTime: time.Now(), fields: fields, span: span}
 }
 
 // TODO returns a non-nil, empty Trace
@@ -95,20 +129,29 @@ func Get(ctx context.Context) *Trace {
 	if trace, ok := ctx.Value(TraceKey{}).(*Trace); ok && trace != nil {
 		return trace
 	}
-	return TODO()
+	return &Trace{isEmpty: true, span: trace.SpanFromContext(ctx)}
 }
 
 // EnsureTrace creates a new trace if needed and adds it to the context.
+// Similar to k8s.io/component-base/tracing, if the incoming context already
+// includes an OpenTelemetry span, it also creates a child OpenTelemetry span.
 func EnsureTrace(ctx context.Context, lg *zap.Logger, operation string, fields ...Field) (context.Context, *Trace) {
-	trace := Get(ctx)
-	if trace.IsEmpty() {
-		trace = newTrace(operation,
+	tr := Get(ctx)
+	if tr.IsEmpty() {
+		var span trace.Span
+		ctx, span = trace.SpanFromContext(ctx).TracerProvider().Tracer(instrumentationScope).Start(
+			ctx,
+			operation,
+			trace.WithAttributes(fieldsToAttributes(fields)...),
+		)
+		tr = newTrace(operation,
 			lg,
+			span,
 			fields...,
 		)
-		ctx = context.WithValue(ctx, TraceKey{}, trace)
+		ctx = context.WithValue(ctx, TraceKey{}, tr)
 	}
-	return ctx, trace
+	return ctx, tr
 }
 
 func (t *Trace) GetStartTime() time.Time {
@@ -126,6 +169,9 @@ func (t *Trace) InsertStep(at int, time time.Time, msg string, fields ...Field) 
 		t.steps[at] = newStep
 	} else {
 		t.steps = append(t.steps, newStep)
+	}
+	if t.span != nil && t.span.IsRecording() {
+		t.span.AddEvent(msg, trace.WithTimestamp(time), trace.WithAttributes(fieldsToAttributes(fields)...))
 	}
 }
 
@@ -145,6 +191,9 @@ func (t *Trace) StopSubTrace(fields ...Field) {
 func (t *Trace) Step(msg string, fields ...Field) {
 	if !t.stepDisabled {
 		t.steps = append(t.steps, step{time: time.Now(), msg: msg, fields: fields})
+		if t.span != nil && t.span.IsRecording() {
+			t.span.AddEvent(msg, trace.WithAttributes(fieldsToAttributes(fields)...))
+		}
 	}
 }
 
@@ -162,6 +211,23 @@ func (t *Trace) AddField(fields ...Field) {
 			t.fields = append(t.fields, f)
 		}
 	}
+	if t.span != nil && t.span.IsRecording() {
+		t.span.SetAttributes(fieldsToAttributes(fields)...)
+	}
+}
+
+// RecordError records err as an exception span event on the underlying OpenTelemetry span.
+func (t *Trace) RecordError(err error) {
+	if t.span != nil {
+		t.span.RecordError(err)
+	}
+}
+
+// End ends the underlying OpenTelemetry span.
+func (t *Trace) End() {
+	if !t.isEmpty && t.span != nil {
+		t.span.End()
+	}
 }
 
 func (t *Trace) IsEmpty() bool {
@@ -175,6 +241,7 @@ func (t *Trace) Log() {
 
 // LogIfLong dumps logs if the duration is longer than threshold
 func (t *Trace) LogIfLong(threshold time.Duration) {
+	t.End()
 	if time.Since(t.startTime) > threshold {
 		stepThreshold := threshold / time.Duration(len(t.steps)+1)
 		t.LogWithStepThreshold(stepThreshold)
@@ -183,6 +250,7 @@ func (t *Trace) LogIfLong(threshold time.Duration) {
 
 // LogAllStepsIfLong dumps all logs if the duration is longer than threshold
 func (t *Trace) LogAllStepsIfLong(threshold time.Duration) {
+	t.End()
 	if time.Since(t.startTime) > threshold {
 		t.LogWithStepThreshold(0)
 	}
@@ -190,6 +258,7 @@ func (t *Trace) LogAllStepsIfLong(threshold time.Duration) {
 
 // LogWithStepThreshold only dumps step whose duration is longer than step threshold
 func (t *Trace) LogWithStepThreshold(threshold time.Duration) {
+	t.End()
 	msg, fs := t.logInfo(threshold)
 	if t.lg != nil {
 		t.lg.Info(msg, fs...)
