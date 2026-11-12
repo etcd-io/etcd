@@ -244,6 +244,11 @@ type Config struct {
 	// the unit is year, and the default is 1
 	SelfSignedCertValidity uint `json:"self-signed-cert-validity"`
 
+	// AutoReloadCACertificates enables periodic reloading of the trusted CA
+	// files (--trusted-ca-file, --peer-trusted-ca-file), so rotated CA
+	// bundles are picked up by running instances without a restart.
+	AutoReloadCACertificates bool `json:"auto-reload-ca-certificates"`
+
 	// CipherSuites is a list of supported TLS cipher suites between
 	// client/server and peers. If empty, Go auto-populates the list.
 	// Note that cipher suites are prioritized in the given order.
@@ -688,6 +693,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&cfg.ClientTLSInfo.CRLFile, "client-crl-file", "", "Path to the client certificate revocation list file.")
 	fs.Var(flags.NewStringsValue(""), "client-cert-allowed-hostname", "Comma-separated list of allowed SAN hostnames for client cert authentication.")
 	fs.StringVar(&cfg.ClientTLSInfo.TrustedCAFile, "trusted-ca-file", "", "Path to the client server TLS trusted CA cert file.")
+	fs.BoolVar(&cfg.AutoReloadCACertificates, "auto-reload-ca-certificates", false, "Enable periodic reloading of trusted CA files (--trusted-ca-file, --peer-trusted-ca-file) so rotated CA bundles are picked up without restarting etcd.")
 	fs.BoolVar(&cfg.ClientAutoTLS, "auto-tls", false, "Client TLS using generated certificates")
 	fs.StringVar(&cfg.PeerTLSInfo.CertFile, "peer-cert-file", "", "Path to the peer server TLS cert file.")
 	fs.StringVar(&cfg.PeerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
@@ -1392,4 +1398,64 @@ func parseBackendFreelistType(freelistType string) bolt.FreelistType {
 	}
 
 	return bolt.FreelistMapType
+}
+
+// setupCAReloading installs file-backed cert pool providers for every
+// TLSInfo that references trusted CA files, so rotated CA bundles are picked
+// up without restarting etcd. It returns a shutdown func that stops the
+// background pollers; it is a no-op unless AutoReloadCACertificates is set.
+func (cfg *Config) setupCAReloading() (func(), error) {
+	if !cfg.AutoReloadCACertificates {
+		return func() {}, nil
+	}
+	lg := cfg.logger
+	if lg == nil {
+		lg = zap.NewNop()
+	}
+
+	providers := make(map[string]*transport.FileCertPoolProvider)
+	shutdown := func() {
+		for _, p := range providers {
+			p.Close()
+		}
+	}
+	install := func(info *transport.TLSInfo, role string) error {
+		if info.TrustedCAFile == "" {
+			return nil
+		}
+		p, ok := providers[info.TrustedCAFile]
+		if !ok {
+			var err error
+			p, err = transport.NewFileCertPoolProvider(lg, info.TrustedCAFile)
+			if err != nil {
+				return fmt.Errorf("failed to set up CA file reloading for %s TLS: %w", role, err)
+			}
+			p.Start()
+			providers[info.TrustedCAFile] = p
+		}
+		info.SetDynamicTrustRoots(p)
+		lg.Info(
+			"enabled trusted CA file reloading",
+			zap.String("role", role),
+			zap.String("trusted-ca-file", info.TrustedCAFile),
+		)
+		return nil
+	}
+	for _, target := range []struct {
+		info *transport.TLSInfo
+		role string
+	}{
+		{&cfg.ClientTLSInfo, "client"},
+		{&cfg.PeerTLSInfo, "peer"},
+	} {
+		if err := install(target.info, target.role); err != nil {
+			shutdown()
+			return nil, err
+		}
+	}
+	if len(providers) == 0 {
+		lg.Warn("auto-reload-ca-certificates is enabled but no trusted CA file is configured; ignoring")
+		return func() {}, nil
+	}
+	return shutdown, nil
 }
