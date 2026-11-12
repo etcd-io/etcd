@@ -394,6 +394,105 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 	require.NoErrorf(t, err, "expected to remove member, got error")
 }
 
+// TestMemberReconfigStaleView ensures the strict reconfig checks run on the
+// member that receives the request evaluate against a membership view that
+// includes every committed membership change, not the member's possibly
+// lagging applied view. Otherwise a member that has not yet applied a
+// committed change can accept a change the leader would refuse, leaving the
+// cluster without a quorum.
+// Reproduces https://github.com/etcd-io/etcd/issues/22764.
+//
+// Four voters, one of them down. A first change through the leader is
+// accepted. A second change through a follower that is still applying the
+// first must be refused. The beforeApplyOneConfChange failpoint delays
+// apply on every member, so the second request is issued while the
+// follower's apply of the first is still pending.
+func TestMemberReconfigStaleView(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		wantMembers int
+		first       func(ctx context.Context, clus *integration.Cluster, lead, other int) error
+		second      func(ctx context.Context, clus *integration.Cluster, stale int) error
+	}{
+		{
+			// Adding a voter (not started) leaves 5 voters with 3 up,
+			// which is enough. Adding a second leaves 6 with 3 up.
+			name:        "add",
+			wantMembers: 5,
+			first: func(ctx context.Context, clus *integration.Cluster, lead, _ int) error {
+				_, err := clus.Client(lead).MemberAdd(ctx, []string{"http://localhost:45101"})
+				return err
+			},
+			second: func(ctx context.Context, clus *integration.Cluster, stale int) error {
+				_, err := clus.Client(stale).MemberAdd(ctx, []string{"http://localhost:45102"})
+				return err
+			},
+		},
+		{
+			// Removing a running voter leaves 3 voters with 2 up, which
+			// is enough. Removing the stale follower too leaves 2 with
+			// 1 up.
+			name:        "remove",
+			wantMembers: 3,
+			first: func(ctx context.Context, clus *integration.Cluster, lead, other int) error {
+				_, err := clus.Client(lead).MemberRemove(ctx, uint64(clus.Members[other].ID()))
+				return err
+			},
+			second: func(ctx context.Context, clus *integration.Cluster, stale int) error {
+				_, err := clus.Client(stale).MemberRemove(ctx, uint64(clus.Members[stale].ID()))
+				return err
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			integration.BeforeTest(t, integration.WithFailpoint("beforeApplyOneConfChange", `sleep("500ms")`))
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 4, UseBridge: true})
+			defer clus.Terminate(t)
+
+			lead := clus.WaitLeader(t)
+			stale, down, other := (lead+1)%4, (lead+2)%4, (lead+3)%4
+
+			clus.Members[down].Stop(t)
+
+			// The checks count only peers connected for HealthInterval.
+			time.Sleep(etcdserver.HealthInterval + time.Second)
+
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+			defer cancel()
+
+			firstErrCh := make(chan error, 1)
+			go func() {
+				firstErrCh <- tc.first(ctx, clus, lead, other)
+			}()
+
+			// Every member's apply of the first change is delayed by the
+			// failpoint. Wait until the stale follower has committed but
+			// not yet applied it — the window in which its membership
+			// view lags the committed one.
+			require.Eventually(t, func() bool {
+				s := clus.Members[stale].Server
+				return s.CommittedIndex() > s.AppliedIndex()
+			}, 10*time.Second, 20*time.Millisecond)
+			secondErr := tc.second(ctx, clus, stale)
+
+			require.NoError(t, <-firstErrCh)
+
+			// The stale member must refuse the change the leader would
+			// refuse, and the cluster must keep its quorum.
+			require.Error(t, secondErr)
+			require.Eventually(t, func() bool {
+				resp, merr := clus.Client(lead).MemberList(ctx)
+				return merr == nil && len(resp.Members) == tc.wantMembers
+			}, 10*time.Second, 200*time.Millisecond)
+
+			putCtx, putCancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer putCancel()
+			_, err := clus.Client(lead).Put(putCtx, "foo", "bar")
+			require.NoError(t, err)
+		})
+	}
+}
+
 // TestRestartRemoved ensures that restarting removed member must exit
 // if 'initial-cluster-state' is set 'new' and old data directory still exists
 // (see https://github.com/etcd-io/etcd/issues/7512 for more).
