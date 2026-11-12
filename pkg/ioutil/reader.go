@@ -32,9 +32,14 @@ type limitedBufferReader struct {
 }
 
 func (r *limitedBufferReader) Read(p []byte) (n int, err error) {
+	if r.n <= 0 {
+		return 0, io.EOF
+	}
 	np := p
 	if len(np) > r.n {
 		np = np[:r.n]
 	}
-	return r.r.Read(np)
+	n, err = r.r.Read(np)
+	r.n -= n
+	return n, err
 }
