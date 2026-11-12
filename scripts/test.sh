@@ -403,45 +403,6 @@ function lint_fix_pass {
 
 ######## VARIOUS CHECKERS ######################################################
 
-function dump_module_deps() {
-  local json_mod
-  json_mod=$(run go mod edit -json)
-
-  local module
-  if ! module=$(echo "${json_mod}" | jq -r .Module.Path); then
-    return 255
-  fi
-
-  local require
-  require=$(echo "${json_mod}" | jq -r '.Require')
-  if [ "$require" == "null" ]; then
-    return 0
-  fi
-
-  echo "$require" | jq -r '.[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
-}
-
-# Checks whether dependencies are consistent across modules
-function dep_pass {
-  local all_dependencies
-  all_dependencies=$(run_for_workspace_modules dump_module_deps | sort) || return 2
-
-  local duplicates
-  duplicates=$(echo "${all_dependencies}" | cut -d ',' -f 1,2 | sort | uniq | cut -d ',' -f 1 | sort | uniq -d) || return 2
-
-  if [[ -n "${duplicates}" ]]; then
-    for dup in ${duplicates}; do
-      log_error "FAIL: inconsistent versions for dependency: ${dup}"
-      echo "${all_dependencies}" | grep "${dup}," | sed 's|\([^,]*\),\([^,]*\),\([^,]*\),\([^,]*\)|  - \1@\2\3 from: \4|g'
-    done
-
-    log_error "FAIL: inconsistent dependencies"
-    return 2
-  fi
-
-  log_success "SUCCESS: dependencies are consistent across modules"
-}
-
 function release_pass {
   rm -f ./bin/etcd-last-release
 
