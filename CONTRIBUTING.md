@@ -99,7 +99,7 @@ Follow the steps below to set up the environment:
     you can run `sudo apt-get install build-essential`
   - [`protoc`](https://protobuf.dev/): You can download it for your os. Use
     version
-    [`v3.20.3`](https://github.com/protocolbuffers/protobuf/releases/tag/v3.20.3).
+    [`v36.2`](https://github.com/protocolbuffers/protobuf/releases/tag/v36.2).
   - [`yamllint`](https://www.yamllint.com/): For Debian-based distribution you
     can run `sudo apt-get install yamllint`
   - [`jq`](https://jqlang.github.io/jq/): For Debian-based distribution you can
