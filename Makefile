@@ -163,17 +163,7 @@ verify-genproto:
 
 .PHONY: verify-yamllint
 verify-yamllint:
-ifeq (, $(shell command -v yamllint))
-	@echo "Installing yamllint..."
-	tmpdir=$$(mktemp -d); \
-	trap "rm -rf $$tmpdir" EXIT; \
-	python3 -m venv $$tmpdir; \
-	$$tmpdir/bin/python3 -m pip install yamllint; \
-	$$tmpdir/bin/yamllint --config-file tools/.yamllint .
-else
-	@echo "yamllint already installed..."
-	yamllint --config-file tools/.yamllint .
-endif
+	./scripts/verify/yamllint.sh
 
 .PHONY: verify-markdown-marker
 verify-markdown-marker:
