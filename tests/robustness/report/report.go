@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 
 	"go.uber.org/zap"
 
@@ -61,19 +62,24 @@ func (r *TestReport) SaveEtcdData() error {
 		return nil
 	}
 	r.logger.Info("Saving etcd data", zap.String("path", r.reportPath))
-	err := os.RemoveAll(r.reportPath)
-	if err != nil {
-		r.logger.Error("Failed to remove report dir", zap.Error(err))
+	if err := os.MkdirAll(r.reportPath, 0o700); err != nil {
+		return fmt.Errorf("failed to create report dir: %w", err)
 	}
 	for server, dataPath := range r.serverDataPaths {
 		serverReportPath := filepath.Join(r.reportPath, fmt.Sprintf("server-%s", server))
 		r.logger.Info("Saving member data dir", zap.String("member", server), zap.String("data-dir", dataPath), zap.String("path", serverReportPath))
+		_ = os.RemoveAll(serverReportPath)
 		if err := os.CopyFS(serverReportPath, os.DirFS(dataPath)); err != nil {
 			return err
 		}
 	}
-	if r.clientReports != nil {
-		if err := persistClientReports(r.logger, r.reportPath, r.clientReports); err != nil {
+	existingReports, err := LoadClientReports(r.reportPath)
+	if err != nil && !os.IsNotExist(err) {
+		r.logger.Warn("Failed to load existing client reports", zap.Error(err))
+	}
+	r.clientReports = mergeClientReports(existingReports, r.clientReports)
+	if len(r.clientReports) != 0 {
+		if err := PersistClientReports(r.logger, r.reportPath, r.clientReports); err != nil {
 			return err
 		}
 	}
@@ -84,6 +90,36 @@ func (r *TestReport) SaveEtcdData() error {
 	}
 	r.dataSaved = true
 	return nil
+}
+
+func mergeClientReports(existing, newReports []ClientReport) []ClientReport {
+	if len(existing) == 0 {
+		return newReports
+	}
+	if len(newReports) == 0 {
+		return existing
+	}
+	reportsMap := make(map[int]ClientReport, len(existing)+len(newReports))
+	for _, r := range existing {
+		reportsMap[r.ClientID] = r
+	}
+	for _, r := range newReports {
+		if ex, found := reportsMap[r.ClientID]; found {
+			ex.KeyValue = append(ex.KeyValue, r.KeyValue...)
+			ex.Watch = append(ex.Watch, r.Watch...)
+			reportsMap[r.ClientID] = ex
+		} else {
+			reportsMap[r.ClientID] = r
+		}
+	}
+	merged := make([]ClientReport, 0, len(reportsMap))
+	for _, r := range reportsMap {
+		merged = append(merged, r)
+	}
+	sort.Slice(merged, func(i, j int) bool {
+		return merged[i].ClientID < merged[j].ClientID
+	})
+	return merged
 }
 
 func (r *TestReport) Finalize(tFailed bool, panicked bool) error {

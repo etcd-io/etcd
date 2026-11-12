@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build cgo && amd64
+//go:build (cgo && amd64) || (cgo && arm64)
 
 package main
 
