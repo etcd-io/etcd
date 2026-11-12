@@ -147,7 +147,7 @@ fix-mod-tidy:
 
 .PHONY: verify-shellws
 verify-shellws:
-	PASSES="shellws" ./scripts/test.sh
+	./scripts/verify/shellws.sh
 
 .PHONY: fix-shell-ws
 fix-shell-ws:
