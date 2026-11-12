@@ -186,6 +186,8 @@ Security:
     Comma-separated list of SAN hostnames for client cert authentication.
   --trusted-ca-file ''
     Path to the client server TLS trusted CA cert file.
+  --auto-reload-ca-certificates 'false'
+    Enable periodic reloading of trusted CA files (--trusted-ca-file, --peer-trusted-ca-file) so rotated CA bundles are picked up without restarting etcd.
   --auto-tls 'false'
     Client TLS using generated certificates.
   --peer-cert-file ''
