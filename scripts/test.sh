@@ -77,7 +77,6 @@ PASSES=${PASSES:-"dep build unit"}
 KEEP_GOING_SUITE=${KEEP_GOING_SUITE:-false}
 PKG=${PKG:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
-MARKDOWN_MARKER_VERSION=${MARKDOWN_MARKER_VERSION:="v0.10.0"}
 
 if [ -z "${GOARCH:-}" ]; then
   GOARCH=$(go env GOARCH);
@@ -196,23 +195,6 @@ function robustness_pass {
 function integration_e2e_pass {
   run_pass "integration" "${@}" || return 2
   run_pass "e2e" "${@}"
-}
-
-# generic_checker [cmd...]
-# executes given command in the current module, and clearly fails if it
-# failed or returned output.
-function generic_checker {
-  local cmd=("$@")
-  if ! output=$("${cmd[@]}"); then
-    echo "${output}"
-    log_error -e "FAIL: '${cmd[*]}' checking failed (!=0 return code)"
-    return 255
-  fi
-  if [ -n "${output}" ]; then
-    echo "${output}"
-    log_error -e "FAIL: '${cmd[*]}' checking failed (printed output)"
-    return 255
-  fi
 }
 
 function grpcproxy_pass {
@@ -367,27 +349,6 @@ function shellws_pass {
     return 255
   fi
   log_success "SUCCESS: no tabulators found."
-}
-
-function markdown_marker_pass {
-  local marker="marker"
-  # TODO: check other markdown files when marker handles headers with '[]'
-  if ! tool_exists "$marker" "https://crates.io/crates/marker"; then
-    log_callout "Installing markdown marker $MARKDOWN_MARKER_VERSION"
-    MARKER_OS=$OS
-    if [ "$OS" = "darwin" ]; then
-      MARKER_OS="apple-darwin"
-    elif [ "$OS" = "linux" ]; then
-      MARKER_OS="unknown-linux-musl"
-    fi
-
-    wget -qO- "https://github.com/crawford/marker/releases/download/${MARKDOWN_MARKER_VERSION}/marker-${MARKDOWN_MARKER_VERSION}-${ARCH}-${MARKER_OS}.tar.gz" | tar -xzv -C /tmp/ --strip-components=1 >/dev/null
-    mkdir -p ./bin
-    mv /tmp/marker ./bin/
-    marker=./bin/marker
-  fi
-
-  generic_checker run "${marker}" --skip-http --allow-absolute-paths --root "${ETCD_ROOT_DIR}" -e ./CHANGELOG -e ./etcdctl -e etcdutl -e ./tools 2>&1
 }
 
 function govuln_pass {
