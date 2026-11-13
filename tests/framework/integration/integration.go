@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -480,7 +481,14 @@ func getOps(ss []string) []clientv3.Op {
 		args := etcdctlcmd.Argify(s)
 		switch args[0] {
 		case "get":
-			ops = append(ops, clientv3.OpGet(args[1]))
+			var rev int64
+			for i, opt := range args {
+				if strings.Contains(opt, "rev") && i+1 < len(args) {
+					tmp, _ := strconv.Atoi(args[i+1])
+					rev = int64(tmp)
+				}
+			}
+			ops = append(ops, clientv3.OpGet(args[len(args)-1], clientv3.WithRev(rev)))
 		case "put":
 			ops = append(ops, clientv3.OpPut(args[1], args[2]))
 		case "del":

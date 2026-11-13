@@ -119,6 +119,44 @@ func TestTxnFail(t *testing.T) {
 	}
 }
 
+// See https://github.com/etcd-io/etcd/issues/18667 for context
+func TestTxnRangeConsistency(t *testing.T) {
+	testRunner.BeforeTest(t)
+	for _, cfg := range clusterTestCases() {
+		t.Run(cfg.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(cfg.config))
+			defer clus.Close()
+			cc := testutils.MustClient(clus.Client())
+			testutils.ExecuteUntil(ctx, t, func() {
+				_, err := cc.Put(ctx, "key1", "value1", config.PutOptions{})
+				require.NoErrorf(t, err, "could not create key:%s, value:%s", "key1", "value1")
+				_, err = cc.Compact(ctx, 2, config.CompactOption{Physical: true})
+				require.NoErrorf(t, err, "could not compact:%s", err)
+				resp, err := cc.Txn(ctx,
+					[]string{},
+					[]string{
+						`get --rev 1 key1`,
+						`put should-not-exist inconsistent`,
+					},
+					[]string{},
+					config.TxnOptions{
+						Interactive: true,
+					},
+				)
+				fmt.Println(resp)
+				require.ErrorContains(t, err, "mvcc: required revision has been compacted")
+				for i, mem := range clus.Members() {
+					resp, err := mem.Client().Get(t.Context(), "should-not-exist", config.GetOptions{})
+					require.NoError(t, err)
+					require.Equalf(t, int64(0), resp.Count, "member %d should not have the key", i)
+				}
+			})
+		})
+	}
+}
+
 func getRespValues(r *clientv3.TxnResponse) []string {
 	var ss []string
 	if r.Succeeded {
