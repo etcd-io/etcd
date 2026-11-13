@@ -2,7 +2,7 @@ module go.etcd.io/etcd/tests/v3
 
 go 1.26.0
 
-toolchain go1.26.10
+toolchain go1.26.11
 
 replace (
 	go.etcd.io/etcd/api/v3 => ../api
@@ -75,7 +75,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.18.7 // indirect
+	github.com/klauspost/compress v1.20.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
