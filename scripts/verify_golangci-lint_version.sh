@@ -14,8 +14,16 @@
 # limitations under the License.
 
 function install_golangci_lint() {
+    local golangci_lint_bin="$(go env GOPATH)/bin"
     echo "Installing golangci-lint ${GOLANGCI_LINT_VERSION}"
-    (cd tools/mod && GOFLAGS="" GOBIN="$(go env GOPATH)/bin" go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint)
+    (cd tools/mod && GOFLAGS="" GOBIN="${golangci_lint_bin}" go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint) || return
+    case ":${PATH}:" in
+        *":${golangci_lint_bin}:"*) ;;
+        *)
+            echo "Add ${golangci_lint_bin} to your PATH to use golangci-lint:"
+            printf '  export PATH="%s:$PATH"\n' "${golangci_lint_bin}"
+            ;;
+    esac
 }
 
 GOLANGCI_LINT_VERSION=$(cd tools/mod && go list -m -f '{{.Version}}' github.com/golangci/golangci-lint/v2)
