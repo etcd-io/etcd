@@ -14,7 +14,10 @@
 
 package mvcc
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"fmt"
+)
 
 // revBytesLen is the byte length of a normal revision.
 // First 8 bytes is the revision.main in big-endian format. The 9th byte
@@ -54,6 +57,9 @@ func revToBytes(rev revision, bytes []byte) {
 }
 
 func bytesToRev(bytes []byte) revision {
+	if len(bytes) != revBytesLen && len(bytes) != markedRevBytesLen {
+		panic(fmt.Sprintf("invalid revision length: %d", len(bytes)))
+	}
 	return revision{
 		main: int64(binary.BigEndian.Uint64(bytes[0:8])),
 		sub:  int64(binary.BigEndian.Uint64(bytes[9:])),

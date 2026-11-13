@@ -150,7 +150,10 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 					return fmt.Errorf("cannot write to bucket %s", err.Error())
 				}
 				if iskeyb {
-					rev := bytesToRev(k)
+					rev, err := bytesToRev(k)
+					if err != nil {
+						return err
+					}
 					ds.Revision = rev.main
 				}
 				ds.TotalKey++
@@ -381,7 +384,10 @@ func (s *v3Manager) unsafeMarkRevisionCompacted(tx backend.BatchTx, latest revis
 func (s *v3Manager) unsafeGetLatestRevision(tx backend.BatchTx) (revision, error) {
 	var latest revision
 	err := tx.UnsafeForEach(buckets.Key, func(k, _ []byte) (err error) {
-		rev := bytesToRev(k)
+		rev, err := bytesToRev(k)
+		if err != nil {
+			return err
+		}
 
 		if rev.GreaterThan(latest) {
 			latest = rev
