@@ -472,8 +472,8 @@ func TestAsyncStorageWritesAppendFIFO(t *testing.T) {
 		raftStorage:        raft.NewMemoryStorage(),
 		transport:          newNopTransporter(),
 	})
-	r.appendc <- asyncAppendWork{message: newStorageAppendMessage(1, 1)}
-	r.appendc <- asyncAppendWork{message: newStorageAppendMessage(2, 2)}
+	r.appendc <- newStorageAppendMessage(1, 1)
+	r.appendc <- newStorageAppendMessage(2, 2)
 	r.start(newTestRaftReadyHandler())
 	defer r.stop()
 
@@ -528,8 +528,8 @@ func TestAsyncStorageWritesDoesNotBatchOverwrites(t *testing.T) {
 		raftStorage:        raft.NewMemoryStorage(),
 		transport:          newNopTransporter(),
 	})
-	r.appendc <- asyncAppendWork{message: newStorageAppendMessage(1, 1)}
-	r.appendc <- asyncAppendWork{message: newStorageAppendMessage(1, 2)}
+	r.appendc <- newStorageAppendMessage(1, 1)
+	r.appendc <- newStorageAppendMessage(1, 2)
 	r.start(newTestRaftReadyHandler())
 	defer r.stop()
 
@@ -570,7 +570,7 @@ func TestAsyncStorageWritesStopCancelsBlockedStorageResponse(t *testing.T) {
 		raftStorage:        raft.NewMemoryStorage(),
 		transport:          newNopTransporter(),
 	})
-	r.appendc <- asyncAppendWork{message: newStorageAppendMessage(1, 1)}
+	r.appendc <- newStorageAppendMessage(1, 1)
 	r.start(newTestRaftReadyHandler())
 
 	select {
@@ -626,7 +626,6 @@ func TestAsyncStorageWritesApplyResponseAfterApplication(t *testing.T) {
 		t.Fatalf("apply response delivered before application completed: %v", m)
 	default:
 	}
-	<-ap.raftStorageReadyC
 	ap.notifyApplyCompleted()
 
 	if got := <-n.stepc; got.GetType() != raftpb.MsgStorageApplyResp {
@@ -639,7 +638,7 @@ func TestAsyncStorageWritesApplyResponseAfterApplication(t *testing.T) {
 	}
 }
 
-func TestAsyncStorageWritesApplyWaitsForPriorAppend(t *testing.T) {
+func TestAsyncStorageWritesApplyDoesNotWaitForCommitPersistence(t *testing.T) {
 	n := newAsyncReadyNode()
 	saveStartedC := make(chan struct{}, 1)
 	allowSaveC := make(chan struct{})
@@ -659,12 +658,21 @@ func TestAsyncStorageWritesApplyWaitsForPriorAppend(t *testing.T) {
 	})
 	r.start(newTestRaftReadyHandler())
 	defer r.stop()
+	defer close(allowSaveC)
 
 	entry := &raftpb.Entry{Index: new(uint64(1)), Term: new(uint64(1))}
-	appendMessage := newStorageAppendMessage(1, 1)
-	appendMessage.Term = new(uint64(1))
-	appendMessage.Vote = new(uint64(1))
-	appendMessage.Commit = new(uint64(1))
+	// Async Raft only emits apply work after the entry itself is stable.
+	if err := r.raftStorage.Append([]*raftpb.Entry{entry}); err != nil {
+		t.Fatal(err)
+	}
+	appendMessage := &raftpb.Message{
+		Type:   raftpb.MsgStorageAppend.Enum(),
+		To:     new(raft.LocalAppendThread),
+		From:   new(uint64(1)),
+		Term:   new(uint64(1)),
+		Vote:   new(uint64(1)),
+		Commit: new(uint64(1)),
+	}
 	applyMessage := &raftpb.Message{
 		Type:    raftpb.MsgStorageApply.Enum(),
 		To:      new(raft.LocalApplyThread),
@@ -681,22 +689,18 @@ func TestAsyncStorageWritesApplyWaitsForPriorAppend(t *testing.T) {
 
 	<-saveStartedC
 	ap := <-r.applyc
-	if !ap.waitForStorageBeforeApply {
-		t.Fatal("async apply does not require storage durability before application")
-	}
-	select {
-	case <-ap.raftStorageReadyC:
-		t.Fatal("apply storage barrier completed before the WAL save")
-	default:
-	}
-
-	allowSaveC <- struct{}{}
-	select {
-	case <-ap.raftStorageReadyC:
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for apply storage barrier")
+	if ap.raftStorageReadyC != nil {
+		t.Fatal("async apply waits for unrelated commit metadata persistence")
 	}
 	ap.notifyApplyCompleted()
+	select {
+	case response := <-n.stepc:
+		if response.GetType() != raftpb.MsgStorageApplyResp {
+			t.Fatalf("response type = %s, want %s", response.GetType(), raftpb.MsgStorageApplyResp)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("apply completion blocked on commit metadata persistence")
+	}
 }
 
 func TestAsyncStorageWritesSnapshotResponseAfterApplication(t *testing.T) {

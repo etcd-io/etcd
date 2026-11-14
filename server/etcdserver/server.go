@@ -983,10 +983,6 @@ func (s *EtcdServer) Defragment() error {
 }
 
 func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
-	if apply.waitForStorageBeforeApply {
-		<-apply.raftStorageReadyC
-	}
-
 	s.applySnapshot(ep, apply)
 	s.applyEntries(ep, apply)
 	backend.VerifyBackendConsistency(s.Backend(), s.Logger(), true, schema.AllBuckets...)
@@ -997,7 +993,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	// Wait for the raft routine to finish the storage work before triggering a
 	// snapshot. Otherwise, the applied index might be greater than the last
 	// index in Raft storage.
-	if !apply.waitForStorageBeforeApply {
+	if apply.raftStorageReadyC != nil {
 		<-apply.raftStorageReadyC
 	}
 	apply.notifyApplyCompleted()

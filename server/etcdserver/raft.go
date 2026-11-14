@@ -80,13 +80,8 @@ type toApply struct {
 	// raftStorageReadyC is closed after all corresponding Raft storage work,
 	// including in-memory storage updates and WAL release, is complete.
 	raftStorageReadyC <-chan struct{}
-	// waitForStorageBeforeApply requires the state machine to wait for
-	// raftStorageReadyC before applying entries. Asynchronous storage writes
-	// use this to keep the durable backend consistent index from advancing
-	// beyond the durable WAL HardState commit.
-	waitForStorageBeforeApply bool
-	// applyCompletedC is closed after the state machine work and corresponding
-	// Raft storage work are both complete. The legacy Ready path uses it to
+	// applyCompletedC is closed after application and any required storage waits.
+	// The legacy Ready path uses it to
 	// order follower configuration-change messages after application.
 	applyCompletedC chan struct{}
 	// raftAdvancedC notifies EtcdServer.apply that raftLog.applied has advanced
@@ -119,9 +114,8 @@ type raftNode struct {
 
 	// a chan to send out apply
 	applyc chan toApply
-	// appendc carries the reliable FIFO stream of MsgStorageAppend work and
-	// apply durability barriers when asynchronous storage writes are enabled.
-	appendc chan asyncAppendWork
+	// appendc carries MsgStorageAppend work in FIFO order.
+	appendc chan *raftpb.Message
 	// asyncStopc stops asynchronous storage work before Raft storage is closed.
 	asyncStopc       chan struct{}
 	asyncAppendDonec chan struct{}
@@ -140,11 +134,6 @@ type raftNode struct {
 
 	stopped chan struct{}
 	done    chan struct{}
-}
-
-type asyncAppendWork struct {
-	message  *raftpb.Message
-	barrierC chan struct{}
 }
 
 type raftNodeConfig struct {
@@ -192,7 +181,7 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 		readStateC:       make(chan raft.ReadState, 1),
 		msgSnapC:         make(chan *raftpb.Message, maxInFlightMsgSnap),
 		applyc:           make(chan toApply),
-		appendc:          make(chan asyncAppendWork, asyncAppendQueueSize),
+		appendc:          make(chan *raftpb.Message, asyncAppendQueueSize),
 		asyncStopc:       make(chan struct{}),
 		asyncAppendDonec: make(chan struct{}),
 		stopped:          make(chan struct{}),
@@ -395,7 +384,7 @@ func (r *raftNode) processAsyncReady(rd raft.Ready, rh *raftReadyHandler) bool {
 			}
 			sendMessages()
 			select {
-			case r.appendc <- asyncAppendWork{message: m}:
+			case r.appendc <- m:
 			case <-r.stopped:
 				return false
 			}
@@ -403,15 +392,12 @@ func (r *raftNode) processAsyncReady(rd raft.Ready, rh *raftReadyHandler) bool {
 			if m.GetType() != raftpb.MsgStorageApply {
 				r.lg.Panic("unexpected message to Raft apply thread", zap.Stringer("message-type", m.GetType()))
 			}
-			raftStorageReadyC := make(chan struct{})
 			raftAdvancedC := make(chan struct{}, 1)
 			responses := m.GetResponses()
 			ap := toApply{
-				entries:                   m.GetEntries(),
-				snapshot:                  raftpb.EnsureSnapshot(nil),
-				raftStorageReadyC:         raftStorageReadyC,
-				waitForStorageBeforeApply: true,
-				raftAdvancedC:             raftAdvancedC,
+				entries:       m.GetEntries(),
+				snapshot:      raftpb.EnsureSnapshot(nil),
+				raftAdvancedC: raftAdvancedC,
 				onApplyCompleted: func() {
 					r.sendStorageResponses(responses)
 					raftAdvancedC <- struct{}{}
@@ -421,15 +407,6 @@ func (r *raftNode) processAsyncReady(rd raft.Ready, rh *raftReadyHandler) bool {
 				updateCommittedIndex(&ap, rh)
 			}
 			sendMessages()
-			// MsgStorageAppend is ordered before MsgStorageApply within a
-			// Ready. Put a barrier on the append FIFO so the state machine
-			// cannot durably apply committed entries before their HardState
-			// commit has reached the WAL.
-			select {
-			case r.appendc <- asyncAppendWork{barrierC: raftStorageReadyC}:
-			case <-r.stopped:
-				return false
-			}
 			select {
 			case r.applyc <- ap:
 			case <-r.stopped:
@@ -458,37 +435,23 @@ func (r *raftNode) runAsyncAppend() {
 			return
 		default:
 		}
-		var work asyncAppendWork
+		var work *raftpb.Message
 		select {
 		case work = <-r.appendc:
 		case <-r.asyncStopc:
 			return
 		}
-		if work.barrierC != nil {
-			close(work.barrierC)
-			continue
-		}
-
-		messages := []*raftpb.Message{work.message}
-		var barrierC chan struct{}
+		messages := []*raftpb.Message{work}
 		draining := true
 		for draining && len(messages) < asyncAppendQueueSize {
 			select {
 			case work = <-r.appendc:
-				if work.barrierC != nil {
-					barrierC = work.barrierC
-					draining = false
-				} else {
-					messages = append(messages, work.message)
-				}
+				messages = append(messages, work)
 			default:
 				draining = false
 			}
 		}
 		r.processStorageAppends(messages)
-		if barrierC != nil {
-			close(barrierC)
-		}
 	}
 }
 
