@@ -114,23 +114,21 @@ function modules() {
   echo "${modules[@]}"
 }
 
-# Receives a reference to an array variable, and returns the workspace relative modules.
+# Prints the workspace relative modules to stdout, one per line.
+# (Namerefs are avoided on purpose: they need bash 4.3+, while macOS ships bash 3.2.)
 function load_workspace_relative_modules() {
-  local -n _relative_modules=$1
-  while IFS= read -r line; do _relative_modules+=("$line"); done < <(
-    go work edit -json | jq -r '.Use[].DiskPath + "/..."'
-  )
+  go work edit -json | jq -r '.Use[].DiskPath + "/..."'
 }
 
-# Receives a reference to an array variable, and returns the workspace relative modules, not
-# including the tools, as they are not considered to be added to the bill for materials.
+# Prints the workspace relative modules to stdout, one per line, not including
+# the tools, as they are not considered to be added to the bill for materials.
 function load_workspace_relative_modules_for_bom() {
-  local -n relative_modules_for_bom=$1
   local modules=()
-  load_workspace_relative_modules modules
+  local module
+  while IFS= read -r module; do modules+=("${module}"); done < <(load_workspace_relative_modules)
   for module in "${modules[@]}"; do
     if [[ ! "${module}" =~ ^./tools ]]; then
-      relative_modules_for_bom+=("${module}")
+      echo "${module}"
     fi
   done
 }
@@ -142,7 +140,7 @@ function run_for_all_workspace_modules {
   local pkg="${PKG:-./...}"
   if [ -z "${USERMOD:-}" ]; then
     local _modules=()
-    load_workspace_relative_modules _modules
+    while IFS= read -r line; do _modules+=("$line"); done < <(load_workspace_relative_modules)
     run "$@" "${_modules[@]}"
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
@@ -159,7 +157,7 @@ function run_for_workspace_modules {
 
   if [ -z "${USERMOD:-}" ]; then
     local _modules=()
-    load_workspace_relative_modules _modules
+    while IFS= read -r line; do _modules+=("$line"); done < <(load_workspace_relative_modules)
     for module in "${_modules[@]}"; do
       if ! run_for_module "${module%...}" "$@"; then
         if [ "$keep_going_module" = false ]; then

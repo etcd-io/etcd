@@ -297,7 +297,7 @@ function cov_pass {
   find "${coverdir}" -name '*.coverprofile' -delete
 
   local modules=()
-  load_workspace_relative_modules modules
+  while IFS= read -r line; do modules+=("$line"); done < <(load_workspace_relative_modules)
   local covpkgs=()
   for module in "${modules[@]}"; do
     if [[ ! "${module}" =~ ^./tests && ! "${module}" =~ ^./...$ ]]; then

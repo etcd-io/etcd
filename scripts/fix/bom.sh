@@ -22,7 +22,7 @@ source "${ETCD_ROOT_DIR}/scripts/test_lib.sh"
 log_callout "Generating bill of materials..."
 
 _bom_modules=()
-load_workspace_relative_modules_for_bom _bom_modules
+while IFS= read -r line; do _bom_modules+=("$line"); done < <(load_workspace_relative_modules_for_bom)
 
 # Internally license-bill-of-materials tends to modify go.sum
 run cp go.sum go.sum.tmp || exit 2

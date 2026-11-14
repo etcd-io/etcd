@@ -14,7 +14,7 @@ ALLOWLIST="${TOOL_SRC}/allowlist.txt"
 FAILURES=0
 
 modules=()
-load_workspace_relative_modules modules
+while IFS= read -r line; do modules+=("$line"); done < <(load_workspace_relative_modules)
 
 for module in "${modules[@]}"; do
   echo "------------------------------------------------"
