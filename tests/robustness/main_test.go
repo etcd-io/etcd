@@ -87,6 +87,20 @@ func TestRobustnessRegression(t *testing.T) {
 	}
 }
 
+func TestRobustnessRaftAsyncStorageWrites(t *testing.T) {
+	testRunner.BeforeTest(t)
+	s := scenarios.RaftAsyncStorageWrites()
+	lg := zaptest.NewLogger(t)
+	s.Cluster.Logger = lg
+	ctx := t.Context()
+	c, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.Cluster))
+	require.NoError(t, err)
+	defer forcestopCluster(c)
+	t.Run(s.Failpoint.Name(), func(t *testing.T) {
+		testRobustness(ctx, t, lg, s, c)
+	})
+}
+
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenarios.TestScenario, c *e2e.EtcdProcessCluster) {
 	r, err := report.NewTestReport(lg, testResultsDirectory(t), report.ServerDataPaths(c), &report.TrafficDetail{ExpectUniqueRevision: s.Traffic.ExpectUniqueRevision()})
 	require.NoError(t, err)
