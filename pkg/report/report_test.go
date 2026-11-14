@@ -57,7 +57,8 @@ func TestWeightedReportAllResultsFailed(t *testing.T) {
 		close(r.Results())
 	}()
 
-	stats := <-r.Stats()
+	statsCh := r.Stats()
+	stats := <-statsCh
 	require.Empty(t, stats.Lats)
 	require.False(t, math.IsNaN(stats.RPS), "RPS must not be NaN")
 	require.False(t, math.IsInf(stats.RPS, 0), "RPS must not be Inf")
@@ -65,6 +66,19 @@ func TestWeightedReportAllResultsFailed(t *testing.T) {
 	require.False(t, math.IsInf(stats.AvgTotal, 0), "AvgTotal must not be Inf")
 	assert.Zero(t, stats.RPS)
 	assert.Zero(t, stats.AvgTotal)
+
+	// Stats sends the weighted result first and the base report's result
+	// second. Guard both public results: a regression in the base
+	// processResults division would otherwise reintroduce NaN here.
+	baseStats := <-statsCh
+	require.Empty(t, baseStats.Lats)
+	require.False(t, math.IsNaN(baseStats.RPS), "base RPS must not be NaN")
+	require.False(t, math.IsInf(baseStats.RPS, 0), "base RPS must not be Inf")
+	require.False(t, math.IsNaN(baseStats.Average), "base Average must not be NaN")
+	require.False(t, math.IsNaN(baseStats.Stddev), "base Stddev must not be NaN")
+	assert.Zero(t, baseStats.RPS)
+	assert.Zero(t, baseStats.Average)
+	assert.Equal(t, map[string]int{"boom": 1}, baseStats.ErrorDist)
 }
 
 func TestPercentiles(t *testing.T) {
