@@ -396,11 +396,6 @@ function govuln_pass {
   run_for_all_workspace_modules run "${tool_bin}" -show verbose
 }
 
-
-function lint_fix_pass {
-  run_for_all_workspace_modules golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
-}
-
 ######## VARIOUS CHECKERS ######################################################
 
 function dump_module_deps() {
