@@ -737,7 +737,7 @@ func TestAsyncStorageWritesSnapshotResponseAfterApplication(t *testing.T) {
 	}}}
 
 	ap := <-r.applyc
-	<-ap.snapshotPersistedC
+	<-ap.snapshotWALEntryPersistedC
 	<-ap.raftStorageReadyC
 	select {
 	case m := <-n.stepc:

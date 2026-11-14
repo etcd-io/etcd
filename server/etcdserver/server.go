@@ -1037,7 +1037,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	}
 
 	// Wait for raftNode to persist the snapshot onto disk.
-	<-toApply.snapshotPersistedC
+	<-toApply.snapshotWALEntryPersistedC
 
 	bemuUnlocked := false
 	s.bemu.Lock()

@@ -74,21 +74,34 @@ func init() {
 type toApply struct {
 	entries  []*raftpb.Entry
 	snapshot *raftpb.Snapshot
-	// snapshotPersistedC is closed after an incoming snapshot and its WAL
-	// metadata are durable. applySnapshot waits for it before opening the
-	// snapshot backend.
-	snapshotPersistedC <-chan struct{}
-	// raftStorageReadyC is closed after all corresponding Raft storage work,
-	// including in-memory storage updates and WAL release, is complete.
+	// snapshotWALEntryPersistedC is closed after the snapshot record is durable in the WAL.
+	// The applier waits for this signal before replacing the active database.
+	// If etcd crashes before the replacement, startup uses the WAL snapshot index
+	// to find the downloaded .snap.db file and finish installing it.
+	// See RecoverSnapshotBackend.
+	snapshotWALEntryPersistedC <-chan struct{}
+
+	// raftStorageReadyC is closed once persistRaftData has updated
+	// MemoryStorage for this work. applyAll waits on it before creating a
+	// snapshot or compacting the log, which panic if appliedi is beyond
+	// MemoryStorage's last index.
+	//   - Legacy path: set for every batch, since apply can start before
+	//     the entries reach MemoryStorage.
+	//   - Async path: set only for incoming snapshots, since
+	//     snapshotWALEntryPersistedC fires before MemoryStorage.ApplySnapshot.
+	//     Ordinary async entries leave it nil; Raft emits them only after
+	//     they are already in MemoryStorage.
 	raftStorageReadyC <-chan struct{}
-	// applyCompletedC is closed after application and any required storage waits.
-	// The legacy Ready path uses it to
-	// order follower configuration-change messages after application.
-	applyCompletedC chan struct{}
+
 	// raftAdvancedC notifies EtcdServer.apply that raftLog.applied has advanced
 	// through either r.Advance or a MsgStorageApplyResp.
 	// it should be used only when entries contain raftpb.EntryConfChange
 	raftAdvancedC <-chan struct{}
+
+	// applyCompletedC is closed after application and any required storage waits.
+	// The legacy Ready path uses it to
+	// order follower configuration-change messages after application.
+	applyCompletedC chan struct{}
 	// onApplyCompleted is called immediately before applyCompletedC is closed.
 	onApplyCompleted func()
 }
@@ -281,18 +294,18 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					continue
 				}
 				committedEntries := rd.CommittedEntries
-				snapshotPersistedC := make(chan struct{})
+				snapshotWALEntryPersistedC := make(chan struct{})
 				raftStorageReadyC := make(chan struct{})
 				applyCompletedC := make(chan struct{})
 				raftAdvancedC := make(chan struct{}, 1)
 				raftSnap := proto.Clone(rd.Snapshot).(*raftpb.Snapshot)
 				ap := toApply{
-					entries:            committedEntries,
-					snapshot:           proto.Clone(rd.Snapshot).(*raftpb.Snapshot),
-					snapshotPersistedC: snapshotPersistedC,
-					raftStorageReadyC:  raftStorageReadyC,
-					applyCompletedC:    applyCompletedC,
-					raftAdvancedC:      raftAdvancedC,
+					entries:                    committedEntries,
+					snapshot:                   proto.Clone(rd.Snapshot).(*raftpb.Snapshot),
+					snapshotWALEntryPersistedC: snapshotWALEntryPersistedC,
+					raftStorageReadyC:          raftStorageReadyC,
+					applyCompletedC:            applyCompletedC,
+					raftAdvancedC:              raftAdvancedC,
 				}
 
 				updateCommittedIndex(&ap, rh)
@@ -310,7 +323,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					r.send(r.processMessages(rd.Messages))
 				}
 
-				r.persistRaftData(rd.HardState, rd.Entries, raftSnap, snapshotPersistedC)
+				r.persistRaftData(rd.HardState, rd.Entries, raftSnap, snapshotWALEntryPersistedC)
 
 				confChanged := false
 				for _, ent := range rd.CommittedEntries {
@@ -418,6 +431,9 @@ func (r *raftNode) processAsyncReady(rd raft.Ready, rh *raftReadyHandler) bool {
 				return false
 			}
 		default:
+			// The guard protects against a future Raft version adding another local target.
+			// If the helper recognizes that target but this switch lacks a handler, the panic stops execution.
+			// Otherwise, the code sends internal work to the peer transport by mistake.
 			if raft.IsLocalMsgTarget(m.GetTo()) {
 				r.lg.Panic(
 					"unexpected message to local Raft storage thread",
@@ -546,20 +562,20 @@ func (r *raftNode) processStorageAppend(m *raftpb.Message) bool {
 		raftSnap = raftpb.EnsureSnapshot(nil)
 	}
 
-	var snapshotPersistedC chan struct{}
+	var snapshotWALEntryPersistedC chan struct{}
 	var raftStorageReadyC chan struct{}
 	var applyCompletedC chan struct{}
 	if !raft.IsEmptySnap(raftSnap) {
-		snapshotPersistedC = make(chan struct{})
+		snapshotWALEntryPersistedC = make(chan struct{})
 		raftStorageReadyC = make(chan struct{})
 		applyCompletedC = make(chan struct{})
 		responses := m.GetResponses()
 		ap := toApply{
-			snapshot:           applySnap,
-			snapshotPersistedC: snapshotPersistedC,
-			raftStorageReadyC:  raftStorageReadyC,
-			applyCompletedC:    applyCompletedC,
-			raftAdvancedC:      make(chan struct{}),
+			snapshot:                   applySnap,
+			snapshotWALEntryPersistedC: snapshotWALEntryPersistedC,
+			raftStorageReadyC:          raftStorageReadyC,
+			applyCompletedC:            applyCompletedC,
+			raftAdvancedC:              make(chan struct{}),
 			onApplyCompleted: func() {
 				r.sendStorageResponses(responses)
 			},
@@ -571,7 +587,7 @@ func (r *raftNode) processStorageAppend(m *raftpb.Message) bool {
 		}
 	}
 
-	r.persistRaftData(hardState, m.GetEntries(), raftSnap, snapshotPersistedC)
+	r.persistRaftData(hardState, m.GetEntries(), raftSnap, snapshotWALEntryPersistedC)
 	if raft.IsEmptySnap(raftSnap) {
 		r.sendStorageResponses(m.GetResponses())
 		return true
@@ -613,7 +629,7 @@ func (r *raftNode) persistRaftData(
 	hardState *raftpb.HardState,
 	entries []*raftpb.Entry,
 	raftSnap *raftpb.Snapshot,
-	snapshotPersistedC chan<- struct{},
+	snapshotWALEntryPersistedC chan<- struct{},
 ) {
 	// Must save the snapshot file and WAL snapshot entry before saving any other entries or hardstate to
 	// ensure that recovery after a snapshot restore is possible.
@@ -644,7 +660,7 @@ func (r *raftNode) persistRaftData(
 		}
 
 		// etcdserver now claims the snapshot has been persisted onto the disk.
-		close(snapshotPersistedC)
+		close(snapshotWALEntryPersistedC)
 
 		// gofail: var raftBeforeApplySnap struct{}
 		r.raftStorage.ApplySnapshot(raftSnap)
