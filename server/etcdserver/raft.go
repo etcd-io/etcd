@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
@@ -119,6 +120,10 @@ type raftNode struct {
 	// asyncStopc stops asynchronous storage work before Raft storage is closed.
 	asyncStopc       chan struct{}
 	asyncAppendDonec chan struct{}
+	// isLead mirrors the Ready loop's leadership so the storage workers can
+	// pick the matching send failpoint. It is a pointer, like tickMu, so
+	// raftNode stays copyable.
+	isLead *atomic.Bool
 	// storageResponseCtx is canceled when the Raft node stops, allowing
 	// in-flight local storage responses to stop blocking shutdown.
 	storageResponseCtx     context.Context
@@ -171,6 +176,7 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 	r := &raftNode{
 		lg:                     cfg.lg,
 		tickMu:                 new(sync.RWMutex),
+		isLead:                 new(atomic.Bool),
 		raftNodeConfig:         cfg,
 		latestTickTs:           time.Now(),
 		storageResponseCtx:     storageResponseCtx,
@@ -249,6 +255,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 					rh.updateLead(rd.SoftState.Lead)
 					islead = rd.RaftState == raft.StateLeader
+					r.isLead.Store(islead)
 					if islead {
 						isLeader.Set(1)
 					} else {
@@ -300,8 +307,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				// writing to their disks.
 				// For more details, check raft thesis 10.2.1
 				if islead {
-					// gofail: var raftBeforeLeaderSend struct{}
-					r.transport.Send(r.processMessages(rd.Messages))
+					r.send(r.processMessages(rd.Messages))
 				}
 
 				r.persistRaftData(rd.HardState, rd.Entries, raftSnap, snapshotPersistedC)
@@ -339,8 +345,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 						}
 					}
 
-					// gofail: var raftBeforeFollowerSend struct{}
-					r.transport.Send(msgs)
+					r.send(msgs)
 				} else {
 					// The leader already processed MsgSnap.
 					close(raftStorageReadyC)
@@ -370,7 +375,7 @@ func (r *raftNode) processAsyncReady(rd raft.Ready, rh *raftReadyHandler) bool {
 		if len(messages) == 0 {
 			return
 		}
-		r.transport.Send(r.processMessages(messages))
+		r.send(r.processMessages(messages))
 		messages = nil
 	}
 	for _, m := range rd.Messages {
@@ -655,13 +660,25 @@ func (r *raftNode) persistRaftData(
 	r.raftStorage.Append(entries)
 }
 
+// send hands processed messages to the peer transport. Every peer send goes
+// through here, so the send failpoints fire at the same point in both the
+// legacy and async storage paths.
+func (r *raftNode) send(msgs []*raftpb.Message) {
+	if r.isLead.Load() {
+		// gofail: var raftBeforeLeaderSend struct{}
+	} else {
+		// gofail: var raftBeforeFollowerSend struct{}
+	}
+	r.transport.Send(msgs)
+}
+
 func (r *raftNode) sendStorageResponses(responses []*raftpb.Message) {
 	var messages []*raftpb.Message
 	sendMessages := func() {
 		if len(messages) == 0 {
 			return
 		}
-		r.transport.Send(r.processMessages(messages))
+		r.send(r.processMessages(messages))
 		messages = nil
 	}
 	for _, m := range responses {
