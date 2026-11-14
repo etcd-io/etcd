@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -71,6 +72,7 @@ type LogsExpect interface {
 
 type EtcdServerProcess struct {
 	cfg        *EtcdServerProcessConfig
+	procMu     sync.RWMutex
 	proc       *expect.ExpectProcess
 	proxy      proxy.Server
 	lazyfs     *LazyFS
@@ -149,7 +151,7 @@ func (ep *EtcdServerProcess) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
 
 func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 	ep.donec = make(chan struct{})
-	if ep.proc != nil {
+	if ep.getProcess() != nil {
 		panic("already started")
 	}
 	if ep.cfg.Proxy != nil && ep.proxy == nil {
@@ -174,10 +176,12 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	ep.procMu.Lock()
 	ep.proc = proc
-	err = ep.waitReady(ctx)
+	ep.procMu.Unlock()
+	err = ep.waitReady(ctx, proc)
 	if err == nil {
-		ep.cfg.lg.Info("started server.", zap.String("name", ep.cfg.Name), zap.Int("pid", ep.proc.Pid()))
+		ep.cfg.lg.Info("started server.", zap.String("name", ep.cfg.Name), zap.Int("pid", proc.Pid()))
 	}
 	return err
 }
@@ -195,21 +199,23 @@ func (ep *EtcdServerProcess) Restart(ctx context.Context) error {
 }
 
 func (ep *EtcdServerProcess) Stop() (err error) {
-	if ep == nil || ep.proc == nil {
+	if ep == nil {
+		return nil
+	}
+	proc := ep.getProcess()
+	if proc == nil {
 		return nil
 	}
 
 	ep.cfg.lg.Info("stopping server...", zap.String("name", ep.cfg.Name))
 
-	defer func() {
-		ep.proc = nil
-	}()
+	defer ep.clearProcess(proc)
 
-	err = ep.proc.Stop()
+	err = proc.Stop()
 	if err != nil {
 		return err
 	}
-	err = ep.proc.Close()
+	err = proc.Close()
 	if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
 		return err
 	}
@@ -254,9 +260,9 @@ func (ep *EtcdServerProcess) Close() error {
 	return nil
 }
 
-func (ep *EtcdServerProcess) waitReady(ctx context.Context) error {
+func (ep *EtcdServerProcess) waitReady(ctx context.Context, proc *expect.ExpectProcess) error {
 	defer close(ep.donec)
-	err := WaitReadyExpectProc(ctx, ep.proc, EtcdServerReadyLines)
+	err := WaitReadyExpectProc(ctx, proc, EtcdServerReadyLines)
 	if err != nil {
 		return fmt.Errorf("failed to find etcd ready lines %q, err: %w", EtcdServerReadyLines, err)
 	}
@@ -266,49 +272,59 @@ func (ep *EtcdServerProcess) waitReady(ctx context.Context) error {
 func (ep *EtcdServerProcess) Config() *EtcdServerProcessConfig { return ep.cfg }
 
 func (ep *EtcdServerProcess) Logs() LogsExpect {
-	if ep.proc == nil {
+	proc := ep.getProcess()
+	if proc == nil {
 		ep.cfg.lg.Panic("Please grab logs before process is stopped")
 	}
-	return ep.proc
+	return proc
 }
 
 func (ep *EtcdServerProcess) Kill() error {
 	ep.cfg.lg.Info("killing server...", zap.String("name", ep.cfg.Name))
-	if ep.proc == nil {
+	proc := ep.getProcess()
+	if proc == nil {
 		return nil
 	}
-	return ep.proc.Signal(syscall.SIGKILL)
+	return proc.Signal(syscall.SIGKILL)
 }
 
 func (ep *EtcdServerProcess) Pause() error {
 	ep.cfg.lg.Info("Pausing server...", zap.String("name", ep.cfg.Name))
-	return ep.proc.Signal(syscall.SIGSTOP)
+	if proc := ep.getProcess(); proc != nil {
+		return proc.Signal(syscall.SIGSTOP)
+	}
+	return os.ErrProcessDone
 }
 
 func (ep *EtcdServerProcess) Resume() error {
 	ep.cfg.lg.Info("Resuming server...", zap.String("name", ep.cfg.Name))
-	return ep.proc.Signal(syscall.SIGCONT)
+	if proc := ep.getProcess(); proc != nil {
+		return proc.Signal(syscall.SIGCONT)
+	}
+	return os.ErrProcessDone
 }
 
 func (ep *EtcdServerProcess) Wait(ctx context.Context) error {
+	proc := ep.getProcess()
+	if proc == nil {
+		return nil
+	}
 	ch := make(chan struct{})
 	go func() {
 		defer close(ch)
-		if ep.proc != nil {
-			ep.proc.Wait()
+		proc.Wait()
 
-			exitCode, exitErr := ep.proc.ExitCode()
+		exitCode, exitErr := proc.ExitCode()
 
-			ep.cfg.lg.Info("server exited",
-				zap.String("name", ep.cfg.Name),
-				zap.Int("code", exitCode),
-				zap.Error(exitErr),
-			)
-		}
+		ep.cfg.lg.Info("server exited",
+			zap.String("name", ep.cfg.Name),
+			zap.Int("code", exitCode),
+			zap.Error(exitErr),
+		)
 	}()
 	select {
 	case <-ch:
-		ep.proc = nil
+		ep.clearProcess(proc)
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -316,11 +332,12 @@ func (ep *EtcdServerProcess) Wait(ctx context.Context) error {
 }
 
 func (ep *EtcdServerProcess) IsRunning() bool {
-	if ep.proc == nil {
+	proc := ep.getProcess()
+	if proc == nil {
 		return false
 	}
 
-	exitCode, err := ep.proc.ExitCode()
+	exitCode, err := proc.ExitCode()
 	if errors.Is(err, expect.ErrProcessRunning) {
 		return true
 	}
@@ -329,8 +346,23 @@ func (ep *EtcdServerProcess) IsRunning() bool {
 		zap.String("name", ep.cfg.Name),
 		zap.Int("code", exitCode),
 		zap.Error(err))
-	ep.proc = nil
+	ep.clearProcess(proc)
 	return false
+}
+
+func (ep *EtcdServerProcess) getProcess() *expect.ExpectProcess {
+	ep.procMu.RLock()
+	defer ep.procMu.RUnlock()
+	return ep.proc
+}
+
+// clearProcess does not clear a replacement process started after an older wait.
+func (ep *EtcdServerProcess) clearProcess(proc *expect.ExpectProcess) {
+	ep.procMu.Lock()
+	defer ep.procMu.Unlock()
+	if ep.proc == proc {
+		ep.proc = nil
+	}
 }
 
 func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
