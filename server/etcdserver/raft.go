@@ -432,6 +432,7 @@ func (r *raftNode) runAsyncAppend() {
 	for {
 		select {
 		case <-r.asyncStopc:
+			r.drainAsyncAppends()
 			return
 		default:
 		}
@@ -439,6 +440,7 @@ func (r *raftNode) runAsyncAppend() {
 		select {
 		case work = <-r.appendc:
 		case <-r.asyncStopc:
+			r.drainAsyncAppends()
 			return
 		}
 		messages := []*raftpb.Message{work}
@@ -451,14 +453,37 @@ func (r *raftNode) runAsyncAppend() {
 				draining = false
 			}
 		}
-		r.processStorageAppends(messages)
+		if !r.processStorageAppends(messages) {
+			return
+		}
 	}
 }
 
-func (r *raftNode) processStorageAppends(messages []*raftpb.Message) {
+// drainAsyncAppends saves queued work after the Ready loop stops producing it.
+// Application has stopped, so storage responses are no longer needed. WAL.Close
+// subsequently syncs commit updates that Save does not sync on its own.
+func (r *raftNode) drainAsyncAppends() {
+	for {
+		select {
+		case m := <-r.appendc:
+			if !raft.IsEmptySnap(m.GetSnapshot()) {
+				// The stopped applier cannot install this snapshot. Raft cannot
+				// emit apply work beyond it until installation is acknowledged.
+				return
+			}
+			r.persistRaftData(hardStateFromAppendMessage(r.lg, m), m.GetEntries(), raftpb.EnsureSnapshot(nil), nil)
+		default:
+			return
+		}
+	}
+}
+
+func (r *raftNode) processStorageAppends(messages []*raftpb.Message) bool {
 	for len(messages) > 0 {
 		if !raft.IsEmptySnap(messages[0].GetSnapshot()) {
-			r.processStorageAppend(messages[0])
+			if !r.processStorageAppend(messages[0]) {
+				return false
+			}
 			messages = messages[1:]
 			continue
 		}
@@ -473,6 +498,7 @@ func (r *raftNode) processStorageAppends(messages []*raftpb.Message) {
 		r.processStorageAppendBatch(messages[:end], entries)
 		messages = messages[end:]
 	}
+	return true
 }
 
 func canBatchStorageAppend(entries, next []*raftpb.Entry) bool {
@@ -499,7 +525,7 @@ func (r *raftNode) processStorageAppendBatch(messages []*raftpb.Message, entries
 	r.sendStorageResponses(responses)
 }
 
-func (r *raftNode) processStorageAppend(m *raftpb.Message) {
+func (r *raftNode) processStorageAppend(m *raftpb.Message) bool {
 	if m.GetType() != raftpb.MsgStorageAppend {
 		r.lg.Panic("unexpected Raft append work", zap.Stringer("message-type", m.GetType()))
 	}
@@ -536,20 +562,29 @@ func (r *raftNode) processStorageAppend(m *raftpb.Message) {
 		select {
 		case r.applyc <- ap:
 		case <-r.asyncStopc:
-			return
+			return false
 		}
 	}
 
 	r.persistRaftData(hardState, m.GetEntries(), raftSnap, snapshotPersistedC)
 	if raft.IsEmptySnap(raftSnap) {
 		r.sendStorageResponses(m.GetResponses())
-		return
+		return true
 	}
 
 	close(raftStorageReadyC)
 	select {
 	case <-applyCompletedC:
+		return true
 	case <-r.asyncStopc:
+		// Completed snapshots can have later applied entries whose commit
+		// updates still need to be drained during shutdown.
+		select {
+		case <-applyCompletedC:
+			return true
+		default:
+			return false
+		}
 	}
 }
 
