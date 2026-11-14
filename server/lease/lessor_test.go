@@ -72,8 +72,8 @@ func TestLessorGrant(t *testing.T) {
 	}
 
 	_, err = le.Grant(1, 1)
-	if err == nil {
-		t.Errorf("allocated the same lease")
+	if !errors.Is(err, ErrLeaseExists) {
+		t.Errorf("err = %v, want %v", err, ErrLeaseExists)
 	}
 
 	var nl *Lease
