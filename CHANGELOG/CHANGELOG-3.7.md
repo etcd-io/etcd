@@ -11,6 +11,10 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 - [Define `alarmStore` as an `atomic.Pointer` to avoid race condition](https://github.com/etcd-io/etcd/pull/22705)
 - Fix [etcd panics on startup replaying legacy v2 member-attribute WAL entries](https://github.com/etcd-io/etcd/pull/22804)
 
+### Dependencies
+
+- Compile binaries using [go 1.26.11](https://github.com/etcd-io/etcd/pull/22818).
+
 ---
 
 ## v3.7.3 (2026-10-22)

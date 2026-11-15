@@ -1,5 +1,4 @@
 
-
 Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.5.md).
 
 ---
@@ -10,6 +9,11 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - Fix [`--force-new-cluster` permanently bricking a member whose backend consistent index is ahead of its WAL](https://github.com/etcd-io/etcd/pull/22686)
 - [Define `alarmStore` as an `atomic.Pointer` to avoid race condition](https://github.com/etcd-io/etcd/pull/22706)
+
+### Dependencies
+
+- Compile binaries using [go 1.26.11](https://github.com/etcd-io/etcd/pull/22819).
+- [Bump github.com/klauspost/compress to v1.20.2](https://github.com/etcd-io/etcd/pull/22819) to resolve [CVE-2026-116591](https://pkg.go.dev/vuln/GO-2026-6865)
 
 ---
 
@@ -433,6 +437,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Package `datadir` was moved to `storage/datadir`
 
 ### Package `raft`
+
 - [Decouple raft from etcd](https://github.com/etcd-io/etcd/issues/14713). Migrated raft to a separate [repository](https://github.com/etcd-io/raft), and renamed raft module to `go.etcd.io/raft/v3`.
 
 ### etcd server
@@ -449,7 +454,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add [Protection on maintenance request when auth is enabled](https://github.com/etcd-io/etcd/pull/14663).
 - Graduated [`--experimental-warning-unary-request-duration` to `--warning-unary-request-duration`](https://github.com/etcd-io/etcd/pull/14414). Note the experimental flag is deprecated and will be decommissioned in v3.7.
 - Add [field `hash_revision` into `HashKVResponse`](https://github.com/etcd-io/etcd/pull/14537).
-- Add [`etcd --experimental-snapshot-catch-up-entries`](https://github.com/etcd-io/etcd/pull/15033) flag to configure number of entries for a slow follower to catch up after compacting the raft storage entries and defaults to 5k. 
+- Add [`etcd --experimental-snapshot-catch-up-entries`](https://github.com/etcd-io/etcd/pull/15033) flag to configure number of entries for a slow follower to catch up after compacting the raft storage entries and defaults to 5k.
 - Decreased [`--snapshot-count` default value from 100,000 to 10,000](https://github.com/etcd-io/etcd/pull/15408)
 - Add [`etcd --tls-min-version --tls-max-version`](https://github.com/etcd-io/etcd/pull/15156) to enable support for TLS 1.3.
 - Add [quota to endpoint status response](https://github.com/etcd-io/etcd/pull/17877)
@@ -476,8 +481,9 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 - Add [`etcd_server_range_duration_seconds`](https://github.com/etcd-io/etcd/pull/17983).
 
 ### Go
+
 - Require [Go 1.23+](https://github.com/etcd-io/etcd/pull/16594).
-- Compile with [Go 1.23+](https://go.dev/doc/devel/release#go1.21.minor). Please refer to [gc-guide](https://go.dev/doc/gc-guide) to configure `GOGC` and `GOMEMLIMIT` properly. 
+- Compile with [Go 1.23+](https://go.dev/doc/devel/release#go1.21.minor). Please refer to [gc-guide](https://go.dev/doc/gc-guide) to configure `GOGC` and `GOMEMLIMIT` properly.
 
 ### Other
 
