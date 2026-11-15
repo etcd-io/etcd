@@ -225,9 +225,15 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	c := rev
 	oldLease := lease.NoLease
 
+	// The index does not have rev before the first change of the txn.
+	rrev := tw.beginRev
+	if len(tw.changes) > 0 {
+		rrev++
+	}
+
 	// if the key exists before, use its previous created and
 	// get its previous leaseID
-	_, created, ver, err := tw.s.kvindex.Get(key, rev)
+	_, created, ver, err := tw.s.kvindex.Get(key, rrev)
 	if err == nil {
 		c = created.Main
 		oldLease = tw.s.le.GetLease(lease.LeaseItem{Key: string(key)})
