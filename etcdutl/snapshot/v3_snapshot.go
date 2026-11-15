@@ -252,7 +252,7 @@ type RestoreConfig struct {
 }
 
 // Restore restores a new etcd data directory from given snapshot file.
-func (s *v3Manager) Restore(cfg RestoreConfig) error {
+func (s *v3Manager) Restore(cfg RestoreConfig) (err error) {
 	pURLs, err := types.NewURLs(cfg.PeerURLs)
 	if err != nil {
 		return err
@@ -293,6 +293,26 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	} else if fileutil.Exist(walDir) {
 		return fmt.Errorf("wal-dir %q exists", walDir)
 	}
+
+	// A failed restore must not leave a partial member behind: it blocks a retry
+	// into the same data-dir, and etcd would treat it as an initialized member.
+	cleanup := []string{dataDir}
+	if fileutil.Exist(dataDir) {
+		cleanup = []string{filepath.Join(dataDir, "member")}
+	}
+	if cfg.OutputWALDir != "" {
+		cleanup = append(cleanup, walDir)
+	}
+	defer func() {
+		if err == nil {
+			return
+		}
+		for _, path := range cleanup {
+			if rerr := os.RemoveAll(path); rerr != nil {
+				s.lg.Warn("failed to clean up after failed restore", zap.String("path", path), zap.Error(rerr))
+			}
+		}
+	}()
 
 	s.name = cfg.Name
 	s.srcDbPath = cfg.SnapshotPath

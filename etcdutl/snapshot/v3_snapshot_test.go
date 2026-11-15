@@ -27,6 +27,7 @@ import (
 
 	"go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -213,6 +214,52 @@ func TestSnapshotStatusTotalKey(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expected, status.TotalKey)
+		})
+	}
+}
+
+// TestSnapshotRestoreFailureCleansUp checks that a restore that fails after it
+// has started writing the data-dir leaves nothing behind, so it can be retried.
+func TestSnapshotRestoreFailureCleansUp(t *testing.T) {
+	dbpath := createDB(t, insertKeys(t, 1, 0))
+
+	for _, tc := range []struct {
+		name       string
+		dataDir    string
+		walDir     string
+		preCreated bool
+	}{
+		{name: "new data-dir", dataDir: filepath.Join(t.TempDir(), "new.etcd")},
+		{name: "existing empty data-dir", dataDir: t.TempDir(), preCreated: true},
+		{name: "separate wal-dir", dataDir: filepath.Join(t.TempDir(), "new.etcd"), walDir: filepath.Join(t.TempDir(), "wal")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := RestoreConfig{
+				SnapshotPath:        dbpath,
+				Name:                "default",
+				OutputDataDir:       tc.dataDir,
+				OutputWALDir:        tc.walDir,
+				PeerURLs:            []string{"http://localhost:2380"},
+				InitialCluster:      "default=http://localhost:2380",
+				InitialClusterToken: "etcd-cluster",
+			}
+
+			// a db file from a data-dir has no appended hash, so this fails
+			// after the db has been copied into the data-dir
+			err := NewV3(zap.NewNop()).Restore(cfg)
+			require.ErrorContains(t, err, "snapshot missing hash")
+
+			if tc.preCreated {
+				assert.True(t, fileutil.DirEmpty(tc.dataDir), "data-dir should be left empty")
+			} else {
+				assert.NoDirExists(t, tc.dataDir)
+			}
+			if tc.walDir != "" {
+				assert.NoDirExists(t, tc.walDir)
+			}
+
+			cfg.SkipHashCheck = true
+			require.NoError(t, NewV3(zap.NewNop()).Restore(cfg))
 		})
 	}
 }
