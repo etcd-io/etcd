@@ -15,6 +15,8 @@
 package etcdutl
 
 import (
+	"crypto/sha256"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -142,4 +144,25 @@ func TestCalculateHashKV(t *testing.T) {
 				tc.name, result.Hash, result.HashRevision, result.CompactRevision)
 		})
 	}
+}
+
+func TestCalculateHashKVLeavesFileUnchanged(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test.db")
+
+	b := backend.NewDefaultBackend(zap.NewNop(), dbPath)
+	st := mvcc.NewStore(zap.NewNop(), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	st.Put([]byte("test-key"), []byte("test-value"), 1)
+	assert.NilError(t, st.Close())
+	assert.NilError(t, b.Close())
+
+	before, err := os.ReadFile(dbPath)
+	assert.NilError(t, err)
+
+	_, err = calculateHashKV(dbPath, 0)
+	assert.NilError(t, err)
+
+	after, err := os.ReadFile(dbPath)
+	assert.NilError(t, err)
+	assert.Equal(t, sha256.Sum256(before), sha256.Sum256(after))
 }
