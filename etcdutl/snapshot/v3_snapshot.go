@@ -357,14 +357,18 @@ func (s *v3Manager) saveDB() error {
 	}
 
 	be := backend.NewDefaultBackend(s.lg, s.outDbPath(), backend.WithMmapSize(s.initialMmapSize))
-	defer be.Close()
 
+	// Close the backend explicitly rather than deferring it. A panic inside the
+	// commit that the membership trim triggers keeps the batch tx lock held on
+	// purpose (see #21964), so backend.Close would wait forever for the
+	// committer and swallow the panic into a silent hang.
 	err = schema.NewMembershipBackend(s.lg, be).TrimMembershipFromBackend()
 	if err != nil {
+		be.Close()
 		return err
 	}
 
-	return nil
+	return be.Close()
 }
 
 // modifyLatestRevision can increase the latest revision by the given amount and sets the scheduled compaction
