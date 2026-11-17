@@ -16,6 +16,8 @@ package snapshot
 
 import (
 	"errors"
+	"math"
+	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -213,6 +215,81 @@ func TestSnapshotStatusTotalKey(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expected, status.TotalKey)
+		})
+	}
+}
+
+func TestSnapshotRestoreRevisionBump(t *testing.T) {
+	snapshotPath := createDB(t, insertKeys(t, 3, 0))
+	status, err := NewV3(zap.NewNop()).Status(snapshotPath)
+	require.NoError(t, err)
+	require.Equal(t, int64(4), status.Revision)
+
+	tests := []struct {
+		name    string
+		bump    uint64
+		wantErr string
+	}{
+		{
+			name:    "max uint64 bump",
+			bump:    math.MaxUint64,
+			wantErr: "exceeds maximum revision bump",
+		},
+		{
+			name:    "bump does not fit in int64",
+			bump:    uint64(math.MaxInt64) + 1,
+			wantErr: "exceeds maximum revision bump",
+		},
+		{
+			name:    "bump overflows latest revision",
+			bump:    uint64(math.MaxInt64-status.Revision) + 1,
+			wantErr: "would overflow latest revision",
+		},
+		{
+			name: "valid bump",
+			bump: 2,
+		},
+		{
+			name: "bump to max int64",
+			bump: uint64(math.MaxInt64 - status.Revision),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, markCompacted := range []bool{false, true} {
+				t.Run("markCompacted="+strconv.FormatBool(markCompacted), func(t *testing.T) {
+					outputDir := t.TempDir()
+					outputDataDir := filepath.Join(outputDir, "restore")
+					err := NewV3(zap.NewNop()).Restore(RestoreConfig{
+						SnapshotPath:   snapshotPath,
+						Name:           "default",
+						OutputDataDir:  outputDataDir,
+						OutputWALDir:   filepath.Join(outputDir, "wal"),
+						PeerURLs:       []string{"http://localhost:2380"},
+						InitialCluster: "default=http://localhost:2380",
+						SkipHashCheck:  true,
+						RevisionBump:   tt.bump,
+						MarkCompacted:  markCompacted,
+					})
+					if tt.wantErr != "" {
+						assert.ErrorContains(t, err, tt.wantErr)
+						entries, readErr := os.ReadDir(outputDir)
+						require.NoError(t, readErr)
+						assert.Empty(t, entries, "invalid revision bump must not write to the destination")
+						return
+					}
+
+					require.NoError(t, err)
+					restoredStatus, err := NewV3(zap.NewNop()).Status(filepath.Join(outputDataDir, "member", "snap", "db"))
+					require.NoError(t, err)
+					expectedRevision := status.Revision
+					if markCompacted {
+						expectedRevision += int64(tt.bump)
+					}
+					require.Equal(t, expectedRevision, restoredStatus.Revision)
+				})
+			}
 		})
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -309,6 +310,21 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("snap-dir", s.snapDir),
 		zap.Uint64("initial-memory-map-size", s.initialMmapSize),
 	)
+
+	// Validate before saveDB creates the output directories and copies the snapshot.
+	if cfg.RevisionBump > 0 {
+		if cfg.RevisionBump > math.MaxInt64 {
+			return fmt.Errorf("revision bump %d exceeds maximum revision bump %d", cfg.RevisionBump, math.MaxInt64)
+		}
+
+		status, err := s.Status(cfg.SnapshotPath)
+		if err != nil {
+			return err
+		}
+		if status.Revision > math.MaxInt64-int64(cfg.RevisionBump) {
+			return fmt.Errorf("revision bump %d would overflow latest revision %d", cfg.RevisionBump, status.Revision)
+		}
+	}
 
 	if err = s.saveDB(); err != nil {
 		return err
