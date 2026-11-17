@@ -119,7 +119,7 @@ function fix_inconsistencies {
 
 # verify_dep runs the same check as `make verify-dep`.
 function verify_dep {
-  PASSES="dep" "${ETCD_ROOT_DIR}/scripts/test.sh" &> /dev/null
+  "${ETCD_ROOT_DIR}/scripts/verify/dep.sh" &> /dev/null
 }
 
 # resolve_inconsistencies runs one collect + fix round.

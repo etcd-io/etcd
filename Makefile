@@ -119,7 +119,7 @@ fix-bom:
 
 .PHONY: verify-dep
 verify-dep:
-	PASSES="dep" ./scripts/test.sh
+	./scripts/verify/dep.sh
 
 .PHONY: fix-dep
 fix-dep: fix-mod-tidy
