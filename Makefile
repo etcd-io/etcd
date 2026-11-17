@@ -167,7 +167,7 @@ verify-yamllint:
 
 .PHONY: verify-markdown-marker
 verify-markdown-marker:
-	PASSES="markdown_marker" ./scripts/test.sh
+	./scripts/verify/markdown-marker.sh
 
 .PHONY: fix-yamllint
 fix-yamllint:
