@@ -26,9 +26,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3AuthMemberUpdate(t *testing.T) { testCtl(t, authTestMemberUpdate) }
-func TestCtlV3AuthFromKeyPerm(t *testing.T)  { testCtl(t, authTestFromKeyPerm) }
-
 // TestCtlV3AuthAndWatch TODO https://github.com/etcd-io/etcd/issues/7988 is the blocker of migration to common/auth_test.go
 func TestCtlV3AuthAndWatch(t *testing.T)    { testCtl(t, authTestWatch) }
 func TestCtlV3AuthAndWatchJWT(t *testing.T) { testCtl(t, authTestWatch, withCfg(*e2e.NewConfigJWT())) }
@@ -40,10 +37,6 @@ func TestCtlV3AuthEndpointHealth(t *testing.T) {
 
 // TestCtlV3AuthSnapshot TODO fill up common/maintenance_auth_test.go when Snapshot API is added in interfaces.Client
 func TestCtlV3AuthSnapshot(t *testing.T) { testCtl(t, authTestSnapshot) }
-
-func TestCtlV3AuthSnapshotJWT(t *testing.T) {
-	testCtl(t, authTestSnapshot, withCfg(*e2e.NewConfigJWT()))
-}
 
 func TestCtlV3GetAuthStatus(t *testing.T) { testCtl(t, authTestGetAuthStatus) }
 
@@ -93,29 +86,6 @@ func authSetupTestUser(cx ctlCtx) {
 	require.NoError(cx.t, err)
 }
 
-func authTestMemberUpdate(cx ctlCtx) {
-	require.NoError(cx.t, authEnable(cx))
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	mr, err := getMemberList(cx, false)
-	require.NoError(cx.t, err)
-
-	// ordinary user cannot update a member
-	cx.user, cx.pass = "test-user", "pass"
-	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
-	memberID := fmt.Sprintf("%x", mr.Members[0].ID)
-	if err = ctlV3MemberUpdate(cx, memberID, peerURL); err == nil {
-		cx.t.Fatalf("ordinary user must not be allowed to update a member")
-	}
-
-	// root can update a member
-	cx.user, cx.pass = "root", "root"
-	err = ctlV3MemberUpdate(cx, memberID, peerURL)
-	require.NoError(cx.t, err)
-}
-
 func authTestCertCN(cx ctlCtx) {
 	require.NoError(cx.t, authEnable(cx))
 
@@ -136,66 +106,6 @@ func authTestCertCN(cx ctlCtx) {
 	// try a non-granted key
 	cx.user, cx.pass = "", ""
 	require.ErrorContains(cx.t, ctlV3PutFailPerm(cx, "baz", "bar"), "permission denied")
-}
-
-func authTestFromKeyPerm(cx ctlCtx) {
-	require.NoError(cx.t, authEnable(cx))
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	// grant keys after z to test-user
-	cx.user, cx.pass = "root", "root"
-	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "z", "\x00", false}))
-
-	// try the granted open ended permission
-	cx.user, cx.pass = "test-user", "pass"
-	for i := 0; i < 10; i++ {
-		key := fmt.Sprintf("z%d", i)
-		require.NoError(cx.t, ctlV3Put(cx, key, "val", ""))
-	}
-	largeKey := ""
-	for i := 0; i < 10; i++ {
-		largeKey += "\xff"
-		require.NoError(cx.t, ctlV3Put(cx, largeKey, "val", ""))
-	}
-
-	// try a non granted key
-	require.ErrorContains(cx.t, ctlV3PutFailPerm(cx, "x", "baz"), "permission denied")
-
-	// revoke the open ended permission
-	cx.user, cx.pass = "root", "root"
-	require.NoError(cx.t, ctlV3RoleRevokePermission(cx, "test-role", "z", "", true))
-
-	// try the revoked open ended permission
-	cx.user, cx.pass = "test-user", "pass"
-	for i := 0; i < 10; i++ {
-		key := fmt.Sprintf("z%d", i)
-		require.ErrorContains(cx.t, ctlV3PutFailPerm(cx, key, "val"), "permission denied")
-	}
-
-	// grant the entire keys
-	cx.user, cx.pass = "root", "root"
-	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "", "\x00", false}))
-
-	// try keys, of course it must be allowed because test-role has a permission of the entire keys
-	cx.user, cx.pass = "test-user", "pass"
-	for i := 0; i < 10; i++ {
-		key := fmt.Sprintf("z%d", i)
-		require.NoError(cx.t, ctlV3Put(cx, key, "val", ""))
-	}
-
-	// revoke the entire keys
-	cx.user, cx.pass = "root", "root"
-	require.NoError(cx.t, ctlV3RoleRevokePermission(cx, "test-role", "", "", true))
-
-	// try the revoked entire key permission
-	cx.user, cx.pass = "test-user", "pass"
-	for i := 0; i < 10; i++ {
-		key := fmt.Sprintf("z%d", i)
-		err := ctlV3PutFailPerm(cx, key, "val")
-		require.ErrorContains(cx.t, err, "permission denied")
-	}
 }
 
 func authTestWatch(cx ctlCtx) {

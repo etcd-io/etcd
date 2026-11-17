@@ -1111,3 +1111,68 @@ func mustAbsPath(path string) string {
 	}
 	return abs
 }
+
+func TestAuthMemberUpdate(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoError(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}))
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+		members, err := rootAuthClient.MemberList(ctx, false)
+		require.NoError(t, err)
+		require.Len(t, members.Members, 1)
+		memberID := members.Members[0].ID
+
+		_, err = testUserAuthClient.MemberUpdate(ctx, memberID, []string{testPeerURL})
+		require.ErrorContains(t, err, PermissionDenied)
+		_, err = rootAuthClient.MemberUpdate(ctx, memberID, []string{testPeerURL})
+		require.NoError(t, err)
+		members, err = rootAuthClient.MemberList(ctx, false)
+		require.NoError(t, err)
+		require.Len(t, members.Members, 1)
+		require.Equal(t, []string{testPeerURL}, members.Members[0].PeerURLs)
+	})
+}
+
+func TestAuthFromKeyPerm(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoError(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}))
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+		for _, key := range []string{"z", "\x00"} {
+			_, err := rootAuthClient.RoleGrantPermission(ctx, testRoleName, key, "\x00", clientv3.PermissionType(clientv3.PermReadWrite))
+			require.NoError(t, err)
+			keys := []string{"z"}
+			for i := 0; i < 10; i++ {
+				keys = append(keys, fmt.Sprintf("z%d", i), strings.Repeat("\xff", i+1))
+			}
+			if key == "\x00" {
+				keys = append(keys, "x")
+			} else {
+				_, err = testUserAuthClient.Put(ctx, "x", "val", config.PutOptions{})
+				require.ErrorContains(t, err, PermissionDenied)
+			}
+			for _, grantedKey := range keys {
+				_, err = testUserAuthClient.Put(ctx, grantedKey, "val", config.PutOptions{})
+				require.NoError(t, err)
+			}
+			_, err = rootAuthClient.RoleRevokePermission(ctx, testRoleName, key, "\x00")
+			require.NoError(t, err)
+			for _, revokedKey := range keys {
+				_, err = testUserAuthClient.Put(ctx, revokedKey, "val", config.PutOptions{})
+				require.ErrorContains(t, err, PermissionDenied)
+			}
+		}
+	})
+}

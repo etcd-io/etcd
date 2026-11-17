@@ -513,6 +513,10 @@ func (c integrationClient) MemberAddAsLearner(ctx context.Context, _ string, pee
 	return c.Client.MemberAddAsLearner(ctx, peerAddrs)
 }
 
+func (c integrationClient) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*clientv3.MemberUpdateResponse, error) {
+	return c.Client.MemberUpdate(ctx, id, peerAddrs)
+}
+
 func (c integrationClient) MemberRemove(ctx context.Context, id uint64) (*clientv3.MemberRemoveResponse, error) {
 	return c.Client.MemberRemove(ctx, id)
 }
