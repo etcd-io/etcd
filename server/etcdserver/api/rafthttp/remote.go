@@ -58,7 +58,7 @@ func (g *remote) send(m *raftpb.Message) {
 		if g.status.isActive() {
 			if g.lg != nil {
 				g.lg.Warn(
-					"dropped internal Raft message since sending buffer is full (overloaded network)",
+					"dropped internal Raft message since sending buffer is full",
 					zap.String("message-type", m.GetType().String()),
 					zap.String("local-member-id", g.localID.String()),
 					zap.String("from", types.ID(m.GetFrom()).String()),
@@ -69,7 +69,7 @@ func (g *remote) send(m *raftpb.Message) {
 		} else {
 			if g.lg != nil {
 				g.lg.Warn(
-					"dropped Raft message since sending buffer is full (overloaded network)",
+					"dropped Raft message since sending buffer is full",
 					zap.String("message-type", m.GetType().String()),
 					zap.String("local-member-id", g.localID.String()),
 					zap.String("from", types.ID(m.GetFrom()).String()),
