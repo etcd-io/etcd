@@ -13,22 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+source ./scripts/test_utils.sh
+
 function install_golangci_lint() {
-    local golangci_lint_bin="$(go env GOPATH)/bin"
+    local golangci_lint_bin
+    golangci_lint_bin="$(go env GOPATH)/bin"
     echo "Installing golangci-lint ${GOLANGCI_LINT_VERSION}"
     (cd tools/mod && GOFLAGS="" GOBIN="${golangci_lint_bin}" go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint) || return
     case ":${PATH}:" in
         *":${golangci_lint_bin}:"*) ;;
         *)
-            echo "Add ${golangci_lint_bin} to your PATH to use golangci-lint:"
-            printf '  export PATH="%s:$PATH"\n' "${golangci_lint_bin}"
+            log_warning "Add ${golangci_lint_bin} to your PATH to use golangci-lint:"
+            log_warning "  export PATH=\"${golangci_lint_bin}:\$PATH\""
             ;;
     esac
 }
 
 GOLANGCI_LINT_VERSION=$(cd tools/mod && go list -m -f '{{.Version}}' github.com/golangci/golangci-lint/v2)
 echo "golangci-lint version: $GOLANGCI_LINT_VERSION"
-GOLANGCI_LINT_PRESENT=$(which golangci-lint)
+GOLANGCI_LINT_PRESENT=$(which golangci-lint || true)
 
 if [ -z "$GOLANGCI_LINT_PRESENT" ]; then
     echo "golangci-lint is not available"
