@@ -37,7 +37,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.45.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.58.0
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 	golang.org/x/time v0.9.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d
 	google.golang.org/grpc v1.83.2
