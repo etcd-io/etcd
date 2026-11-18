@@ -45,7 +45,7 @@ To cherry pick PR 12345 onto release-3.6 and propose is as a PR, run:
 ./scripts/cherrypick.sh ${UPSTREAM_REMOTE}/release-3.6 12345
 ```
 
-To cherry pick 12345 then 56789 and propose them togther as a single PR, run:
+To cherry pick 12345 then 56789 and propose them together as a single PR, run:
 
 ```bash
 ./scripts/cherrypick.sh ${UPSTREAM_REMOTE}/release-3.6 12345 56789

@@ -152,7 +152,7 @@ make antithesis-run-local-validation
 
 ### 5. Prepare for next run
 
-Unfortunatelly robustness tests don't support running on non empty database.
+Unfortunately robustness tests don't support running on non empty database.
 So for now you need to cleanup the storage before repeating the run or you will get "non empty database at start, required by model used for linearizability validation" error.
 
 ```bash
