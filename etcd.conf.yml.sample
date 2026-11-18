@@ -48,9 +48,6 @@ discovery:
 # Valid values include 'exit', 'proxy'
 discovery-fallback: 'proxy'
 
-# HTTP proxy to use for traffic to discovery service.
-discovery-proxy:
-
 # DNS domain used to bootstrap initial cluster.
 discovery-srv:
 
