@@ -16,11 +16,13 @@ package schema
 
 import (
 	"math"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
@@ -102,10 +104,79 @@ func TestLeaseBackend(t *testing.T) {
 
 			be2 := backend.NewDefaultBackend(lg, tmpPath)
 			defer be2.Close()
-			leases := MustUnsafeGetAllLeases(be2.ReadTx())
+			leases, err := UnsafeGetAllLeases(be2.ReadTx())
+			if err != nil {
+				t.Fatalf("unexpected error getting leases (%v)", err)
+			}
 
 			if diff := cmp.Diff(tc.want, leases, protocmp.Transform()); diff != "" {
 				t.Fatalf("leases mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+// TestUnsafeGetAllLeasesCorrupted ensures that corrupted lease bucket
+// records surface as errors instead of panicking the process
+// (https://github.com/etcd-io/etcd/issues/22748).
+func TestUnsafeGetAllLeasesCorrupted(t *testing.T) {
+	validValue, err := proto.Marshal(&leasepb.Lease{ID: 0x11, TTL: 2})
+	if err != nil {
+		t.Fatalf("could not marshal lease (%v)", err)
+	}
+	tcs := []struct {
+		name    string
+		key     []byte
+		value   []byte
+		wantErr string
+	}{
+		{
+			name:    "Unparseable value with valid key",
+			key:     leaseIDToBytes(0x11),
+			value:   []byte{0xff, 0xff},
+			wantErr: "failed to Unmarshal lease proto item; lease ID=0000000000000011",
+		},
+		{
+			name:    "Short key with unparseable value",
+			key:     []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11},
+			value:   []byte{0xff, 0xff},
+			wantErr: "lease key has unexpected length 7, want 8 bytes; lease key=00000000000011",
+		},
+		{
+			name:    "Short key with valid value",
+			key:     []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11},
+			value:   validValue,
+			wantErr: "lease key has unexpected length 7, want 8 bytes",
+		},
+		{
+			name:    "Long key with valid value",
+			key:     []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x00},
+			value:   validValue,
+			wantErr: "lease key has unexpected length 9, want 8 bytes",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			tx := be.BatchTx()
+			tx.Lock()
+			UnsafeCreateLeaseBucket(tx)
+			tx.UnsafePut(Lease, tc.key, tc.value)
+			tx.Unlock()
+
+			be.ForceCommit()
+			be.Close()
+
+			be2 := backend.NewDefaultBackend(lg, tmpPath)
+			defer be2.Close()
+			leases, err := UnsafeGetAllLeases(be2.ReadTx())
+			if err == nil {
+				t.Fatalf("expected error for corrupted lease record, got nil (leases=%v)", leases)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("error = %v, want it to contain %q", err, tc.wantErr)
 			}
 		})
 	}

@@ -83,7 +83,8 @@ func defaultAuthApplierV3(t *testing.T) *authApplierV3 {
 	})
 
 	cluster := membership.NewCluster(lg)
-	lessor := lease.NewLessor(lg, be, cluster, lease.LessorConfig{})
+	lessor, err := lease.NewLessor(lg, be, cluster, lease.LessorConfig{})
+	require.NoError(t, err)
 	kv := mvcc.NewStore(lg, be, lessor, mvcc.StoreConfig{})
 	alarmStore, err := v3alarm.NewAlarmStore(lg, schema.NewAlarmBackend(lg, be))
 	require.NoError(t, err)
