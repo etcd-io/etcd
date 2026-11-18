@@ -106,8 +106,8 @@ verify: verify-bom verify-lint verify-dep verify-shellcheck verify-mod-tidy \
 	verify-go-workspace verify-grpc-experimental
 
 .PHONY: fix
-fix: fix-mod-tidy fix-dep fix-bom fix-lint fix-yamllint sync-toolchain-directive \
-	update-go-workspace fix-shell-ws
+fix: fix-mod-tidy fix-dep fix-genproto fix-proto-annotations fix-bom fix-lint \
+	fix-yamllint sync-toolchain-directive update-go-workspace fix-shell-ws
 
 .PHONY: verify-bom
 verify-bom:
@@ -157,9 +157,17 @@ fix-shell-ws:
 verify-proto-annotations:
 	PASSES="proto_annotations" ./scripts/test.sh
 
+.PHONY: fix-proto-annotations
+fix-proto-annotations: fix-genproto
+	./scripts/update_proto_annotations.sh
+
 .PHONY: verify-genproto
 verify-genproto:
 	./scripts/verify/genproto.sh
+
+.PHONY: fix-genproto
+fix-genproto:
+	./scripts/genproto.sh
 
 .PHONY: verify-yamllint
 verify-yamllint:

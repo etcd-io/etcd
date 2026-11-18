@@ -107,10 +107,10 @@ In an event of bumping the version of protoc, protoc plugins or grpc-gateway, it
 make: *** [Makefile:134: verify-genproto] Error 255
 ```
 
-To fix the above error, run the following script from the root of etcd repository:
+`make fix` regenerates the protobuf bindings. To fix only this error, run the following from the root of etcd repository:
 
 ```bash
-./scripts/genproto.sh
+make fix-genproto
 ```
 
 ### Indirect dependencies
