@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
@@ -28,13 +29,29 @@ func UnsafeCreateLeaseBucket(tx backend.UnsafeWriter) {
 	tx.UnsafeCreateBucket(Lease)
 }
 
-func MustUnsafeGetAllLeases(tx backend.UnsafeReader) []*leasepb.Lease {
+func MustUnsafeGetAllLeases(lg *zap.Logger, tx backend.UnsafeReader) []*leasepb.Lease {
 	ls := make([]*leasepb.Lease, 0)
 	err := tx.UnsafeForEach(Lease, func(k, v []byte) error {
+		// A record whose key is not an 8-byte lease ID, or whose value does
+		// not parse, means the stored data is corrupted. Skip it with a
+		// warning instead of panicking, which would kill the process while it
+		// opens the backend (e.g. at server startup or snapshot restore).
+		// See https://github.com/etcd-io/etcd/issues/22748
+		if len(k) != 8 {
+			lg.Warn(
+				"ignoring lease record with unexpected key length",
+				zap.String("lease-key", fmt.Sprintf("%x", k)),
+			)
+			return nil
+		}
 		var lpb leasepb.Lease
-		err := proto.Unmarshal(v, &lpb)
-		if err != nil {
-			return fmt.Errorf("failed to Unmarshal lease proto item; lease ID=%016x", bytesToLeaseID(k))
+		if err := proto.Unmarshal(v, &lpb); err != nil {
+			lg.Warn(
+				"failed to unmarshal lease proto item",
+				zap.Int64("lease-id", bytesToLeaseID(k)),
+				zap.Error(err),
+			)
+			return nil
 		}
 		ls = append(ls, &lpb)
 		return nil

@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
@@ -85,6 +86,48 @@ func TestLeaseBackend(t *testing.T) {
 				},
 			},
 		},
+		{
+			// See https://github.com/etcd-io/etcd/issues/22748
+			name: "Skips corrupted value",
+			setup: func(tx backend.UnsafeWriter) {
+				MustUnsafePutLease(tx, &leasepb.Lease{
+					ID:  1,
+					TTL: 2,
+				})
+				// Write an unparseable value directly into the Lease bucket,
+				// bypassing MustUnsafePutLease which always writes valid data.
+				tx.UnsafePut(Lease, leaseIDToBytes(2), []byte{0xff})
+			},
+			want: []*leasepb.Lease{
+				{
+					ID:  1,
+					TTL: 2,
+				},
+			},
+		},
+		{
+			// See https://github.com/etcd-io/etcd/issues/22748
+			name: "Skips malformed key",
+			setup: func(tx backend.UnsafeWriter) {
+				MustUnsafePutLease(tx, &leasepb.Lease{
+					ID:  1,
+					TTL: 2,
+				})
+				// Write a parseable lease under a key that is not an 8-byte
+				// lease ID.
+				v, err := proto.Marshal(&leasepb.Lease{ID: 7, TTL: 5})
+				if err != nil {
+					t.Fatal(err)
+				}
+				tx.UnsafePut(Lease, []byte("malformed"), v)
+			},
+			want: []*leasepb.Lease{
+				{
+					ID:  1,
+					TTL: 2,
+				},
+			},
+		},
 	}
 
 	for _, tc := range tcs {
@@ -102,7 +145,7 @@ func TestLeaseBackend(t *testing.T) {
 
 			be2 := backend.NewDefaultBackend(lg, tmpPath)
 			defer be2.Close()
-			leases := MustUnsafeGetAllLeases(be2.ReadTx())
+			leases := MustUnsafeGetAllLeases(lg, be2.ReadTx())
 
 			if diff := cmp.Diff(tc.want, leases, protocmp.Transform()); diff != "" {
 				t.Fatalf("leases mismatch (-want +got):\n%s", diff)

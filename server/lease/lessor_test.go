@@ -16,6 +16,7 @@ package lease
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
@@ -423,6 +424,49 @@ func TestLessorRecover(t *testing.T) {
 	nl2 := nle.Lookup(l2.ID)
 	if nl2 == nil || nl2.ttl != l2.ttl {
 		t.Errorf("nl2 = %v, want nl2.ttl= %d", nl2.ttl, l2.ttl)
+	}
+}
+
+// TestLessorRecoverSkipsCorruptedLeaseRecords ensures that a corrupted lease
+// record does not panic the lessor while it recovers from the backend: the
+// corrupted lease is dropped and valid leases are still recovered.
+// See https://github.com/etcd-io/etcd/issues/22748
+func TestLessorRecoverSkipsCorruptedLeaseRecords(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	// The backend is deliberately not closed: if this test regresses and
+	// recovery panics again, the panic unwinds while the batch tx lock is
+	// held, and closing the backend would deadlock on it, turning the
+	// failure into a hang. Leaking the fd until process exit fails fast
+	// instead.
+
+	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	defer le.Stop()
+	if _, err := le.Grant(1, 10); err != nil {
+		t.Fatalf("could not grant lease 1: %v", err)
+	}
+	if _, err := le.Grant(2, 10); err != nil {
+		t.Fatalf("could not grant lease 2: %v", err)
+	}
+
+	// Corrupt lease 2's record, bypassing the lessor.
+	k := make([]byte, 8)
+	binary.BigEndian.PutUint64(k, 2)
+	tx := be.BatchTx()
+	tx.Lock()
+	tx.UnsafePut(schema.Lease, k, []byte{0xff})
+	tx.Unlock()
+	be.ForceCommit()
+
+	// Recovering with the same backend must not panic.
+	nle := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	defer nle.Stop()
+	if nle.Lookup(1) == nil {
+		t.Errorf("valid lease 1 should be recovered")
+	}
+	if nle.Lookup(2) != nil {
+		t.Errorf("corrupted lease 2 should be skipped")
 	}
 }
 

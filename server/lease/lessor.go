@@ -810,7 +810,7 @@ func (le *lessor) initAndRecover() {
 
 	tx.LockOutsideApply()
 	schema.UnsafeCreateLeaseBucket(tx)
-	lpbs := schema.MustUnsafeGetAllLeases(tx)
+	lpbs := schema.MustUnsafeGetAllLeases(le.lg, tx)
 	tx.Unlock()
 	for _, lpb := range lpbs {
 		ID := LeaseID(lpb.ID)
