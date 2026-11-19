@@ -159,7 +159,7 @@ verify-proto-annotations:
 
 .PHONY: verify-genproto
 verify-genproto:
-	PASSES="genproto" ./scripts/test.sh
+	./scripts/verify/genproto.sh
 
 .PHONY: verify-yamllint
 verify-yamllint:

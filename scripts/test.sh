@@ -426,10 +426,6 @@ function proto_annotations_pass {
   "${ETCD_ROOT_DIR}/scripts/verify/proto-annotations.sh"
 }
 
-function genproto_pass {
-  "${ETCD_ROOT_DIR}/scripts/verify_genproto.sh"
-}
-
 ########### MAIN ###############################################################
 
 function run_pass {
