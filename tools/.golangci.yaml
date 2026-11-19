@@ -68,6 +68,7 @@ linters:
           arguments:
             - preserveScope
         - name: time-naming
+        - name: unexported-return
         - name: unnecessary-stmt
         - name: use-any
         - name: var-declaration
@@ -82,8 +83,6 @@ linters:
             #    var-naming: avoid package names that conflict with Go standard library package names (revive)
             - - skip-package-name-collision-with-go-std: true
         - name: exported
-          disabled: true
-        - name: unexported-return
           disabled: true
     staticcheck:
       checks:
