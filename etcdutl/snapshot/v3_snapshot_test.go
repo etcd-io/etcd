@@ -15,7 +15,9 @@
 package snapshot
 
 import (
+	"crypto/sha256"
 	"errors"
+	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -27,6 +29,7 @@ import (
 
 	"go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -257,4 +260,100 @@ func createDB(t *testing.T, generateContent func(*etcdserver.EtcdServer)) string
 	generateContent(etcd.Server)
 
 	return filepath.Join(cfg.Dir, "member", "snap", "db")
+}
+
+// TestRestoreFailedCleansUp verifies that a restore that fails after it starts
+// writing leaves nothing behind, so it can be retried with the same dirs
+// instead of failing with 'data-dir not empty'.
+// See https://github.com/etcd-io/etcd/issues/22826
+func TestRestoreFailedCleansUp(t *testing.T) {
+	dbPath := createDB(t, insertKeys(t, 1, 10))
+
+	snapshotPath := filepath.Join(t.TempDir(), "corrupted-snapshot.db")
+	// Append a wrong sha256 hash, so the db copy succeeds but the integrity
+	// check fails after the output data-dir has been created.
+	db, err := os.ReadFile(dbPath)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(snapshotPath, append(db, make([]byte, sha256.Size)...), 0o600))
+
+	cases := []struct {
+		name    string
+		dataDir string
+		walDir  string
+		// existed is true when the data-dir is created before the restore.
+		existed bool
+	}{
+		{
+			name:    "data-dir does not exist",
+			dataDir: "new.etcd",
+		},
+		{
+			name:    "data-dir exists and is empty",
+			dataDir: "pre.etcd",
+			existed: true,
+		},
+		{
+			name:    "wal-dir outside data-dir",
+			dataDir: "new.etcd",
+			walDir:  "wal",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			dataDir := filepath.Join(tmpDir, tc.dataDir)
+			walDir := ""
+			if tc.walDir != "" {
+				walDir = filepath.Join(tmpDir, tc.walDir)
+			}
+			if tc.existed {
+				require.NoError(t, os.MkdirAll(dataDir, 0o700))
+			}
+
+			sp := NewV3(zap.NewNop())
+			err := sp.Restore(RestoreConfig{
+				SnapshotPath:        snapshotPath,
+				Name:                "default",
+				OutputDataDir:       dataDir,
+				OutputWALDir:        walDir,
+				PeerURLs:            []string{"http://localhost:2380"},
+				InitialCluster:      "default=http://localhost:2380",
+				InitialClusterToken: "etcd-cluster",
+			})
+			require.ErrorContains(t, err, "expected sha256")
+
+			if tc.existed {
+				assert.Truef(t, fileutil.Exist(dataDir), "pre-existing data-dir should be kept")
+				assert.Truef(t, fileutil.DirEmpty(dataDir), "pre-existing data-dir should be restored to its initial (empty) state")
+			} else {
+				assert.Falsef(t, fileutil.Exist(dataDir), "data-dir (partially) written by the failed restore should be removed")
+			}
+			if walDir != "" {
+				assert.Falsef(t, fileutil.Exist(walDir), "wal-dir should not be left behind")
+			}
+		})
+	}
+}
+
+// TestRestoreSucceededKeepsDataDir guards the cleanup of failed restores
+// against removing the result of a successful one.
+func TestRestoreSucceededKeepsDataDir(t *testing.T) {
+	dbPath := createDB(t, insertKeys(t, 1, 10))
+	dataDir := filepath.Join(t.TempDir(), "data")
+
+	sp := NewV3(zap.NewNop())
+	require.NoError(t, sp.Restore(RestoreConfig{
+		SnapshotPath:        dbPath,
+		Name:                "default",
+		OutputDataDir:       dataDir,
+		PeerURLs:            []string{"http://localhost:2380"},
+		InitialCluster:      "default=http://localhost:2380",
+		InitialClusterToken: "etcd-cluster",
+		SkipHashCheck:       true,
+	}))
+
+	assert.True(t, fileutil.Exist(filepath.Join(dataDir, "member", "snap", "db")))
+	walEntries, err := os.ReadDir(filepath.Join(dataDir, "member", "wal"))
+	require.NoError(t, err)
+	assert.NotEmptyf(t, walEntries, "restored data-dir should hold the initial WAL segment")
 }

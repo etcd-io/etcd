@@ -252,7 +252,7 @@ type RestoreConfig struct {
 }
 
 // Restore restores a new etcd data directory from given snapshot file.
-func (s *v3Manager) Restore(cfg RestoreConfig) error {
+func (s *v3Manager) Restore(cfg RestoreConfig) (err error) {
 	pURLs, err := types.NewURLs(cfg.PeerURLs)
 	if err != nil {
 		return err
@@ -283,7 +283,8 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	if dataDir == "" {
 		dataDir = cfg.Name + ".etcd"
 	}
-	if fileutil.Exist(dataDir) && !fileutil.DirEmpty(dataDir) {
+	dataDirExisted := fileutil.Exist(dataDir)
+	if dataDirExisted && !fileutil.DirEmpty(dataDir) {
 		return fmt.Errorf("data-dir %q not empty or could not be read", dataDir)
 	}
 
@@ -309,6 +310,22 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("snap-dir", s.snapDir),
 		zap.Uint64("initial-memory-map-size", s.initialMmapSize),
 	)
+
+	// Past this point the data-dir and the wal-dir get populated. If any step
+	// fails, remove what was written: leftovers make a retry fail with
+	// 'data-dir not empty' and an etcd started on them would treat them as an
+	// initialized member.
+	defer func() {
+		if err == nil {
+			return
+		}
+		if dataDirExisted {
+			// The data-dir was empty before; only the 'member' subtree was added.
+			s.cleanupFailedRestore(filepath.Join(dataDir, "member"), cfg.OutputWALDir)
+		} else {
+			s.cleanupFailedRestore(dataDir, cfg.OutputWALDir)
+		}
+	}()
 
 	if err = s.saveDB(); err != nil {
 		return err
@@ -347,6 +364,21 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 
 func (s *v3Manager) outDbPath() string {
 	return filepath.Join(s.snapDir, "db")
+}
+
+// cleanupFailedRestore removes directories (partially) written by a failed
+// restore so that restoring again into the same locations is not blocked by
+// leftovers. Directories that were never created are ignored.
+func (s *v3Manager) cleanupFailedRestore(dirs ...string) {
+	for _, dir := range dirs {
+		if dir == "" || !fileutil.Exist(dir) {
+			continue
+		}
+		s.lg.Warn("removing leftovers of failed restore", zap.String("dir", dir))
+		if rmErr := os.RemoveAll(dir); rmErr != nil {
+			s.lg.Warn("failed to remove leftovers of failed restore", zap.String("dir", dir), zap.Error(rmErr))
+		}
+	}
 }
 
 // saveDB copies the database snapshot to the snapshot directory
