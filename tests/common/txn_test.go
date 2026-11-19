@@ -119,7 +119,6 @@ func TestTxnFail(t *testing.T) {
 	}
 }
 
-// See https://github.com/etcd-io/etcd/issues/18667 for context
 func TestTxnRangeConsistency(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, cfg := range clusterTestCases() {
