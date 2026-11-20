@@ -859,8 +859,16 @@ func (s *EtcdServer) revokeExpiredLeases(leases []*lease.Lease) {
 		// it can't process any events or messages from raft. It may think it
 		// is still the leader even the leader has already changed.
 		// Refer to https://github.com/etcd-io/etcd/issues/15247
+		//
+		// Leadership is confirmed with the cluster, without the isActive
+		// shortcut of ensureLeadership: a leader whose process was paused
+		// (SIGSTOP, VM or container freeze) finds every lease expired when it
+		// resumes, and its raft ticker fires right away, so it looks active
+		// before raft has handled the higher term of the new leader. Its
+		// revokes would then be forwarded to the new leader and committed.
+		// Refer to https://github.com/etcd-io/etcd/issues/22714
 		lg := s.Logger()
-		if !s.ensureLeadership() {
+		if !s.confirmLeadership() {
 			lg.Warn("Ignore the lease revoking request because current member isn't a leader",
 				zap.Uint64("local-member-id", uint64(s.MemberID())))
 			return
@@ -917,6 +925,13 @@ func (s *EtcdServer) ensureLeadership() bool {
 			zap.Time("now", time.Now()))
 		return true
 	}
+	return s.confirmLeadership()
+}
+
+// confirmLeadership confirms with the cluster, through a linearizable read,
+// that current member is still the leader.
+func (s *EtcdServer) confirmLeadership() bool {
+	lg := s.Logger()
 
 	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
 	defer cancel()
