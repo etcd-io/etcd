@@ -102,15 +102,21 @@ type Server interface {
 	UnmodifyRx()
 
 	// BlackholeTx drops all "outgoing" packets before "forwarding".
-	// "BlackholeTx" operation is a wrapper around "ModifyTx" with
-	// a function that returns empty bytes.
+	//
+	// While any blackhole (Tx or Rx) is active, the proxy holds
+	// connections open without propagating closes from one side to the
+	// other, and accepts new client connections while draining their
+	// incoming bytes without dialing the target. Once a direction is
+	// blackholed on an open connection, bytes in that direction stay
+	// dropped on that connection until all blackholes are removed, at
+	// which point every connection that was open during a blackhole is
+	// closed.
 	BlackholeTx()
 	// UnblackholeTx removes blackhole operation on "sending".
 	UnblackholeTx()
 
 	// BlackholeRx drops all "incoming" packets to client.
-	// "BlackholeRx" operation is a wrapper around "ModifyRx" with
-	// a function that returns empty bytes.
+	// See BlackholeTx for connection lifecycle semantics while blackholed.
 	BlackholeRx()
 	// UnblackholeRx removes blackhole operation on "receiving".
 	UnblackholeRx()
@@ -176,6 +182,15 @@ type server struct {
 	modifyRxMu sync.RWMutex
 	modifyRx   func(data []byte) []byte
 
+	// blackholeMu protects blackholedTx, blackholedRx, conns, and
+	// proxyConn taint fields.
+	blackholeMu  sync.Mutex
+	blackholedTx bool
+	blackholedRx bool
+	// conns tracks open proxied connections. conns is set to nil when
+	// the server is closed.
+	conns map[*proxyConn]struct{}
+
 	pauseTxMu sync.Mutex
 	pauseTxc  chan struct{}
 
@@ -211,6 +226,8 @@ func NewServer(cfg ServerConfig) Server {
 		pauseAcceptc: make(chan struct{}),
 		pauseTxc:     make(chan struct{}),
 		pauseRxc:     make(chan struct{}),
+
+		conns: make(map[*proxyConn]struct{}),
 	}
 
 	_, fromPort, err := net.SplitHostPort(cfg.From.Host)
@@ -354,6 +371,22 @@ func (s *server) listenAndServe() {
 			continue
 		}
 
+		if pc, ok := s.trackBlackholedAccept(in); ok {
+			if pc == nil {
+				continue
+			}
+			// While blackholed, hold the client connection open and drain
+			// incoming bytes without dialing the target until all
+			// blackholes are removed.
+			s.closeWg.Add(1)
+			go func() {
+				defer s.closeWg.Done()
+				io.Copy(io.Discard, in)
+				s.closeConn(pc)
+			}()
+			continue
+		}
+
 		var out net.Conn
 		if !s.tlsInfo.Empty() {
 			var tp *http.Transport
@@ -390,30 +423,168 @@ func (s *server) listenAndServe() {
 			continue
 		}
 
+		pc := &proxyConn{in: in, out: out}
+		if !s.trackConn(pc) {
+			continue
+		}
 		s.closeWg.Add(2)
 		go func() {
 			defer s.closeWg.Done()
 			// read incoming bytes from listener, dispatch to outgoing connection
-			s.transmit(out, in)
-			out.Close()
-			in.Close()
+			s.transmit(pc)
+			s.closeConn(pc)
 		}()
 		go func() {
 			defer s.closeWg.Done()
 			// read response from outgoing connection, write back to listener
-			s.receive(in, out)
-			in.Close()
-			out.Close()
+			s.receive(pc)
+			s.closeConn(pc)
 		}()
 	}
 }
 
-func (s *server) transmit(dst io.Writer, src io.Reader) {
-	s.ioCopy(dst, src, proxyTx)
+// proxyConn is a proxied connection: "in" was accepted from the client and
+// "out" was dialed to the target. "out" is nil if the connection was accepted
+// while blackholed.
+type proxyConn struct {
+	in        net.Conn
+	out       net.Conn
+	closeOnce sync.Once
+
+	// Protected by server.blackholeMu.
+	taintedTx bool
+	taintedRx bool
 }
 
-func (s *server) receive(dst io.Writer, src io.Reader) {
-	s.ioCopy(dst, src, proxyRx)
+func (c *proxyConn) close() {
+	c.closeOnce.Do(func() {
+		c.in.Close()
+		if c.out != nil {
+			c.out.Close()
+		}
+	})
+}
+
+func (c *proxyConn) tainted() bool {
+	return c.taintedTx || c.taintedRx
+}
+
+// trackBlackholedAccept atomically checks whether any blackhole is active and,
+// if so, registers pc as tainted before unlocking blackholeMu so a concurrent
+// Unblackhole cannot miss it. If the server is already closed, pc is closed
+// and (nil, true) is returned.
+func (s *server) trackBlackholedAccept(in net.Conn) (*proxyConn, bool) {
+	s.blackholeMu.Lock()
+	if !s.blackholedTx && !s.blackholedRx {
+		s.blackholeMu.Unlock()
+		return nil, false
+	}
+	pc := &proxyConn{
+		in:        in,
+		taintedTx: s.blackholedTx,
+		taintedRx: s.blackholedRx,
+	}
+	if s.conns == nil { // server closed
+		s.blackholeMu.Unlock()
+		pc.close()
+		return nil, true
+	}
+	s.conns[pc] = struct{}{}
+	s.blackholeMu.Unlock()
+	return pc, true
+}
+
+func (s *server) trackConn(pc *proxyConn) bool {
+	s.blackholeMu.Lock()
+	if s.conns == nil { // server closed
+		s.blackholeMu.Unlock()
+		pc.close()
+		return false
+	}
+	pc.taintedTx = s.blackholedTx
+	pc.taintedRx = s.blackholedRx
+	s.conns[pc] = struct{}{}
+	s.blackholeMu.Unlock()
+	return true
+}
+
+// closeConn closes both sides of pc unless a blackhole is active, in which
+// case the close is hidden from the other side and pc is closed once all
+// blackholes are removed.
+func (s *server) closeConn(pc *proxyConn) {
+	s.blackholeMu.Lock()
+	if _, ok := s.conns[pc]; ok && (s.blackholedTx || s.blackholedRx) {
+		s.blackholeMu.Unlock()
+		return
+	}
+	delete(s.conns, pc)
+	s.blackholeMu.Unlock()
+	pc.close()
+}
+
+func (s *server) setBlackholed(ptype proxyType, blackholed bool) {
+	s.blackholeMu.Lock()
+	switch ptype {
+	case proxyTx:
+		s.blackholedTx = blackholed
+		if blackholed {
+			for pc := range s.conns {
+				pc.taintedTx = true
+			}
+		}
+	case proxyRx:
+		s.blackholedRx = blackholed
+		if blackholed {
+			for pc := range s.conns {
+				pc.taintedRx = true
+			}
+		}
+	default:
+		panic("unknown proxy type")
+	}
+	var toClose []*proxyConn
+	if !s.blackholedTx && !s.blackholedRx {
+		// Close every connection that was open while any blackhole was
+		// active so peers reconnect on clean streams instead of
+		// continuing on streams with dropped data or hidden closes.
+		for pc := range s.conns {
+			if pc.tainted() {
+				toClose = append(toClose, pc)
+				delete(s.conns, pc)
+			}
+		}
+	}
+	s.blackholeMu.Unlock()
+	for _, pc := range toClose {
+		pc.close()
+	}
+}
+
+func (s *server) shouldDrop(pc *proxyConn, ptype proxyType) bool {
+	s.blackholeMu.Lock()
+	defer s.blackholeMu.Unlock()
+	switch ptype {
+	case proxyTx:
+		return s.blackholedTx || pc.taintedTx
+	case proxyRx:
+		return s.blackholedRx || pc.taintedRx
+	default:
+		panic("unknown proxy type")
+	}
+}
+
+func (s *server) isConnTainted(pc *proxyConn) bool {
+	s.blackholeMu.Lock()
+	defer s.blackholeMu.Unlock()
+	return s.blackholedTx || s.blackholedRx || pc.tainted()
+}
+
+func (s *server) transmit(pc *proxyConn) {
+	s.ioCopy(pc.out, pc.in, proxyTx, pc)
+}
+
+func (s *server) receive(pc *proxyConn) {
+	s.ioCopy(pc.in, pc.out, proxyRx, pc)
 }
 
 type proxyType uint8
@@ -423,7 +594,7 @@ const (
 	proxyRx
 )
 
-func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
+func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType, pc *proxyConn) {
 	buf := make([]byte, s.bufferSize)
 	for {
 		nr1, err := src.Read(buf)
@@ -435,16 +606,16 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 			if strings.HasSuffix(err.Error(), "read: connection reset by peer") {
 				return
 			}
-			if strings.HasSuffix(err.Error(), "use of closed network connection") {
+			if errors.Is(err, net.ErrClosed) || strings.HasSuffix(err.Error(), "use of closed network connection") {
 				return
 			}
 			select {
+			case <-s.donec:
+				return
+			default:
+			}
+			select {
 			case s.errc <- err:
-				select {
-				case <-s.donec:
-					return
-				default:
-				}
 			case <-s.donec:
 				return
 			}
@@ -457,21 +628,25 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 		data := buf[:nr1]
 
 		// alters/corrupts/drops data
-		switch ptype {
-		case proxyTx:
-			s.modifyTxMu.RLock()
-			if s.modifyTx != nil {
-				data = s.modifyTx(data)
+		if s.shouldDrop(pc, ptype) {
+			data = nil
+		} else {
+			switch ptype {
+			case proxyTx:
+				s.modifyTxMu.RLock()
+				if s.modifyTx != nil {
+					data = s.modifyTx(data)
+				}
+				s.modifyTxMu.RUnlock()
+			case proxyRx:
+				s.modifyRxMu.RLock()
+				if s.modifyRx != nil {
+					data = s.modifyRx(data)
+				}
+				s.modifyRxMu.RUnlock()
+			default:
+				panic("unknown proxy type")
 			}
-			s.modifyTxMu.RUnlock()
-		case proxyRx:
-			s.modifyRxMu.RLock()
-			if s.modifyRx != nil {
-				data = s.modifyRx(data)
-			}
-			s.modifyRxMu.RUnlock()
-		default:
-			panic("unknown proxy type")
 		}
 		nr2 := len(data)
 		switch ptype {
@@ -516,7 +691,7 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 		}
 
 		// pause first, and then drop packets
-		if nr2 == 0 {
+		if nr2 == 0 || s.shouldDrop(pc, ptype) {
 			continue
 		}
 
@@ -540,6 +715,9 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 			case <-s.donec:
 				return
 			}
+			if s.shouldDrop(pc, ptype) {
+				continue
+			}
 		}
 
 		// now forward packets to target
@@ -549,13 +727,19 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 			if errors.Is(err, io.EOF) {
 				return
 			}
+			if errors.Is(err, net.ErrClosed) || strings.HasSuffix(err.Error(), "use of closed network connection") {
+				return
+			}
+			if s.isConnTainted(pc) {
+				return
+			}
+			select {
+			case <-s.donec:
+				return
+			default:
+			}
 			select {
 			case s.errc <- err:
-				select {
-				case <-s.donec:
-					return
-				default:
-				}
 			case <-s.donec:
 				return
 			}
@@ -572,12 +756,12 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 
 		if nr2 != nw {
 			select {
+			case <-s.donec:
+				return
+			default:
+			}
+			select {
 			case s.errc <- io.ErrShortWrite:
-				select {
-				case <-s.donec:
-					return
-				default:
-				}
 			case <-s.donec:
 				return
 			}
@@ -640,6 +824,14 @@ func (s *server) Close() (err error) {
 		}
 		s.lg.Sync()
 		s.listenerMu.Unlock()
+
+		s.blackholeMu.Lock()
+		conns := s.conns
+		s.conns = nil
+		s.blackholeMu.Unlock()
+		for pc := range conns {
+			pc.close()
+		}
 	})
 	s.closeWg.Wait()
 	return err
@@ -862,7 +1054,7 @@ func (s *server) UnmodifyRx() {
 }
 
 func (s *server) BlackholeTx() {
-	s.ModifyTx(func([]byte) []byte { return nil })
+	s.setBlackholed(proxyTx, true)
 	s.lg.Info(
 		"blackholed tx",
 		zap.String("from", s.From()),
@@ -871,7 +1063,7 @@ func (s *server) BlackholeTx() {
 }
 
 func (s *server) UnblackholeTx() {
-	s.UnmodifyTx()
+	s.setBlackholed(proxyTx, false)
 	s.lg.Info(
 		"unblackholed tx",
 		zap.String("from", s.From()),
@@ -880,7 +1072,7 @@ func (s *server) UnblackholeTx() {
 }
 
 func (s *server) BlackholeRx() {
-	s.ModifyRx(func([]byte) []byte { return nil })
+	s.setBlackholed(proxyRx, true)
 	s.lg.Info(
 		"blackholed rx",
 		zap.String("from", s.To()),
@@ -889,7 +1081,7 @@ func (s *server) BlackholeRx() {
 }
 
 func (s *server) UnblackholeRx() {
-	s.UnmodifyRx()
+	s.setBlackholed(proxyRx, false)
 	s.lg.Info(
 		"unblackholed rx",
 		zap.String("from", s.To()),
