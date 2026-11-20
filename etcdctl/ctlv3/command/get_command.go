@@ -15,6 +15,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -84,7 +85,13 @@ func NewGetCommand() *cobra.Command {
 func getCommandFunc(cmd *cobra.Command, args []string) {
 	key, opts := getGetOp(args)
 	ctx, cancel := commandCtx(cmd)
-	client := mustClientFromCmd(cmd)
+	applyGlobalFlags(cmd)
+	initDisplayFromCmd(cmd)
+	if err := configureGetOutput(display, getCountOnly, printValueOnly); err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
+	}
+
+	client := mustClient(clientConfigFromFlags(cmd))
 	var (
 		resp *clientv3.GetResponse
 		err  error
@@ -102,21 +109,21 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-
-	if getCountOnly {
-		if _, fields := display.(*fieldsPrinter); !fields {
-			cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("--count-only is only for `--write-out=fields`"))
-		}
-	}
-
-	if printValueOnly {
-		dp, simple := (display).(*simplePrinter)
-		if !simple {
-			cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("print-value-only is only for `--write-out=simple`"))
-		}
-		dp.valueOnly = true
-	}
 	display.Get(resp)
+}
+
+func configureGetOutput(p printer, countOnly, valueOnly bool) error {
+	if _, ok := p.(*fieldsPrinter); countOnly && !ok {
+		return errors.New("--count-only is only for `--write-out=fields`")
+	}
+	if valueOnly {
+		simple, ok := p.(*simplePrinter)
+		if !ok {
+			return errors.New("print-value-only is only for `--write-out=simple`")
+		}
+		simple.valueOnly = true
+	}
+	return nil
 }
 
 func getGetOp(args []string) (string, []clientv3.OpOption) {

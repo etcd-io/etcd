@@ -92,6 +92,13 @@ func (*discardValue) Set(string) error { return nil }
 func (*discardValue) Type() string     { return "" }
 
 func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
+	applyGlobalFlags(cmd)
+	cfg := clientConfigFromFlags(cmd)
+	initDisplayFromCmd(cmd)
+	return cfg
+}
+
+func applyGlobalFlags(cmd *cobra.Command) {
 	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -121,13 +128,15 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
 		// See https://github.com/etcd-io/etcd/pull/9623 for background
 		grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
 	}
+}
 
-	cfg := &clientv3.ConfigSpec{}
-	cfg.Endpoints, err = endpointsFromCmd(cmd)
+func clientConfigFromFlags(cmd *cobra.Command) *clientv3.ConfigSpec {
+	endpoints, err := endpointsFromCmd(cmd)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
+	cfg := &clientv3.ConfigSpec{Endpoints: endpoints}
 	cfg.DialTimeout = dialTimeoutFromCmd(cmd)
 	cfg.KeepAliveTime = keepAliveTimeFromCmd(cmd)
 	cfg.KeepAliveTimeout = keepAliveTimeoutFromCmd(cmd)
@@ -137,7 +146,6 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
 	cfg.Secure = secureCfgFromCmd(cmd)
 	cfg.Auth = authCfgFromCmd(cmd)
 
-	initDisplayFromCmd(cmd)
 	return cfg
 }
 

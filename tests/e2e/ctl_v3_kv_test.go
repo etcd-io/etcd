@@ -16,12 +16,14 @@ package e2e
 
 import (
 	"fmt"
+	"os/exec"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -33,6 +35,46 @@ func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
 func TestCtlV3GetTimeout(t *testing.T) { testCtl(t, getTest, withDefaultDialTimeout()) }
 
 func TestCtlV3GetFormat(t *testing.T) { testCtl(t, getFormatTest) }
+
+func TestCtlV3GetInvalidOutputFormat(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		env  []string
+		want string
+	}{
+		{
+			name: "count only with simple output",
+			args: []string{"--count-only", "--write-out=simple"},
+			env:  []string{},
+			want: "--count-only is only for `--write-out=fields`",
+		},
+		{
+			name: "value only with JSON streaming output",
+			args: []string{"--stream", "--print-value-only"},
+			env:  []string{"ETCDCTL_WRITE_OUT=json"},
+			want: "print-value-only is only for `--write-out=simple`",
+		},
+		{
+			name: "invalid output before prompting for credentials",
+			args: []string{"--count-only"},
+			env:  []string{"ETCDCTL_USER=test-user"},
+			want: "--count-only is only for `--write-out=fields`",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			args := []string{"--endpoints=127.0.0.1:0", "--command-timeout=1s", "get", "k"}
+			cmd := exec.CommandContext(t.Context(), e2e.BinPath.Etcdctl, append(args, tt.args...)...)
+			cmd.Env = tt.env
+			output, err := cmd.CombinedOutput()
+			var exitErr *exec.ExitError
+			require.ErrorAs(t, err, &exitErr)
+			require.Equalf(t, cobrautl.ExitBadArgs, exitErr.ExitCode(), "%s", output)
+			require.Contains(t, string(output), tt.want)
+		})
+	}
+}
 
 func TestCtlV3DelTimeout(t *testing.T) { testCtl(t, delTest, withDefaultDialTimeout()) }
 
