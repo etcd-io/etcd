@@ -473,7 +473,14 @@ func checkTxn(rv mvcc.ReadView, rt *pb.TxnRequest, lessor lease.Lessor, txnPath 
 // sending empty byte strings as nil; >= is encoded in the range end as '\0'.
 // If it is a GTE range, then []byte{} is returned to indicate the empty byte
 // string (vs nil being no byte string).
+//
+// A zero-length range end means a single key, which is how the auth check
+// treats it, so it is normalized to nil. Otherwise, a non-nil empty slice from a
+// hand-crafted request would be served as an open-ended range.
 func mkGteRange(rangeEnd []byte) []byte {
+	if len(rangeEnd) == 0 {
+		return nil
+	}
 	if len(rangeEnd) == 1 && rangeEnd[0] == 0 {
 		return []byte{}
 	}
