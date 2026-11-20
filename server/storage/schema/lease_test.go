@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/protobuf/testing/protocmp"
 
@@ -30,9 +31,10 @@ import (
 
 func TestLeaseBackend(t *testing.T) {
 	tcs := []struct {
-		name  string
-		setup func(tx backend.UnsafeWriter)
-		want  []*leasepb.Lease
+		name    string
+		setup   func(tx backend.UnsafeWriter)
+		want    []*leasepb.Lease
+		wantErr string
 	}{
 		{
 			name:  "Empty by default",
@@ -85,6 +87,28 @@ func TestLeaseBackend(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Rejects corrupted value",
+			setup: func(tx backend.UnsafeWriter) {
+				MustUnsafePutLease(tx, &leasepb.Lease{
+					ID:  1,
+					TTL: 2,
+				})
+				tx.UnsafePut(Lease, leaseIDToBytes(2), []byte{0xff})
+			},
+			wantErr: "failed to decode lease 0000000000000002",
+		},
+		{
+			name: "Rejects malformed key",
+			setup: func(tx backend.UnsafeWriter) {
+				MustUnsafePutLease(tx, &leasepb.Lease{
+					ID:  1,
+					TTL: 2,
+				})
+				tx.UnsafePut(Lease, []byte("malformed"), nil)
+			},
+			wantErr: "invalid lease key length",
+		},
 	}
 
 	for _, tc := range tcs {
@@ -102,7 +126,16 @@ func TestLeaseBackend(t *testing.T) {
 
 			be2 := backend.NewDefaultBackend(lg, tmpPath)
 			defer be2.Close()
-			leases := MustUnsafeGetAllLeases(be2.ReadTx())
+			txRead := be2.ReadTx()
+			txRead.RLock()
+			leases, err := UnsafeGetAllLeases(txRead)
+			txRead.RUnlock()
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+				require.Nil(t, leases)
+				return
+			}
+			require.NoError(t, err)
 
 			if diff := cmp.Diff(tc.want, leases, protocmp.Transform()); diff != "" {
 				t.Fatalf("leases mismatch (-want +got):\n%s", diff)

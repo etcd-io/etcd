@@ -321,7 +321,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		lg:                    cfg.Logger,
 		errorc:                make(chan error, 1),
 		snapshotter:           b.ss,
-		r:                     *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl),
 		memberID:              b.cluster.nodeID,
 		attributes:            membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		cluster:               b.cluster.cl,
@@ -345,12 +344,17 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
-	srv.lessor = lease.NewLessor(srv.Logger(), srv.be, srv.cluster, lease.LessorConfig{
+	srv.lessor, err = lease.NewLessor(srv.Logger(), srv.be, srv.cluster, lease.LessorConfig{
 		MinLeaseTTL:                int64(math.Ceil(minTTL.Seconds())),
 		CheckpointInterval:         cfg.LeaseCheckpointInterval,
 		CheckpointPersist:          cfg.ServerFeatureGate.Enabled(features.LeaseCheckpointPersist),
 		ExpiredLeasesRetryInterval: srv.Cfg.ReqTimeout(),
 	})
+	if err != nil {
+		// Raft has not taken ownership of the WAL yet.
+		return nil, fmt.Errorf("failed to recover lease store: %w", errorspkg.Join(err, b.storage.wal.w.Close()))
+	}
+	srv.r = *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl)
 
 	tp, err := auth.NewTokenProvider(cfg.Logger, cfg.AuthToken,
 		func(index uint64) <-chan struct{} {
@@ -731,6 +735,7 @@ func (s *EtcdServer) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 }
 
 type etcdProgress struct {
+	applyFailed         bool
 	confState           *raftpb.ConfState
 	diskSnapshotIndex   uint64
 	memorySnapshotIndex uint64
@@ -834,11 +839,19 @@ func (s *EtcdServer) run() {
 		expiredLeaseC = s.lessor.ExpiredLeasesC()
 	}
 
+	applyErrC := make(chan error, 1)
 	for {
 		select {
 		case ap := <-s.r.apply():
-			f := schedule.NewJob("server_applyAll", func(context.Context) { s.applyAll(&ep, &ap) })
+			f := schedule.NewJob("server_applyAll", func(context.Context) {
+				if err := s.applyAll(&ep, &ap); err != nil {
+					applyErrC <- err
+				}
+			})
 			sched.Schedule(f)
+		case err := <-applyErrC:
+			lg.Error("stopping server after snapshot recovery failed", zap.Error(err))
+			return
 		case leases := <-expiredLeaseC:
 			s.revokeExpiredLeases(leases)
 		case err := <-s.errorc:
@@ -975,8 +988,19 @@ func (s *EtcdServer) Defragment() error {
 	return s.be.Defrag()
 }
 
-func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
-	s.applySnapshot(ep, apply)
+func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) error {
+	if ep.applyFailed {
+		// Raft sends an extra persistence notification for snapshots. Consume it
+		// even when discarding queued work so the Raft loop can shut down.
+		if !raft.IsEmptySnap(apply.snapshot) {
+			<-apply.notifyc
+		}
+		return nil
+	}
+	if err := s.applySnapshot(ep, apply); err != nil {
+		ep.applyFailed = true
+		return err
+	}
 	s.applyEntries(ep, apply)
 	backend.VerifyBackendConsistency(s.Backend(), s.Logger(), true, schema.AllBuckets...)
 
@@ -996,13 +1020,15 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 		s.sendMergedSnap(merged)
 	default:
 	}
+	return nil
 }
 
-func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
+func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) error {
 	if raft.IsEmptySnap(toApply.snapshot) {
-		return
+		return nil
 	}
 	applySnapshotInProgress.Inc()
+	defer applySnapshotInProgress.Dec()
 
 	lg := s.Logger()
 	lg.Info(
@@ -1012,16 +1038,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 		zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.GetIndex()),
 		zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.GetTerm()),
 	)
-	defer func() {
-		lg.Info(
-			"applied snapshot",
-			zap.Uint64("current-snapshot-index", ep.diskSnapshotIndex),
-			zap.Uint64("current-applied-index", ep.appliedi),
-			zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.GetIndex()),
-			zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.GetTerm()),
-		)
-		applySnapshotInProgress.Dec()
-	}()
 
 	if toApply.snapshot.Metadata.GetIndex() <= ep.appliedi {
 		lg.Panic(
@@ -1064,7 +1080,11 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	if s.lessor != nil {
 		lg.Info("restoring lease store")
 
-		s.lessor.Recover(newbe, func() lease.TxnDelete { return s.kv.Write(traceutil.TODO()) })
+		if err := s.lessor.Recover(newbe, func() lease.TxnDelete { return s.kv.Write(traceutil.TODO()) }); err != nil {
+			closeErr := newbe.Close()
+			s.consistIndex.SetBackend(s.be)
+			return fmt.Errorf("failed to recover lease store from snapshot at index %d: %w", toApply.snapshot.Metadata.GetIndex(), errorspkg.Join(err, closeErr))
+		}
 
 		lg.Info("restored lease store")
 	}
@@ -1146,6 +1166,14 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	// As backends and implementations like alarmsStore changed, we need
 	// to re-bootstrap Appliers.
 	s.uberApply = s.NewUberApplier()
+	lg.Info(
+		"applied snapshot",
+		zap.Uint64("current-snapshot-index", ep.diskSnapshotIndex),
+		zap.Uint64("current-applied-index", ep.appliedi),
+		zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.GetIndex()),
+		zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.GetTerm()),
+	)
+	return nil
 }
 
 func (s *EtcdServer) NewUberApplier() apply.UberApplier {

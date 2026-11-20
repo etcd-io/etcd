@@ -15,6 +15,7 @@
 package etcdserver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	errorspkg "errors"
@@ -65,6 +66,7 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -754,6 +756,80 @@ func TestSnapshotOrdering(t *testing.T) {
 	if ac := <-p.Chan(); ac.Name != "Release" {
 		t.Fatalf("expected Release, got %+v", ac)
 	}
+}
+
+type snapshotLeaseReadError struct {
+	lease.Lessor
+	err error
+}
+
+func (l snapshotLeaseReadError) Recover(backend.Backend, lease.RangeDeleter) error { return l.err }
+
+func TestApplySnapshotLeaseRecoveryError(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	cfg := config.ServerConfig{Logger: lg, DataDir: t.TempDir()}
+	require.NoError(t, os.MkdirAll(cfg.SnapDir(), 0o700))
+	be := backend.NewDefaultBackend(lg, cfg.BackendPath())
+	defer betesting.Close(t, be)
+	le, err := lease.NewLessor(lg, be, nil, lease.LessorConfig{})
+	require.NoError(t, err)
+	defer le.Stop()
+	kv := mvcc.New(lg, be, le, mvcc.StoreConfig{})
+	defer kv.Close()
+	l, err := le.Grant(1, 60)
+	require.NoError(t, err)
+	key := []byte("bound-key")
+	kv.Put(key, []byte("value"), l.ID)
+
+	// Use a valid snapshot and inject only the lease recovery error.
+	ss := snap.New(lg, cfg.SnapDir())
+	var db bytes.Buffer
+	image := be.Snapshot()
+	_, err = image.WriteTo(&db)
+	require.NoError(t, image.Close())
+	require.NoError(t, err)
+	const index = 2
+	_, err = ss.SaveDBFrom(&db, index)
+	require.NoError(t, err)
+
+	readErr := errorspkg.New("lease scan failed")
+	ci := cindex.NewConsistentIndex(be)
+	s := &EtcdServer{
+		Cfg:          cfg,
+		lg:           lg,
+		lgMu:         new(sync.RWMutex),
+		be:           be,
+		kv:           kv,
+		lessor:       snapshotLeaseReadError{Lessor: le, err: readErr},
+		snapshotter:  ss,
+		consistIndex: ci,
+		beHooks:      serverstorage.NewBackendHooks(lg, ci),
+		applyWait:    wait.NewTimeList(),
+	}
+	snapshot := &raftpb.Snapshot{Metadata: &raftpb.SnapshotMetadata{Index: new(uint64(index)), Term: new(uint64(1))}}
+	ep := etcdProgress{appliedi: 1}
+	batch := toApply{snapshot: snapshot, notifyc: make(chan struct{}, 1)}
+	batch.notifyc <- struct{}{}
+	require.ErrorIs(t, s.applyAll(&ep, &batch), readErr)
+	require.Equal(t, uint64(1), ep.appliedi)
+	require.Same(t, be, s.Backend())
+
+	// Later batches may already be queued when the snapshot fails.
+	entry := &raftpb.Entry{Index: new(uint64(index)), Term: new(uint64(1))}
+	require.NoError(t, s.applyAll(&ep, &toApply{entries: []*raftpb.Entry{entry}}))
+	batch.notifyc <- struct{}{}
+	require.NoError(t, s.applyAll(&ep, &batch))
+	require.Empty(t, batch.notifyc)
+	require.Equal(t, uint64(1), ep.appliedi)
+	require.Equal(t, l.ID, le.GetLease(lease.LeaseItem{Key: string(key)}))
+	r, err := kv.Range(t.Context(), key, nil, mvcc.RangeOptions{})
+	require.NoError(t, err)
+	require.Len(t, r.KVs, 1)
+	require.Equal(t, int64(l.ID), r.KVs[0].Lease)
+	require.NoError(t, le.Revoke(l.ID))
+	r, err = kv.Range(t.Context(), key, nil, mvcc.RangeOptions{})
+	require.NoError(t, err)
+	require.Empty(t, r.KVs)
 }
 
 // TestConcurrentApplyAndSnapshotV3 will send out snapshots concurrently with

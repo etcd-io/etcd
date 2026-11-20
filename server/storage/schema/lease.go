@@ -28,21 +28,24 @@ func UnsafeCreateLeaseBucket(tx backend.UnsafeWriter) {
 	tx.UnsafeCreateBucket(Lease)
 }
 
-func MustUnsafeGetAllLeases(tx backend.UnsafeReader) []*leasepb.Lease {
+// UnsafeGetAllLeases returns no leases if any record cannot be read.
+func UnsafeGetAllLeases(tx backend.UnsafeReader) ([]*leasepb.Lease, error) {
 	ls := make([]*leasepb.Lease, 0)
 	err := tx.UnsafeForEach(Lease, func(k, v []byte) error {
+		if len(k) != 8 {
+			return fmt.Errorf("invalid lease key length %d (expected 8, first bytes %.8x)", len(k), k)
+		}
 		var lpb leasepb.Lease
-		err := proto.Unmarshal(v, &lpb)
-		if err != nil {
-			return fmt.Errorf("failed to Unmarshal lease proto item; lease ID=%016x", bytesToLeaseID(k))
+		if err := proto.Unmarshal(v, &lpb); err != nil {
+			return fmt.Errorf("failed to decode lease %x: %w", k, err)
 		}
 		ls = append(ls, &lpb)
 		return nil
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return ls
+	return ls, nil
 }
 
 func MustUnsafePutLease(tx backend.UnsafeWriter, lpb *leasepb.Lease) {
@@ -76,11 +79,4 @@ func leaseIDToBytes(n int64) []byte {
 	bytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes, uint64(n))
 	return bytes
-}
-
-func bytesToLeaseID(bytes []byte) int64 {
-	if len(bytes) != 8 {
-		panic(fmt.Errorf("lease ID must be 8-byte"))
-	}
-	return int64(binary.BigEndian.Uint64(bytes))
 }
