@@ -28,7 +28,7 @@ Example:
   ]
 }
 ```
-3. Set the following environment variables subsituting your IP address:
+3. Set the following environment variables substituting your IP address:
 ```bash
 export infra0={IP-0}
 export infra1={IP-1}
