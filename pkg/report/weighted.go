@@ -93,6 +93,11 @@ func (wr *weightedReport) processResult(res Result) {
 }
 
 func (wr *weightedReport) reweighStat(s Stats) Stats {
+	// With no successful results the coefficient has no divisor; keep the
+	// zero-valued statistics instead of multiplying them into NaN.
+	if len(s.Lats) == 0 {
+		return s
+	}
 	weightCoef := wr.weightTotal / float64(len(s.Lats))
 	// weight > 1 => processing more than one request
 	s.RPS *= weightCoef
