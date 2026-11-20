@@ -154,8 +154,6 @@ Clustering:
     V3 discovery: password for authentication (if this option is used, --user option shouldn't include password).
   --discovery-fallback 'exit'
     Expected behavior ('exit') when discovery services fails. Note that v2 proxy is removed.
-  --discovery-proxy ''
-    HTTP proxy to use for traffic to discovery service. Will be deprecated in v3.7, and be decommissioned in v3.8.
   --discovery-srv ''
     DNS srv domain used to bootstrap the cluster.
   --discovery-srv-name ''
