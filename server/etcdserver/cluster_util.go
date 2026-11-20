@@ -20,9 +20,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
@@ -292,7 +294,8 @@ func getVersion(lg *zap.Logger, m *membership.Member, rt http.RoundTripper, time
 	return nil, err
 }
 
-func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.RoundTripper) ([]*membership.Member, error) {
+// promoteMemberHTTP reports whether an attempt without a usable result may have applied.
+func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.RoundTripper) ([]*membership.Member, bool, error) {
 	cc := &http.Client{
 		Transport: peerRt,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -304,7 +307,7 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 	requestURL := url + "/members/promote/" + fmt.Sprintf("%d", id)
 	req, err := http.NewRequest(http.MethodPost, requestURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// add the auth token via HTTP header if present in gRPC metadata
@@ -320,43 +323,50 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 		}
 	}
 
+	// Once the peer transport has a connection, even a write error can
+	// leave part or all of the request on the wire.
+	var gotConn atomic.Bool
+	ctx = httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
+		GotConn: func(httptrace.GotConnInfo) { gotConn.Store(true) },
+	})
 	req = req.WithContext(ctx)
 	resp, err := cc.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, gotConn.Load(), err
 	}
 	defer resp.Body.Close()
+
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, resp.StatusCode == http.StatusOK, err
 	}
 
 	if resp.StatusCode == http.StatusRequestTimeout {
-		return nil, errors.ErrTimeout
+		return nil, false, errors.ErrTimeout
 	}
 	if resp.StatusCode == http.StatusPreconditionFailed {
 		// both ErrMemberNotLearner and ErrLearnerNotReady have same http status code
 		if strings.Contains(string(b), errors.ErrLearnerNotReady.Error()) {
-			return nil, errors.ErrLearnerNotReady
+			return nil, false, errors.ErrLearnerNotReady
 		}
 		if strings.Contains(string(b), membership.ErrMemberNotLearner.Error()) {
-			return nil, membership.ErrMemberNotLearner
+			return nil, false, membership.ErrMemberNotLearner
 		}
-		return nil, fmt.Errorf("member promote: unknown error(%s)", b)
+		return nil, false, fmt.Errorf("member promote: unknown error(%s)", b)
 	}
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, membership.ErrIDNotFound
+		return nil, false, membership.ErrIDNotFound
 	}
 
 	if resp.StatusCode != http.StatusOK { // all other types of errors
-		return nil, fmt.Errorf("member promote: unknown error(%s)", b)
+		return nil, false, fmt.Errorf("member promote: unknown error(%s)", b)
 	}
 
 	var membs []*membership.Member
 	if err := json.Unmarshal(b, &membs); err != nil {
-		return nil, err
+		return nil, true, err
 	}
-	return membs, nil
+	return membs, false, nil
 }
 
 // getDowngradeEnabledFromRemotePeers will get the downgrade enabled status of the cluster.
