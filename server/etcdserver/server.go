@@ -117,6 +117,8 @@ const (
 )
 
 var (
+	errMemberPromoteOutcomeUnknown = errorspkg.New("etcdserver: member promotion outcome is unknown")
+
 	// monitorVersionInterval should be smaller than the timeout
 	// on the connection. Or we will not be able to reuse the connection
 	// (since it will timeout).
@@ -1466,10 +1468,14 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 
 	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
 	defer cancel()
+	var outcomeUnknown bool
 	// forward to leader
 	for cctx.Err() == nil {
 		leader, err := s.waitLeader(cctx)
 		if err != nil {
+			if outcomeUnknown {
+				return nil, errMemberPromoteOutcomeUnknown
+			}
 			return nil, err
 		}
 		for _, url := range leader.PeerURLs {
@@ -1477,13 +1483,23 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 			if err == nil {
 				return resp, nil
 			}
+			if errorspkg.Is(err, errMemberPromoteOutcomeUnknown) {
+				outcomeUnknown = true
+			}
 			// If member promotion failed, return early. Otherwise keep retry.
 			if errorspkg.Is(err, errors.ErrLearnerNotReady) || errorspkg.Is(err, membership.ErrIDNotFound) || errorspkg.Is(err, membership.ErrMemberNotLearner) {
+				// A rejection on retry does not tell us whether an earlier attempt applied.
+				if outcomeUnknown {
+					return nil, errMemberPromoteOutcomeUnknown
+				}
 				return nil, err
 			}
 		}
 	}
 
+	if outcomeUnknown {
+		return nil, errMemberPromoteOutcomeUnknown
+	}
 	if errorspkg.Is(cctx.Err(), context.DeadlineExceeded) {
 		return nil, errors.ErrTimeout
 	}
