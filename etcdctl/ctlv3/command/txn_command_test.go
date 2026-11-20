@@ -15,7 +15,10 @@
 package command
 
 import (
+	"bufio"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -89,6 +92,101 @@ func TestParseCompare(t *testing.T) {
 			leaseCmp, ok := pbCmp.TargetUnion.(*pb.Compare_Lease)
 			require.True(t, ok)
 			require.Equal(t, tt.wantLease, leaseCmp.Lease)
+		})
+	}
+}
+
+func TestParseCompareUnknownOperator(t *testing.T) {
+	for _, line := range []string{
+		`mod("foo") >= "1"`,
+		`ver("foo") == "1"`,
+		`val("foo") <> "bar"`,
+	} {
+		t.Run(line, func(t *testing.T) {
+			_, err := ParseCompare(line)
+			require.ErrorContains(t, err, "unknown operator")
+		})
+	}
+}
+
+func TestParseRequestUnionWithoutOp(t *testing.T) {
+	for _, line := range []string{
+		"get --help",
+		"put -h",
+		"help del",
+	} {
+		t.Run(line, func(t *testing.T) {
+			errc := make(chan error, 1)
+			go func() {
+				_, err := parseRequestUnion(line)
+				errc <- err
+			}()
+			select {
+			case err := <-errc:
+				require.ErrorContains(t, err, "invalid txn request")
+			case <-time.After(5 * time.Second):
+				t.Fatal("parseRequestUnion blocked")
+			}
+		})
+	}
+}
+
+func TestReadTxnSections(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantCmps  int
+		wantThen  int
+		wantElse  int
+		wantError bool
+	}{
+		{
+			name:     "all sections terminated by empty lines",
+			input:    "mod(\"key1\") > \"0\"\n\nput key1 v1\n\nput key1 v2\nput key2 v3\n\n",
+			wantCmps: 1,
+			wantThen: 1,
+			wantElse: 2,
+		},
+		{
+			name:     "last section ends at EOF without trailing newline",
+			input:    "mod(\"key1\") > \"0\"\n\nput key1 v1\n\nput key1 v2",
+			wantCmps: 1,
+			wantThen: 1,
+			wantElse: 1,
+		},
+		{
+			name:     "input ends after the compares",
+			input:    "mod(\"key1\") > \"0\"\n",
+			wantCmps: 1,
+		},
+		{
+			name: "empty input",
+		},
+		{
+			name:      "bad compare is reported",
+			input:     "mod(\"key1\") >= \"0\"\n\n",
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := bufio.NewReader(strings.NewReader(tt.input))
+			cmps, err := readCompares(r)
+			if tt.wantError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, cmps, tt.wantCmps)
+
+			thenOps, err := readOps(r)
+			require.NoError(t, err)
+			require.Len(t, thenOps, tt.wantThen)
+
+			elseOps, err := readOps(r)
+			require.NoError(t, err)
+			require.Len(t, elseOps, tt.wantElse)
 		})
 	}
 }
