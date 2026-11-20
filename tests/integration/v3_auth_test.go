@@ -24,6 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -679,4 +680,116 @@ func TestV3AuthWatchErrorAndWatchId0(t *testing.T) {
 	}
 
 	<-watchEndCh
+}
+
+// rawBytesCodec sends []byte request messages as-is, so a test can put
+// non-canonical protobuf on the wire that the generated client would never emit.
+type rawBytesCodec struct{}
+
+func (rawBytesCodec) Name() string { return "proto" }
+
+func (rawBytesCodec) Marshal(v any) ([]byte, error) {
+	b, ok := v.([]byte)
+	if !ok {
+		return nil, fmt.Errorf("rawBytesCodec: unexpected request type %T", v)
+	}
+	return b, nil
+}
+
+func (rawBytesCodec) Unmarshal(data []byte, v any) error {
+	m, ok := v.(interface{ Unmarshal([]byte) error })
+	if !ok {
+		return fmt.Errorf("rawBytesCodec: unexpected response type %T", v)
+	}
+	return m.Unmarshal(data)
+}
+
+// TestV3AuthRangeEndEmptyOnWire ensures that a request carrying a present but
+// zero-length range_end is authorized and served as a single-key request,
+// instead of passing a point permission check and being served as an
+// open-ended (>= key) range.
+func TestV3AuthRangeEndEmptyOnWire(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	// user1 may read and write exactly the key "foo" (empty end means a single key).
+	users := []user{
+		{
+			name:     "user1",
+			password: "user1-123",
+			role:     "role1",
+			key:      "foo",
+			end:      "",
+		},
+	}
+	anonCli := integration.ToGRPC(clus.Client(0))
+	authSetupUsers(t, anonCli.Auth, users)
+	authSetupRoot(t, anonCli.Auth)
+
+	rootc, err := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "root",
+		Password:  "123",
+	})
+	require.NoError(t, err)
+	defer rootc.Close()
+
+	userc, err := integration.NewClient(t, clientv3.Config{
+		Endpoints: clus.Client(0).Endpoints(),
+		Username:  "user1",
+		Password:  "user1-123",
+	})
+	require.NoError(t, err)
+	defer userc.Close()
+
+	for _, kv := range []struct{ k, v string }{{"foo", "1"}, {"goo", "secret"}, {"zoo", "secret"}} {
+		_, err = rootc.Put(t.Context(), kv.k, kv.v)
+		require.NoError(t, err)
+	}
+
+	// {key: "foo", range_end: ""} with range_end (field 2) present on the wire
+	// with length 0. The generated client omits it, so hand-craft the bytes.
+	// It is a valid RangeRequest and a valid DeleteRangeRequest.
+	rangeReq := []byte{0x0a, 0x03, 'f', 'o', 'o', 0x12, 0x00}
+	invoke := func(t *testing.T, method string, req []byte, resp any) {
+		t.Helper()
+		err := userc.ActiveConnection().Invoke(t.Context(), method, req, resp, grpc.ForceCodec(rawBytesCodec{}))
+		require.NoError(t, err)
+	}
+
+	t.Run("Range", func(t *testing.T) {
+		resp := &pb.RangeResponse{}
+		invoke(t, "/etcdserverpb.KV/Range", rangeReq, resp)
+
+		// Only "foo" is permitted; "goo" and "zoo" must not be returned.
+		require.Len(t, resp.Kvs, 1, "user1 only has permission on key foo, got %d keys", len(resp.Kvs))
+		require.Equal(t, "foo", string(resp.Kvs[0].Key))
+	})
+
+	t.Run("Txn", func(t *testing.T) {
+		// TxnRequest{success: [RequestOp{request_range: rangeReq}]}
+		op := append([]byte{0x0a, byte(len(rangeReq))}, rangeReq...)
+		txnReq := append([]byte{0x12, byte(len(op))}, op...)
+		resp := &pb.TxnResponse{}
+		invoke(t, "/etcdserverpb.KV/Txn", txnReq, resp)
+
+		require.Len(t, resp.Responses, 1)
+		kvs := resp.Responses[0].GetResponseRange().Kvs
+		require.Len(t, kvs, 1, "user1 only has permission on key foo, got %d keys", len(kvs))
+		require.Equal(t, "foo", string(kvs[0].Key))
+	})
+
+	// Keep this last: it deletes "foo".
+	t.Run("DeleteRange", func(t *testing.T) {
+		resp := &pb.DeleteRangeResponse{}
+		invoke(t, "/etcdserverpb.KV/DeleteRange", rangeReq, resp)
+
+		require.Equal(t, int64(1), resp.Deleted)
+		for _, k := range []string{"goo", "zoo"} {
+			gresp, err := rootc.Get(t.Context(), k)
+			require.NoError(t, err)
+			require.Len(t, gresp.Kvs, 1, "key %s must not be deleted", k)
+		}
+	})
 }
