@@ -79,6 +79,51 @@ func TestAuthEnabled(t *testing.T) {
 	}
 }
 
+// TestAuthRevisionCorruptedRecord ensures that reading an auth revision record
+// of unexpected length does not panic, but is treated as revision 0 instead.
+// See https://github.com/etcd-io/etcd/issues/22747.
+func TestAuthRevisionCorruptedRecord(t *testing.T) {
+	tcs := []struct {
+		name  string
+		value []byte
+	}{
+		{
+			name:  "empty value",
+			value: []byte{},
+		},
+		{
+			name:  "value shorter than 8 bytes",
+			value: []byte{0x1, 0x2, 0x3},
+		},
+		{
+			name:  "value longer than 8 bytes",
+			value: []byte{0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			be, _ := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			defer be.Close()
+			abe := NewAuthBackend(lg, be)
+			abe.CreateAuthBuckets()
+
+			// Write a malformed revision value directly into the Auth bucket,
+			// bypassing UnsafeSaveAuthRevision which always writes 8 bytes.
+			btx := be.BatchTx()
+			btx.Lock()
+			btx.UnsafePut(Auth, AuthRevisionKeyName, tc.value)
+			btx.Unlock()
+			abe.ForceCommit()
+
+			tx := abe.BatchTx()
+			tx.Lock()
+			defer tx.Unlock()
+			assert.Equal(t, uint64(0), tx.UnsafeReadAuthRevision())
+		})
+	}
+}
+
 // TestAuthRevision ensures that UnsafeSaveAuthRevision&UnsafeReadAuthRevision work well together.
 func TestAuthRevision(t *testing.T) {
 	tcs := []struct {
