@@ -15,6 +15,10 @@
 package etcdutl
 
 import (
+	"fmt"
+	"io"
+	"os"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
@@ -57,7 +61,13 @@ func calculateHashKV(dbPath string, rev int64) (HashKV, error) {
 	if err := validateFilePath(dbPath); err != nil {
 		return HashKV{}, err
 	}
-	b := backend.NewDefaultBackend(zap.NewNop(), dbPath, backend.WithTimeout(FlockTimeout))
+	tempDBPath, err := copyDatabaseToTemp(dbPath)
+	if err != nil {
+		return HashKV{}, err
+	}
+	defer os.Remove(tempDBPath)
+
+	b := backend.NewDefaultBackend(zap.NewNop(), tempDBPath, backend.WithTimeout(FlockTimeout))
 	defer b.Close()
 	// Since `etcdutl hashkv` only hashes the keyspace and ignores leases, we use a simple lessor to simplify the implementation.
 	st := mvcc.NewStore(zap.NewNop(), b, &SimpleLessor{}, mvcc.StoreConfig{})
@@ -73,4 +83,34 @@ func calculateHashKV(dbPath string, rev int64) (HashKV, error) {
 		HashRevision:    h.Revision,
 		CompactRevision: h.CompactRevision,
 	}, nil
+}
+
+func copyDatabaseToTemp(dbPath string) (tempDBPath string, err error) {
+	tempDB, err := os.CreateTemp("", "etcdutl-hashkv-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temporary database copy: %w", err)
+	}
+	tempDBPath = tempDB.Name()
+	cleanup := true
+	defer func() {
+		if cleanup {
+			_ = tempDB.Close()
+			_ = os.Remove(tempDBPath)
+		}
+	}()
+
+	srcDB, err := os.Open(dbPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open database for copying: %w", err)
+	}
+	defer srcDB.Close()
+
+	if _, err = io.Copy(tempDB, srcDB); err != nil {
+		return "", fmt.Errorf("failed to copy database to temporary file: %w", err)
+	}
+	if err = tempDB.Close(); err != nil {
+		return "", fmt.Errorf("failed to close temporary database copy: %w", err)
+	}
+	cleanup = false
+	return tempDBPath, nil
 }
