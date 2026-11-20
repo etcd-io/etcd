@@ -3,7 +3,11 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.17 (TBC)
+## v3.6.18 (TBC)
+
+---
+
+## v3.6.17 (2026-11-18)
 
 ### etcd server
 
@@ -14,6 +18,8 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - Compile binaries using [go 1.26.11](https://github.com/etcd-io/etcd/pull/22819).
 - [Bump github.com/klauspost/compress to v1.20.2](https://github.com/etcd-io/etcd/pull/22819) to resolve [CVE-2026-116591](https://pkg.go.dev/vuln/GO-2026-6865)
+- [Bump golang.org/x/net from v0.61.0 to v0.62.0 to address CVE-2026-78661, CVE-2026-97045](https://github.com/etcd-io/etcd/pull/22854).
+- [Use Debian 13 as base container image](https://github.com/etcd-io/etcd/pull/22668).
 
 ---
 
