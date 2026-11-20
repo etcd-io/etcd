@@ -15,6 +15,20 @@
 
 set -euo pipefail
 
+function check_bash_version() {
+  local major=${1:-${BASH_VERSINFO[0]}}
+  local minor=${2:-${BASH_VERSINFO[1]}}
+  if (( major > 4 || (major == 4 && minor >= 3) )); then
+    return 0
+  fi
+
+  echo "This script requires Bash 4.3 or later, but the current Bash is ${major}.${minor}." >&2
+  echo "On macOS, install a newer Bash with 'brew install bash' and make sure it comes before /bin/bash in PATH." >&2
+  return 1
+}
+
+check_bash_version || { return 1 2>/dev/null || exit 1; }
+
 source ./scripts/test_utils.sh
 
 ROOT_MODULE="go.etcd.io/etcd"

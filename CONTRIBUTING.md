@@ -93,6 +93,7 @@ This is the original etcd development environment, is most supported, and is bac
 Follow the steps below to set up the environment:
 
 - [Clone the repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
+- Install Bash 4.3 or later. The default Bash 3.2 on macOS is too old; run `brew install bash` and ensure the installed Bash comes before `/bin/bash` in `PATH`.
 - Install Go by following [installation](https://go.dev/doc/install). Please check the minimal go version in [go.mod file](./go.mod#L3).
 - Install build tools:
   - [`make`](https://www.gnu.org/software/make/): For Debian-based distributions
