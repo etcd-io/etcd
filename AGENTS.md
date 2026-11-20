@@ -2,12 +2,11 @@
 
 ## Constraints
 
-- **Generated files are read-only.** Never hand-edit `*.pb.go`, `*.pb.gw.go`, or `scripts/etcd_version_annotations.txt`. Run `./scripts/genproto.sh`, then `./scripts/update_proto_annotations.sh`.
-- **New proto fields need a version.** Annotate new fields, messages, and enum values under `api/` with `etcd_version_*` set to the next minor release in `api/version/version.go`.
-- **Apply must be deterministic.** Code in `server/etcdserver/apply` and `server/etcdserver/txn` must give the same result on every member. Generate IDs, tokens, and timestamps before proposing.
-- **Don't wrap errors returned to clients.** `server/etcdserver/api/v3rpc` maps errors by identity, so a `%w`-wrapped error becomes `codes.Unknown`.
-- **Respect module boundaries.** Each module's `.gomodguard.yaml` lists imports it must not use. Never import `go.etcd.io/etcd/tests/v3` from a library module.
-- **Some example tests are symlinks.** The `example*_test.go` files under `client/v3/` point into `tests/integration/clientv3/`. Edit the targets, never replace the links.
+- **Generated files are read-only.** Never hand-edit `*.pb.go` or `*.pb.gw.go`. Run `./scripts/genproto.sh`.
+- **New proto fields need `etcd_version_*` annotations** set to the next minor release.
+- **Apply must be deterministic.** Generate IDs, tokens, and timestamps before proposing, not in apply.
+- **Don't wrap errors returned to clients.** Wrapped errors become `codes.Unknown`.
+- **Respect module boundaries** in each module's `.gomodguard.yaml`.
 
 ## Contributor Guidelines
 
@@ -26,17 +25,12 @@
 See `CONTRIBUTING.md` for the `make` targets. To run a single test:
 
 ```bash
-ETCD_VERIFY=all go test ./server/storage/mvcc -run 'TestKVPutMultipleTimes$'  # unit test, with invariant checks
-go test -tags=integration ./tests/common -run 'TestKVPut$'                     # common test, in-process cluster
-go test -tags=e2e ./tests/common -run 'TestKVPut$'                             # common test, binaries in bin/
+go test ./server/storage/mvcc -run 'TestKVPutMultipleTimes$'   # unit test
+go test -tags=integration ./tests/common -run 'TestKVPut$'      # integration test
+go test -tags=e2e ./tests/common -run 'TestKVPut$'              # e2e test, run `make build` first
 ```
-
-- e2e tests use the binaries in `bin/`. Run `make build` after changing code.
-- Failpoint tests skip unless built with `make gofail-enable`. A SKIP means the test did not run. Run `make gofail-disable` before committing.
 
 ## Style
 
 - Comments explain "why", not "what". Do not add comments when the code itself is easily understood.
-- Follow the patterns in neighboring code. Extend existing tests and helpers instead of adding new ones.
-- Tests: use testify `require` (the `f` variants when passing a message), `zaptest.NewLogger(t)`, and `require.Eventually` instead of `time.Sleep`. No `t.Parallel()` in integration or e2e tests.
-- Logging: zap with kebab-case keys, for example `zap.String("local-member-id", id.String())`.
+- Follow the patterns in neighboring code, and use testify `require` in tests.
