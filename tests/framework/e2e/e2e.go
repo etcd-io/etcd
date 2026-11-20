@@ -27,6 +27,7 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
@@ -58,7 +59,12 @@ func (e e2eRunner) NewCluster(ctx context.Context, tb testing.TB, opts ...config
 		WithStrictReconfigCheck(cfg.StrictReconfigCheck),
 		WithAuthTokenOpts(cfg.AuthToken),
 		WithSnapshotCount(cfg.SnapshotCount),
+		WithCorruptCheckTime(cfg.CorruptCheckTime),
+		WithCompactHashCheckEnabled(cfg.CompactHashCheckEnabled),
 	)
+	if cfg.CompactHashCheckTime != 0 {
+		e2eConfig.ServerConfig.CompactHashCheckTime = cfg.CompactHashCheckTime
+	}
 
 	if ctx, ok := cfg.ClusterContext.(*ClusterContext); ok && ctx != nil {
 		e2eConfig.Version = ctx.Version
@@ -170,4 +176,8 @@ func (m e2eMember) Start(ctx context.Context) error {
 
 func (m e2eMember) Stop() {
 	m.EtcdProcess.Stop()
+}
+
+func (m e2eMember) BackendPath() string {
+	return datadir.ToBackendFileName(m.EtcdProcess.Config().DataDirPath)
 }

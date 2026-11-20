@@ -56,6 +56,9 @@ func (e integrationRunner) NewCluster(ctx context.Context, tb testing.TB, opts .
 		DisableStrictReconfigCheck: !cfg.StrictReconfigCheck,
 		AuthToken:                  cfg.AuthToken,
 		SnapshotCount:              cfg.SnapshotCount,
+		CorruptCheckTime:           cfg.CorruptCheckTime,
+		CompactHashCheckTime:       cfg.CompactHashCheckTime,
+		CompactHashCheckEnabled:    cfg.CompactHashCheckEnabled,
 	}
 	integrationCfg.ClientTLS, err = tlsInfo(tb, cfg.ClientTLS)
 	if err != nil {

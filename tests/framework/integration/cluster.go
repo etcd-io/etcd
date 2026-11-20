@@ -173,6 +173,8 @@ type ClusterConfig struct {
 	MaxLearners                 int
 	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
+	CompactHashCheckTime        time.Duration
+	CompactHashCheckEnabled     bool
 	Metrics                     string
 }
 
@@ -286,6 +288,8 @@ func (c *Cluster) MustNewMember(t testutil.TB) *Member {
 			MaxLearners:                 c.Cfg.MaxLearners,
 			DisableStrictReconfigCheck:  c.Cfg.DisableStrictReconfigCheck,
 			CorruptCheckTime:            c.Cfg.CorruptCheckTime,
+			CompactHashCheckTime:        c.Cfg.CompactHashCheckTime,
+			CompactHashCheckEnabled:     c.Cfg.CompactHashCheckEnabled,
 			Metrics:                     c.Cfg.Metrics,
 		})
 	return m
@@ -616,6 +620,8 @@ type MemberConfig struct {
 	MaxLearners                 int
 	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
+	CompactHashCheckTime        time.Duration
+	CompactHashCheckEnabled     bool
 	Metrics                     string
 }
 
@@ -723,6 +729,10 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	if mcfg.CorruptCheckTime > time.Duration(0) {
 		m.CorruptCheckTime = mcfg.CorruptCheckTime
 	}
+	m.CompactHashCheckTime = embed.DefaultCompactHashCheckTime
+	if mcfg.CompactHashCheckTime != 0 {
+		m.CompactHashCheckTime = mcfg.CompactHashCheckTime
+	}
 	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
 	m.WarningUnaryRequestDuration = embed.DefaultWarningUnaryRequestDuration
 	m.MaxLearners = membership.DefaultMaxLearners
@@ -734,7 +744,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 
 	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
 	m.ServerFeatureGate = features.NewDefaultServerFeatureGate(m.Name, m.Logger)
-	featureGates := fmt.Sprintf("LeaseCheckpoint=%v,LeaseCheckpointPersist=%v", mcfg.EnableLeaseCheckpoint, mcfg.LeaseCheckpointPersist)
+	featureGates := fmt.Sprintf("LeaseCheckpoint=%v,LeaseCheckpointPersist=%v,CompactHashCheck=%v", mcfg.EnableLeaseCheckpoint, mcfg.LeaseCheckpointPersist, mcfg.CompactHashCheckEnabled)
 	if err := m.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(featureGates); err != nil {
 		t.Fatalf("Set FeatureGate FAILED: %v", err)
 	}

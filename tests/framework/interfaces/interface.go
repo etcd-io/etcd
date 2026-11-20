@@ -40,6 +40,8 @@ type Member interface {
 	Client() Client
 	Start(ctx context.Context) error
 	Stop()
+	// BackendPath returns the backend database path. Stop the member before modifying it.
+	BackendPath() string
 }
 
 type Client interface {

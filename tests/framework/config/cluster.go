@@ -29,13 +29,16 @@ const (
 )
 
 type ClusterConfig struct {
-	ClusterSize         int
-	PeerTLS             TLSConfig
-	ClientTLS           TLSConfig
-	QuotaBackendBytes   int64
-	StrictReconfigCheck bool
-	AuthToken           string
-	SnapshotCount       uint64
+	ClusterSize             int
+	PeerTLS                 TLSConfig
+	ClientTLS               TLSConfig
+	QuotaBackendBytes       int64
+	StrictReconfigCheck     bool
+	AuthToken               string
+	SnapshotCount           uint64
+	CorruptCheckTime        time.Duration
+	CompactHashCheckTime    time.Duration
+	CompactHashCheckEnabled bool
 
 	// ClusterContext is used by "e2e" or "integration" to extend the
 	// ClusterConfig. The common test cases shouldn't care about what
@@ -83,6 +86,18 @@ func WithQuotaBackendBytes(bytes int64) ClusterOption {
 
 func WithSnapshotCount(count uint64) ClusterOption {
 	return func(c *ClusterConfig) { c.SnapshotCount = count }
+}
+
+func WithCorruptCheckTime(interval time.Duration) ClusterOption {
+	return func(c *ClusterConfig) { c.CorruptCheckTime = interval }
+}
+
+func WithCompactHashCheckTime(interval time.Duration) ClusterOption {
+	return func(c *ClusterConfig) { c.CompactHashCheckTime = interval }
+}
+
+func WithCompactHashCheckEnabled(enabled bool) ClusterOption {
+	return func(c *ClusterConfig) { c.CompactHashCheckEnabled = enabled }
 }
 
 func WithStrictReconfigCheck(strict bool) ClusterOption {
