@@ -277,9 +277,17 @@ func (t *Transport) AddRemote(id types.ID, us []string) {
 	}
 	urls, err := types.NewURLs(us)
 	if err != nil {
+		// The peer URLs come from an HTTP header sent by a remote peer,
+		// so a malformed value must not crash the handler. Skip the
+		// remote instead of panicking.
 		if t.Logger != nil {
-			t.Logger.Panic("failed NewURLs", zap.Strings("urls", us), zap.Error(err))
+			t.Logger.Warn(
+				"failed to parse peer urls, skipping remote",
+				zap.Strings("urls", us),
+				zap.Error(err),
+			)
 		}
+		return
 	}
 	t.remotes[id] = startRemote(t, urls, id)
 
