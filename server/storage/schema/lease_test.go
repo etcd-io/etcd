@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
@@ -31,9 +31,10 @@ import (
 
 func TestLeaseBackend(t *testing.T) {
 	tcs := []struct {
-		name  string
-		setup func(tx backend.UnsafeWriter)
-		want  []*leasepb.Lease
+		name    string
+		setup   func(tx backend.UnsafeWriter)
+		want    []*leasepb.Lease
+		wantErr string
 	}{
 		{
 			name:  "Empty by default",
@@ -87,46 +88,26 @@ func TestLeaseBackend(t *testing.T) {
 			},
 		},
 		{
-			// See https://github.com/etcd-io/etcd/issues/22748
-			name: "Skips corrupted value",
+			name: "Rejects corrupted value",
 			setup: func(tx backend.UnsafeWriter) {
 				MustUnsafePutLease(tx, &leasepb.Lease{
 					ID:  1,
 					TTL: 2,
 				})
-				// Write an unparseable value directly into the Lease bucket,
-				// bypassing MustUnsafePutLease which always writes valid data.
 				tx.UnsafePut(Lease, leaseIDToBytes(2), []byte{0xff})
 			},
-			want: []*leasepb.Lease{
-				{
-					ID:  1,
-					TTL: 2,
-				},
-			},
+			wantErr: "failed to decode lease 0000000000000002",
 		},
 		{
-			// See https://github.com/etcd-io/etcd/issues/22748
-			name: "Skips malformed key",
+			name: "Rejects malformed key",
 			setup: func(tx backend.UnsafeWriter) {
 				MustUnsafePutLease(tx, &leasepb.Lease{
 					ID:  1,
 					TTL: 2,
 				})
-				// Write a parseable lease under a key that is not an 8-byte
-				// lease ID.
-				v, err := proto.Marshal(&leasepb.Lease{ID: 7, TTL: 5})
-				if err != nil {
-					t.Fatal(err)
-				}
-				tx.UnsafePut(Lease, []byte("malformed"), v)
+				tx.UnsafePut(Lease, []byte("malformed"), nil)
 			},
-			want: []*leasepb.Lease{
-				{
-					ID:  1,
-					TTL: 2,
-				},
-			},
+			wantErr: "invalid lease key length",
 		},
 	}
 
@@ -145,7 +126,16 @@ func TestLeaseBackend(t *testing.T) {
 
 			be2 := backend.NewDefaultBackend(lg, tmpPath)
 			defer be2.Close()
-			leases := MustUnsafeGetAllLeases(lg, be2.ReadTx())
+			txRead := be2.ReadTx()
+			txRead.RLock()
+			leases, err := UnsafeGetAllLeases(txRead)
+			txRead.RUnlock()
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+				require.Nil(t, leases)
+				return
+			}
+			require.NoError(t, err)
 
 			if diff := cmp.Diff(tc.want, leases, protocmp.Transform()); diff != "" {
 				t.Fatalf("leases mismatch (-want +got):\n%s", diff)

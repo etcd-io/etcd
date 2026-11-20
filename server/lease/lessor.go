@@ -132,8 +132,8 @@ type Lessor interface {
 	// ExpiredLeasesC returns a chan that is used to receive expired leases.
 	ExpiredLeasesC() <-chan []*Lease
 
-	// Recover recovers the lessor state from the given backend and RangeDeleter.
-	Recover(b backend.Backend, rd RangeDeleter)
+	// Recover replaces the lessor state only after all leases have been read.
+	Recover(b backend.Backend, rd RangeDeleter) error
 
 	// Stop stops the lessor for managing leases. The behavior of calling Stop multiple
 	// times is undefined.
@@ -205,11 +205,8 @@ type LessorConfig struct {
 	leaseRevokeRate int
 }
 
-func NewLessor(lg *zap.Logger, b backend.Backend, cluster cluster, cfg LessorConfig) Lessor {
-	return newLessor(lg, b, cluster, cfg)
-}
-
-func newLessor(lg *zap.Logger, b backend.Backend, cluster cluster, cfg LessorConfig) *lessor {
+// NewLessor restores persisted leases before it starts managing their expiry.
+func NewLessor(lg *zap.Logger, b backend.Backend, cluster cluster, cfg LessorConfig) (Lessor, error) {
 	checkpointInterval := cfg.CheckpointInterval
 	expiredLeaseRetryInterval := cfg.ExpiredLeasesRetryInterval
 	leaseRevokeRate := cfg.leaseRevokeRate
@@ -223,11 +220,8 @@ func newLessor(lg *zap.Logger, b backend.Backend, cluster cluster, cfg LessorCon
 		leaseRevokeRate = defaultLeaseRevokeRate
 	}
 	l := &lessor{
-		leaseMap:                  make(map[LeaseID]*Lease),
-		itemMap:                   make(map[LeaseItem]LeaseID),
 		leaseExpiredNotifier:      newLeaseExpiredNotifier(),
 		leaseCheckpointHeap:       make(LeaseQueue, 0),
-		b:                         b,
 		minLeaseTTL:               cfg.MinLeaseTTL,
 		leaseRevokeRate:           leaseRevokeRate,
 		checkpointInterval:        checkpointInterval,
@@ -240,11 +234,13 @@ func newLessor(lg *zap.Logger, b backend.Backend, cluster cluster, cfg LessorCon
 		lg:       lg,
 		cluster:  cluster,
 	}
-	l.initAndRecover()
+	if err := l.Recover(b, nil); err != nil {
+		return nil, err
+	}
 
 	go l.runLoop()
 
-	return l
+	return l, nil
 }
 
 // isPrimary indicates if this lessor is the primary lessor. The primary
@@ -597,17 +593,6 @@ func (le *lessor) Detach(id LeaseID, items []LeaseItem) error {
 	return nil
 }
 
-func (le *lessor) Recover(b backend.Backend, rd RangeDeleter) {
-	le.mu.Lock()
-	defer le.mu.Unlock()
-
-	le.b = b
-	le.rd = rd
-	le.leaseMap = make(map[LeaseID]*Lease)
-	le.itemMap = make(map[LeaseItem]LeaseID)
-	le.initAndRecover()
-}
-
 func (le *lessor) ExpiredLeasesC() <-chan []*Lease {
 	return le.expiredC
 }
@@ -805,13 +790,23 @@ func (le *lessor) findDueScheduledCheckpoints(checkpointLimit int) []*pb.LeaseCh
 	return cps
 }
 
-func (le *lessor) initAndRecover() {
-	tx := le.b.BatchTx()
+func (le *lessor) Recover(b backend.Backend, rd RangeDeleter) error {
+	le.mu.Lock()
+	defer le.mu.Unlock()
 
+	tx := b.BatchTx()
 	tx.LockOutsideApply()
 	schema.UnsafeCreateLeaseBucket(tx)
-	lpbs := schema.MustUnsafeGetAllLeases(le.lg, tx)
+	lpbs, err := schema.UnsafeGetAllLeases(tx)
 	tx.Unlock()
+	if err != nil {
+		return err
+	}
+
+	le.b = b
+	le.rd = rd
+	le.leaseMap = make(map[LeaseID]*Lease, len(lpbs))
+	le.itemMap = make(map[LeaseItem]LeaseID)
 	for _, lpb := range lpbs {
 		ID := LeaseID(lpb.ID)
 		if lpb.TTL < le.minLeaseTTL {
@@ -831,7 +826,8 @@ func (le *lessor) initAndRecover() {
 	le.leaseExpiredNotifier.Init()
 	heap.Init(&le.leaseCheckpointHeap)
 
-	le.b.ForceCommit()
+	b.ForceCommit()
+	return nil
 }
 
 // FakeLessor is a fake implementation of Lessor interface.
@@ -875,7 +871,7 @@ func (fl *FakeLessor) Leases() []*Lease { return nil }
 
 func (fl *FakeLessor) ExpiredLeasesC() <-chan []*Lease { return nil }
 
-func (fl *FakeLessor) Recover(b backend.Backend, rd RangeDeleter) {}
+func (fl *FakeLessor) Recover(b backend.Backend, rd RangeDeleter) error { return nil }
 
 func (fl *FakeLessor) Stop() {}
 

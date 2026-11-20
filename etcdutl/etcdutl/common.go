@@ -114,6 +114,6 @@ func (sl *SimpleLessor) Leases() []*lease.Lease { return nil }
 
 func (sl *SimpleLessor) ExpiredLeasesC() <-chan []*lease.Lease { return nil }
 
-func (sl *SimpleLessor) Recover(b backend.Backend, rd lease.RangeDeleter) {}
+func (sl *SimpleLessor) Recover(b backend.Backend, rd lease.RangeDeleter) error { return nil }
 
 func (sl *SimpleLessor) Stop() {}
