@@ -19,14 +19,19 @@ import (
 	"encoding/json"
 	errorspkg "errors"
 	"fmt"
+	"io"
 	"math"
+	"net"
 	"net/http"
+	"net/http/httptrace"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
 	"testing"
+	"testing/iotest"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -71,6 +76,115 @@ import (
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 )
+
+func TestForwardMemberPromote(t *testing.T) {
+	unknownOutcome := errMemberPromoteOutcomeUnknown
+	type attempt func(*http.Request) (*http.Response, error)
+	reply := func(status int, body string) attempt {
+		return func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}, nil
+		}
+	}
+	dialFailed := func(*http.Request) (*http.Response, error) {
+		return nil, &net.OpError{Op: "dial", Err: context.DeadlineExceeded}
+	}
+	lostResponse := func(req *http.Request) (*http.Response, error) {
+		trace := httptrace.ContextClientTrace(req.Context())
+		if trace != nil && trace.GotConn != nil {
+			trace.GotConn(httptrace.GotConnInfo{})
+		}
+		return nil, io.EOF
+	}
+	waitForDeadline := func(req *http.Request) (*http.Response, error) {
+		<-req.Context().Done()
+		return nil, req.Context().Err()
+	}
+	notLearner := reply(http.StatusPreconditionFailed, membership.ErrMemberNotLearner.Error())
+	notReady := reply(http.StatusPreconditionFailed, errors.ErrLearnerNotReady.Error())
+	notFound := reply(http.StatusNotFound, membership.ErrIDNotFound.Error())
+	success := reply(http.StatusOK, `[{"id":2,"peerURLs":["http://learner"]}]`)
+	truncatedSuccess := func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(iotest.ErrReader(io.ErrUnexpectedEOF))}, nil
+	}
+	invalidSuccess := reply(http.StatusOK, "[")
+	serverError := reply(http.StatusInternalServerError, "Internal Server Error")
+	requestTimeout := reply(http.StatusRequestTimeout, "Request Timeout")
+	for _, tt := range []struct {
+		name           string
+		attempts       []attempt
+		loseLeader     bool
+		cancel         bool
+		callerTimesOut bool
+		wantErr        error
+	}{
+		{name: "voter", attempts: []attempt{notLearner}, wantErr: membership.ErrMemberNotLearner},
+		{name: "lost response then voter", attempts: []attempt{lostResponse, notLearner}, wantErr: unknownOutcome},
+		{name: "lost response then learner not ready", attempts: []attempt{lostResponse, notReady}, wantErr: unknownOutcome},
+		{name: "lost response then member not found", attempts: []attempt{lostResponse, notFound}, wantErr: unknownOutcome},
+		{name: "lost response then success", attempts: []attempt{lostResponse, success}},
+		{name: "dial failure then voter", attempts: []attempt{dialFailed, notLearner}, wantErr: membership.ErrMemberNotLearner},
+		{name: "lost response then timeout", attempts: []attempt{lostResponse, waitForDeadline}, wantErr: unknownOutcome},
+		{name: "lost response then election timeout", attempts: []attempt{lostResponse}, loseLeader: true, wantErr: unknownOutcome},
+		{name: "lost response then cancellation", attempts: []attempt{lostResponse}, cancel: true, wantErr: errors.ErrCanceled},
+		{name: "lost response then caller deadline", attempts: []attempt{lostResponse, waitForDeadline}, callerTimesOut: true, wantErr: errors.ErrTimeout},
+		{name: "no connection before timeout", attempts: []attempt{waitForDeadline}, wantErr: errors.ErrTimeout},
+		{name: "truncated success then voter", attempts: []attempt{truncatedSuccess, notLearner}, wantErr: unknownOutcome},
+		{name: "invalid success then voter", attempts: []attempt{invalidSuccess, notLearner}, wantErr: unknownOutcome},
+		{name: "server error then voter", attempts: []attempt{serverError, notLearner}, wantErr: membership.ErrMemberNotLearner},
+		{name: "HTTP request timeout then voter", attempts: []attempt{requestTimeout, notLearner}, wantErr: membership.ErrMemberNotLearner},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				lg := zaptest.NewLogger(t)
+				leader := &membership.Member{
+					ID:             1,
+					RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://leader"}},
+				}
+				calls := 0
+				callerTimeout := 30 * time.Second
+				if tt.callerTimesOut {
+					callerTimeout = time.Second
+				}
+				ctx, cancel := context.WithTimeout(t.Context(), callerTimeout)
+				defer cancel()
+				s := &EtcdServer{
+					Cfg:       config.ServerConfig{ElectionTicks: 1, TickMs: 1000},
+					lgMu:      new(sync.RWMutex),
+					lg:        lg,
+					cluster:   membership.NewClusterFromMembers(lg, 1, []*membership.Member{leader}),
+					r:         raftNode{raftNodeConfig: raftNodeConfig{Node: newNopReadyNode()}},
+					applyWait: wait.NewTimeList(),
+				}
+				s.peerRt = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+					require.Equal(t, http.MethodPost, req.Method)
+					require.Equal(t, "/members/promote/2", req.URL.Path)
+					require.Less(t, calls, len(tt.attempts))
+					do := tt.attempts[calls]
+					calls++
+					resp, err := do(req)
+					if tt.loseLeader {
+						s.setLead(0)
+					}
+					if tt.cancel {
+						cancel()
+					}
+					return resp, err
+				})
+				s.setLead(uint64(leader.ID))
+				members, err := s.PromoteMember(ctx, 2)
+				require.Equal(t, len(tt.attempts), calls)
+				if tt.wantErr != nil {
+					require.ErrorIs(t, err, tt.wantErr)
+					require.Nil(t, members)
+					return
+				}
+				require.NoError(t, err)
+				require.Len(t, members, 1)
+				require.Equal(t, types.ID(2), members[0].ID)
+			})
+		})
+	}
+}
 
 // TestApplyRepeat tests that server handles repeat raft messages gracefully
 func TestApplyRepeat(t *testing.T) {

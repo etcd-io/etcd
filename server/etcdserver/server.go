@@ -1449,6 +1449,8 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) ([]*membership
 	return s.configure(ctx, &cc)
 }
 
+var errMemberPromoteOutcomeUnknown = errorspkg.New("etcdserver: member promotion outcome is unknown")
+
 // PromoteMember promotes a learner node to a voting node.
 func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
 	// only raft leader has information on whether the to-be-promoted learner node is ready. If promoteMember call
@@ -1467,24 +1469,43 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
 	defer cancel()
 	// forward to leader
+	mayHaveApplied := false
 	for cctx.Err() == nil {
 		leader, err := s.waitLeader(cctx)
 		if err != nil {
+			if errorspkg.Is(err, errors.ErrNoLeader) {
+				if cctx.Err() == context.Canceled {
+					return nil, errors.ErrCanceled
+				}
+				if mayHaveApplied && cctx.Err() == context.DeadlineExceeded && ctx.Err() == nil {
+					break
+				}
+			}
 			return nil, err
 		}
 		for _, url := range leader.PeerURLs {
-			resp, err := promoteMemberHTTP(cctx, url, id, s.peerRt)
+			if cctx.Err() != nil {
+				break
+			}
+			resp, attemptMayHaveApplied, err := promoteMemberHTTP(cctx, url, id, s.peerRt)
 			if err == nil {
 				return resp, nil
 			}
-			// If member promotion failed, return early. Otherwise keep retry.
+			mayHaveApplied = mayHaveApplied || attemptMayHaveApplied
 			if errorspkg.Is(err, errors.ErrLearnerNotReady) || errorspkg.Is(err, membership.ErrIDNotFound) || errorspkg.Is(err, membership.ErrMemberNotLearner) {
+				// This rejection only describes the latest attempt.
+				if mayHaveApplied {
+					return nil, errMemberPromoteOutcomeUnknown
+				}
 				return nil, err
 			}
 		}
 	}
 
-	if errorspkg.Is(cctx.Err(), context.DeadlineExceeded) {
+	if cctx.Err() == context.DeadlineExceeded {
+		if mayHaveApplied && ctx.Err() == nil {
+			return nil, errMemberPromoteOutcomeUnknown
+		}
 		return nil, errors.ErrTimeout
 	}
 	return nil, errors.ErrCanceled
