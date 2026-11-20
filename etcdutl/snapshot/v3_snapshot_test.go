@@ -16,6 +16,7 @@ package snapshot
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -257,4 +258,41 @@ func createDB(t *testing.T, generateContent func(*etcdserver.EtcdServer)) string
 	generateContent(etcd.Server)
 
 	return filepath.Join(cfg.Dir, "member", "snap", "db")
+}
+
+// TestRestoreCorruptSnapshotDoesNotHang verifies that a corrupt snapshot makes
+// the restore fail instead of hanging forever in backend.Close. A panicking
+// commit keeps the batch tx lock held on purpose (see #21964), so closing the
+// backend from a deferred call deadlocks while the panic unwinds (#22750).
+func TestRestoreCorruptSnapshotDoesNotHang(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "corrupt-freelist.db"))
+	require.NoError(t, err)
+
+	snapshotPath := filepath.Join(t.TempDir(), "corrupt.db")
+	require.NoError(t, os.WriteFile(snapshotPath, data, 0o600))
+
+	outDir := t.TempDir()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		// The panic bbolt raises is the expected outcome: recovering it here is
+		// what proves the restore did not deadlock.
+		defer func() { _ = recover() }()
+		_ = NewV3(zap.NewNop()).Restore(RestoreConfig{
+			SnapshotPath:        snapshotPath,
+			Name:                "node1",
+			OutputDataDir:       outDir,
+			OutputWALDir:        filepath.Join(outDir, "member", "wal"),
+			PeerURLs:            []string{"http://localhost:12380"},
+			InitialCluster:      "node1=http://localhost:12380",
+			InitialClusterToken: "etcd-cluster",
+			SkipHashCheck:       true,
+		})
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatal("restore hung on a corrupt snapshot: backend.Close deadlocked while the commit panic unwound")
+	}
 }
