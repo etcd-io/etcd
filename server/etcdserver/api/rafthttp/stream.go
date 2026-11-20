@@ -533,7 +533,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			if cr.status.isActive() {
 				if cr.lg != nil {
 					cr.lg.Warn(
-						"dropped internal Raft message since receiving buffer is full (overloaded network)",
+						"dropped internal Raft message since receiving buffer is full",
 						zap.String("message-type", m.GetType().String()),
 						zap.String("local-member-id", cr.tr.ID.String()),
 						zap.String("from", types.ID(m.GetFrom()).String()),
@@ -544,7 +544,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			} else {
 				if cr.lg != nil {
 					cr.lg.Warn(
-						"dropped Raft message since receiving buffer is full (overloaded network)",
+						"dropped Raft message since receiving buffer is full",
 						zap.String("message-type", m.GetType().String()),
 						zap.String("local-member-id", cr.tr.ID.String()),
 						zap.String("from", types.ID(m.GetFrom()).String()),
