@@ -18,15 +18,21 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
+	"io"
 	"os"
 )
 
+// maxPEMFileSize leaves room for certificate chains and CA bundles while bounding memory use.
+const maxPEMFileSize = 1024 * 1024
+
 // NewCertPool creates x509 certPool with provided CA files.
+// Each file is limited to 1 MiB.
 func NewCertPool(CAFiles []string) (*x509.CertPool, error) {
 	certPool := x509.NewCertPool()
 
 	for _, CAFile := range CAFiles {
-		pemByte, err := os.ReadFile(CAFile)
+		pemByte, err := readPEMFile(CAFile)
 		if err != nil {
 			return nil, err
 		}
@@ -50,13 +56,14 @@ func NewCertPool(CAFiles []string) (*x509.CertPool, error) {
 }
 
 // NewCert generates TLS cert by using the given cert,key and parse function.
+// Each file is limited to 1 MiB.
 func NewCert(certfile, keyfile string, parseFunc func([]byte, []byte) (tls.Certificate, error)) (*tls.Certificate, error) {
-	cert, err := os.ReadFile(certfile)
+	cert, err := readPEMFile(certfile)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := os.ReadFile(keyfile)
+	key, err := readPEMFile(keyfile)
 	if err != nil {
 		return nil, err
 	}
@@ -70,4 +77,21 @@ func NewCert(certfile, keyfile string, parseFunc func([]byte, []byte) (tls.Certi
 		return nil, err
 	}
 	return &tlsCert, nil
+}
+
+func readPEMFile(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	b, err := io.ReadAll(io.LimitReader(f, maxPEMFileSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(b) > maxPEMFileSize {
+		return nil, fmt.Errorf("file %q exceeds %d bytes limit", path, maxPEMFileSize)
+	}
+	return b, nil
 }

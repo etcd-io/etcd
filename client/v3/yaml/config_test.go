@@ -17,7 +17,9 @@ package yaml
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -29,6 +31,65 @@ var (
 	privateKeyPath = "../../../tests/fixtures/server.key.insecure"
 	caPath         = "../../../tests/fixtures/ca.crt"
 )
+
+func TestNewConfigFileSizeLimit(t *testing.T) {
+	const (
+		limit = 1024 * 1024
+		small = "endpoints:\n  - http://localhost:2379\n"
+	)
+	large := "endpoints:\n" + strings.Repeat("  - http://localhost:2379\n", 70000)
+	large += "#" + strings.Repeat(" ", 2*limit-len(large)-1)
+	tests := []struct {
+		name string
+		data string
+	}{
+		{name: "small", data: small},
+		{name: "at limit", data: small + "#" + strings.Repeat(" ", limit-len(small)-1)},
+		{name: "over limit", data: small + "#" + strings.Repeat(" ", limit-len(small))},
+		{name: "oversized", data: large},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fpath := filepath.Join(t.TempDir(), "client.yaml")
+			require.NoError(t, os.WriteFile(fpath, []byte(tt.data), 0o600))
+
+			cfg, err := NewConfig(fpath)
+			if len(tt.data) > limit {
+				require.ErrorContains(t, err, "exceeds 1048576 bytes limit")
+				require.ErrorContains(t, err, fpath)
+				require.Nil(t, cfg)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, []string{"http://localhost:2379"}, cfg.Endpoints)
+		})
+	}
+}
+
+func TestNewConfigTrustedCAFileSizeLimit(t *testing.T) {
+	caPEM, err := os.ReadFile(caPath)
+	require.NoError(t, err)
+	for _, size := range []int{len(caPEM), 2 * 1024 * 1024} {
+		dir := t.TempDir()
+		cafile := filepath.Join(dir, "ca.pem")
+		data := string(caPEM) + strings.Repeat("\n", size-len(caPEM))
+		require.NoError(t, os.WriteFile(cafile, []byte(data), 0o600))
+		configData, err := yaml.Marshal(&yamlConfig{TrustedCAfile: cafile})
+		require.NoError(t, err)
+		fpath := filepath.Join(dir, "client.yaml")
+		require.NoError(t, os.WriteFile(fpath, configData, 0o600))
+
+		cfg, err := NewConfig(fpath)
+		if size > 1024*1024 {
+			require.ErrorContains(t, err, "exceeds 1048576 bytes limit")
+			require.ErrorContains(t, err, cafile)
+			require.Nil(t, cfg)
+			continue
+		}
+		require.NoError(t, err)
+		require.NotNil(t, cfg.TLS.RootCAs)
+	}
+}
 
 func TestConfigFromFile(t *testing.T) {
 	tests := []struct {
