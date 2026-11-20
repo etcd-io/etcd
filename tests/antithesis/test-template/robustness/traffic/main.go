@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build cgo && amd64
+//go:build (cgo && amd64) || (cgo && arm64)
 
 package main
 
@@ -99,10 +99,6 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 	ids := identity.NewIDProvider()
 	trafficSet := client.NewSet(ids, baseTime)
 	defer trafficSet.Close()
-	err := traffic.CheckEmptyDatabaseAtStart(ctx, lg, hosts, trafficSet)
-	if err != nil {
-		lg.Fatal("Failed empty database at start check", zap.Error(err))
-	}
 	maxRevisionChan := make(chan int64, 1)
 	g := errgroup.Group{}
 	startTime := time.Since(baseTime)
