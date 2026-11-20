@@ -337,7 +337,7 @@ func (sws *serverWatchStream) recvLoop() error {
 				attribute.Bool("fragment", creq.Fragment),
 			))
 
-			id, err := sws.watchStream.Watch(ctx, mvcc.WatchID(creq.WatchId), creq.Key, creq.RangeEnd, creq.StartRevision, filters...)
+			id, rev, err := sws.watchStream.Watch(ctx, mvcc.WatchID(creq.WatchId), creq.Key, creq.RangeEnd, creq.StartRevision, filters...)
 			if err == nil {
 				sws.mu.Lock()
 				if creq.ProgressNotify {
@@ -352,10 +352,15 @@ func (sws *serverWatchStream) recvLoop() error {
 				sws.mu.Unlock()
 			} else {
 				id = clientv3.InvalidWatchID
+				rev = sws.watchStream.Rev()
 			}
 
+			// Use the revision the watcher was registered at, not a fresh read of
+			// the store. For a watch from the current revision the header promises
+			// every later event has a higher revision, which a fresh read taken
+			// after registration cannot guarantee under concurrent writes.
 			wr := &pb.WatchResponse{
-				Header:   sws.newResponseHeader(sws.watchStream.Rev()),
+				Header:   sws.newResponseHeader(rev),
 				WatchId:  int64(id),
 				Created:  true,
 				Canceled: err != nil,

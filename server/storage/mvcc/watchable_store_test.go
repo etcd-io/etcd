@@ -66,7 +66,7 @@ func TestNewWatcherCancel(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	wt, _ := w.Watch(t.Context(), 0, testKey, nil, 0)
+	wt, _, _ := w.Watch(t.Context(), 0, testKey, nil, 0)
 	if err := w.Cancel(wt); err != nil {
 		t.Error(err)
 	}
@@ -108,7 +108,7 @@ etcd_debugging_mvcc_watcher_total %d
 		w := s.NewWatchStream()
 		defer w.Close()
 
-		wt, _ := w.Watch(t.Context(), 0, testKey, nil, 0)
+		wt, _, _ := w.Watch(t.Context(), 0, testKey, nil, 0)
 
 		// after creating watch, the gauge state should have increased
 		expectWatchGauge(initialGaugeState + 1)
@@ -153,7 +153,7 @@ etcd_debugging_mvcc_watcher_total %d
 		w := s.NewWatchStream()
 		defer w.Close()
 
-		wt, _ := w.Watch(t.Context(), 0, testKey, nil, rev-1)
+		wt, _, _ := w.Watch(t.Context(), 0, testKey, nil, rev-1)
 
 		// wait for the watcher to be marked as compacted
 		select {
@@ -207,7 +207,7 @@ etcd_debugging_mvcc_watcher_total %d
 
 		w := s.NewWatchStream()
 
-		wt, _ := w.Watch(t.Context(), 0, testKey, nil, rev-1)
+		wt, _, _ := w.Watch(t.Context(), 0, testKey, nil, rev-1)
 
 		// wait for the watcher to be marked as compacted
 		select {
@@ -275,7 +275,7 @@ func TestCancelUnsynced(t *testing.T) {
 	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// use 1 to keep watchers in unsynced
-		watchIDs[i], _ = w.Watch(t.Context(), 0, testKey, nil, 1)
+		watchIDs[i], _, _ = w.Watch(t.Context(), 0, testKey, nil, 1)
 	}
 
 	for _, idx := range watchIDs {
@@ -308,7 +308,7 @@ func TestSyncWatchers(t *testing.T) {
 	defer w.Close()
 	watcherN := 100
 	for i := 0; i < watcherN; i++ {
-		_, err := w.Watch(t.Context(), 0, testKey, nil, 1)
+		_, _, err := w.Watch(t.Context(), 0, testKey, nil, 1)
 		require.NoError(t, err)
 	}
 
@@ -471,7 +471,7 @@ func TestWatchCompacted(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	wt, _ := w.Watch(t.Context(), 0, testKey, nil, compactRev-1)
+	wt, _, _ := w.Watch(t.Context(), 0, testKey, nil, compactRev-1)
 	select {
 	case resp := <-w.Chan():
 		if resp.WatchID != wt {
@@ -517,7 +517,7 @@ func TestWatchNoEventLossOnCompact(t *testing.T) {
 		2: 6, // create unsyncd watchers with compactRev < startRev < currentRev
 	}
 	for id, startRev := range watchers {
-		_, err := w.Watch(t.Context(), id, testKey, nil, startRev)
+		_, _, err := w.Watch(t.Context(), id, testKey, nil, startRev)
 		require.NoError(t, err)
 	}
 	// fill up w.Chan() with 1 buf via 2 compacted watch response
@@ -963,7 +963,7 @@ func TestStressWatchCancelClose(t *testing.T) {
 			w := s.NewWatchStream()
 			ids := make([]WatchID, 10)
 			for i := range ids {
-				ids[i], _ = w.Watch(t.Context(), 0, testKey, nil, 0)
+				ids[i], _, _ = w.Watch(t.Context(), 0, testKey, nil, 0)
 			}
 			<-readyc
 			wg.Add(1 + len(ids)/2)
