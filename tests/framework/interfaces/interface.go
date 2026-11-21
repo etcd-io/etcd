@@ -87,6 +87,26 @@ type Client interface {
 	MemberRemove(ctx context.Context, id uint64) (*clientv3.MemberRemoveResponse, error)
 
 	Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan
+
+	Lock(ctx context.Context, name string) (LockHandle, error)
+}
+
+// AcquireResult is the outcome of a lock acquisition attempt.
+type AcquireResult struct {
+	// Name is the identifier of the acquired lock, e.g. the created key.
+	Name string
+	Err  error
+}
+
+// LockHandle represents an attempt to acquire a distributed lock.
+type LockHandle interface {
+	// Acquired returns a channel that yields exactly one result once the
+	// lock has been acquired or the acquisition attempt failed.
+	Acquired() <-chan AcquireResult
+	// Release releases the lock and cleans up the underlying session.
+	// It must be called even if the lock was never acquired; calling it
+	// on a handle that is still waiting for acquisition cancels the wait.
+	Release() error
 }
 
 type TemplateEndpoints interface {
