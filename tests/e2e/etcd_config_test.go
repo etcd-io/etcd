@@ -25,7 +25,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/server/v3/embed"
@@ -595,40 +594,6 @@ func TestSnapshotCatchupEntriesFlag(t *testing.T) {
 	if err := proc.Close(); err != nil {
 		t.Logf("etcd process closed with error %v", err)
 	}
-}
-
-// TestEtcdHealthyWithTinySnapshotCatchupEntries ensures multi-node etcd cluster remains healthy with 10 snapshot catch up entry
-func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
-	e2e.BeforeTest(t)
-	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
-		e2e.WithClusterSize(3),
-		e2e.WithSnapshotCount(10),
-		e2e.WithSnapshotCatchUpEntries(10),
-	)
-	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
-	t.Cleanup(func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
-	})
-
-	// simulate 10 clients keep writing to etcd in parallel with no error
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
-	g, ctx := errgroup.WithContext(ctx)
-	for i := 0; i < 10; i++ {
-		clientID := i
-		g.Go(func() error {
-			cc := epc.Etcdctl()
-			for j := 0; j < 100; j++ {
-				if _, err := cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientID), config.PutOptions{}); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-	}
-	require.NoError(t, g.Wait())
 }
 
 func TestEtcdTLSVersion(t *testing.T) {
