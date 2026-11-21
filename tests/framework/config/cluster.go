@@ -37,6 +37,10 @@ type ClusterConfig struct {
 	AuthToken           string
 	SnapshotCount       uint64
 
+	// SnapshotCatchUpEntries is the number of committed entries that
+	// triggers a snapshot to catch up. If zero, the default value is used.
+	SnapshotCatchUpEntries uint64
+
 	// ClusterContext is used by "e2e" or "integration" to extend the
 	// ClusterConfig. The common test cases shouldn't care about what
 	// data is encoded or included; instead "e2e" or "integration"
@@ -83,6 +87,10 @@ func WithQuotaBackendBytes(bytes int64) ClusterOption {
 
 func WithSnapshotCount(count uint64) ClusterOption {
 	return func(c *ClusterConfig) { c.SnapshotCount = count }
+}
+
+func WithSnapshotCatchUpEntries(count uint64) ClusterOption {
+	return func(c *ClusterConfig) { c.SnapshotCatchUpEntries = count }
 }
 
 func WithStrictReconfigCheck(strict bool) ClusterOption {

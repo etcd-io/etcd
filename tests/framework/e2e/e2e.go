@@ -93,7 +93,11 @@ func (e e2eRunner) NewCluster(ctx context.Context, tb testing.TB, opts ...config
 	default:
 		tb.Fatalf("PeerTLS config %q not supported", cfg.PeerTLS)
 	}
-	epc, err := NewEtcdProcessCluster(ctx, tb, WithConfig(e2eConfig))
+	epcOpts := []EPClusterOption{WithConfig(e2eConfig)}
+	if cfg.SnapshotCatchUpEntries != 0 {
+		epcOpts = append(epcOpts, WithSnapshotCatchUpEntries(cfg.SnapshotCatchUpEntries))
+	}
+	epc, err := NewEtcdProcessCluster(ctx, tb, epcOpts...)
 	if err != nil {
 		tb.Fatalf("could not start etcd integrationCluster: %s", err)
 	}
