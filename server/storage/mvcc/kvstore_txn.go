@@ -258,6 +258,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	tw.trace.Step("marshal mvccpb.KeyValue")
 	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
 	tw.s.kvindex.Put(key, idxRev)
+	kv.Value = append([]byte(nil), kv.Value...)
 	tw.changes = append(tw.changes, kv)
 	tw.trace.Step("store kv pair into bolt db")
 
