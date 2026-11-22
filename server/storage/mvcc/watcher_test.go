@@ -33,6 +33,32 @@ import (
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
+func TestWatchPutDoesNotRetainCallerKey(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	w := s.NewWatchStream()
+	defer w.Close()
+
+	id, err := w.Watch(t.Context(), 0, []byte("foo"), nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	key := []byte("foo")
+	s.Put(key, []byte("bar"), lease.NoLease)
+	copy(key, []byte("boo"))
+
+	resp := collectWatchResponsesForWatchers(t, w.Chan(), id)[id]
+	if len(resp.Events) != 1 {
+		t.Fatalf("watch returned %d events, want 1", len(resp.Events))
+	}
+	if got := string(resp.Events[0].Kv.Key); got != "foo" {
+		t.Errorf("event key = %q, want %q", got, "foo")
+	}
+}
+
 // TestWatcherWatchID tests that each watcher provides unique watchID,
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
