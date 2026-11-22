@@ -353,14 +353,11 @@ func parseWatchArgs(osArgs, commandArgs []string, envKey, envRange string, inter
 
 	// "watch foo bar --rev 1 -- echo hello" or "watch foo --rev 1 bar -- echo hello",
 	// then "watchArgs" is "foo bar echo hello"
-	// so need ignore args after "argsWithSep[idx]", which is "--"
-	endIdx := 0
-	for endIdx = len(watchArgs) - 1; endIdx >= 0; endIdx-- {
-		if watchArgs[endIdx] == argsWithSep[idx+1] {
-			break
-		}
-	}
-	watchArgs = watchArgs[:endIdx]
+	// so need ignore args after "argsWithSep[idx]", which is "--".
+	// The exec args are always the tail of "watchArgs", so trim them by
+	// length. Searching for the first exec arg breaks when it appears
+	// again later (e.g. "-- sh -c 'echo $0' sh").
+	watchArgs = watchArgs[:len(watchArgs)-len(execArgs)]
 
 	return watchArgs, execArgs, nil
 }
