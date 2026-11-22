@@ -440,6 +440,32 @@ func TestConcurrentReadTx(t *testing.T) {
 	}
 }
 
+func TestConcurrentReadTxLimitedRangeOrdering(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("a"), []byte("A"))
+	tx.UnsafePut(schema.Test, []byte("c"), []byte("C"))
+	tx.Unlock()
+	b.ForceCommit()
+
+	tx = b.BatchTx()
+	tx.Lock()
+	tx.UnsafePut(schema.Test, []byte("b"), []byte("B"))
+	tx.Unlock()
+
+	rtx := b.ConcurrentReadTx()
+	rtx.RLock()
+	keys, values := rtx.UnsafeRange(schema.Test, []byte("a"), []byte("z"), 1)
+	rtx.RUnlock()
+
+	require.Equal(t, [][]byte{[]byte("a")}, keys)
+	require.Equal(t, [][]byte{[]byte("A")}, values)
+}
+
 // TestBackendWritebackForEach checks that partially written / buffered
 // data is visited in the same order as fully committed data.
 func TestBackendWritebackForEach(t *testing.T) {

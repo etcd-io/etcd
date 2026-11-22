@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"bytes"
 	"math"
 	"sync"
 
@@ -76,7 +77,7 @@ func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []b
 }
 
 func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
-	if endKey == nil {
+	if len(endKey) == 0 {
 		// forbid duplicates for single keys
 		limit = 1
 	}
@@ -86,9 +87,9 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte,
 	if limit > 1 && !bucketType.IsSafeRangeBucket() {
 		panic("do not use unsafeRange on non-keys bucket")
 	}
-	keys, vals := baseReadTx.buf.Range(bucketType, key, endKey, limit)
-	if int64(len(keys)) == limit {
-		return keys, vals
+	bufferKeys, bufferVals := baseReadTx.buf.Range(bucketType, key, endKey, limit)
+	if len(endKey) == 0 && len(bufferKeys) != 0 {
+		return bufferKeys, bufferVals
 	}
 
 	// find/cache bucket
@@ -109,7 +110,7 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte,
 		if lockHeld {
 			baseReadTx.txMu.Unlock()
 		}
-		return keys, vals
+		return bufferKeys, bufferVals
 	}
 	if !lockHeld {
 		baseReadTx.txMu.Lock()
@@ -117,8 +118,37 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte,
 	c := bucket.Cursor()
 	baseReadTx.txMu.Unlock()
 
-	k2, v2 := unsafeRange(c, key, endKey, limit-int64(len(keys)))
-	return append(k2, keys...), append(v2, vals...)
+	dbKeys, dbVals := unsafeRange(c, key, endKey, limit)
+	var keys, vals [][]byte
+	for i, j := 0, 0; int64(len(keys)) < limit && (i < len(dbKeys) || j < len(bufferKeys)); {
+		switch {
+		case i == len(dbKeys):
+			keys = append(keys, bufferKeys[j])
+			vals = append(vals, bufferVals[j])
+			j++
+		case j == len(bufferKeys):
+			keys = append(keys, dbKeys[i])
+			vals = append(vals, dbVals[i])
+			i++
+		default:
+			switch cmp := bytes.Compare(dbKeys[i], bufferKeys[j]); {
+			case cmp < 0:
+				keys = append(keys, dbKeys[i])
+				vals = append(vals, dbVals[i])
+				i++
+			case cmp > 0:
+				keys = append(keys, bufferKeys[j])
+				vals = append(vals, bufferVals[j])
+				j++
+			default:
+				keys = append(keys, bufferKeys[j])
+				vals = append(vals, bufferVals[j])
+				i++
+				j++
+			}
+		}
+	}
+	return keys, vals
 }
 
 type readTx struct {
