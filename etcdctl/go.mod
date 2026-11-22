@@ -42,7 +42,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
-	golang.org/x/text v0.43.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20261026165753-2ffab32bce7e // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
 )
