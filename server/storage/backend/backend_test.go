@@ -440,6 +440,32 @@ func TestConcurrentReadTx(t *testing.T) {
 	}
 }
 
+func TestConcurrentReadTxDoesNotDuplicateCommittedWrites(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Key)
+	tx.UnsafePut(schema.Key, []byte("key"), []byte("value"))
+	tx.Unlock()
+
+	// Populate the cached copy of the read buffer before the write is committed.
+	read := b.ConcurrentReadTx()
+	read.RLock()
+	read.UnsafeRange(schema.Key, []byte("a"), []byte("z"), 0)
+	read.RUnlock()
+
+	b.ForceCommit()
+
+	read = b.ConcurrentReadTx()
+	read.RLock()
+	keys, vals := read.UnsafeRange(schema.Key, []byte("a"), []byte("z"), 0)
+	read.RUnlock()
+	require.Equal(t, [][]byte{[]byte("key")}, keys)
+	require.Equal(t, [][]byte{[]byte("value")}, vals)
+}
+
 // TestBackendWritebackForEach checks that partially written / buffered
 // data is visited in the same order as fully committed data.
 func TestBackendWritebackForEach(t *testing.T) {
