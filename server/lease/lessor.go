@@ -144,6 +144,8 @@ type Lessor interface {
 // TODO: use clockwork for testability.
 type lessor struct {
 	mu sync.RWMutex
+	// checkpointMu serializes scheduled checkpoints with lease renewals.
+	checkpointMu sync.Mutex
 
 	// demotec is set when the lessor is the primary.
 	// demotec will be closed if the lessor is demoted.
@@ -408,8 +410,6 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 		le.mu.RUnlock()
 		return -1, ErrLeaseNotFound
 	}
-	// Clear remaining TTL when we renew if it is set
-	clearRemainingTTL := le.cp != nil && l.remainingTTL > 0
 
 	le.mu.RUnlock()
 	if l.expired() {
@@ -427,6 +427,36 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 			return -1, ErrNotPrimary
 		}
 	}
+
+	le.checkpointMu.Lock()
+	le.mu.RLock()
+	if !le.isPrimary() {
+		le.mu.RUnlock()
+		le.checkpointMu.Unlock()
+		return -1, ErrNotPrimary
+	}
+	demotec = le.demotec
+	l = le.leaseMap[id]
+	if l == nil {
+		le.mu.RUnlock()
+		le.checkpointMu.Unlock()
+		return -1, ErrLeaseNotFound
+	}
+	// Clear remaining TTL when we renew if it is set.
+	clearRemainingTTL := le.cp != nil && l.remainingTTL > 0
+	le.mu.RUnlock()
+	if l.expired() {
+		le.checkpointMu.Unlock()
+		select {
+		case <-l.revokec:
+			return -1, ErrLeaseNotFound
+		case <-demotec:
+			return -1, ErrNotPrimary
+		case <-le.stopC:
+			return -1, ErrNotPrimary
+		}
+	}
+	defer le.checkpointMu.Unlock()
 
 	// gofail: var beforeCheckpointInLeaseRenew struct{}
 
@@ -667,6 +697,7 @@ func (le *lessor) revokeExpiredLeases() {
 func (le *lessor) checkpointScheduledLeases() {
 	// rate limit
 	for i := 0; i < leaseCheckpointRate/2; i++ {
+		le.checkpointMu.Lock()
 		var cps []*pb.LeaseCheckpoint
 
 		le.mu.Lock()
@@ -675,10 +706,13 @@ func (le *lessor) checkpointScheduledLeases() {
 		}
 		le.mu.Unlock()
 
+		var err error
 		if len(cps) != 0 {
-			if err := le.cp(context.Background(), &pb.LeaseCheckpointRequest{Checkpoints: cps}); err != nil {
-				return
-			}
+			err = le.cp(context.Background(), &pb.LeaseCheckpointRequest{Checkpoints: cps})
+		}
+		le.checkpointMu.Unlock()
+		if err != nil {
+			return
 		}
 		if len(cps) < maxLeaseCheckpointBatchSize {
 			return

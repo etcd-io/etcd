@@ -305,6 +305,115 @@ func TestLessorRenewWithCheckpointer(t *testing.T) {
 	}
 }
 
+func TestLessorRenewDoesNotRestoreOlderScheduledCheckpoint(t *testing.T) {
+	lg := zap.NewNop()
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	cfg := LessorConfig{MinLeaseTTL: 1, CheckpointInterval: 100 * time.Millisecond, CheckpointPersist: true}
+	le := newLessor(lg, be, clusterLatest(), cfg)
+	stopped := false
+	defer func() {
+		if !stopped {
+			le.Stop()
+		}
+	}()
+	if _, err := le.Grant(7, 30); err != nil {
+		t.Fatal(err)
+	}
+	if err := le.Checkpoint(7, 20); err != nil {
+		t.Fatal(err)
+	}
+
+	checkpointStarted := make(chan struct{})
+	checkpointRelease := make(chan struct{})
+	checkpointApplied := make(chan struct{})
+	clearStarted := make(chan struct{})
+	clearApplied := make(chan struct{})
+	le.SetCheckpointer(func(_ context.Context, req *pb.LeaseCheckpointRequest) error {
+		for _, cp := range req.Checkpoints {
+			if cp.Remaining_TTL == 0 {
+				close(clearStarted)
+				if err := le.Checkpoint(LeaseID(cp.ID), cp.Remaining_TTL); err != nil {
+					return err
+				}
+				close(clearApplied)
+				continue
+			}
+			close(checkpointStarted)
+			<-checkpointRelease
+			if err := le.Checkpoint(LeaseID(cp.ID), cp.Remaining_TTL); err != nil {
+				return err
+			}
+			close(checkpointApplied)
+		}
+		return nil
+	})
+	le.Promote(0)
+
+	select {
+	case <-checkpointStarted:
+	case <-time.After(3 * time.Second):
+		t.Fatal("scheduled checkpoint did not start")
+	}
+
+	renewed := make(chan error, 1)
+	go func() {
+		_, err := le.Renew(7)
+		renewed <- err
+	}()
+	renewFinished := false
+	select {
+	case <-clearStarted:
+		select {
+		case <-clearApplied:
+		case <-time.After(3 * time.Second):
+			t.Fatal("renewal did not clear the saved lifetime")
+		}
+		select {
+		case err := <-renewed:
+			if err != nil {
+				t.Fatal(err)
+			}
+			renewFinished = true
+		case <-time.After(3 * time.Second):
+			t.Fatal("renewal did not finish")
+		}
+	case <-time.After(time.Second):
+	}
+	close(checkpointRelease)
+	select {
+	case <-checkpointApplied:
+	case <-time.After(3 * time.Second):
+		t.Fatal("scheduled checkpoint did not finish")
+	}
+	if !renewFinished {
+		select {
+		case err := <-renewed:
+			if err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatal("renewal did not finish")
+		}
+	}
+	select {
+	case <-clearApplied:
+	default:
+		t.Fatal("renewal did not clear the saved lifetime")
+	}
+
+	le.Stop()
+	stopped = true
+	recovered := newLessor(lg, be, clusterLatest(), cfg)
+	defer recovered.Stop()
+	recovered.Promote(0)
+	if remaining := recovered.Lookup(7).Remaining(); remaining < 25*time.Second {
+		t.Fatalf("renewed lease restored with only %s remaining, want at least 25s", remaining)
+	}
+}
+
 // TestLessorRenewExtendPileup ensures Lessor extends leases on promotion if too many
 // expire at the same time.
 func TestLessorRenewExtendPileup(t *testing.T) {
