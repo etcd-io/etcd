@@ -442,19 +442,7 @@ func (sws *serverWatchStream) sendLoop() {
 			// TODO(fuweid): do we still need copy here?
 			evs := wresp.Events
 			events := make([]*mvccpb.Event, len(evs))
-			sws.mu.RLock()
-			needPrevKV := sws.prevKV[wresp.WatchID]
-			sws.mu.RUnlock()
-			for i := range evs {
-				events[i] = evs[i]
-				if needPrevKV && !IsCreateEvent(evs[i]) {
-					opt := mvcc.RangeOptions{Rev: evs[i].Kv.ModRevision - 1}
-					r, err := sws.watchable.Range(context.TODO(), evs[i].Kv.Key, nil, opt)
-					if err == nil && len(r.KVs) != 0 {
-						events[i].PrevKv = r.KVs[0]
-					}
-				}
-			}
+			copy(events, evs)
 
 			canceled := wresp.CompactRevision != 0
 			wr := &pb.WatchResponse{
@@ -476,21 +464,7 @@ func (sws *serverWatchStream) sendLoop() {
 				}
 			}
 
-			mvcc.ReportEventReceived(len(evs))
-
-			sws.mu.RLock()
-			fragmented, ok := sws.fragment[wresp.WatchID]
-			sws.mu.RUnlock()
-
-			var serr error
-			// gofail: var beforeSendWatchResponse struct{}
-			if !fragmented && !ok {
-				serr = sws.gRPCStream.Send(wr)
-			} else {
-				serr = sendFragments(wr, sws.maxRequestBytes, sws.gRPCStream.Send)
-			}
-
-			if serr != nil {
+			if serr := sws.sendWatchResponse(wresp.WatchID, wr); serr != nil {
 				if isClientCtxErr(sws.gRPCStream.Context().Err(), serr) {
 					sws.lg.Debug("failed to send watch response to gRPC stream", zap.Error(serr))
 				} else {
@@ -499,13 +473,6 @@ func (sws *serverWatchStream) sendLoop() {
 				}
 				return
 			}
-
-			sws.mu.Lock()
-			if len(evs) > 0 && sws.progress[wresp.WatchID] {
-				// elide next progress update if sent a key update
-				sws.progress[wresp.WatchID] = false
-			}
-			sws.mu.Unlock()
 
 			totalDur := time.Since(start)
 			watchSendLoopWatchStreamDuration.Observe(totalDur.Seconds())
@@ -538,9 +505,10 @@ func (sws *serverWatchStream) sendLoop() {
 			if c.Created {
 				// flush buffered events
 				ids[wid] = struct{}{}
-				for _, v := range pending[wid] {
-					mvcc.ReportEventReceived(len(v.Events))
-					if err := sws.gRPCStream.Send(v); err != nil {
+				for len(pending[wid]) > 0 {
+					v := pending[wid][0]
+					pending[wid] = pending[wid][1:]
+					if err := sws.sendWatchResponse(wid, v); err != nil {
 						if isClientCtxErr(sws.gRPCStream.Context().Err(), err) {
 							sws.lg.Debug("failed to send pending watch response to gRPC stream", zap.Error(err))
 						} else {
@@ -572,6 +540,46 @@ func (sws *serverWatchStream) sendLoop() {
 			return
 		}
 	}
+}
+
+func (sws *serverWatchStream) sendWatchResponse(wid mvcc.WatchID, wr *pb.WatchResponse) error {
+	sws.mu.RLock()
+	needPrevKV := sws.prevKV[wid]
+	fragmented := sws.fragment[wid]
+	sws.mu.RUnlock()
+
+	if needPrevKV {
+		for _, ev := range wr.Events {
+			if !IsCreateEvent(ev) {
+				opt := mvcc.RangeOptions{Rev: ev.Kv.ModRevision - 1}
+				r, err := sws.watchable.Range(context.TODO(), ev.Kv.Key, nil, opt)
+				if err == nil && len(r.KVs) != 0 {
+					ev.PrevKv = r.KVs[0]
+				}
+			}
+		}
+	}
+
+	mvcc.ReportEventReceived(len(wr.Events))
+
+	var serr error
+	// gofail: var beforeSendWatchResponse struct{}
+	if !fragmented {
+		serr = sws.gRPCStream.Send(wr)
+	} else {
+		serr = sendFragments(wr, sws.maxRequestBytes, sws.gRPCStream.Send)
+	}
+	if serr != nil {
+		return serr
+	}
+
+	sws.mu.Lock()
+	if len(wr.Events) > 0 && sws.progress[wid] {
+		// elide next progress update if sent a key update
+		sws.progress[wid] = false
+	}
+	sws.mu.Unlock()
+	return nil
 }
 
 func IsCreateEvent(e *mvccpb.Event) bool {
