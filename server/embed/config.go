@@ -859,7 +859,10 @@ func (cfg *configYAML) configFromFile(path string) error {
 	}
 
 	if cfg.CORSJSON != "" {
-		uv := flags.NewUniqueURLsWithExceptions(cfg.CORSJSON, "*")
+		uv := flags.NewUniqueURLsWithExceptions("", "*")
+		if err := uv.Set(cfg.CORSJSON); err != nil {
+			return fmt.Errorf("invalid cors: %w", err)
+		}
 		cfg.CORS = uv.Values
 	}
 
