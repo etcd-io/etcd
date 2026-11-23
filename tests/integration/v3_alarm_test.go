@@ -126,6 +126,90 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	require.Errorf(t, err, "alarmed instance should reject put after reset")
 }
 
+// TestV3StorageQuotaAPIAfterSnapshot tests the V3 server checks quotas at the API layer against the backend received in a snapshot
+func TestV3StorageQuotaAPIAfterSnapshot(t *testing.T) {
+	integration.BeforeTest(t)
+	quotasize := int64(64 * os.Getpagesize())
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:                   3,
+		SnapshotCount:          10,
+		SnapshotCatchUpEntries: 5,
+	})
+	defer clus.Terminate(t)
+	kvc1 := integration.ToGRPC(clus.Client(1)).KV
+	mt1 := integration.ToGRPC(clus.Client(1)).Maintenance
+
+	// set a quota on member 0 only so that only it can reject the fill
+	clus.Members[0].QuotaBackendBytes = quotasize
+	clus.Members[0].Stop(t)
+	clus.Members[0].Restart(t)
+	clus.WaitMembersForLeader(t, clus.Members)
+	kvc0 := integration.ToGRPC(clus.Client(0)).KV
+	waitForRestart(t, kvc0)
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	defer cancel()
+
+	key := []byte("abc")
+	buf := make([]byte, 2*os.Getpagesize())
+
+	// fill the backend through member 0 until a put is rejected
+	var err error
+	for err == nil {
+		_, err = kvc0.Put(ctx, &pb.PutRequest{Key: key, Value: buf})
+	}
+	if !eqErrGRPC(err, rpctypes.ErrGRPCNoSpace) {
+		t.Fatalf("put got %v, expected %v", err, rpctypes.ErrGRPCNoSpace)
+	}
+
+	// isolate member 0 and free the space on the other members
+	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
+	clus.WaitMembersForLeader(t, clus.Members[1:])
+
+	dresp, err := kvc1.DeleteRange(ctx, &pb.DeleteRangeRequest{Key: key})
+	require.NoError(t, err)
+	_, err = kvc1.Compact(ctx, &pb.CompactionRequest{Revision: dresp.Header.Revision})
+	require.NoError(t, err)
+
+	// defragment until the compaction has finished and the backend has shrunk
+	for _, m := range clus.Members[1:] {
+		mt := integration.ToGRPC(m.Client).Maintenance
+		require.Eventuallyf(t, func() bool {
+			_, derr := mt.Defragment(ctx, &pb.DefragmentRequest{})
+			return derr == nil && m.Server.Backend().Size() < quotasize/2
+		}, 10*time.Second, 100*time.Millisecond, "member %s did not shrink its backend", m.Name)
+	}
+
+	aresp, err := mt1.Alarm(ctx, &pb.AlarmRequest{Action: pb.AlarmRequest_GET})
+	require.NoError(t, err)
+	for _, alarm := range aresp.Alarms {
+		_, err = mt1.Alarm(ctx, &pb.AlarmRequest{Action: pb.AlarmRequest_DEACTIVATE, MemberID: alarm.MemberID, Alarm: alarm.Alarm})
+		require.NoError(t, err)
+	}
+
+	// to trigger snapshot from the leader to member 0
+	for i := 0; i < 30; i++ {
+		_, err = kvc1.Put(ctx, &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+		require.NoError(t, err)
+	}
+
+	clus.Members[0].RecoverPartition(t, clus.Members[1:]...)
+	_, err = clus.Members[0].LogObserver.Expect(ctx, "applied snapshot", 1)
+	require.NoError(t, err)
+	clus.WaitLeader(t)
+
+	// member 0 now has a small backend, so the put rejected before should work
+	require.Less(t, clus.Members[0].Server.Backend().Size(), quotasize/2)
+	_, err = kvc0.Put(ctx, &pb.PutRequest{Key: key, Value: buf})
+	require.NoError(t, err)
+
+	// alarm should not be raised again
+	aresp, err = mt1.Alarm(ctx, &pb.AlarmRequest{Action: pb.AlarmRequest_GET})
+	require.NoError(t, err)
+	require.Empty(t, aresp.Alarms)
+}
+
 // TestV3AlarmDeactivate ensures that space alarms can be deactivated so puts go through.
 func TestV3AlarmDeactivate(t *testing.T) {
 	integration.BeforeTest(t)
