@@ -15,9 +15,31 @@
 package command
 
 import (
+	"os"
+	"os/exec"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
+
+func TestIsSerializable(t *testing.T) {
+	// IsSerializable exits the process on an unknown value, so run that case in a child process.
+	if os.Getenv("ETCDCTL_TEST_IS_SERIALIZABLE") == "1" {
+		getConsistency = "l" // the default of "get --consistency"
+		IsSerializable("x")
+		return
+	}
+
+	require.True(t, IsSerializable("s"))
+	require.False(t, IsSerializable("l"))
+
+	cmd := exec.Command(os.Args[0], "-test.run=^TestIsSerializable$")
+	cmd.Env = append(os.Environ(), "ETCDCTL_TEST_IS_SERIALIZABLE=1")
+	out, err := cmd.CombinedOutput()
+	require.Error(t, err)
+	require.Contains(t, string(out), `unknown consistency flag "x"`)
+}
 
 func TestArgify(t *testing.T) {
 	tests := []struct {
