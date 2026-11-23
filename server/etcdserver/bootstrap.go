@@ -195,7 +195,6 @@ type bootstrappedRaft struct {
 	lg        *zap.Logger
 	heartbeat time.Duration
 
-	peers   []raft.Peer
 	config  *raft.Config
 	storage *raft.MemoryStorage
 }
@@ -516,30 +515,14 @@ func (c *bootstrappedCluster) databaseFileMissing(s *bootstrappedStorage) bool {
 }
 
 func bootstrapRaft(cfg config.ServerConfig, cluster *bootstrappedCluster, bwal *bootstrappedWAL) *bootstrappedRaft {
-	switch {
-	case !bwal.haveWAL && !cfg.NewCluster:
-		return bootstrapRaftFromCluster(cfg, cluster.cl, nil, bwal)
-	case !bwal.haveWAL && cfg.NewCluster:
-		return bootstrapRaftFromCluster(cfg, cluster.cl, cluster.cl.MemberIDs(), bwal)
-	case bwal.haveWAL:
-		return bootstrapRaftFromWAL(cfg, bwal)
-	default:
-		cfg.Logger.Panic("unsupported bootstrap config")
-		return nil
+	if !bwal.haveWAL {
+		return bootstrapRaftFromCluster(cfg, cluster.cl, bwal)
 	}
+	return bootstrapRaftFromWAL(cfg, bwal)
 }
 
-func bootstrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID, bwal *bootstrappedWAL) *bootstrappedRaft {
+func bootstrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster, bwal *bootstrappedWAL) *bootstrappedRaft {
 	member := cl.MemberByName(cfg.Name)
-	peers := make([]raft.Peer, len(ids))
-	for i, id := range ids {
-		var ctx []byte
-		ctx, err := json.Marshal((*cl).Member(id))
-		if err != nil {
-			cfg.Logger.Panic("failed to marshal member", zap.Error(err))
-		}
-		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
-	}
 	cfg.Logger.Info(
 		"starting local member",
 		zap.String("local-member-id", member.ID.String()),
@@ -550,7 +533,6 @@ func bootstrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluste
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
 		config:    raftConfig(cfg, uint64(member.ID), s),
-		peers:     peers,
 		storage:   s,
 	}
 }
@@ -580,12 +562,7 @@ func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft
 }
 
 func (b *bootstrappedRaft) newRaftNode(ss *snap.Snapshotter, wal *wal.WAL, cl *membership.RaftCluster) *raftNode {
-	var n raft.Node
-	if len(b.peers) == 0 {
-		n = raft.RestartNode(b.config)
-	} else {
-		n = raft.StartNode(b.config, b.peers)
-	}
+	n := raft.RestartNode(b.config)
 	raftStatusMu.Lock()
 	raftStatus = n.Status
 	raftStatusMu.Unlock()
@@ -706,6 +683,42 @@ type snapshotMetadata struct {
 	nodeID, clusterID types.ID
 }
 
+func initialClusterRaftState(lg *zap.Logger, cl *membership.RaftCluster) (*raftpb.HardState, []*raftpb.Entry, *raftpb.Snapshot) {
+	ids := cl.MemberIDs()
+	ents := make([]*raftpb.Entry, len(ids))
+	voters := make([]uint64, len(ids))
+	for i, id := range ids {
+		voters[i] = uint64(id)
+		ctx, err := json.Marshal(cl.Member(id))
+		if err != nil {
+			lg.Panic("failed to marshal member", zap.Error(err))
+		}
+		cc := &raftpb.ConfChange{
+			Type:    raftpb.ConfChangeAddNode.Enum(),
+			NodeId:  new(uint64(id)),
+			Context: ctx,
+		}
+		ents[i] = &raftpb.Entry{
+			Type:  raftpb.EntryConfChange.Enum(),
+			Term:  new(uint64(1)),
+			Index: new(uint64(i + 1)),
+			Data:  pbutil.MustMarshalMessage(cc),
+		}
+	}
+	st := &raftpb.HardState{
+		Term:   new(uint64(1)),
+		Commit: new(uint64(len(ents))),
+	}
+	snap := &raftpb.Snapshot{
+		Metadata: &raftpb.SnapshotMetadata{
+			ConfState: &raftpb.ConfState{
+				Voters: voters,
+			},
+		},
+	}
+	return st, ents, snap
+}
+
 func bootstrapNewWAL(cfg config.ServerConfig, cl *bootstrappedCluster) *bootstrappedWAL {
 	metadata := pbutil.MustMarshalMessage(
 		&etcdserverpb.Metadata{
@@ -713,7 +726,15 @@ func bootstrapNewWAL(cfg config.ServerConfig, cl *bootstrappedCluster) *bootstra
 			ClusterID: new(uint64(cl.cl.ID())),
 		},
 	)
-	w, err := wal.Create(cfg.Logger, cfg.WALDir(), metadata)
+	var (
+		st   *raftpb.HardState
+		ents []*raftpb.Entry
+		snap *raftpb.Snapshot
+	)
+	if cfg.NewCluster {
+		st, ents, snap = initialClusterRaftState(cfg.Logger, cl.cl)
+	}
+	w, err := wal.CreateWithInitialState(cfg.Logger, cfg.WALDir(), metadata, st, ents)
 	if err != nil {
 		cfg.Logger.Panic("failed to create WAL", zap.Error(err))
 	}
@@ -721,8 +742,11 @@ func bootstrapNewWAL(cfg config.ServerConfig, cl *bootstrappedCluster) *bootstra
 		w.SetUnsafeNoFsync()
 	}
 	return &bootstrappedWAL{
-		lg: cfg.Logger,
-		w:  w,
+		lg:       cfg.Logger,
+		w:        w,
+		st:       st,
+		ents:     ents,
+		snapshot: snap,
 	}
 }
 

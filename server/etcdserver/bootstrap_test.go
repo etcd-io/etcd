@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -43,6 +44,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -357,4 +359,196 @@ func TestBootstrapWALFromSnapshotBackendAheadOfWAL(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, ents2, 4)
 	require.Equal(t, uint64(31), ents2[len(ents2)-1].GetIndex())
+}
+
+func reserveEphemeralAddr(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	addr := ln.Addr().String()
+	require.NoError(t, ln.Close())
+	return addr
+}
+
+func assertInitialBootstrapWALAndRaftState(t *testing.T, cfg config.ServerConfig, b *bootstrappedServer) {
+	t.Helper()
+
+	expectedIDs := b.cluster.cl.MemberIDs()
+	expectedVoters := make([]uint64, len(expectedIDs))
+	for i, id := range expectedIDs {
+		expectedVoters[i] = uint64(id)
+	}
+
+	// Verify the published WAL already contains the initial ConfChangeAddNode
+	// entries and committed HardState before b.storage.wal.w.Close() or
+	// raftNode.start() ever runs.
+	w, err := wal.OpenForRead(cfg.Logger, cfg.WALDir(), &walpb.Snapshot{})
+	require.NoError(t, err)
+	defer w.Close()
+
+	_, st, ents, err := w.ReadAll()
+	require.NoError(t, err)
+	require.Lenf(t, ents, len(expectedIDs), "initial bootstrap WAL must persist %d ConfChangeAddNode entries before rename", len(expectedIDs))
+	require.Equal(t, uint64(1), st.GetTerm())
+	require.Equal(t, uint64(len(expectedIDs)), st.GetCommit())
+
+	for i, ent := range ents {
+		require.Equal(t, raftpb.EntryConfChange, ent.GetType())
+		require.Equal(t, uint64(i+1), ent.GetIndex())
+		require.Equal(t, uint64(1), ent.GetTerm())
+
+		var cc raftpb.ConfChange
+		pbutil.MustUnmarshalMessage(&cc, ent.Data)
+		require.Equal(t, raftpb.ConfChangeAddNode, cc.GetType())
+		require.Equal(t, uint64(expectedIDs[i]), cc.GetNodeId())
+
+		var m membership.Member
+		require.NoError(t, json.Unmarshal(cc.Context, &m))
+		expectedMember := b.cluster.cl.Member(expectedIDs[i])
+		require.NotNil(t, expectedMember)
+		require.Equal(t, expectedMember.ID, m.ID)
+		require.Equal(t, expectedMember.Name, m.Name)
+		require.Equal(t, expectedMember.PeerURLs, m.PeerURLs)
+	}
+
+	hs, cs, err := b.raft.storage.InitialState()
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), hs.GetTerm())
+	require.Equal(t, uint64(len(expectedIDs)), hs.GetCommit())
+	require.Equal(t, expectedVoters, cs.Voters)
+}
+
+func TestBootstrapNewClusterPersistsInitialConfChangeInWAL(t *testing.T) {
+	dataDir := t.TempDir()
+	peerAddr := reserveEphemeralAddr(t)
+	clientAddr := reserveEphemeralAddr(t)
+	urlsmap, err := types.NewURLsMap(fmt.Sprintf("node0=http://%s", peerAddr))
+	require.NoError(t, err)
+	peerURLs, err := types.NewURLs([]string{fmt.Sprintf("http://%s", peerAddr)})
+	require.NoError(t, err)
+	clientURLs, err := types.NewURLs([]string{fmt.Sprintf("http://%s", clientAddr)})
+	require.NoError(t, err)
+
+	cfg := config.ServerConfig{
+		Name:                "node0",
+		DataDir:             dataDir,
+		PeerURLs:            peerURLs,
+		ClientURLs:          clientURLs,
+		InitialPeerURLsMap:  urlsmap,
+		InitialClusterToken: "test-token",
+		NewCluster:          true,
+		TickMs:              100,
+		ElectionTicks:       10,
+		BackendFreelistType: bolt.FreelistArrayType,
+		Logger:              zaptest.NewLogger(t),
+	}
+
+	b, err := bootstrap(cfg)
+	require.NoError(t, err)
+	bClosed := false
+	t.Cleanup(func() {
+		if !bClosed {
+			_ = b.storage.wal.w.Close()
+			b.Close()
+		}
+	})
+	assertInitialBootstrapWALAndRaftState(t, cfg, b)
+	require.NoError(t, b.storage.wal.w.Close())
+	b.Close()
+	bClosed = true
+
+	b2, err := bootstrap(cfg)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = b2.storage.wal.w.Close()
+		b2.Close()
+	})
+	require.True(t, b2.storage.wal.haveWAL)
+	require.Equal(t, uint64(1), b2.storage.wal.st.GetTerm())
+	require.Equal(t, uint64(1), b2.storage.wal.st.GetCommit())
+	require.Len(t, b2.storage.wal.ents, 1)
+
+	n := raft.RestartNode(b2.raft.config)
+	defer n.Stop()
+	rd := <-n.Ready()
+	require.Empty(t, rd.Entries)
+	require.Len(t, rd.CommittedEntries, 1)
+	require.Equal(t, raftpb.EntryConfChange, rd.CommittedEntries[0].GetType())
+	require.Equal(t, uint64(1), rd.CommittedEntries[0].GetIndex())
+}
+
+func TestBootstrapNewMultiNodeClusterPersistsAllInitialPeersInWAL(t *testing.T) {
+	dataDir := t.TempDir()
+	peer0 := reserveEphemeralAddr(t)
+	peer1 := reserveEphemeralAddr(t)
+	peer2 := reserveEphemeralAddr(t)
+	clientAddr := reserveEphemeralAddr(t)
+	urlsmap, err := types.NewURLsMap(fmt.Sprintf("node0=http://%s,node1=http://%s,node2=http://%s", peer0, peer1, peer2))
+	require.NoError(t, err)
+	peerURLs, err := types.NewURLs([]string{fmt.Sprintf("http://%s", peer0)})
+	require.NoError(t, err)
+	clientURLs, err := types.NewURLs([]string{fmt.Sprintf("http://%s", clientAddr)})
+	require.NoError(t, err)
+
+	cfg := config.ServerConfig{
+		Name:                "node0",
+		DataDir:             dataDir,
+		PeerURLs:            peerURLs,
+		ClientURLs:          clientURLs,
+		InitialPeerURLsMap:  urlsmap,
+		InitialClusterToken: "test-token",
+		NewCluster:          true,
+		TickMs:              100,
+		ElectionTicks:       10,
+		BackendFreelistType: bolt.FreelistArrayType,
+		Logger:              zaptest.NewLogger(t),
+	}
+
+	b, err := bootstrap(cfg)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = b.storage.wal.w.Close()
+		b.Close()
+	})
+	assertInitialBootstrapWALAndRaftState(t, cfg, b)
+}
+
+func TestBootstrapJoinExistingClusterLeavesInitialWALEmpty(t *testing.T) {
+	dataDir := t.TempDir()
+	peerAddr := reserveEphemeralAddr(t)
+	urlsmap, err := types.NewURLsMap(fmt.Sprintf("node0=http://%s", peerAddr))
+	require.NoError(t, err)
+	peerURLs, err := types.NewURLs([]string{fmt.Sprintf("http://%s", peerAddr)})
+	require.NoError(t, err)
+
+	lg := zaptest.NewLogger(t)
+	cl, err := membership.NewClusterFromURLsMap(lg, "test-token", urlsmap)
+	require.NoError(t, err)
+
+	cfg := config.ServerConfig{
+		Name:                "node0",
+		DataDir:             dataDir,
+		PeerURLs:            peerURLs,
+		InitialPeerURLsMap:  urlsmap,
+		InitialClusterToken: "test-token",
+		NewCluster:          false,
+		Logger:              lg,
+	}
+
+	bwal := bootstrapNewWAL(cfg, &bootstrappedCluster{cl: cl})
+	t.Cleanup(func() {
+		_ = bwal.w.Close()
+	})
+	require.Nil(t, bwal.st)
+	require.Nil(t, bwal.ents)
+	require.Nil(t, bwal.snapshot)
+
+	r, err := wal.OpenForRead(cfg.Logger, cfg.WALDir(), &walpb.Snapshot{})
+	require.NoError(t, err)
+	defer r.Close()
+
+	_, st, ents, err := r.ReadAll()
+	require.NoError(t, err)
+	require.Empty(t, ents)
+	require.True(t, raft.IsEmptyHardState(st))
 }

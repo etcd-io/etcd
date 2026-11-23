@@ -25,6 +25,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -1248,4 +1249,142 @@ func TestLastRecordLengthExceedFileEnd(t *testing.T) {
 	// Note: The wal file will be repaired automatically in production
 	// environment, but only once.
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+}
+
+func TestCreateWithInitialState(t *testing.T) {
+	p := t.TempDir()
+	lg := zaptest.NewLogger(t)
+
+	initEnts := []*raftpb.Entry{
+		{
+			Type:  raftpb.EntryConfChange.Enum(),
+			Term:  new(uint64(1)),
+			Index: new(uint64(1)),
+			Data:  []byte("peer1"),
+		},
+		{
+			Type:  raftpb.EntryConfChange.Enum(),
+			Term:  new(uint64(1)),
+			Index: new(uint64(2)),
+			Data:  []byte("peer2"),
+		},
+	}
+	initState := &raftpb.HardState{
+		Term:   new(uint64(1)),
+		Commit: new(uint64(2)),
+	}
+
+	w, err := CreateWithInitialState(lg, p, []byte("meta"), initState, initEnts)
+	require.NoError(t, err)
+	wClosed := false
+	t.Cleanup(func() {
+		if !wClosed {
+			_ = w.Close()
+		}
+	})
+	require.Equal(t, uint64(2), w.enti)
+
+	// Verify initial state and entries are already flushed and published on disk
+	// before w.Close() is called.
+	r, err := OpenForRead(lg, p, &walpb.Snapshot{})
+	require.NoError(t, err)
+	func() {
+		defer r.Close()
+		meta, st, ents, readErr := r.ReadAll()
+		require.NoError(t, readErr)
+		require.Equal(t, []byte("meta"), meta)
+		require.Equal(t, uint64(1), st.GetTerm())
+		require.Equal(t, uint64(2), st.GetCommit())
+		require.Len(t, ents, 2)
+		require.Equal(t, uint64(1), ents[0].GetIndex())
+		require.Equal(t, []byte("peer1"), ents[0].GetData())
+		require.Equal(t, uint64(2), ents[1].GetIndex())
+		require.Equal(t, []byte("peer2"), ents[1].GetData())
+	}()
+
+	// Append a follow-up entry directly to w and verify CRC continuity and enti
+	// tracking after reopen.
+	err = w.Save(&raftpb.HardState{Term: new(uint64(1)), Commit: new(uint64(3))}, []*raftpb.Entry{
+		{Type: raftpb.EntryNormal.Enum(), Term: new(uint64(1)), Index: new(uint64(3)), Data: []byte("kv")},
+	})
+	require.NoError(t, err)
+	require.Equal(t, uint64(3), w.enti)
+	require.NoError(t, w.Close())
+	wClosed = true
+
+	w2, err := Open(lg, p, &walpb.Snapshot{})
+	require.NoError(t, err)
+	defer w2.Close()
+
+	meta2, st2, ents2, err := w2.ReadAll()
+	require.NoError(t, err)
+	require.Equal(t, []byte("meta"), meta2)
+	require.Equal(t, uint64(1), st2.GetTerm())
+	require.Equal(t, uint64(3), st2.GetCommit())
+	require.Len(t, ents2, 3)
+	require.Equal(t, uint64(1), ents2[0].GetIndex())
+	require.Equal(t, []byte("peer1"), ents2[0].GetData())
+	require.Equal(t, uint64(2), ents2[1].GetIndex())
+	require.Equal(t, []byte("peer2"), ents2[1].GetData())
+	require.Equal(t, uint64(3), ents2[2].GetIndex())
+	require.Equal(t, []byte("kv"), ents2[2].GetData())
+
+	t.Run("nil initial state matches Create", func(t *testing.T) {
+		dir := t.TempDir()
+		emptyW, createErr := CreateWithInitialState(lg, dir, []byte("meta"), nil, nil)
+		require.NoError(t, createErr)
+		t.Cleanup(func() { _ = emptyW.Close() })
+
+		emptyR, openErr := OpenForRead(lg, dir, &walpb.Snapshot{})
+		require.NoError(t, openErr)
+		defer emptyR.Close()
+
+		meta, st, ents, readErr := emptyR.ReadAll()
+		require.NoError(t, readErr)
+		require.Equal(t, []byte("meta"), meta)
+		require.Equal(t, uint64(0), st.GetTerm())
+		require.Equal(t, uint64(0), st.GetCommit())
+		require.Empty(t, ents)
+	})
+}
+
+func TestCreateWithInitialStateFailureCleansUpTmpDir(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("skipping permission-based rename failure test on windows or as root")
+	}
+
+	base := t.TempDir()
+	lg := zaptest.NewLogger(t)
+	target := filepath.Join(base, "wal")
+	ro := filepath.Join(target, "ro")
+	require.NoError(t, os.MkdirAll(ro, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(ro, "keep"), []byte("x"), 0o600))
+	require.NoError(t, os.Chmod(ro, 0o500))
+	t.Cleanup(func() { _ = os.Chmod(ro, 0o700) })
+
+	// Exist(target) is false (no .wal files), so create() writes metadata,
+	// snapshot, initial entries, HardState, and syncs inside target.tmp before
+	// failing in renameWAL when os.RemoveAll(target) hits EACCES.
+	require.False(t, Exist(target))
+
+	initEnts := []*raftpb.Entry{
+		{
+			Type:  raftpb.EntryConfChange.Enum(),
+			Term:  new(uint64(1)),
+			Index: new(uint64(1)),
+			Data:  []byte("peer1"),
+		},
+	}
+	initState := &raftpb.HardState{
+		Term:   new(uint64(1)),
+		Commit: new(uint64(1)),
+	}
+
+	w, err := CreateWithInitialState(lg, target, []byte("meta"), initState, initEnts)
+	require.Error(t, err)
+	require.Nil(t, w)
+	require.False(t, Exist(target))
+
+	_, tmpStatErr := os.Stat(filepath.Clean(target) + ".tmp")
+	require.ErrorIs(t, tmpStatErr, os.ErrNotExist)
 }

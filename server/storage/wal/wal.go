@@ -98,7 +98,21 @@ type WAL struct {
 // Create creates a WAL ready for appending records. The given metadata is
 // recorded at the head of each WAL file, and can be retrieved with ReadAll
 // after the file is Open.
-func Create(lg *zap.Logger, dirpath string, metadata []byte) (_ *WAL, retErr error) {
+func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
+	return create(lg, dirpath, metadata, nil, nil)
+}
+
+// CreateWithInitialState creates a WAL and atomically persists initial hard
+// state and entries before renaming the temporary WAL directory into place.
+// Passing nil or empty st and ents behaves identically to Create. When
+// provided, ents must be contiguous starting at index 1 (following the initial
+// empty 0/0 snapshot record), and st.Commit must not exceed the last entry
+// index.
+func CreateWithInitialState(lg *zap.Logger, dirpath string, metadata []byte, st *raftpb.HardState, ents []*raftpb.Entry) (*WAL, error) {
+	return create(lg, dirpath, metadata, st, ents)
+}
+
+func create(lg *zap.Logger, dirpath string, metadata []byte, st *raftpb.HardState, ents []*raftpb.Entry) (_ *WAL, retErr error) {
 	if Exist(dirpath) {
 		return nil, os.ErrExist
 	}
@@ -178,6 +192,19 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (_ *WAL, retErr err
 	// Create an empty snapshot record during the initial bootstrap only.
 	if err = w.SaveSnapshot(&walpb.Snapshot{Index: new(uint64(0)), Term: new(uint64(0))}); err != nil {
 		return nil, err
+	}
+	if !raft.IsEmptyHardState(st) || len(ents) > 0 {
+		for _, e := range ents {
+			if err = w.saveEntry(e); err != nil {
+				return nil, err
+			}
+		}
+		if err = w.saveState(st); err != nil {
+			return nil, err
+		}
+		if err = w.sync(); err != nil {
+			return nil, err
+		}
 	}
 
 	logDirPath := w.dir
