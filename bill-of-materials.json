@@ -81,15 +81,6 @@
 		]
 	},
 	{
-		"project": "github.com/davecgh/go-spew/spew",
-		"licenses": [
-			{
-				"type": "ISC License",
-				"confidence": 0.9850746268656716
-			}
-		]
-	},
-	{
 		"project": "github.com/dustin/go-humanize",
 		"licenses": [
 			{
@@ -396,6 +387,24 @@
 		]
 	},
 	{
+		"project": "github.com/stretchr/testify/internal/difflib",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9830508474576272
+			}
+		]
+	},
+	{
+		"project": "github.com/stretchr/testify/internal/spew",
+		"licenses": [
+			{
+				"type": "ISC License",
+				"confidence": 0.9850746268656716
+			}
+		]
+	},
+	{
 		"project": "github.com/tmc/grpc-websocket-proxy/wsproxy",
 		"licenses": [
 			{
@@ -585,6 +594,15 @@
 		]
 	},
 	{
+		"project": "go.opentelemetry.io/otel/log",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 0.9647812166488794
+			}
+		]
+	},
+	{
 		"project": "go.opentelemetry.io/otel/metric",
 		"licenses": [
 			{
@@ -644,6 +662,15 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.9891304347826086
+			}
+		]
+	},
+	{
+		"project": "go.yaml.in/yaml/v3",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.7469879518072289
 			}
 		]
 	},
@@ -774,15 +801,6 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.8975609756097561
-			}
-		]
-	},
-	{
-		"project": "gopkg.in/yaml.v3",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 0.7469879518072289
 			}
 		]
 	},
