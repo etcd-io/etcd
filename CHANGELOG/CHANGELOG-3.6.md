@@ -5,6 +5,11 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.18 (TBC)
 
+### Dependencies
+
+- Bump `github.com/gorilla/websocket` from `v1.5.3` to `v1.5.4-0.20240701034025-d67f41855da4` to address [GO-2026-6278](https://pkg.go.dev/vuln/GO-2026-6278) ([#22934](https://github.com/etcd-io/etcd/pull/22934)).
+- Bump the OpenTelemetry Go API and SDK from `v1.45.0` to `v1.47.0` to address [CVE-2026-128085](https://pkg.go.dev/vuln/GO-2026-6974) and [CVE-2026-128086](https://pkg.go.dev/vuln/GO-2026-6975) ([#22934](https://github.com/etcd-io/etcd/pull/22934)).
+
 ---
 
 ## v3.6.17 (2026-11-18)
