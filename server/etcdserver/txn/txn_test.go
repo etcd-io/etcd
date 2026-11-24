@@ -390,3 +390,28 @@ func computeFileHash(filePath string) (string, error) {
 	}
 	return string(h.Sum(nil)), nil
 }
+
+func TestMkGteRange(t *testing.T) {
+	tests := []struct {
+		name     string
+		rangeEnd []byte
+		want     []byte
+		wantNil  bool
+	}{
+		{name: "nil is a single key", rangeEnd: nil, wantNil: true},
+		{name: "empty non-nil is a single key", rangeEnd: []byte{}, wantNil: true},
+		{name: "zero byte is a >= range", rangeEnd: []byte{0}, want: []byte{}},
+		{name: "regular range end is unchanged", rangeEnd: []byte("zoo"), want: []byte("zoo")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := mkGteRange(tt.rangeEnd)
+			if tt.wantNil {
+				require.Nil(t, got)
+				return
+			}
+			require.NotNil(t, got)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
