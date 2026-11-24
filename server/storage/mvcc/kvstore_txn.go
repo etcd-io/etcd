@@ -114,6 +114,7 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 	cappedEntriesCount := sliceCapWithLimit(int(ro.Limit), revpairs)
 
 	kvs := make([]*mvccpb.KeyValue, cappedEntriesCount)
+	kvBuf := make([]mvccpb.KeyValue, cappedEntriesCount)
 	revBytes := NewRevBytes()
 	for i, revpair := range revpairs[:len(kvs)] {
 		select {
@@ -138,7 +139,7 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 				zap.Int("len-values", len(vs)),
 			)
 		}
-		kv := &mvccpb.KeyValue{}
+		kv := &kvBuf[i]
 		if err := proto.Unmarshal(vs[0], kv); err != nil {
 			tr.s.lg.Fatal(
 				"failed to unmarshal mvccpb.KeyValue",
