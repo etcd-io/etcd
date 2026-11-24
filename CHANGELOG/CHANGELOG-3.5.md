@@ -8,6 +8,8 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Dependencies
 
 - [Bump golang.org/x/net from v0.61.0 to v0.62.0 to address CVE-2026-78661, CVE-2026-97045](https://github.com/etcd-io/etcd/pull/22858).
+- Bump `github.com/gorilla/websocket` from `v1.5.3` to `v1.5.4-0.20240701034025-d67f41855da4` to address [GO-2026-6278](https://pkg.go.dev/vuln/GO-2026-6278) ([#22933](https://github.com/etcd-io/etcd/pull/22933)).
+- Bump the OpenTelemetry Go API and SDK from `v1.45.0` to `v1.47.0` to address [CVE-2026-128085](https://pkg.go.dev/vuln/GO-2026-6974) and [CVE-2026-128086](https://pkg.go.dev/vuln/GO-2026-6975) ([#22933](https://github.com/etcd-io/etcd/pull/22933)).
 
 ---
 
