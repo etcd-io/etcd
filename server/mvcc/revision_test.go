@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -49,5 +50,26 @@ func TestRevision(t *testing.T) {
 		if bytes.Compare(bs[i], bs[i+1]) >= 0 {
 			t.Errorf("#%d: %v (%+v) should be smaller than %v (%+v)", i, bs[i], tests[i], bs[i+1], tests[i+1])
 		}
+	}
+}
+
+// TestBytesToRevInvalidLength checks that malformed revision bytes surface
+// as a clear "invalid revision length" panic instead of a bare index panic.
+func TestBytesToRevInvalidLength(t *testing.T) {
+	for _, n := range []int{0, 7, 8, 9, 16, 19} {
+		func() {
+			defer func() {
+				r := recover()
+				if r == nil {
+					t.Errorf("bytesToRev(%d bytes): expected panic, got none", n)
+					return
+				}
+				msg, ok := r.(string)
+				if !ok || !strings.Contains(msg, "invalid revision length") {
+					t.Errorf("bytesToRev(%d bytes): panic = %v, want \"invalid revision length\"", n, r)
+				}
+			}()
+			bytesToRev(make([]byte, n))
+		}()
 	}
 }
