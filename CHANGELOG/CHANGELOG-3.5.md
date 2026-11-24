@@ -17,7 +17,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 - Fix [`--force-new-cluster` permanently bricking a member whose backend consistent index is ahead of its WAL](https://github.com/etcd-io/etcd/pull/22688)
 - [Define `alarmStore` as an `atomic.Pointer` to avoid race condition](https://github.com/etcd-io/etcd/pull/22707)
-- Fix [keep auth applier when an alarm is raisedkeep auth applier when an alarm is raised](https://github.com/etcd-io/etcd/pull/22386)
+- [Preserve authorization checks while a NOSPACE or CORRUPT alarm is active](https://github.com/etcd-io/etcd/pull/22386)
 
 ### raft
 
