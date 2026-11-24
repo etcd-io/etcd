@@ -3,12 +3,21 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.36 (TBC)
+## v3.5.37 (TBC)
+
+### Dependencies
+
+- [Bump golang.org/x/net from v0.61.0 to v0.62.0 to address CVE-2026-78661, CVE-2026-97045](https://github.com/etcd-io/etcd/pull/22858).
+
+---
+
+## v3.5.36 (2026-11-18)
 
 ### etcd server
 
 - Fix [`--force-new-cluster` permanently bricking a member whose backend consistent index is ahead of its WAL](https://github.com/etcd-io/etcd/pull/22688)
 - [Define `alarmStore` as an `atomic.Pointer` to avoid race condition](https://github.com/etcd-io/etcd/pull/22707)
+- [Preserve authorization checks while a NOSPACE or CORRUPT alarm is active](https://github.com/etcd-io/etcd/pull/22386)
 
 ### raft
 
@@ -17,6 +26,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Dependencies
 
 - Compile binaries using [go 1.26.11](https://github.com/etcd-io/etcd/pull/22820).
+- [Use Debian 13 as base container image](https://github.com/etcd-io/etcd/pull/22667).
 
 ---
 
