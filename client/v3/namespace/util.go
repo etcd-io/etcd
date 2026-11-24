@@ -20,18 +20,13 @@ func prefixInterval(pfx string, key, end []byte) (pfxKey []byte, pfxEnd []byte) 
 
 	if len(end) == 1 && end[0] == 0 {
 		// the edge of the keyspace
-		pfxEnd = make([]byte, len(pfx))
-		copy(pfxEnd, pfx)
-		ok := false
-		for i := len(pfxEnd) - 1; i >= 0; i-- {
-			if pfxEnd[i]++; pfxEnd[i] != 0 {
-				ok = true
+		pfxEnd = []byte{0}
+		for i := len(pfx) - 1; i >= 0; i-- {
+			if pfx[i] < 0xff {
+				// drop trailing 0xff bytes, then increment the last byte
+				pfxEnd = append([]byte(pfx[:i]), pfx[i]+1)
 				break
 			}
-		}
-		if !ok {
-			// 0xff..ff => 0x00
-			pfxEnd = []byte{0}
 		}
 	} else if len(end) >= 1 {
 		pfxEnd = make([]byte, len(pfx)+len(end))
