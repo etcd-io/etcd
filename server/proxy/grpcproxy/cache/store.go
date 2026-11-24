@@ -34,8 +34,8 @@ var (
 )
 
 type Cache interface {
-	Add(req *pb.RangeRequest, resp *pb.RangeResponse)
-	Get(req *pb.RangeRequest) (*pb.RangeResponse, error)
+	Add(req *pb.RangeRequest, resp *pb.RangeResponse, authToken string)
+	Get(req *pb.RangeRequest, authToken string) (*pb.RangeResponse, error)
 	Compact(revision int64)
 	Invalidate(key []byte, endkey []byte)
 	Size() int
@@ -43,13 +43,16 @@ type Cache interface {
 }
 
 // keyFunc returns the key of a request, which is used to look up its caching response in the cache.
-func keyFunc(req *pb.RangeRequest) string {
+func keyFunc(req *pb.RangeRequest, authToken string) string {
 	// TODO: use marshalTo to reduce allocation
 	b, err := proto.Marshal(req)
 	if err != nil {
 		panic(err)
 	}
-	return string(b)
+	// Cache entries must not cross authentication boundaries. The proxy's
+	// own credential forwards to the backend; the caller's token is what
+	// distinguishes identities at this layer.
+	return authToken + "\x00" + string(b)
 }
 
 func NewCache(maxCacheEntries int) Cache {
@@ -74,8 +77,8 @@ type cache struct {
 }
 
 // Add adds the response of a request to the cache if its revision is larger than the compacted revision of the cache.
-func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse) {
-	key := keyFunc(req)
+func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse, authToken string) {
+	key := keyFunc(req, authToken)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -113,8 +116,8 @@ func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse) {
 
 // Get looks up the caching response for a given request.
 // Get is also responsible for lazy eviction when accessing compacted entries.
-func (c *cache) Get(req *pb.RangeRequest) (*pb.RangeResponse, error) {
-	key := keyFunc(req)
+func (c *cache) Get(req *pb.RangeRequest, authToken string) (*pb.RangeResponse, error) {
+	key := keyFunc(req, authToken)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
