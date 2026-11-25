@@ -151,6 +151,7 @@ func (t *Trace) Step(msg string, fields ...Field) {
 // StepWithFunction will measure the input function as a single step
 func (t *Trace) StepWithFunction(f func(), msg string, fields ...Field) {
 	t.disableStep()
+	defer t.enableStep()
 	f()
 	t.enableStep()
 	t.Step(msg, fields...)
