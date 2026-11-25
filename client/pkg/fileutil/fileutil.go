@@ -174,6 +174,9 @@ func RemoveMatchFile(lg *zap.Logger, dir string, matchFunc func(fileName string)
 func ListFiles(dir string, matchFunc func(fileName string) bool) ([]string, error) {
 	var files []string
 	err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if matchFunc(path) {
 			files = append(files, path)
 		}
