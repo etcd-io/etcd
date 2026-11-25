@@ -101,3 +101,14 @@ func (ts *testBlockingServer) Start(t *testing.T) {
 	}
 	<-ts.stop
 }
+
+func TestReadWriteTimeoutDialerReturnsNilConnOnError(t *testing.T) {
+	d := rwTimeoutDialer{
+		wtimeoutd:  time.Second,
+		rdtimeoutd: time.Second,
+	}
+	// Port 1 on loopback is not listening; dialing must fail with a nil conn.
+	conn, err := d.Dial("tcp", "127.0.0.1:1")
+	require.Error(t, err)
+	require.Nil(t, conn)
+}
