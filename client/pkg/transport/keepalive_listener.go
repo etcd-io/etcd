@@ -57,15 +57,18 @@ func (kln *keepaliveListener) Accept() (net.Conn, error) {
 
 	kac, err := createKeepaliveConn(c)
 	if err != nil {
+		c.Close()
 		return nil, fmt.Errorf("create keepalive connection failed, %w", err)
 	}
 	// detection time: tcp_keepalive_time + tcp_keepalive_probes + tcp_keepalive_intvl
 	// default on linux:  30 + 8 * 30
 	// default on osx:    30 + 8 * 75
 	if err := kac.SetKeepAlive(true); err != nil {
+		c.Close()
 		return nil, fmt.Errorf("SetKeepAlive failed, %w", err)
 	}
 	if err := kac.SetKeepAlivePeriod(30 * time.Second); err != nil {
+		c.Close()
 		return nil, fmt.Errorf("SetKeepAlivePeriod failed, %w", err)
 	}
 	return kac, nil
