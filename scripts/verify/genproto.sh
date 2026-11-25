@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# This scripts is automatically run by CI to prevent pull requests missing running genproto.sh
+# This scripts is automatically run by CI to prevent pull requests missing running make fix-genproto
 # after changing *.proto file.
 
 set -o errexit
@@ -27,7 +27,7 @@ cp -r . "$tmpWorkDir"
 pushd "$tmpWorkDir"
 git add -A
 git commit -m init || true # maybe fail because nothing to commit 
-./scripts/genproto.sh
+make fix-genproto
 diff=$(git diff --numstat | awk '{print $3}')
 popd
 if [ -z "$diff" ]; then
@@ -36,6 +36,6 @@ if [ -z "$diff" ]; then
 fi
 echo "Failed genproto-verification!" >&2
 printf "* Found changed files:\n%s\n" "$diff" >&2
-echo "* Please rerun genproto.sh after changing *.proto file" >&2
-echo "* Run ./scripts/genproto.sh" >&2
+echo "* Please regenerate the protobuf bindings after changing *.proto file" >&2
+echo "* Run make fix-genproto" >&2
 exit 1

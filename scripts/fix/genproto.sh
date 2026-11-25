@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 # Copyright 2025 The etcd Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,10 +21,8 @@ set -euo pipefail
 
 shopt -s globstar
 
-if ! [[ "$0" =~ scripts/genproto.sh ]]; then
-  echo "must be run from repository root"
-  exit 255
-fi
+ETCD_ROOT_DIR=${ETCD_ROOT_DIR:-$(git rev-parse --show-toplevel)}
+source "${ETCD_ROOT_DIR}/scripts/test_lib.sh"
 
 if [ -z "${OS:-}" ]; then
   OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -35,22 +34,20 @@ if LANG=C sed --help 2>&1 | grep -q GNU; then
 elif command -v gsed &>/dev/null; then
   SED="gsed"
 elif [ "$OS" == "darwin" ]; then
-  echo "You are on Mac, running: brew install gnu-sed"
+  log_warning "You are on Mac, running: brew install gnu-sed"
   brew install gnu-sed
   SED="/opt/homebrew/opt/gnu-sed/libexec/gnubin/sed"
 else
-  echo "Failed to find GNU sed as sed or gsed." >&2
+  log_error "Failed to find GNU sed as sed or gsed." >&2
   exit 1
 fi
-
-source ./scripts/test_lib.sh
 
 PATH=$(pwd)/bin:$(go env GOPATH)/bin:$PATH
 export PATH
 export PROTOC_VERSION="36.2"
 
 if [[ $(protoc --version | cut -f2 -d' ') != "${PROTOC_VERSION}" ]]; then
-  echo "Could not find protoc ${PROTOC_VERSION}, installing now..."
+  log_info "Could not find protoc ${PROTOC_VERSION}, installing now..."
 
   arch=$(go env GOARCH)
 
@@ -58,7 +55,7 @@ if [[ $(protoc --version | cut -f2 -d' ') != "${PROTOC_VERSION}" ]]; then
     "amd64") file="x86_64" ;;
     "arm64") file="aarch_64" ;;
     *)
-      echo "Unsupported architecture: ${arch}"
+      log_error "Unsupported architecture: ${arch}"
       exit 255
       ;;
   esac
@@ -70,12 +67,12 @@ if [[ $(protoc --version | cut -f2 -d' ') != "${PROTOC_VERSION}" ]]; then
     protoc_download_file="protoc-${PROTOC_VERSION}-osx-universal_binary.zip"
   fi
   download_url="https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${protoc_download_file}"
-  echo "Running on ${OS} ${arch}. Downloading ${protoc_download_file}"
+  log_info "Running on ${OS} ${arch}. Downloading ${protoc_download_file}"
   mkdir -p bin
   wget ${download_url} && unzip -p ${protoc_download_file} bin/protoc > tmpFile && mv tmpFile bin/protoc
   rm ${protoc_download_file}
   chmod +x bin/protoc
-  echo "Now running: $(protoc --version)"
+  log_info "Now running: $(protoc --version)"
 
 fi
 
@@ -115,15 +112,15 @@ function download_googleapi() {
 
 download_googleapi
 
-echo
-echo "Resolved binary and packages versions:"
-echo "  - protoc-gen-go:           ${GOGEN_BIN}"
-echo "  - protoc-gen-go-grpc:      ${GOGENGRPC_BIN}"
-echo "  - protoc-gen-grpc-gateway: ${GRPC_GATEWAY_BIN}"
-echo "  - openapiv2:               ${OPENAPIV2_BIN}"
-echo "  - gogoproto-root:          ${GOGOPROTO_ROOT}"
-echo "  - grpc-gateway-root:       ${GRPC_GATEWAY_ROOT}"
-echo "  - raft-root:               ${RAFT_ROOT}"
+log_info
+log_info "Resolved binary and packages versions:"
+log_info "  - protoc-gen-go:           ${GOGEN_BIN}"
+log_info "  - protoc-gen-go-grpc:      ${GOGENGRPC_BIN}"
+log_info "  - protoc-gen-grpc-gateway: ${GRPC_GATEWAY_BIN}"
+log_info "  - openapiv2:               ${OPENAPIV2_BIN}"
+log_info "  - gogoproto-root:          ${GOGOPROTO_ROOT}"
+log_info "  - grpc-gateway-root:       ${GRPC_GATEWAY_ROOT}"
+log_info "  - raft-root:               ${RAFT_ROOT}"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 
 # directories containing protos to be built
