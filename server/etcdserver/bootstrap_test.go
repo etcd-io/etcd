@@ -34,17 +34,51 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
+	"go.etcd.io/etcd/server/v3/features"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 )
+
+func TestRaftConfigAsyncStorageWritesFeatureGate(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	fg := features.NewDefaultServerFeatureGate("test", lg)
+	cfg := config.ServerConfig{Logger: lg, ElectionTicks: 10, ServerFeatureGate: fg}
+	require.Falsef(t, raftConfig(cfg, 1, raft.NewMemoryStorage()).AsyncStorageWrites, "asynchronous storage writes enabled by default")
+
+	require.NoError(t, fg.(featuregate.MutableFeatureGate).Set("RaftAsyncStorageWrites=true"))
+	require.Truef(t, raftConfig(cfg, 1, raft.NewMemoryStorage()).AsyncStorageWrites, "asynchronous storage writes disabled with the feature gate enabled")
+}
+
+func TestBootstrappedRaftNodeAsyncStorageWrites(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("enabled=%v", enabled), func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			fg := features.NewDefaultServerFeatureGate("test", lg)
+			require.NoError(t, fg.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("RaftAsyncStorageWrites=%v", enabled)))
+			cfg := config.ServerConfig{Logger: lg, ElectionTicks: 10, ServerFeatureGate: fg}
+			storage := raft.NewMemoryStorage()
+			b := &bootstrappedRaft{lg: lg, peers: []raft.Peer{{ID: 7}}, config: raftConfig(cfg, 7, storage), storage: storage}
+			r := b.newRaftNode(snap.New(lg, t.TempDir()), nil, membership.NewCluster(lg))
+			defer r.Stop()
+
+			// The Ready loop must consume Ready the way Raft produces it.
+			require.Equal(t, enabled, r.asyncStorageWrites)
+			require.Equal(t, enabled, r.appendWorker != nil)
+			require.Equal(t, uint64(7), r.localID)
+		})
+	}
+}
 
 func TestBootstrapExistingClusterNoWALMaxLearner(t *testing.T) {
 	tests := []struct {

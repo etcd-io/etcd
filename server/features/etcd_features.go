@@ -94,6 +94,13 @@ const (
 	// owner: @ahrtr
 	// beta: v3.8
 	NonBlockingDefrag featuregate.Feature = "NonBlockingDefrag"
+	// RaftAsyncStorageWrites enables Raft asynchronous storage writes: the Raft log is
+	// persisted and committed entries are applied concurrently, driven by Raft's local
+	// storage messages, instead of in lockstep with each Raft Ready.
+	// owner: @chaochn47
+	// alpha: v3.8
+	// issue: https://github.com/etcd-io/etcd/issues/16291
+	RaftAsyncStorageWrites featuregate.Feature = "RaftAsyncStorageWrites"
 )
 
 var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
@@ -107,6 +114,7 @@ var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	FastLeaseKeepAlive:           {Default: true, PreRelease: featuregate.Beta},
 	PriorityRequest:              {Default: false, PreRelease: featuregate.Alpha},
 	NonBlockingDefrag:            {Default: true, PreRelease: featuregate.Beta},
+	RaftAsyncStorageWrites:       {Default: false, PreRelease: featuregate.Alpha},
 }
 
 func NewDefaultServerFeatureGate(name string, lg *zap.Logger) featuregate.FeatureGate {
