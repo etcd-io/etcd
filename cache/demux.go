@@ -24,7 +24,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-type demux struct {
+type Demux struct {
 	mu sync.RWMutex
 	// activeWatchers & laggingWatchers hold the first revision the watcher still needs (nextRev).
 	activeWatchers  map[*watcher]int64
@@ -39,7 +39,7 @@ type demux struct {
 	resynced *notifier
 }
 
-func NewDemux(ctx context.Context, wg *sync.WaitGroup, historyWindowSize int, resyncInterval time.Duration) *demux {
+func NewDemux(ctx context.Context, wg *sync.WaitGroup, historyWindowSize int, resyncInterval time.Duration) *Demux {
 	d := newDemux(historyWindowSize, resyncInterval)
 	wg.Add(1)
 	go func() {
@@ -49,8 +49,8 @@ func NewDemux(ctx context.Context, wg *sync.WaitGroup, historyWindowSize int, re
 	return d
 }
 
-func newDemux(historyWindowSize int, resyncInterval time.Duration) *demux {
-	return &demux{
+func newDemux(historyWindowSize int, resyncInterval time.Duration) *Demux {
+	return &Demux{
 		activeWatchers:  make(map[*watcher]int64),
 		laggingWatchers: make(map[*watcher]int64),
 		history:         *newRingBuffer(historyWindowSize, func(batch []*clientv3.Event) int64 { return batch[0].Kv.ModRevision }),
@@ -60,7 +60,7 @@ func newDemux(historyWindowSize int, resyncInterval time.Duration) *demux {
 }
 
 // resyncLoop periodically tries to catch lagging watchers up by replaying events from History.
-func (d *demux) resyncLoop(ctx context.Context) {
+func (d *Demux) resyncLoop(ctx context.Context) {
 	timer := time.NewTimer(d.resyncInterval)
 	defer timer.Stop()
 
@@ -77,11 +77,11 @@ func (d *demux) resyncLoop(ctx context.Context) {
 }
 
 // WaitForNextResync blocks until the next resync loop iteration is complete.
-func (d *demux) WaitForNextResync(ctx context.Context) error {
+func (d *Demux) WaitForNextResync(ctx context.Context) error {
 	return d.resynced.wait(ctx)
 }
 
-func (d *demux) Register(w *watcher, startingRev int64) {
+func (d *Demux) Register(w *watcher, startingRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -106,7 +106,7 @@ func (d *demux) Register(w *watcher, startingRev int64) {
 	}
 }
 
-func (d *demux) Unregister(w *watcher) {
+func (d *Demux) Unregister(w *watcher) {
 	func() {
 		d.mu.Lock()
 		defer d.mu.Unlock()
@@ -116,7 +116,7 @@ func (d *demux) Unregister(w *watcher) {
 	w.Stop()
 }
 
-func (d *demux) Init(minRev int64) {
+func (d *Demux) Init(minRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if minRev == 0 {
@@ -142,7 +142,7 @@ func (d *demux) Init(minRev int64) {
 	d.minRev = minRev
 }
 
-func (d *demux) Broadcast(resp clientv3.WatchResponse) error {
+func (d *Demux) Broadcast(resp clientv3.WatchResponse) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.minRev == 0 {
@@ -157,13 +157,13 @@ func (d *demux) Broadcast(resp clientv3.WatchResponse) error {
 	return nil
 }
 
-func (d *demux) LatestRev() int64 {
+func (d *Demux) LatestRev() int64 {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	return d.maxRev
 }
 
-func (d *demux) BroadcastProgress() {
+func (d *Demux) BroadcastProgress() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.maxRev == 0 {
@@ -179,7 +179,7 @@ func (d *demux) BroadcastProgress() {
 	}
 }
 
-func (d *demux) BroadcastProgressTo(w *watcher) {
+func (d *Demux) BroadcastProgressTo(w *watcher) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	if d.maxRev == 0 {
@@ -196,7 +196,7 @@ func (d *demux) BroadcastProgressTo(w *watcher) {
 	w.enqueueResponse(resp)
 }
 
-func (d *demux) updateStoreLocked(resp clientv3.WatchResponse) {
+func (d *Demux) updateStoreLocked(resp clientv3.WatchResponse) {
 	if resp.IsProgressNotify() {
 		d.maxRev = resp.Header.Revision
 		return
@@ -226,7 +226,7 @@ func (d *demux) updateStoreLocked(resp clientv3.WatchResponse) {
 	d.maxRev = events[len(events)-1].Kv.ModRevision
 }
 
-func (d *demux) broadcastLocked(resp clientv3.WatchResponse) {
+func (d *Demux) broadcastLocked(resp clientv3.WatchResponse) {
 	switch {
 	case resp.IsProgressNotify():
 		d.broadcastProgressLocked(resp.Header.Revision)
@@ -236,7 +236,7 @@ func (d *demux) broadcastLocked(resp clientv3.WatchResponse) {
 	}
 }
 
-func (d *demux) broadcastProgressLocked(progressRev int64) {
+func (d *Demux) broadcastProgressLocked(progressRev int64) {
 	for w, nextRev := range d.activeWatchers {
 		if nextRev >= progressRev {
 			continue
@@ -252,7 +252,7 @@ func (d *demux) broadcastProgressLocked(progressRev int64) {
 	}
 }
 
-func (d *demux) broadcastEventsLocked(events []*clientv3.Event) {
+func (d *Demux) broadcastEventsLocked(events []*clientv3.Event) {
 	firstRev := events[0].Kv.ModRevision
 	lastRev := events[len(events)-1].Kv.ModRevision
 
@@ -287,13 +287,13 @@ func (d *demux) broadcastEventsLocked(events []*clientv3.Event) {
 }
 
 // Purge stops all watchers and rebase history on watch errors
-func (d *demux) Purge() {
+func (d *Demux) Purge() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.purge()
 }
 
-func (d *demux) purge() {
+func (d *Demux) purge() {
 	d.maxRev = 0
 	d.minRev = 0
 	d.history.RebaseHistory()
@@ -309,13 +309,13 @@ func (d *demux) purge() {
 
 // Compact is called when etcd reports a compaction at compactRev to rebase history;
 // it keeps provably-too-old watchers for later cancellation, stops others, and clients should resubscribe.
-func (d *demux) Compact(compactRev int64) {
+func (d *Demux) Compact(compactRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.purge()
 }
 
-func (d *demux) resyncLaggingWatchers() {
+func (d *Demux) resyncLaggingWatchers() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 

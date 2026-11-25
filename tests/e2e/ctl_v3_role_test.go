@@ -81,30 +81,6 @@ func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) err
 	return err
 }
 
-func ctlV3RoleRevokePermission(cx ctlCtx, rolename string, key, rangeEnd string, fromKey bool) error {
-	cmdArgs := append(cx.PrefixArgs(), "role", "revoke-permission")
-	cmdArgs = append(cmdArgs, rolename)
-	cmdArgs = append(cmdArgs, key)
-	var expStr string
-	if len(rangeEnd) != 0 {
-		cmdArgs = append(cmdArgs, rangeEnd)
-		expStr = fmt.Sprintf("Permission of range [%s, %s) is revoked from role %s", key, rangeEnd, rolename)
-	} else if fromKey {
-		cmdArgs = append(cmdArgs, "--from-key")
-		expStr = fmt.Sprintf("Permission of range [%s, <open ended> is revoked from role %s", key, rolename)
-	} else {
-		expStr = fmt.Sprintf("Permission of key %s is revoked from role %s", key, rolename)
-	}
-
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
-	if err != nil {
-		return err
-	}
-	defer proc.Close()
-	_, err = proc.Expect(expStr)
-	return err
-}
-
 type grantingPerm struct {
 	read     bool
 	write    bool

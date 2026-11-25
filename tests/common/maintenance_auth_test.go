@@ -156,9 +156,21 @@ func TestSnapshotWithUserAuth(t *testing.T) {
 }
 
 func testSnapshotWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
-	testMaintenanceOperationWithAuth(t, expectConnectionError, expectOperationError, func(ctx context.Context, cc intf.Client) error {
-		return cc.Snapshot(ctx, filepath.Join(t.TempDir(), "snapshot.db"))
-	}, opts...)
+	for _, tc := range []struct {
+		name      string
+		authToken string
+	}{
+		{name: "simple", authToken: "simple"},
+		{name: "jwt", authToken: defaultAuthToken},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.DefaultClusterConfig()
+			cfg.AuthToken = tc.authToken
+			testMaintenanceOperationWithAuthConfig(t, cfg, expectConnectionError, expectOperationError, func(ctx context.Context, cc intf.Client) error {
+				return cc.Snapshot(ctx, filepath.Join(t.TempDir(), "snapshot.db"))
+			}, opts...)
+		})
+	}
 }
 
 /*
@@ -213,11 +225,15 @@ func setupAuthForMaintenanceTest(c intf.Client) error {
 }
 
 func testMaintenanceOperationWithAuth(t *testing.T, expectConnectError, expectOperationError bool, f func(context.Context, intf.Client) error, opts ...config.ClientOption) {
+	testMaintenanceOperationWithAuthConfig(t, config.DefaultClusterConfig(), expectConnectError, expectOperationError, f, opts...)
+}
+
+func testMaintenanceOperationWithAuthConfig(t *testing.T, cfg config.ClusterConfig, expectConnectError, expectOperationError bool, f func(context.Context, intf.Client) error, opts ...config.ClientOption) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
-	clus := testRunner.NewCluster(ctx, t)
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(cfg))
 	defer clus.Close()
 
 	cc := testutils.MustClient(clus.Client())

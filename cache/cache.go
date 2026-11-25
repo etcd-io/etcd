@@ -45,7 +45,7 @@ type Cache struct {
 	cfg               Config // immutable runtime configuration
 	watcher           clientv3.Watcher
 	kv                clientv3.KV
-	demux             *demux // demux fans incoming events out to active watchers and manages resync.
+	demux             *Demux // demux fans incoming events out to active watchers and manages resync.
 	store             *store // last‑observed snapshot
 	ready             *ready
 	stop              context.CancelFunc

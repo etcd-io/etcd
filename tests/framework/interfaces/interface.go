@@ -83,6 +83,7 @@ type Client interface {
 	MemberList(context context.Context, serializable bool) (*clientv3.MemberListResponse, error)
 	MemberAdd(context context.Context, name string, peerAddrs []string) (*clientv3.MemberAddResponse, error)
 	MemberAddAsLearner(context context.Context, name string, peerAddrs []string) (*clientv3.MemberAddResponse, error)
+	MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*clientv3.MemberUpdateResponse, error)
 	MemberRemove(ctx context.Context, id uint64) (*clientv3.MemberRemoveResponse, error)
 
 	Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan

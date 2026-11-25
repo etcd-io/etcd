@@ -372,6 +372,12 @@ func (ctl *EtcdctlV3) MemberAddAsLearner(ctx context.Context, name string, peerA
 	return &resp, err
 }
 
+func (ctl *EtcdctlV3) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*clientv3.MemberUpdateResponse, error) {
+	var resp clientv3.MemberUpdateResponse
+	err := ctl.spawnJSONCmd(ctx, &resp, "member", "update", fmt.Sprintf("%x", id), "--peer-urls", strings.Join(peerAddrs, ","))
+	return &resp, err
+}
+
 func (ctl *EtcdctlV3) MemberRemove(ctx context.Context, id uint64) (*clientv3.MemberRemoveResponse, error) {
 	var resp clientv3.MemberRemoveResponse
 	err := ctl.spawnJSONCmd(ctx, &resp, "member", "remove", fmt.Sprintf("%x", id))
@@ -719,7 +725,17 @@ func (ctl *EtcdctlV3) RoleAdd(ctx context.Context, name string) (*clientv3.AuthR
 func (ctl *EtcdctlV3) RoleGrantPermission(ctx context.Context, name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error) {
 	permissionType := authpb.Permission_Type_name[int32(permType)]
 	var resp clientv3.AuthRoleGrantPermissionResponse
-	err := ctl.spawnJSONCmd(ctx, &resp, "role", "grant-permission", name, permissionType, key, rangeEnd)
+	// etcdctl represents the all-keys range with an empty key and --from-key.
+	if key == "\x00" && rangeEnd == "\x00" {
+		key = ""
+	}
+	args := []string{"role", "grant-permission", name, permissionType, key}
+	if rangeEnd == "\x00" {
+		args = append(args, "--from-key")
+	} else {
+		args = append(args, rangeEnd)
+	}
+	err := ctl.spawnJSONCmd(ctx, &resp, args...)
 	return &resp, err
 }
 
@@ -737,7 +753,17 @@ func (ctl *EtcdctlV3) RoleList(ctx context.Context) (*clientv3.AuthRoleListRespo
 
 func (ctl *EtcdctlV3) RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error) {
 	var resp clientv3.AuthRoleRevokePermissionResponse
-	err := ctl.spawnJSONCmd(ctx, &resp, "role", "revoke-permission", role, key, rangeEnd)
+	// etcdctl represents the all-keys range with an empty key and --from-key.
+	if key == "\x00" && rangeEnd == "\x00" {
+		key = ""
+	}
+	args := []string{"role", "revoke-permission", role, key}
+	if rangeEnd == "\x00" {
+		args = append(args, "--from-key")
+	} else {
+		args = append(args, rangeEnd)
+	}
+	err := ctl.spawnJSONCmd(ctx, &resp, args...)
 	return &resp, err
 }
 
