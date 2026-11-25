@@ -15,6 +15,7 @@
 package ioutil
 
 import (
+	"io"
 	"math/rand"
 	"testing"
 
@@ -139,4 +140,26 @@ func (cw *checkPageWriter) Write(p []byte) (int, error) {
 	cw.writes++
 	cw.writeBytes += len(p)
 	return len(p), nil
+}
+
+// shortPageWriter accepts only the first max bytes of each write, then
+// reports success without an error - what a broken destination io.Writer may do.
+type shortPageWriter struct{ max int }
+
+func (w *shortPageWriter) Write(p []byte) (int, error) {
+	if len(p) > w.max {
+		return w.max, nil
+	}
+	return len(p), nil
+}
+
+func TestPageWriterReportsShortFlush(t *testing.T) {
+	defaultBufferBytes = 1024
+	pageBytes := 128
+	buf := make([]byte, pageBytes)
+	pw := NewPageWriter(&shortPageWriter{max: pageBytes / 2}, pageBytes, 0)
+	_, err := pw.Write(buf)
+	require.NoError(t, err)
+	err = pw.Flush()
+	require.ErrorIs(t, err, io.ErrShortWrite)
 }
