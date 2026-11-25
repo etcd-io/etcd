@@ -54,7 +54,8 @@ func TestRaftConfigAsyncStorageWritesFeatureGate(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	fg := features.NewDefaultServerFeatureGate("test", lg)
 	cfg := config.ServerConfig{Logger: lg, ElectionTicks: 10, ServerFeatureGate: fg}
-	require.Falsef(t, raftConfig(cfg, 1, raft.NewMemoryStorage()).AsyncStorageWrites, "asynchronous storage writes enabled by default")
+	// TODO: temporary, to validate in CI.
+	require.Truef(t, raftConfig(cfg, 1, raft.NewMemoryStorage()).AsyncStorageWrites, "asynchronous storage writes disabled by default")
 
 	require.NoError(t, fg.(featuregate.MutableFeatureGate).Set("RaftAsyncStorageWrites=true"))
 	require.Truef(t, raftConfig(cfg, 1, raft.NewMemoryStorage()).AsyncStorageWrites, "asynchronous storage writes disabled with the feature gate enabled")
