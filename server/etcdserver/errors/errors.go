@@ -22,6 +22,7 @@ import (
 
 var (
 	ErrUnknownMethod               = errors.New("etcdserver: unknown method")
+	ErrUnknownAlarmAction          = errors.New("etcdserver: unknown alarm action")
 	ErrStopped                     = errors.New("etcdserver: server stopped")
 	ErrCanceled                    = errors.New("etcdserver: request cancelled")
 	ErrTimeout                     = errors.New("etcdserver: request timed out")

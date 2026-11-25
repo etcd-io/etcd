@@ -59,6 +59,7 @@ var toGRPCErrorMap = map[error]error{
 	errors.ErrTimeoutWaitAppliedIndex:    rpctypes.ErrGRPCTimeoutWaitAppliedIndex,
 	errors.ErrUnhealthy:                  rpctypes.ErrGRPCUnhealthy,
 	errors.ErrKeyNotFound:                rpctypes.ErrGRPCKeyNotFound,
+	errors.ErrUnknownAlarmAction:         status.Error(codes.InvalidArgument, errors.ErrUnknownAlarmAction.Error()),
 	errors.ErrCorrupt:                    rpctypes.ErrGRPCCorrupt,
 	errors.ErrBadLeaderTransferee:        rpctypes.ErrGRPCBadLeaderTransferee,
 
