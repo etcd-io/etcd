@@ -132,9 +132,14 @@ func watchTest(cx ctlCtx) {
 			wkv:    []kvExec{{key: "sample", val: "value"}},
 		},
 		{ // watch 1 key with ${ETCD_WATCH_VALUE}
+			// Read the variable with printenv instead of dumping the whole
+			// environment with env: newer GNU coreutils shell-escape values
+			// when stdout is a terminal, which would turn the expected line
+			// into ETCD_WATCH_VALUE='"value"'. The value itself is set with
+			// %q, so its quotes are present either way.
 			puts: []kv{{"sample", "value"}},
-			args: []string{"sample", "--rev", "1", "--", "env"},
-			wkv:  []kvExec{{key: "sample", val: "value", execOutput: `ETCD_WATCH_VALUE="value"`}},
+			args: []string{"sample", "--rev", "1", "--", "printenv", "ETCD_WATCH_VALUE"},
+			wkv:  []kvExec{{key: "sample", val: "value", execOutput: `"value"`}},
 		},
 		{ // watch 1 key with "echo watch event received", with env
 			puts:   []kv{{"sample", "value"}},
