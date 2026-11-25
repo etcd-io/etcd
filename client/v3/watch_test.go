@@ -18,9 +18,11 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -109,6 +111,45 @@ func TestStreamKeyFromCtx(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWatchStreamContext(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		type watchCtxKey struct{}
+
+		fc := &fakeWatchClient{ctxs: make(chan context.Context, 1)}
+		w := NewWatchFromWatchClient(fc, nil)
+		defer w.Close()
+
+		const timeout = time.Minute
+		callerCtx, cancel := context.WithTimeout(context.WithValue(context.Background(), watchCtxKey{}, "v"), timeout)
+		defer cancel()
+
+		wch := w.Watch(callerCtx, "k")
+		streamCtx := <-fc.ctxs
+
+		if got := streamCtx.Value(watchCtxKey{}); got != "v" {
+			t.Errorf("stream context value = %v, want %q", got, "v")
+		}
+		if d, ok := streamCtx.Deadline(); ok {
+			t.Errorf("stream context has deadline %v, want none", d)
+		}
+
+		// Hangs if a goroutine in the bubble waits on a channel created outside it.
+		time.Sleep(2 * timeout)
+
+		select {
+		case resp, ok := <-wch:
+			if ok {
+				t.Errorf("watch channel still open after the only caller timed out: %+v", resp)
+			}
+		default:
+			t.Error("watch channel not closed after the only caller timed out")
+		}
+		if err := streamCtx.Err(); err != context.Canceled {
+			t.Errorf("stream context err = %v, want context.Canceled after the only caller timed out", err)
+		}
+	})
 }
 
 func TestServeSubstreamLogsSlowConsumer(t *testing.T) {
@@ -203,4 +244,36 @@ func TestServeSubstreamLogsSlowConsumer(t *testing.T) {
 		t.Fatal("timed out waiting for serveSubstream shutdown")
 	}
 	w.wg.Wait()
+}
+
+// fakeWatchClient serves watch streams from memory.
+type fakeWatchClient struct {
+	ctxs chan context.Context // the context of each opened stream
+}
+
+func (c *fakeWatchClient) Watch(ctx context.Context, _ ...grpc.CallOption) (pb.Watch_WatchClient, error) {
+	c.ctxs <- ctx
+	return &fakeWatchStream{ctx: ctx, resps: make(chan *pb.WatchResponse, 1)}, nil
+}
+
+type fakeWatchStream struct {
+	grpc.ClientStream
+	ctx   context.Context
+	resps chan *pb.WatchResponse
+}
+
+func (s *fakeWatchStream) Send(req *pb.WatchRequest) error {
+	if req.GetCreateRequest() != nil {
+		s.resps <- &pb.WatchResponse{Header: &pb.ResponseHeader{}, Created: true}
+	}
+	return nil
+}
+
+func (s *fakeWatchStream) Recv() (*pb.WatchResponse, error) {
+	select {
+	case r := <-s.resps:
+		return r, nil
+	case <-s.ctx.Done():
+		return nil, s.ctx.Err()
+	}
 }

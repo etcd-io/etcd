@@ -539,8 +539,8 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 		// In '--tags cluster_proxy' mode the client need to be closed before
 		// closeLKV(). This interrupts all outstanding watches. Closing by closeLKV()
 		// is not sufficient as (unfortunately) context close does not interrupts Watches.
-		// See ./clientv3/watch.go:
-		// >> Currently, client contexts are overwritten with "valCtx" that never closes. <<
+		// See client/v3/watch.go:
+		// >> Currently, the watch stream keeps only the values of client contexts (context.WithoutCancel). <<
 		clus.TakeClient(0) // avoid double Close() of the client.
 		client.Close()
 		closeLKV()

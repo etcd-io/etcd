@@ -86,7 +86,7 @@ type Watcher interface {
 	// watch will retry on other recoverable errors forever until reconnected.
 	//
 	// TODO: explicitly set context error in the last "WatchResponse" message and close channel?
-	// Currently, client contexts are overwritten with "valCtx" that never closes.
+	// Currently, the watch stream keeps only the values of client contexts (context.WithoutCancel).
 	// TODO(v3.4): configure watch retry policy, limit maximum retry number
 	// (see https://github.com/etcd-io/etcd/issues/8980)
 	Watch(ctx context.Context, key string, opts ...OpOption) WatchChan
@@ -265,21 +265,9 @@ func NewWatchFromWatchClient(wc pb.WatchClient, c *Client) Watcher {
 	return w
 }
 
-// never closes
-var (
-	valCtxCh = make(chan struct{})
-	zeroTime = time.Unix(0, 0)
-)
-
-// ctx with only the values; never Done
-type valCtx struct{ context.Context }
-
-func (vc *valCtx) Deadline() (time.Time, bool) { return zeroTime, false }
-func (vc *valCtx) Done() <-chan struct{}       { return valCtxCh }
-func (vc *valCtx) Err() error                  { return nil }
-
 func (w *watcher) newWatcherGRPCStream(inctx context.Context) *watchGRPCStream {
-	ctx, cancel := context.WithCancel(&valCtx{inctx})
+	// Strip the inbound context's deadline and cancellation before adding our own.
+	ctx, cancel := context.WithCancel(context.WithoutCancel(inctx))
 	wgs := &watchGRPCStream{
 		owner:      w,
 		remote:     w.remote,
