@@ -15,10 +15,13 @@
 package rafthttp
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -89,6 +92,83 @@ func TestSnapshotSend(t *testing.T) {
 		}
 		if tt.wfiles != len(files) {
 			t.Fatalf("#%d: expected %d files, got %d files", i, tt.wfiles, len(files))
+		}
+	}
+}
+
+func TestSnapshotRejectInvalidDigest(t *testing.T) {
+	payload := []byte("snapshot payload")
+	digest := fmt.Sprintf("%x", sha256.Sum256(payload))
+	for _, enableHTTP2 := range []bool{false, true} {
+		for _, tc := range []struct {
+			name   string
+			values []string
+		}{
+			{name: "mismatch", values: []string{strings.Repeat("0", sha256.Size*2)}},
+			{name: "missing"},
+			{name: "empty", values: []string{""}},
+			{name: "multiple", values: []string{digest, digest}},
+		} {
+			t.Run(fmt.Sprintf("HTTP2=%t/%s", enableHTTP2, tc.name), func(t *testing.T) {
+				lg := zaptest.NewLogger(t)
+				dir := t.TempDir()
+				processed := make(chan *raftpb.Message, 1)
+				r := &fakeRaft{recvc: processed}
+				tr := &Transport{ClusterID: types.ID(1), Raft: r}
+				h := newSnapshotHandler(tr, r, snap.New(lg, dir), types.ID(1))
+				done := make(chan struct{}, 1)
+				srv := httptest.NewUnstartedServer(&syncHandler{h: h, ch: done})
+				if enableHTTP2 {
+					srv.EnableHTTP2 = true
+					srv.StartTLS()
+				} else {
+					srv.Start()
+				}
+				defer srv.Close()
+
+				m := &raftpb.Message{
+					Type: raftpb.MsgSnap.Enum(),
+					To:   new(uint64(1)),
+					Snapshot: &raftpb.Snapshot{
+						Metadata: &raftpb.SnapshotMetadata{Index: new(uint64(1))},
+					},
+				}
+				var body bytes.Buffer
+				if err := (&messageEncoder{w: &body}).encode(m); err != nil {
+					t.Fatal(err)
+				}
+				body.Write(payload)
+				u, err := url.Parse(srv.URL)
+				if err != nil {
+					t.Fatal(err)
+				}
+				req := createPostRequest(lg, *u, RaftSnapshotPrefix, io.NopCloser(&body), "application/octet-stream", nil, 0, 1)
+				req.Trailer = http.Header{"X-Etcd-Snapshot-Sha256": tc.values}
+				resp, err := srv.Client().Do(req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer resp.Body.Close()
+				if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+					t.Fatal(err)
+				}
+				<-done
+				if resp.StatusCode != http.StatusInternalServerError {
+					t.Errorf("snapshot reply = %s, want status %d", resp.Status, http.StatusInternalServerError)
+				}
+				files, err := os.ReadDir(dir)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(files) != 0 {
+					t.Errorf("rejected snapshot left files: %v", files)
+				}
+				select {
+				case <-processed:
+					t.Error("rejected snapshot was passed to Raft")
+				default:
+				}
+			})
 		}
 	}
 }

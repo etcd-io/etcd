@@ -157,8 +157,16 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg *e2e.EtcdProcessCl
 	t.Log("Restart the partitioned member")
 	err = toPartitionedMember.Restart(t.Context())
 	require.NoError(t, err)
+	e2e.AssertProcessLogs(t, toPartitionedMember, "received and saved database snapshot")
 
 	assertKVHash(t, epc)
+
+	// Read locally from the restarted member, not a reachable endpoint selected
+	// by the cluster client.
+	kv, err := toPartitionedMember.Etcdctl().Get(t.Context(), "key-29", config.GetOptions{Serializable: true})
+	require.NoError(t, err)
+	require.Len(t, kv.Kvs, 1)
+	require.Equal(t, "value-29", string(kv.Kvs[0].Value))
 
 	leaderEPC = epc.Procs[epc.WaitLeader(t)]
 	t.Log("Verify logs to check snapshot be sent from leader to follower")
