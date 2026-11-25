@@ -19,7 +19,9 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
+	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -43,7 +45,7 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 	// rev isn't used in JWT, it is only used in simple token
 	var (
 		username string
-		revision float64
+		revision uint64
 	)
 
 	parsed, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
@@ -60,7 +62,7 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 		default:
 			return t.key, nil
 		}
-	})
+	}, jwt.WithJSONNumber()) // keep numbers exact; float64 loses precision above 2^53
 	if err != nil {
 		t.lg.Warn(
 			"failed to parse a JWT token",
@@ -81,13 +83,18 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 		return nil, false
 	}
 
-	revision, ok = claims["revision"].(float64)
+	num, ok := claims["revision"].(json.Number)
 	if !ok {
 		t.lg.Warn("failed to obtain revision claims from jwt token")
 		return nil, false
 	}
+	revision, err = strconv.ParseUint(num.String(), 10, 64)
+	if err != nil {
+		t.lg.Warn("invalid revision claim in jwt token", zap.Error(err))
+		return nil, false
+	}
 
-	return &AuthInfo{Username: username, Revision: uint64(revision)}, true
+	return &AuthInfo{Username: username, Revision: revision}, true
 }
 
 func (t *tokenJWT) assign(ctx context.Context, username string, revision uint64) (string, error) {
