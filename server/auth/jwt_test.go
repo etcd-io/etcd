@@ -271,6 +271,26 @@ func TestJWTBad(t *testing.T) {
 	}
 }
 
+// TestJWTInfoPreservesLargeRevision verifies that the auth revision stored in a
+// JWT token survives a round trip through the token claims without losing
+// precision. JSON numbers are decoded as float64 by default, which cannot
+// represent revisions above 2^53 exactly.
+func TestJWTInfoPreservesLargeRevision(t *testing.T) {
+	provider := &tokenJWT{
+		lg:         zap.NewNop(),
+		signMethod: jwt.SigningMethodHS256,
+		key:        []byte("test secret"),
+		ttl:        time.Minute,
+	}
+	const revision uint64 = 1<<53 + 1
+	token, err := provider.assign(t.Context(), "user", revision)
+	require.NoError(t, err)
+
+	info, ok := provider.info(t.Context(), token, 0)
+	require.True(t, ok)
+	require.Equal(t, revision, info.Revision)
+}
+
 // testJWTOpts is useful for passing to NewTokenProvider which requires a string.
 func testJWTOpts() string {
 	return fmt.Sprintf("%s,pub-key=%s,priv-key=%s,sign-method=RS256", tokenTypeJWT, jwtRSAPubKey, jwtRSAPrivKey)
