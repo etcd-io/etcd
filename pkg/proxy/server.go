@@ -806,6 +806,9 @@ func computeLatency(lat, rv time.Duration) time.Duration {
 	if rv > lat {
 		rv = lat / 10
 	}
+	if rv == 0 {
+		return lat
+	}
 	now := time.Now()
 	sign := 1
 	if now.Second()%2 == 0 {
