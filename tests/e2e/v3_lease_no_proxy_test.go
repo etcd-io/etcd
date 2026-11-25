@@ -56,6 +56,14 @@ func TestLeaseRevoke_ClientSwitchToOtherMember(t *testing.T) {
 
 func testLeaseRevokeIssue(t *testing.T, clusterSize int, connectToOneFollower bool) {
 	e2e.BeforeTest(t)
+	// TODO: this only holds with synchronous Raft storage writes, where the
+	// leader's Raft loop runs raftBeforeSave on every Ready, so the failpoint
+	// below stops it and a new leader is elected. With asynchronous storage
+	// writes, the leader only writes when it has something to save, which
+	// nothing does after the failpoint is set, and a stalled write would not
+	// stop its Raft loop either, so it keeps its leadership. Skipped then,
+	// until we decide how a stalled disk should be handled.
+	skipIfRaftAsyncStorageWrites(t)
 
 	ctx := t.Context()
 

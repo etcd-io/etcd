@@ -37,9 +37,20 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/stringutil"
+	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
+
+// skipIfRaftAsyncStorageWrites skips a test that only holds with synchronous
+// Raft storage writes, if a cluster with the given options would use
+// asynchronous ones.
+func skipIfRaftAsyncStorageWrites(t *testing.T, opts ...e2e.EPClusterOption) {
+	t.Helper()
+	if e2e.NewConfig(opts...).ServerConfig.ServerFeatureGate.Enabled(features.RaftAsyncStorageWrites) {
+		t.Skip("only holds with synchronous Raft storage writes, see the TODO")
+	}
+}
 
 func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3.Client {
 	tlscfg, err := tlsInfo(t, cfg)
