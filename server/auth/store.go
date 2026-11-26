@@ -1016,7 +1016,10 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 		return nil
 	}
 
-	tlsInfo := peer.AuthInfo.(credentials.TLSInfo)
+	tlsInfo, ok := peer.AuthInfo.(credentials.TLSInfo)
+	if !ok {
+		return nil
+	}
 	for _, chains := range tlsInfo.State.VerifiedChains {
 		if len(chains) < 1 {
 			continue
