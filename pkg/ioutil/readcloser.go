@@ -47,7 +47,7 @@ func (e *exactReadCloser) Read(p []byte) (int, error) {
 	n, err := e.rc.Read(p)
 	e.br += int64(n)
 	if e.br > e.totalBytes {
-		return 0, ErrExpectEOF
+		return n, ErrExpectEOF
 	}
 	if e.br < e.totalBytes && n == 0 {
 		return 0, ErrShortRead

@@ -42,3 +42,16 @@ func TestExactReadCloserShort(t *testing.T) {
 	require.NoErrorf(t, err, "Read expected nil err, got %v", err)
 	require.ErrorIs(t, rc.Close(), ErrShortRead)
 }
+
+// TestExactReadCloserOverflowPreservesReadCount ensures that when a read
+// consumes more than the expected total, the bytes actually read are
+// reported to the caller alongside ErrExpectEOF instead of being dropped.
+func TestExactReadCloserOverflowPreservesReadCount(t *testing.T) {
+	buf := bytes.NewBuffer([]byte("0123456789"))
+	rc := NewExactReadCloser(&readerNilCloser{buf}, 3)
+	p := make([]byte, 10)
+	n, err := rc.Read(p)
+	require.ErrorIsf(t, err, ErrExpectEOF, "expected %v, got %v", ErrExpectEOF, err)
+	require.Equalf(t, 10, n, "Read must report all bytes consumed from the underlying reader")
+	require.Equalf(t, "0123456789", string(p[:n]), "Read must return the bytes it consumed")
+}
