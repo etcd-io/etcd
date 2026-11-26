@@ -18,6 +18,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -37,5 +38,19 @@ func TestConvert(t *testing.T) {
 	require.NotEqual(t, e1.Error(), e3.Error())
 	if ev2, ok := status.FromError(e2); ok {
 		require.Equal(t, ev2.Code(), e3.Code())
+	}
+}
+
+func TestErrorMapsEveryGRPCError(t *testing.T) {
+	for _, err := range []error{
+		ErrGRPCPermissionNotGiven,
+		ErrGRPCInvalidClientAPIVersion,
+		ErrGRPCWatchCanceled,
+		ErrGRPCTimeoutWaitAppliedIndex,
+	} {
+		converted := Error(err)
+		etcdErr, ok := converted.(EtcdError)
+		require.True(t, ok, "Error(%v) should return EtcdError, got %T", err, converted)
+		assert.Equal(t, ErrorDesc(err), etcdErr.Error())
 	}
 }
