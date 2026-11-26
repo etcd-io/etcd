@@ -28,23 +28,50 @@ var ErrNotTCP = errors.New("only tcp connections have keepalive")
 // LimitListener returns a Listener that accepts at most n simultaneous
 // connections from the provided Listener.
 func LimitListener(l net.Listener, n int) net.Listener {
-	return &limitListener{l, make(chan struct{}, n)}
+	return &limitListener{Listener: l, sem: make(chan struct{}, n), done: make(chan struct{})}
 }
 
 type limitListener struct {
 	net.Listener
-	sem chan struct{}
+	sem       chan struct{}
+	done      chan struct{}
+	closeOnce sync.Once
 }
 
-func (l *limitListener) acquire() { l.sem <- struct{}{} }
-func (l *limitListener) release() { <-l.sem }
+func (l *limitListener) acquire() error {
+	select {
+	case l.sem <- struct{}{}:
+		return nil
+	case <-l.done:
+		return net.ErrClosed
+	}
+}
+func (l *limitListener) release() {
+	select {
+	case <-l.sem:
+	default:
+	}
+}
+func (l *limitListener) Close() error {
+	l.closeOnce.Do(func() { close(l.done) })
+	return l.Listener.Close()
+}
 
 func (l *limitListener) Accept() (net.Conn, error) {
-	l.acquire()
+	if err := l.acquire(); err != nil {
+		return nil, err
+	}
 	c, err := l.Listener.Accept()
 	if err != nil {
 		l.release()
 		return nil, err
+	}
+	select {
+	case <-l.done:
+		l.release()
+		c.Close()
+		return nil, net.ErrClosed
+	default:
 	}
 	return &limitListenerConn{Conn: c, release: l.release}, nil
 }
