@@ -112,3 +112,16 @@ func TestUniqueURLsFromFlag(t *testing.T) {
 	}
 	require.Equal(t, u.Values, um)
 }
+
+func TestUniqueURLsMapFromFlagReturnsCopy(t *testing.T) {
+	uv := NewUniqueURLsWithExceptions("https://localhost:2379,https://localhost:2380")
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	fs.Var(uv, "urls", "")
+
+	m := UniqueURLsMapFromFlag(fs, "urls")
+	for k := range m {
+		delete(m, k)
+	}
+
+	require.NotEmpty(t, UniqueURLsMapFromFlag(fs, "urls"), "caller must not be able to mutate the flag's internal map")
+}
