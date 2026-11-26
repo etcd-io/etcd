@@ -173,3 +173,13 @@ func countProtobufFields(v any) int {
 	}
 	return count
 }
+
+func TestEvalCmpLease(t *testing.T) {
+	resp := &v3.GetResponse{Kvs: []*mvccpb.KeyValue{{Key: []byte("k"), Lease: 123}}}
+
+	cmp := v3.Compare(v3.LeaseValue("k"), "=", 123)
+	require.True(t, evalCmp(resp, cmp), "matching lease should compare equal")
+
+	cmp2 := v3.Compare(v3.LeaseValue("k"), "=", 456)
+	require.False(t, evalCmp(resp, cmp2), "different lease should not compare equal")
+}
