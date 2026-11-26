@@ -286,10 +286,14 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 	)
 
 	for _, host := range hosts {
-		h, _, _ := net.SplitHostPort(host)
+		h, _, err := net.SplitHostPort(host)
+		if err != nil {
+			// Callers may pass a bare IP or hostname without a port.
+			h = host
+		}
 		if ip := net.ParseIP(h); ip != nil {
 			tmpl.IPAddresses = append(tmpl.IPAddresses, ip)
-		} else {
+		} else if h != "" {
 			tmpl.DNSNames = append(tmpl.DNSNames, h)
 		}
 	}
