@@ -533,3 +533,21 @@ func TestIntervalTreeContains(t *testing.T) {
 		assert.Equalf(t, v, tt.wContains, "#%d: ivt.Contains got %v, expected %v", i, v, tt.wContains)
 	}
 }
+
+// TestIntervalTreeEmptyQueryDoesNotPanic verifies that an empty interval
+// passed to the public query methods neither panics nor reports a match.
+func TestIntervalTreeEmptyQueryDoesNotPanic(t *testing.T) {
+	ivt := NewIntervalTree()
+	ivt.Insert(NewInt64Interval(10, 20), 1)
+	empty := Interval{}
+
+	require.NotPanics(t, func() {
+		require.False(t, ivt.Intersects(empty))
+	}, "Intersects with an empty interval panicked")
+	require.NotPanics(t, func() {
+		require.False(t, ivt.Contains(empty))
+	}, "Contains with an empty interval panicked")
+	require.NotPanics(t, func() {
+		require.Empty(t, ivt.Stab(empty))
+	}, "Stab with an empty interval panicked")
+}

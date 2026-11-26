@@ -684,6 +684,9 @@ type IntervalVisitor func(n *IntervalValue) bool
 // Visit calls a visitor function on every tree node intersecting the given interval.
 // It will visit each interval [x, y) in ascending order sorted on x.
 func (ivt *intervalTree) Visit(ivl Interval, ivv IntervalVisitor) {
+	if ivl.Begin == nil || ivl.End == nil {
+		return
+	}
 	ivt.root.visit(&ivl, ivt.sentinel, func(n *intervalNode) bool { return ivv(&n.iv) })
 }
 
@@ -728,6 +731,9 @@ func (ivt *intervalTree) Find(ivl Interval) (ret *IntervalValue) {
 
 // Intersects returns true if there is some tree node intersecting the given interval.
 func (ivt *intervalTree) Intersects(iv Interval) bool {
+	if iv.Begin == nil || iv.End == nil {
+		return false
+	}
 	x := ivt.root
 	for x != ivt.sentinel && iv.Compare(&x.iv.Ivl) != 0 {
 		if x.left != ivt.sentinel && x.left.max.Compare(iv.Begin) > 0 {
