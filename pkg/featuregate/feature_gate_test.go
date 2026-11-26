@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -553,5 +554,18 @@ func TestFeatureGateOverrideDefault(t *testing.T) {
 
 		err := f.OverrideDefault("TestFeature", true)
 		assert.Errorf(t, err, "expected a non-nil error to be returned")
+	})
+}
+
+// TestDeepCopyRetainsLoggerAndName verifies that a deep copy keeps the
+// logger and gate name; SetFromMap logs unconditionally and Enabled's panic
+// message names the gate, so dropping either field breaks the copy.
+func TestDeepCopyRetainsLoggerAndName(t *testing.T) {
+	fg := New("test-gate", zap.NewNop())
+	copied := fg.DeepCopy()
+	require.NotPanics(t, func() {
+		if err := copied.SetFromMap(map[string]bool{}); err != nil {
+			t.Errorf("SetFromMap on deep copy: %v", err)
+		}
 	})
 }
