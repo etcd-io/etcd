@@ -41,10 +41,9 @@ func (as *InternalRaftStringer) String() string {
 			as.Request.LeaseRevoke.ID,
 		)
 	case as.Request.Authenticate != nil:
-		return fmt.Sprintf("header:<%s> authenticate:<name:%s simple_token:%s>",
+		return fmt.Sprintf("header:<%s> authenticate:<name:%s simple_token:<redacted>>",
 			as.Request.Header.String(),
 			as.Request.Authenticate.Name,
-			as.Request.Authenticate.SimpleToken,
 		)
 	case as.Request.AuthUserAdd != nil:
 		return fmt.Sprintf("header:<%s> auth_user_add:<name:%s>",

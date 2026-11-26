@@ -28,3 +28,13 @@ import (
 func TestInvalidGoTypeIntPanic(t *testing.T) {
 	assert.Empty(t, pb.NewLoggablePutRequest(&pb.PutRequest{}).String())
 }
+
+func TestInternalRaftStringerRedactsSimpleToken(t *testing.T) {
+	const token = "super-secret-bearer-token"
+	req := &pb.InternalRaftRequest{
+		Header: &pb.RequestHeader{},
+		Authenticate: &pb.InternalAuthenticateRequest{Name: "root", SimpleToken: token},
+	}
+	s := (&pb.InternalRaftStringer{Request: req}).String()
+	assert.NotContains(t, s, token, "raft log string must not contain the bearer token")
+}
