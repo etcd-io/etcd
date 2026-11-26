@@ -56,3 +56,11 @@ func TestFIFOSchedule(t *testing.T) {
 	s.WaitFinish(100)
 	assert.Equalf(t, 100, s.Finished(), "finished = %d, want %d", s.Finished(), 100)
 }
+
+// TestStopIdempotent verifies that calling Stop twice does not panic on a
+// nil cancel func and still waits for the scheduler goroutine to exit.
+func TestStopIdempotent(t *testing.T) {
+	s := NewFIFOScheduler(zaptest.NewLogger(t))
+	s.Stop()
+	s.Stop()
+}
