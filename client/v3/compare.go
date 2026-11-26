@@ -145,8 +145,13 @@ func (cmp *Cmp) ValueBytes() []byte {
 }
 
 // WithValueBytes sets the byte slice for the comparison's value.
+// If the comparison does not yet target VALUE, it is switched to VALUE.
 func (cmp *Cmp) WithValueBytes(v []byte) {
 	cmp.ensureCompare()
+	if _, ok := cmp.c.TargetUnion.(*pb.Compare_Value); !ok {
+		cmp.c.Target = pb.Compare_VALUE
+		cmp.c.TargetUnion = &pb.Compare_Value{}
+	}
 	cmp.c.TargetUnion.(*pb.Compare_Value).Value = v
 }
 
