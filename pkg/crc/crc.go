@@ -25,20 +25,21 @@ import (
 const Size = 4
 
 type digest struct {
-	crc uint32
-	tab *crc32.Table
+	crc  uint32
+	init uint32
+	tab  *crc32.Table
 }
 
 // New creates a new hash.Hash32 computing the CRC-32 checksum
 // using the polynomial represented by the Table.
 // Modified by xiangli to take a prevcrc.
-func New(prev uint32, tab *crc32.Table) hash.Hash32 { return &digest{prev, tab} }
+func New(prev uint32, tab *crc32.Table) hash.Hash32 { return &digest{crc: prev, init: prev, tab: tab} }
 
 func (d *digest) Size() int { return Size }
 
 func (d *digest) BlockSize() int { return 1 }
 
-func (d *digest) Reset() { d.crc = 0 }
+func (d *digest) Reset() { d.crc = d.init }
 
 func (d *digest) Write(p []byte) (n int, err error) {
 	d.crc = crc32.Update(d.crc, d.tab, p)
