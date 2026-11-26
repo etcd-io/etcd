@@ -18,9 +18,11 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -109,6 +111,60 @@ func TestStreamKeyFromCtx(t *testing.T) {
 			}
 		})
 	}
+}
+
+type memWatchClient struct {
+	values chan any
+}
+
+func (c memWatchClient) Watch(ctx context.Context, _ ...grpc.CallOption) (pb.Watch_WatchClient, error) {
+	if c.values != nil {
+		c.values <- ctx.Value(watchContextKey{})
+	}
+	return &memWatchStream{ctx: ctx, resps: make(chan *pb.WatchResponse)}, nil
+}
+
+type watchContextKey struct{}
+
+type memWatchStream struct {
+	grpc.ClientStream
+	ctx   context.Context
+	resps chan *pb.WatchResponse
+}
+
+func (s *memWatchStream) Send(req *pb.WatchRequest) error {
+	if req.GetCreateRequest() != nil {
+		s.resps <- &pb.WatchResponse{
+			Header:  &pb.ResponseHeader{Revision: 1},
+			WatchId: 1,
+			Created: true,
+		}
+	}
+	return nil
+}
+
+func (s *memWatchStream) Recv() (*pb.WatchResponse, error) {
+	select {
+	case resp := <-s.resps:
+		return resp, nil
+	case <-s.ctx.Done():
+		return nil, s.ctx.Err()
+	}
+}
+
+func TestWatchInsideSynctest(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		values := make(chan any, 1)
+		ctx := context.WithValue(context.Background(), watchContextKey{}, "value")
+		w := NewWatchFromWatchClient(memWatchClient{values: values}, nil)
+		defer w.Close()
+
+		w.Watch(ctx, "k")
+		if got := <-values; got != "value" {
+			t.Errorf("stream context value = %v, want value", got)
+		}
+		time.Sleep(time.Second)
+	})
 }
 
 func TestServeSubstreamLogsSlowConsumer(t *testing.T) {
