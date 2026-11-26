@@ -192,6 +192,11 @@ func (r *report) processResults() {
 	}
 	r.stats.Total = time.Since(st)
 
+	// With no successful results there is nothing to divide by; leave the
+	// aggregate statistics at their zero values instead of producing NaN.
+	if len(r.stats.Lats) == 0 {
+		return
+	}
 	r.stats.RPS = float64(len(r.stats.Lats)) / r.stats.Total.Seconds()
 	r.stats.Average = r.stats.AvgTotal / float64(len(r.stats.Lats))
 	for i := range r.stats.Lats {
@@ -210,7 +215,7 @@ var pctls = []float64{10, 25, 50, 75, 90, 95, 99, 99.9}
 
 // Percentiles returns percentile distribution of float64 slice.
 func Percentiles(nums []float64) (pcs []float64, data []float64) {
-	return pctls, percentiles(nums)
+	return append([]float64(nil), pctls...), percentiles(nums)
 }
 
 func percentiles(nums []float64) (data []float64) {
