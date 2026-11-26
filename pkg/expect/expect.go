@@ -375,7 +375,7 @@ func (ep *ExpectProcess) Send(command string) error {
 func (ep *ExpectProcess) Lines() []string {
 	ep.mu.Lock()
 	defer ep.mu.Unlock()
-	return ep.lines
+	return append([]string(nil), ep.lines...)
 }
 
 // ReadLine returns line by line.

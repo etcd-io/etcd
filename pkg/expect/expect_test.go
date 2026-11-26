@@ -222,3 +222,10 @@ func TestResponseMatchRegularExpr(t *testing.T) {
 		})
 	}
 }
+
+func TestLinesReturnsCopy(t *testing.T) {
+	ep := &ExpectProcess{lines: []string{"first", "second"}}
+	lines := ep.Lines()
+	lines[0] = "mutated"
+	assert.Equal(t, "first", ep.lines[0], "Lines() must not expose the internal slice")
+}
