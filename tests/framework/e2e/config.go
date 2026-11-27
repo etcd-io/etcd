@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -108,7 +108,7 @@ var experimentalFlags = map[string]struct{}{
 // need to convert flags accordingly based on the binary version.
 func convertFlag(name, value string, ver *semver.Version) string {
 	// For versions >= 3.6, use the normal (non-experimental) flag.
-	if ver == nil || !ver.LessThan(version.V3_6) {
+	if ver == nil || !ver.LessThan(&version.V3_6) {
 		return fmt.Sprintf("--%s=%s", name, value)
 	}
 

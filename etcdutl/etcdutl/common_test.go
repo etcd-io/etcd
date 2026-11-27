@@ -23,7 +23,6 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
@@ -34,7 +33,6 @@ func TestGetLatestWalSnap(t *testing.T) {
 	testCases := []struct {
 		name                  string
 		walSnaps              []*walpb.Snapshot
-		snapshots             []*raftpb.Snapshot
 		expectedLatestWALSnap *walpb.Snapshot
 	}{
 		{
@@ -44,11 +42,6 @@ func TestGetLatestWalSnap(t *testing.T) {
 				{Index: new(uint64(20)), Term: new(uint64(3))},
 				{Index: new(uint64(30)), Term: new(uint64(5))},
 			},
-			snapshots: []*raftpb.Snapshot{
-				{Metadata: &raftpb.SnapshotMetadata{Index: new(uint64(10)), Term: new(uint64(2))}},
-				{Metadata: &raftpb.SnapshotMetadata{Index: new(uint64(20)), Term: new(uint64(3))}},
-				{Metadata: &raftpb.SnapshotMetadata{Index: new(uint64(30)), Term: new(uint64(5))}},
-			},
 			expectedLatestWALSnap: &walpb.Snapshot{Index: new(uint64(30)), Term: new(uint64(5))},
 		},
 		{
@@ -57,13 +50,6 @@ func TestGetLatestWalSnap(t *testing.T) {
 				{Index: new(uint64(10)), Term: new(uint64(2))},
 				{Index: new(uint64(20)), Term: new(uint64(3))},
 				{Index: new(uint64(35)), Term: new(uint64(5))},
-			},
-			snapshots: []*raftpb.Snapshot{
-				{Metadata: &raftpb.SnapshotMetadata{Index: new(uint64(10)), Term: new(uint64(2))}},
-				{Metadata: &raftpb.SnapshotMetadata{Index: new(uint64(20)), Term: new(uint64(3))}},
-				{Metadata: &raftpb.SnapshotMetadata{Index: new(uint64(35)), Term: new(uint64(5))}},
-				{Metadata: &raftpb.SnapshotMetadata{Index: new(uint64(40)), Term: new(uint64(6))}},
-				{Metadata: &raftpb.SnapshotMetadata{Index: new(uint64(50)), Term: new(uint64(7))}},
 			},
 			expectedLatestWALSnap: &walpb.Snapshot{Index: new(uint64(35)), Term: new(uint64(5))},
 		},
@@ -96,14 +82,6 @@ func TestGetLatestWalSnap(t *testing.T) {
 			}
 			err = w.Close()
 			require.NoError(t, err)
-
-			// generate snapshot files
-			ss := snap.New(lg, datadir.ToSnapDir(dataDir))
-			for _, snap := range tc.snapshots {
-				snap.Metadata.ConfState = &raftpb.ConfState{Voters: []uint64{1}}
-				snapErr := ss.SaveSnap(snap)
-				require.NoError(t, snapErr)
-			}
 
 			walSnap, err := getLatestWALSnap(lg, dataDir)
 			require.NoError(t, err)

@@ -89,8 +89,8 @@ func init() {
 }
 
 func watchFunc(_ *cobra.Command, _ []string) {
-	if watchKeySpaceSize <= 0 {
-		fmt.Fprintf(os.Stderr, "expected positive --key-space-size, got (%v)", watchKeySpaceSize)
+	if err := validateWatchFlags(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	grpcConns := int(totalClients)
@@ -158,6 +158,25 @@ func benchMakeWatches(clients []*clientv3.Client, wk *watchedKeys) {
 	for i := 0; i < len(streams); i++ {
 		wk.watches = append(wk.watches, (<-wc)...)
 	}
+}
+
+// validateWatchFlags checks that the watch command's cardinality flags are
+// positive. Non-positive values lead to a divide-by-zero panic in
+// benchMakeWatches, or to a no-op benchmark that silently reports success.
+func validateWatchFlags() error {
+	if watchStreams <= 0 {
+		return fmt.Errorf("expected positive --streams, got (%v)", watchStreams)
+	}
+	if watchWatchesPerStream <= 0 {
+		return fmt.Errorf("expected positive --watch-per-stream, got (%v)", watchWatchesPerStream)
+	}
+	if watchedKeyTotal <= 0 {
+		return fmt.Errorf("expected positive --watched-key-total, got (%v)", watchedKeyTotal)
+	}
+	if watchKeySpaceSize <= 0 {
+		return fmt.Errorf("expected positive --key-space-size, got (%v)", watchKeySpaceSize)
+	}
+	return nil
 }
 
 func newWatchedKeys() *watchedKeys {

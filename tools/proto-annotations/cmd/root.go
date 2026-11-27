@@ -70,7 +70,7 @@ func runProtoAnnotation(annotation string) error {
 		for _, err := range errs {
 			fmt.Fprintln(os.Stderr, err)
 		}
-		return fmt.Errorf("failed reading anotation")
+		return fmt.Errorf("failed reading annotation")
 	}
 	return nil
 }

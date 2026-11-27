@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
@@ -196,9 +196,9 @@ func (f memberDowngrade) Available(config e2e.EtcdProcessClusterConfig, member e
 	if err != nil {
 		panic("Failed checking etcd version binary")
 	}
-	v3_6 := semver.Version{Major: 3, Minor: 6}
+	v3_6 := *semver.New(3, 6, 0, "", "")
 	// only current version cluster can be downgraded.
-	return v.Compare(v3_6) >= 0 && (config.Version == e2e.CurrentVersion && member.Config().ExecPath == e2e.BinPath.Etcd)
+	return v.Compare(&v3_6) >= 0 && (config.Version == e2e.CurrentVersion && member.Config().ExecPath == e2e.BinPath.Etcd)
 }
 
 type memberDowngradeUpgrade struct{}
@@ -263,9 +263,9 @@ func (f memberDowngradeUpgrade) Available(config e2e.EtcdProcessClusterConfig, m
 	if err != nil {
 		panic("Failed checking etcd version binary")
 	}
-	v3_6 := semver.Version{Major: 3, Minor: 6}
+	v3_6 := *semver.New(3, 6, 0, "", "")
 	// only current version cluster can be downgraded.
-	return v.Compare(v3_6) >= 0 && (config.Version == e2e.CurrentVersion && member.Config().ExecPath == e2e.BinPath.Etcd)
+	return v.Compare(&v3_6) >= 0 && (config.Version == e2e.CurrentVersion && member.Config().ExecPath == e2e.BinPath.Etcd)
 }
 
 func (f memberDowngradeUpgrade) Timeout() time.Duration {

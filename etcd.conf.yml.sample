@@ -28,9 +28,6 @@ listen-peer-urls: http://localhost:2380
 # List of comma separated URLs to listen on for client traffic.
 listen-client-urls: http://localhost:2379
 
-# Maximum number of snapshot files to retain (0 is unlimited).
-max-snapshots: 5
-
 # Maximum number of wal files to retain (0 is unlimited).
 max-wals: 5
 
@@ -72,24 +69,6 @@ strict-reconfig-check: false
 
 # Enable runtime profiling data via HTTP server
 enable-pprof: true
-
-# Valid values include 'on', 'readonly', 'off'
-proxy: 'off'
-
-# Time (in milliseconds) an endpoint will be held in a failed state.
-proxy-failure-wait: 5000
-
-# Time (in milliseconds) of the endpoints refresh interval.
-proxy-refresh-interval: 30000
-
-# Time (in milliseconds) for a dial to timeout.
-proxy-dial-timeout: 1000
-
-# Time (in milliseconds) for a write to timeout.
-proxy-write-timeout: 5000
-
-# Time (in milliseconds) for a read to timeout.
-proxy-read-timeout: 0
 
 client-transport-security:
   # Path to the client server TLS cert file.

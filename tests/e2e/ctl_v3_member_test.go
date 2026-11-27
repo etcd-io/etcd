@@ -37,12 +37,6 @@ import (
 
 func TestCtlV3MemberList(t *testing.T)        { testCtl(t, memberListTest) }
 func TestCtlV3MemberListWithHex(t *testing.T) { testCtl(t, memberListWithHexTest) }
-func TestCtlV3MemberListSerializable(t *testing.T) {
-	cfg := e2e.NewConfig(
-		e2e.WithClusterSize(1),
-	)
-	testCtl(t, memberListSerializableTest, withCfg(*cfg))
-}
 
 func TestCtlV3MemberAdd(t *testing.T)          { testCtl(t, memberAddTest) }
 func TestCtlV3MemberAddAsLearner(t *testing.T) { testCtl(t, memberAddAsLearnerTest) }
@@ -163,20 +157,6 @@ func memberListTest(cx ctlCtx) {
 	if err := ctlV3MemberList(cx); err != nil {
 		cx.t.Fatalf("memberListTest ctlV3MemberList error (%v)", err)
 	}
-}
-
-func memberListSerializableTest(cx ctlCtx) {
-	resp, err := getMemberList(cx, false)
-	require.NoError(cx.t, err)
-	require.Len(cx.t, resp.Members, 1)
-
-	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
-	err = ctlV3MemberAdd(cx, peerURL, false)
-	require.NoError(cx.t, err)
-
-	resp, err = getMemberList(cx, true)
-	require.NoError(cx.t, err)
-	require.Len(cx.t, resp.Members, 2)
 }
 
 func ctlV3MemberList(cx ctlCtx) error {

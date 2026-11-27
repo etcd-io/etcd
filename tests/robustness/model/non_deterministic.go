@@ -16,25 +16,13 @@ package model
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"slices"
 	"strings"
-	"sync/atomic"
 
 	"github.com/anishathalye/porcupine"
 )
-
-// LinearizationDeadlineTripped is set when linearization validation exceeds
-// its timeout.
-//
-// Porcupine currently does not propagate its timeout to the model Step
-// callback. A single non-deterministic Step can take seconds or minutes, so
-// CheckOperationsVerbose may not return promptly after its timeout expires.
-// Until etcd depends on a Porcupine version with timeout propagation, validation
-// uses this atomic flag to let Step and its helpers return early.
-//
-// See https://github.com/anishathalye/porcupine/pull/45 and https://github.com/etcd-io/etcd/pull/21715.
-var LinearizationDeadlineTripped atomic.Int32
 
 // NonDeterministicModel extends DeterministicModel to allow for clients with imperfect knowledge of the request's destiny.
 // An unknown/error response doesn't inform whether the request was persisted or not, so the model
@@ -45,8 +33,8 @@ var NonDeterministicModel = func(keys []string) porcupine.Model {
 		Init: func() any {
 			return nonDeterministicState{freshEtcdState(keys)}
 		},
-		Step: func(st any, in any, out any) (bool, any) {
-			return st.(nonDeterministicState).apply(in.(EtcdRequest), out.(MaybeEtcdResponse))
+		StepContext: func(ctx context.Context, st any, in any, out any) (bool, any) {
+			return st.(nonDeterministicState).apply(ctx, in.(EtcdRequest), out.(MaybeEtcdResponse))
 		},
 		Equal: func(st1, st2 any) bool {
 			return st1.(nonDeterministicState).Equal(st2.(nonDeterministicState))
@@ -158,34 +146,46 @@ func compareStates(first, second EtcdState) int {
 	return 0
 }
 
-func (states nonDeterministicState) apply(request EtcdRequest, response MaybeEtcdResponse) (bool, nonDeterministicState) {
-	if LinearizationDeadlineTripped.Load() != 0 {
+func (states nonDeterministicState) apply(ctx context.Context, request EtcdRequest, response MaybeEtcdResponse) (bool, nonDeterministicState) {
+	if ctx.Err() != nil {
 		return false, nil
 	}
 	var newStates nonDeterministicState
 	switch {
 	case response.Error != "":
-		newStates = states.applyFailedRequest(request)
+		newStates = states.applyFailedRequest(ctx, request)
 	case response.Persisted && response.PersistedRevision == 0:
-		newStates = states.applyPersistedRequest(request)
+		newStates = states.applyPersistedRequest(ctx, request)
 	case response.Persisted && response.PersistedRevision != 0:
-		newStates = states.applyPersistedRequestWithRevision(request, response.PersistedRevision)
+		newStates = states.applyPersistedRequestWithRevision(ctx, request, response.PersistedRevision)
 	default:
-		newStates = states.applyRequestWithResponse(request, response.EtcdResponse)
+		newStates = states.applyRequestWithResponse(ctx, request, response.EtcdResponse)
+	}
+	if ctx.Err() != nil {
+		return false, nil
 	}
 	return len(newStates) > 0, newStates
 }
 
 // applyFailedRequest returns both the original states and states with applied request. It considers both cases, request was persisted and request was lost.
-func (states nonDeterministicState) applyFailedRequest(request EtcdRequest) nonDeterministicState {
+func (states nonDeterministicState) applyFailedRequest(ctx context.Context, request EtcdRequest) nonDeterministicState {
+	if ctx.Err() != nil {
+		return nil
+	}
 	newStates := make(nonDeterministicState, 0, len(states)*2)
 	for _, s := range states {
-		if LinearizationDeadlineTripped.Load() != 0 {
+		if ctx.Err() != nil {
 			return nil
 		}
 		newStates = append(newStates, s)
 		newState, _ := s.Step(request)
+		if ctx.Err() != nil {
+			return nil
+		}
 		if !newState.Equal(s) {
+			if ctx.Err() != nil {
+				return nil
+			}
 			newStates = append(newStates, newState)
 		}
 	}
@@ -193,10 +193,13 @@ func (states nonDeterministicState) applyFailedRequest(request EtcdRequest) nonD
 }
 
 // applyPersistedRequest applies request to all possible states.
-func (states nonDeterministicState) applyPersistedRequest(request EtcdRequest) nonDeterministicState {
+func (states nonDeterministicState) applyPersistedRequest(ctx context.Context, request EtcdRequest) nonDeterministicState {
+	if ctx.Err() != nil {
+		return nil
+	}
 	newStates := make(nonDeterministicState, 0, len(states))
 	for _, s := range states {
-		if LinearizationDeadlineTripped.Load() != 0 {
+		if ctx.Err() != nil {
 			return nil
 		}
 		newState, _ := s.Step(request)
@@ -206,10 +209,13 @@ func (states nonDeterministicState) applyPersistedRequest(request EtcdRequest) n
 }
 
 // applyPersistedRequestWithRevision applies request to all possible states, but leaves only states that would return proper revision.
-func (states nonDeterministicState) applyPersistedRequestWithRevision(request EtcdRequest, responseRevision int64) nonDeterministicState {
+func (states nonDeterministicState) applyPersistedRequestWithRevision(ctx context.Context, request EtcdRequest, responseRevision int64) nonDeterministicState {
+	if ctx.Err() != nil {
+		return nil
+	}
 	newStates := make(nonDeterministicState, 0, len(states))
 	for _, s := range states {
-		if LinearizationDeadlineTripped.Load() != 0 {
+		if ctx.Err() != nil {
 			return nil
 		}
 		newState, modelResponse := s.Step(request)
@@ -221,10 +227,13 @@ func (states nonDeterministicState) applyPersistedRequestWithRevision(request Et
 }
 
 // applyRequestWithResponse applies request to all possible states, but leaves only state that would return proper response.
-func (states nonDeterministicState) applyRequestWithResponse(request EtcdRequest, response EtcdResponse) nonDeterministicState {
+func (states nonDeterministicState) applyRequestWithResponse(ctx context.Context, request EtcdRequest, response EtcdResponse) nonDeterministicState {
+	if ctx.Err() != nil {
+		return nil
+	}
 	newStates := make(nonDeterministicState, 0, len(states))
 	for _, s := range states {
-		if LinearizationDeadlineTripped.Load() != 0 {
+		if ctx.Err() != nil {
 			return nil
 		}
 		newState, modelResponse := s.Step(request)

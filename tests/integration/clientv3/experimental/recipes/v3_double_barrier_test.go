@@ -37,9 +37,7 @@ func TestDoubleBarrier(t *testing.T) {
 
 	waiters := 10
 	session, err := concurrency.NewSession(clus.RandClient())
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 	defer session.Orphan()
 
 	b := recipe.NewDoubleBarrier(session, "test-barrier", waiters)
@@ -50,6 +48,7 @@ func TestDoubleBarrier(t *testing.T) {
 			session, err := concurrency.NewSession(clus.RandClient())
 			if err != nil {
 				t.Error(err)
+				return
 			}
 			defer session.Orphan()
 
@@ -109,9 +108,7 @@ func TestDoubleBarrierTooManyClients(t *testing.T) {
 
 	waiters := 10
 	session, err := concurrency.NewSession(clus.RandClient())
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 	defer session.Orphan()
 
 	b := recipe.NewDoubleBarrier(session, "test-barrier", waiters)
@@ -129,6 +126,8 @@ func TestDoubleBarrierTooManyClients(t *testing.T) {
 			gsession, gerr := concurrency.NewSession(clus.RandClient())
 			if gerr != nil {
 				t.Error(gerr)
+				wgEntered.Done()
+				return
 			}
 			defer gsession.Orphan()
 
@@ -174,14 +173,10 @@ func TestDoubleBarrierFailover(t *testing.T) {
 	defer close(donec)
 
 	s0, err := concurrency.NewSession(clus.Client(0))
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 	defer s0.Orphan()
 	s1, err := concurrency.NewSession(clus.Client(0))
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 	defer s1.Orphan()
 
 	// sacrificial barrier holder; lease will be revoked

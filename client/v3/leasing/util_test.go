@@ -26,8 +26,8 @@ import (
 )
 
 func TestCopyHeader(t *testing.T) {
-	t.Run("ResponseHeader should have 4 protobuf fields", func(t *testing.T) {
-		require.Equal(t, 4, countProtobufFields(&v3pb.ResponseHeader{}))
+	t.Run("ResponseHeader should have 5 protobuf fields", func(t *testing.T) {
+		require.Equal(t, 5, countProtobufFields(&v3pb.ResponseHeader{}))
 	})
 
 	t.Run("nil header", func(t *testing.T) {
@@ -40,6 +40,7 @@ func TestCopyHeader(t *testing.T) {
 			MemberId:  456,
 			Revision:  789,
 			RaftTerm:  101112,
+			LeaderId:  131415,
 		}
 		actual := copyHeader(want)
 		require.Equal(t, want, actual)
@@ -65,6 +66,7 @@ func TestCopyGetResponseMetadataOnly(t *testing.T) {
 				MemberId:  456,
 				Revision:  789,
 				RaftTerm:  101112,
+				LeaderId:  131415,
 			},
 			Kvs: []*mvccpb.KeyValue{
 				{

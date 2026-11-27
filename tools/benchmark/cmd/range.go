@@ -66,6 +66,8 @@ func init() {
 	rangeCmd.Flags().BoolVar(&rangeStream, "stream", false, "Use RangeStream instead of unary Range")
 	rangeCmd.Flags().BoolVar(&rangePaginate, "paginate", false, "Use paginated unary range with 10k-key pages")
 	rangeCmd.Flags().BoolVar(&rangePrefix, "prefix", false, "Range over all keys with the given key as prefix")
+	rangeCmd.Flags().BoolVar(&defrag, "defrag", false, "'true' to trigger a one-time defragmentation at approximately --defrag-trigger-percent of --total requests")
+	rangeCmd.Flags().IntVar(&defragTriggerPercent, "defrag-trigger-percent", 40, "Percentage of --total requests at which --defrag triggers defragmentation")
 }
 
 func rangeFunc(cmd *cobra.Command, args []string) {
@@ -173,6 +175,7 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 	go func() {
 		for i := 0; i < rangeTotal; i++ {
 			requests <- struct{}{}
+			maybeTriggerDefrag(clients, i, rangeTotal)
 		}
 		close(requests)
 	}()
@@ -182,6 +185,7 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 	close(r.Results())
 	bar.Finish()
 	fmt.Printf("%s", <-rc)
+	printDefragDuration()
 }
 
 func paginatedRange(c *v3.Client, key string, pageSize int64, baseOpts []v3.OpOption) error {

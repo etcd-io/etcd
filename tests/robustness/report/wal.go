@@ -409,7 +409,7 @@ func ReadAllWALEntries(lg *zap.Logger, dirpath string) (state *raftpb.HardState,
 			decoder.UpdateCRC(rec.GetCrc())
 		case wal.SnapshotType:
 		default:
-			return state, nil, fmt.Errorf("unexpected block type %d", rec.Type)
+			return state, nil, fmt.Errorf("unexpected block type %d", rec.GetType())
 		}
 	}
 	if err != nil && !errors.Is(err, io.EOF) {

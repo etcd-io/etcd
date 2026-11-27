@@ -47,8 +47,10 @@ type GetOptions struct {
 }
 
 type PutOptions struct {
-	LeaseID clientv3.LeaseID
-	Timeout time.Duration
+	LeaseID     clientv3.LeaseID
+	Timeout     time.Duration
+	IgnoreValue bool
+	IgnoreLease bool
 }
 
 type DeleteOptions struct {

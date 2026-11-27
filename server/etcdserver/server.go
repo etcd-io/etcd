@@ -27,7 +27,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	humanize "github.com/dustin/go-humanize"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
@@ -92,6 +92,10 @@ const (
 	HealthInterval = 5 * time.Second
 
 	purgeFileInterval = 30 * time.Second
+
+	// maxSnapDBFiles is the maximum number of snap db files to retain.
+	// It's no longer configurable now that --max-snapshots is removed.
+	maxSnapDBFiles = 5
 
 	// max number of in-flight snapshot messages etcdserver allows to have
 	// This number is more than enough for most clusters with 5 machines.
@@ -253,7 +257,7 @@ type EtcdServer struct {
 	be         backend.Backend
 	beHooks    *serverstorage.BackendHooks
 	authStore  auth.AuthStore
-	alarmStore *v3alarm.AlarmStore
+	alarmStore atomic.Pointer[v3alarm.AlarmStore]
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -596,12 +600,9 @@ func (s *EtcdServer) start() {
 
 func (s *EtcdServer) purgeFile() {
 	lg := s.Logger()
-	var dberrc, serrc, werrc <-chan error
-	var dbdonec, sdonec, wdonec <-chan struct{}
-	if s.Cfg.MaxSnapFiles > 0 {
-		dbdonec, dberrc = fileutil.PurgeFileWithoutFlock(lg, s.Cfg.SnapDir(), "snap.db", s.Cfg.MaxSnapFiles, purgeFileInterval, s.stopping)
-		sdonec, serrc = fileutil.PurgeFileWithoutFlock(lg, s.Cfg.SnapDir(), "snap", s.Cfg.MaxSnapFiles, purgeFileInterval, s.stopping)
-	}
+	var dberrc, werrc <-chan error
+	var dbdonec, wdonec <-chan struct{}
+	dbdonec, dberrc = fileutil.PurgeFileWithoutFlock(lg, s.Cfg.SnapDir(), "snap.db", maxSnapDBFiles, purgeFileInterval, s.stopping)
 	if s.Cfg.MaxWALFiles > 0 {
 		wdonec, werrc = fileutil.PurgeFileWithDoneNotify(lg, s.Cfg.WALDir(), "wal", s.Cfg.MaxWALFiles, purgeFileInterval, s.stopping)
 	}
@@ -609,16 +610,11 @@ func (s *EtcdServer) purgeFile() {
 	select {
 	case e := <-dberrc:
 		lg.Fatal("failed to purge snap db file", zap.Error(e))
-	case e := <-serrc:
-		lg.Fatal("failed to purge snap file", zap.Error(e))
 	case e := <-werrc:
 		lg.Fatal("failed to purge wal file", zap.Error(e))
 	case <-s.stopping:
 		if dbdonec != nil {
 			<-dbdonec
-		}
-		if sdonec != nil {
-			<-sdonec
 		}
 		if wdonec != nil {
 			<-wdonec
@@ -956,7 +952,9 @@ func (s *EtcdServer) Cleanup() {
 		s.authStore.Close()
 	}
 	if s.be != nil {
+		s.bemu.Lock()
 		s.be.Close()
+		s.bemu.Unlock()
 	}
 	if s.compactor != nil {
 		s.compactor.Stop()
@@ -964,8 +962,16 @@ func (s *EtcdServer) Cleanup() {
 }
 
 func (s *EtcdServer) Defragment() error {
-	s.bemu.Lock()
-	defer s.bemu.Unlock()
+	// Hold bemu as a reader, not a writer, for the whole call. This still excludes a
+	// concurrent backend swap (applySnapshot takes bemu.Lock()), so a non-blocking
+	// Defrag() can never run against a backend that's being replaced out from under it.
+	// But unlike Lock(), RLock() lets it run alongside the many other RLock() holders
+	// -- notably Backend(), which applyAll() calls on every batch of applied raft
+	// entries via VerifyBackendConsistency(). Taking bemu.Lock() here would serialize
+	// the single-threaded apply pipeline behind the entire Defrag() call (bulk-copy
+	// phase included), turning a non-blocking defrag back into a fully blocking one.
+	s.bemu.RLock()
+	defer s.bemu.RUnlock()
 	return s.be.Defrag()
 }
 
@@ -1146,7 +1152,7 @@ func (s *EtcdServer) NewUberApplier() apply.UberApplier {
 	opts := apply.ApplierOptions{
 		Logger:                       s.lg,
 		KV:                           s.KV(),
-		AlarmStore:                   s.alarmStore,
+		AlarmStore:                   s.alarmStore.Load(),
 		AuthStore:                    s.authStore,
 		Lessor:                       s.lessor,
 		Cluster:                      s.cluster,
@@ -1967,7 +1973,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 		return
 	}
 
-	if !errorspkg.Is(ar.Err, errors.ErrNoSpace) || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
+	if !errorspkg.Is(ar.Err, errors.ErrNoSpace) || len(s.alarmStore.Load().Get(pb.AlarmType_NOSPACE)) > 0 {
 		s.w.Trigger(id, ar)
 		return
 	}
@@ -2071,7 +2077,6 @@ func (s *EtcdServer) applyConfChange(cc *raftpb.ConfChange, ep *etcdProgress, sh
 // TODO: non-blocking snapshot
 func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 	lg := s.Logger()
-	d := GetMembershipInfoInV2Format(lg, s.cluster)
 	if toDisk {
 		s.Logger().Info(
 			"triggering snapshot",
@@ -2094,8 +2099,7 @@ func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 		s.KV().Commit()
 	}
 
-	// For backward compatibility, generate v2 snapshot from v3 state.
-	snap, err := s.r.raftStorage.CreateSnapshot(ep.appliedi, ep.confState, d)
+	snap, err := s.r.raftStorage.CreateSnapshot(ep.appliedi, ep.confState, nil)
 	if err != nil {
 		// the snapshot was done asynchronously with the progress of raft.
 		// raft might have already got a newer snapshot.
@@ -2109,7 +2113,7 @@ func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 	verifyConsistentIndexIsLatest(snap, s.consistIndex.ConsistentIndex())
 
 	if toDisk {
-		// SaveSnap saves the snapshot to file and appends the corresponding WAL entry.
+		// SaveSnap appends the corresponding WAL entry.
 		if err = s.r.storage.SaveSnap(snap); err != nil {
 			lg.Panic("failed to save snapshot", zap.Error(err))
 		}
@@ -2392,7 +2396,7 @@ func (s *EtcdServer) restoreAlarms() error {
 	if err != nil {
 		return err
 	}
-	s.alarmStore = as
+	s.alarmStore.Store(as)
 	return nil
 }
 
@@ -2419,7 +2423,7 @@ func (s *EtcdServer) GoAttach(f func()) {
 }
 
 func (s *EtcdServer) Alarms() []*pb.AlarmMember {
-	return s.alarmStore.Get(pb.AlarmType_NONE)
+	return s.alarmStore.Load().Get(pb.AlarmType_NONE)
 }
 
 // IsLearner returns if the local member is raft learner

@@ -45,7 +45,7 @@ type Cache struct {
 	cfg               Config // immutable runtime configuration
 	watcher           clientv3.Watcher
 	kv                clientv3.KV
-	demux             *demux // demux fans incoming events out to active watchers and manages resync.
+	demux             *Demux // demux fans incoming events out to active watchers and manages resync.
 	store             *store // last‑observed snapshot
 	ready             *ready
 	stop              context.CancelFunc
@@ -317,7 +317,7 @@ func (c *Cache) getWatchLoop() {
 		if err := ctx.Err(); err != nil {
 			return
 		}
-		if err := c.getWatch(); err != nil {
+		if err := c.getWatch(); err != nil { //nolint:staticcheck // SA4023: Related diagnostic for the defensive nil check in getWatchLoop.
 			fmt.Printf("getWatch failed, will retry after %v: %v\n", backoff, err)
 		}
 		select {
@@ -328,7 +328,7 @@ func (c *Cache) getWatchLoop() {
 	}
 }
 
-func (c *Cache) getWatch() error {
+func (c *Cache) getWatch() error { //nolint:staticcheck // SA4023: never returns nil, defensive nil check in getWatchLoop.
 	getResp, err := c.get(c.internalCtx)
 	if err != nil {
 		return err

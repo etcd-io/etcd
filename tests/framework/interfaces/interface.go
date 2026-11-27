@@ -51,6 +51,8 @@ type Client interface {
 	HashKV(context context.Context, rev int64) ([]*clientv3.HashKVResponse, error)
 	Health(context context.Context) error
 	Defragment(context context.Context, opts config.DefragOption) error
+	Snapshot(context context.Context, outFile string) error
+	Downgrade(ctx context.Context, action clientv3.DowngradeAction, version string) (*clientv3.DowngradeResponse, error)
 	AlarmList(context context.Context) (*clientv3.AlarmResponse, error)
 	AlarmDisarm(context context.Context, alarmMember *clientv3.AlarmMember) (*clientv3.AlarmResponse, error)
 	Grant(context context.Context, ttl int64) (*clientv3.LeaseGrantResponse, error)
@@ -81,6 +83,7 @@ type Client interface {
 	MemberList(context context.Context, serializable bool) (*clientv3.MemberListResponse, error)
 	MemberAdd(context context.Context, name string, peerAddrs []string) (*clientv3.MemberAddResponse, error)
 	MemberAddAsLearner(context context.Context, name string, peerAddrs []string) (*clientv3.MemberAddResponse, error)
+	MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*clientv3.MemberUpdateResponse, error)
 	MemberRemove(ctx context.Context, id uint64) (*clientv3.MemberRemoveResponse, error)
 
 	Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan

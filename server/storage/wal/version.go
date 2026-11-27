@@ -18,13 +18,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/server/v3/internal/legacyv2"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -107,7 +108,18 @@ func visitEntryData(entryType raftpb.EntryType, data []byte, visitor Visitor) er
 	case raftpb.EntryNormal:
 		var raftReq etcdserverpb.InternalRaftRequest
 		if err := proto.Unmarshal(data, &raftReq); err != nil {
-			return err
+			// etcd 3.5 or earlier could write legacy v2 metadata requests
+			// (member attributes and the cluster version) to the WAL (the
+			// Request message has since been removed). Such entries carry
+			// no etcd version annotation and are dropped during replay, so
+			// skip those. Any other entry that fails to decode is
+			// corruption and must surface the original error instead of
+			// being silently ignored, matching the release-3.6 behaviour.
+			var legacyReq legacyv2.Request
+			if legacyReq.Unmarshal(data) != nil || !legacyReq.IsMetadataRequest() {
+				return err
+			}
+			return nil
 		}
 		msg = proto.MessageReflect(&raftReq)
 		if raftReq.DowngradeVersionTest != nil {
@@ -244,7 +256,7 @@ func visitDescriptor(md protoreflect.Descriptor, visitor Visitor) error {
 }
 
 func maxVersion(a *semver.Version, b *semver.Version) *semver.Version {
-	if a != nil && (b == nil || b.LessThan(*a)) {
+	if a != nil && (b == nil || b.LessThan(a)) {
 		return a
 	}
 	return b

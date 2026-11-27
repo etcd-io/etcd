@@ -37,7 +37,8 @@ const (
 
 var allFailpoints = []Failpoint{
 	KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic, RaftAfterSavePanic,
-	DefragBeforeCopyPanic, DefragBeforeRenamePanic, BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
+	DefragBeforeCopyPanic, DefragNonBlockBeforeCopyPanic, DefragNonBlockBeforeCatchup, DefragBeforeRenamePanic,
+	BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
 	BackendBeforeStartDBTxnPanic, BackendAfterStartDBTxnPanic, BackendBeforeWritebackBufPanic,
 	BackendAfterWritebackBufPanic, CompactBeforeCommitScheduledCompactPanic, CompactAfterCommitScheduledCompactPanic,
 	CompactBeforeSetFinishedCompactPanic, CompactAfterSetFinishedCompactPanic, CompactBeforeCommitBatchPanic,
@@ -53,6 +54,9 @@ var allFailpoints = []Failpoint{
 	RaftAfterSaveSleep,
 	ApplyBeforeOpenSnapshot,
 	SleepBeforeSendWatchResponse,
+	SleepBeforeSyncWatchers,
+	SleepBeforeMoveVictims,
+	SleepBeforeProgressIfSync,
 }
 
 func PickRandom(clus *e2e.EtcdProcessCluster, profile traffic.Profile) (Failpoint, error) {

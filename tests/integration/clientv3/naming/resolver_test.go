@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,6 +91,15 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 	}
 	if resp.GetPayload() == nil || !bytes.Equal(resp.GetPayload().GetBody(), payloadBody) {
 		t.Fatalf("unexpected response from foo (e1): %s", resp.GetPayload().GetBody())
+	}
+
+	// For round_robin, gRPC only load-balances across subchannels that are
+	// READY. Right after dialing, the subchannel to e2 may still be
+	// connecting, so early calls land entirely on e1 and look identical to
+	// pick_first, which skews the distribution measured below. Give it a
+	// moment to finish connecting before starting the measured loop.
+	if lbPolicy == "round_robin" {
+		time.Sleep(time.Second)
 	}
 
 	// Send more requests

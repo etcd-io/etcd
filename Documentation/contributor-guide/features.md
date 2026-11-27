@@ -1,4 +1,4 @@
-# Features 
+# Features
 
 This document provides an overview of etcd features and general development guidelines for adding and deprecating them. The project maintainers can override these guidelines per the need of the project following the project governance.
 

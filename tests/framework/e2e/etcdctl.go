@@ -92,9 +92,34 @@ func WithDialTimeout(tio time.Duration) config.ClientOption {
 	}
 }
 
+func (ctl *EtcdctlV3) Snapshot(ctx context.Context, outFile string) error {
+	// etcdctl requires the snapshot to be requested from exactly one node.
+	singleEndpointCtl := *ctl
+	singleEndpointCtl.endpoints = []string{ctl.endpoints[0]}
+	_, err := SpawnWithExpectLines(ctx, singleEndpointCtl.cmdArgs("snapshot", "save", outFile), nil, expect.ExpectedResponse{Value: "Snapshot saved at"})
+	return err
+}
+
 func (ctl *EtcdctlV3) DowngradeEnable(ctx context.Context, version string) error {
 	_, err := SpawnWithExpectLines(ctx, ctl.cmdArgs("downgrade", "enable", version), nil, expect.ExpectedResponse{Value: "Downgrade enable success"})
 	return err
+}
+
+func (ctl *EtcdctlV3) Downgrade(ctx context.Context, action clientv3.DowngradeAction, version string) (*clientv3.DowngradeResponse, error) {
+	var args []string
+	switch action {
+	case clientv3.DowngradeValidate:
+		args = []string{"downgrade", "validate", version}
+	case clientv3.DowngradeEnable:
+		args = []string{"downgrade", "enable", version}
+	case clientv3.DowngradeCancel:
+		args = []string{"downgrade", "cancel"}
+	default:
+		return nil, fmt.Errorf("unknown downgrade action %v", action)
+	}
+	resp := clientv3.DowngradeResponse{}
+	err := ctl.spawnJSONCmd(ctx, &resp, args...)
+	return &resp, err
 }
 
 func (ctl *EtcdctlV3) DowngradeCancel(ctx context.Context) error {
@@ -228,10 +253,18 @@ func parseFieldsGetResponse(lines []string) (*clientv3.GetResponse, error) {
 
 func (ctl *EtcdctlV3) Put(ctx context.Context, key, value string, opts config.PutOptions) (*clientv3.PutResponse, error) {
 	resp := clientv3.PutResponse{}
-	args := []string{}
-	args = append(args, "put", key, value)
-	if opts.LeaseID != 0 {
+	args := []string{"put", key}
+	if !opts.IgnoreValue {
+		args = append(args, value)
+	}
+	if opts.LeaseID != 0 && !opts.IgnoreLease {
 		args = append(args, "--lease", strconv.FormatInt(int64(opts.LeaseID), 16))
+	}
+	if opts.IgnoreValue {
+		args = append(args, "--ignore-value")
+	}
+	if opts.IgnoreLease {
+		args = append(args, "--ignore-lease")
 	}
 	if opts.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", opts.Timeout))
@@ -336,6 +369,12 @@ func (ctl *EtcdctlV3) MemberAdd(ctx context.Context, name string, peerAddrs []st
 func (ctl *EtcdctlV3) MemberAddAsLearner(ctx context.Context, name string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
 	var resp clientv3.MemberAddResponse
 	err := ctl.spawnJSONCmd(ctx, &resp, "member", "add", name, "--learner", "--peer-urls", strings.Join(peerAddrs, ","))
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*clientv3.MemberUpdateResponse, error) {
+	var resp clientv3.MemberUpdateResponse
+	err := ctl.spawnJSONCmd(ctx, &resp, "member", "update", fmt.Sprintf("%x", id), "--peer-urls", strings.Join(peerAddrs, ","))
 	return &resp, err
 }
 
@@ -686,7 +725,17 @@ func (ctl *EtcdctlV3) RoleAdd(ctx context.Context, name string) (*clientv3.AuthR
 func (ctl *EtcdctlV3) RoleGrantPermission(ctx context.Context, name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error) {
 	permissionType := authpb.Permission_Type_name[int32(permType)]
 	var resp clientv3.AuthRoleGrantPermissionResponse
-	err := ctl.spawnJSONCmd(ctx, &resp, "role", "grant-permission", name, permissionType, key, rangeEnd)
+	// etcdctl represents the all-keys range with an empty key and --from-key.
+	if key == "\x00" && rangeEnd == "\x00" {
+		key = ""
+	}
+	args := []string{"role", "grant-permission", name, permissionType, key}
+	if rangeEnd == "\x00" {
+		args = append(args, "--from-key")
+	} else {
+		args = append(args, rangeEnd)
+	}
+	err := ctl.spawnJSONCmd(ctx, &resp, args...)
 	return &resp, err
 }
 
@@ -704,7 +753,17 @@ func (ctl *EtcdctlV3) RoleList(ctx context.Context) (*clientv3.AuthRoleListRespo
 
 func (ctl *EtcdctlV3) RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error) {
 	var resp clientv3.AuthRoleRevokePermissionResponse
-	err := ctl.spawnJSONCmd(ctx, &resp, "role", "revoke-permission", role, key, rangeEnd)
+	// etcdctl represents the all-keys range with an empty key and --from-key.
+	if key == "\x00" && rangeEnd == "\x00" {
+		key = ""
+	}
+	args := []string{"role", "revoke-permission", role, key}
+	if rangeEnd == "\x00" {
+		args = append(args, "--from-key")
+	} else {
+		args = append(args, rangeEnd)
+	}
+	err := ctl.spawnJSONCmd(ctx, &resp, args...)
 	return &resp, err
 }
 

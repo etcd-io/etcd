@@ -89,7 +89,7 @@ func TestWriteRecord(t *testing.T) {
 		t.Errorf("err = %v, want nil", err)
 	}
 	if b.GetType() != typ {
-		t.Errorf("type = %d, want %d", b.Type, typ)
+		t.Errorf("type = %d, want %d", b.GetType(), typ)
 	}
 	if !bytes.Equal(b.Data, d) {
 		t.Errorf("data = %v, want %v", b.Data, d)

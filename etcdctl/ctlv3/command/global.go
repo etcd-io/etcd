@@ -80,7 +80,7 @@ func initDisplayFromCmd(cmd *cobra.Command) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-	if display = NewPrinter(outputType, isHex); display == nil {
+	if display = newPrinter(outputType, isHex); display == nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadFeature, errors.New("unsupported output format"))
 	}
 }

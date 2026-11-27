@@ -41,8 +41,6 @@ var (
 	Success ResultStatus = "Success"
 	Failure ResultStatus = "Failure"
 	Timeout ResultStatus = "Timeout"
-	// DeadlineExceeded is a workaround for Porcupine not always enforcing its timeout. It does not support visualization.
-	DeadlineExceeded ResultStatus = "DeadlineExceeded"
 )
 
 func (r RobustnessResult) Error() error {
@@ -96,6 +94,10 @@ type LinearizationResult struct {
 }
 
 func (r *LinearizationResult) Visualize(lg *zap.Logger, path string) error {
+	if r.Model.Step == nil && r.Model.StepContext == nil {
+		lg.Info("Skipping linearization visualization as model is not initialized")
+		return nil
+	}
 	err := r.Error()
 	if err != nil {
 		lg.Info("Skipping linearization visualization", zap.Error(err))

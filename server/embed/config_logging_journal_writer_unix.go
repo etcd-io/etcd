@@ -14,7 +14,7 @@
 
 //go:build !windows
 
-package logutil
+package embed
 
 import (
 	"bytes"
@@ -30,12 +30,12 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/systemd"
 )
 
-// NewJournalWriter wraps "io.Writer" to redirect log output
+// newJournalWriter wraps "io.Writer" to redirect log output
 // to the local systemd journal. If journald send fails, it fails
 // back to writing to the original writer.
 // The decode overhead is only <30µs per write.
 // Reference: https://github.com/coreos/pkg/blob/master/capnslog/journald_formatter.go
-func NewJournalWriter(wr io.Writer) (io.Writer, error) {
+func newJournalWriter(wr io.Writer) (io.Writer, error) {
 	return &journalWriter{Writer: wr}, systemd.DialJournal()
 }
 

@@ -16,11 +16,14 @@ package common
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
@@ -71,9 +74,16 @@ func TestDowngradeWithUserAuth(t *testing.T) {
 	testDowngradeWithAuth(t, false, true, WithAuth("user0", "user0Pass"))
 }
 
-func testDowngradeWithAuth(t *testing.T, _expectConnectionError, _expectOperationError bool, _opts ...config.ClientOption) {
-	// TODO(ahrtr): finish this after we added interface methods `Downgrade` into `Client`
-	t.Skip()
+func testDowngradeWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
+	currentVersion, err := semver.StrictNewVersion(version.Version)
+	require.NoError(t, err)
+	// downgrade validate only accepts a target of exactly one minor version below the current one
+	targetVersion := semver.New(currentVersion.Major(), currentVersion.Minor()-1, 0, "", "")
+
+	testMaintenanceOperationWithAuth(t, expectConnectionError, expectOperationError, func(ctx context.Context, cc intf.Client) error {
+		_, err := cc.Downgrade(ctx, clientv3.DowngradeValidate, targetVersion.String())
+		return err
+	}, opts...)
 }
 
 /*
@@ -145,9 +155,22 @@ func TestSnapshotWithUserAuth(t *testing.T) {
 	testSnapshotWithAuth(t, false, true, WithAuth("user0", "user0Pass"))
 }
 
-func testSnapshotWithAuth(t *testing.T, _expectConnectionError, _expectOperationError bool, _opts ...config.ClientOption) {
-	// TODO(ahrtr): finish this after we added interface methods `Snapshot` into `Client`
-	t.Skip()
+func testSnapshotWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
+	for _, tc := range []struct {
+		name      string
+		authToken string
+	}{
+		{name: "simple", authToken: "simple"},
+		{name: "jwt", authToken: defaultAuthToken},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.DefaultClusterConfig()
+			cfg.AuthToken = tc.authToken
+			testMaintenanceOperationWithAuthConfig(t, cfg, expectConnectionError, expectOperationError, func(ctx context.Context, cc intf.Client) error {
+				return cc.Snapshot(ctx, filepath.Join(t.TempDir(), "snapshot.db"))
+			}, opts...)
+		})
+	}
 }
 
 /*
@@ -202,11 +225,15 @@ func setupAuthForMaintenanceTest(c intf.Client) error {
 }
 
 func testMaintenanceOperationWithAuth(t *testing.T, expectConnectError, expectOperationError bool, f func(context.Context, intf.Client) error, opts ...config.ClientOption) {
+	testMaintenanceOperationWithAuthConfig(t, config.DefaultClusterConfig(), expectConnectError, expectOperationError, f, opts...)
+}
+
+func testMaintenanceOperationWithAuthConfig(t *testing.T, cfg config.ClusterConfig, expectConnectError, expectOperationError bool, f func(context.Context, intf.Client) error, opts ...config.ClientOption) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
-	clus := testRunner.NewCluster(ctx, t)
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(cfg))
 	defer clus.Close()
 
 	cc := testutils.MustClient(clus.Client())

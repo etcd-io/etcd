@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -33,7 +34,9 @@ func NewTmpBackendFromCfg(tb testing.TB, bcfg backend.BackendConfig) (backend.Ba
 	}
 	tmpPath := filepath.Join(dir, "database")
 	bcfg.Path = tmpPath
-	bcfg.Logger = zaptest.NewLogger(tb)
+	if bcfg.Logger == nil {
+		bcfg.Logger = zaptest.NewLogger(tb)
+	}
 	return backend.New(bcfg), tmpPath
 }
 
@@ -46,6 +49,11 @@ func NewTmpBackend(tb testing.TB, batchInterval time.Duration, batchLimit int) (
 
 func NewDefaultTmpBackend(tb testing.TB) (backend.Backend, string) {
 	return NewTmpBackendFromCfg(tb, backend.DefaultBackendConfig(zaptest.NewLogger(tb)))
+}
+
+// NewDefaultTmpBackendWithNopLogger creates a default temporary backend with logging disabled.
+func NewDefaultTmpBackendWithNopLogger(tb testing.TB) (backend.Backend, string) {
+	return NewTmpBackendFromCfg(tb, backend.DefaultBackendConfig(zap.NewNop()))
 }
 
 func Close(tb testing.TB, b backend.Backend) {

@@ -3,7 +3,92 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 ---
 
-## v3.7.1 (TBC)
+## v3.7.5 (TBC)
+
+### Dependencies
+
+- Bump `github.com/gorilla/websocket` from `v1.5.3` to `v1.5.4-0.20240701034025-d67f41855da4` to address [GO-2026-6278](https://pkg.go.dev/vuln/GO-2026-6278) ([#22935](https://github.com/etcd-io/etcd/pull/22935)).
+- Bump the OpenTelemetry Go API and SDK from `v1.45.0` to `v1.47.0` to address [CVE-2026-128085](https://pkg.go.dev/vuln/GO-2026-6974) and [CVE-2026-128086](https://pkg.go.dev/vuln/GO-2026-6975) ([#22935](https://github.com/etcd-io/etcd/pull/22935)).
+
+---
+
+## v3.7.4 (2026-11-18)
+
+### etcd server
+
+- Fix [`--force-new-cluster` permanently bricking a member whose backend consistent index is ahead of its WAL](https://github.com/etcd-io/etcd/pull/22685)
+- [Define `alarmStore` as an `atomic.Pointer` to avoid race condition](https://github.com/etcd-io/etcd/pull/22705)
+- Fix [etcd panics on startup replaying legacy v2 member-attribute WAL entries](https://github.com/etcd-io/etcd/pull/22804)
+
+### Dependencies
+
+- Compile binaries using [go 1.26.11](https://github.com/etcd-io/etcd/pull/22818).
+- [Use Debian 13 as base container image](https://github.com/etcd-io/etcd/pull/22669).
+- [Bump golang.org/x/net from v0.61.0 to v0.62.0 to address CVE-2026-78661, CVE-2026-97045](https://github.com/etcd-io/etcd/pull/22857).
+
+---
+
+## v3.7.3 (2026-10-22)
+
+### etcd server
+
+- Fix [data race between `Hash` and `Restore` in the MVCC store](https://github.com/etcd-io/etcd/pull/22636)
+- [Fix data race in keys-only `RangeStream`](https://github.com/etcd-io/etcd/pull/22601)
+- Fix [performance regression caused by the leader sending `MsgApp` messages to followers in reverse order](https://github.com/etcd-io/etcd/pull/22607)
+
+### Deprecations
+
+- Deprecated [NewJournalWriter in client/pkg/v3/logutil](https://github.com/etcd-io/etcd/pull/22530). It will be removed in v3.8, so that `client/pkg/v3` no longer depends on `github.com/coreos/go-systemd/v22`.
+
+### Dependencies
+
+- Compile binaries using [go 1.26.10](https://github.com/etcd-io/etcd/pull/22630).
+- Bump [go.opentelemetry.io/otel/sdk, go.opentelemetry.io/otel/exporters/otlp/otlptrace and go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc to v1.45.0 to address GO-2026-6505](https://github.com/etcd-io/etcd/pull/22552).
+- Bump [golang.org/x/net to v0.61.0 to address GO-2026-6617, GO-2026-6612, GO-2026-6611 and GO-2026-6603](https://github.com/etcd-io/etcd/pull/22583).
+
+---
+
+## v3.7.2 (2026-09-22)
+
+### etcd server
+
+- [Update `MinimalEtcdVersion` to read latest snapshot entry from WAL](https://github.com/etcd-io/etcd/pull/22201)
+- [Fix fsync snap directory when saving a received snapshot db](https://github.com/etcd-io/etcd/pull/22378)
+
+### etcdctl
+
+- [Fix duplicate `RaftTerm` field in the `endpoint status` output when using `--write-out=fields`](https://github.com/etcd-io/etcd/pull/22217)
+- [fileutil: close locked file handle on os.Remove error in purgeFile](https://github.com/etcd-io/etcd/pull/22455)
+
+### Dependencies
+
+- Compile binaries using [go 1.26.8](https://github.com/etcd-io/etcd/pull/22413).
+- Bump [go.opentelemetry.io/otel to v1.44.0 to addrss CVE-2026-41178](https://github.com/etcd-io/etcd/pull/22198).
+- Bump [google.golang.org/grpc to v1.83.2 to address CVE-2026-84303](https://github.com/etcd-io/etcd/pull/22469).
+
+---
+
+## v3.7.1 (2026-07-23)
+
+### etcd server
+
+- Fix [unbounded io.ReadAll on peer lease HTTP handler body](https://github.com/etcd-io/etcd/pull/22147)
+- [Set a reasonable value for `snapshotLimitByte`](https://github.com/etcd-io/etcd/pull/22145)
+- Fix [the `costTxnReq` ignores nested `RequestTxn` issue](https://github.com/etcd-io/etcd/pull/22139)
+- [Set a ReadHeaderTimeout for client http.Server](https://github.com/etcd-io/etcd/pull/22143)
+- Fix [the security issue where a user granted read permission on one key could receive watch responses for every key starting from that key](https://github.com/etcd-io/etcd/security/advisories/GHSA-xg4h-6gfc-h4m8)
+
+### Package `clientv3`
+
+- Fix [unsynchronized range over leaseCache.entries](https://github.com/etcd-io/etcd/pull/22149)
+
+### package `client/pkg/v3`
+
+- [Set a tlsHandshakeTimeout for tlsListener](https://github.com/etcd-io/etcd/pull/22141). Refer to [GHSA-6vch-q96h-7gc3](https://github.com/etcd-io/etcd/security/advisories/GHSA-6vch-q96h-7gc3) for more details.
+
+### Dependencies
+
+- [Bump google.golang.org/grpc to 1.82.1 to address GHSA-hrxh-6v49-42gf](https://github.com/etcd-io/etcd/pull/22157)
 
 ---
 

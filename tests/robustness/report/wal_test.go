@@ -618,7 +618,10 @@ func TestWriteReadWAL(t *testing.T) {
 			},
 		},
 	}
-	for _, tc := range tcs {
+	// Iterate by index: the test cases embed raftpb.HardState, which contains
+	// a mutex since the raft v3.7 protobuf regeneration and must not be copied.
+	for i := range tcs {
+		tc := &tcs[i]
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			lg := zaptest.NewLogger(t)
@@ -647,7 +650,7 @@ func TestWriteReadWAL(t *testing.T) {
 					require.NoError(t, err)
 				}
 				if !proto.Equal(&tc.walReadAll.wantState, state) {
-					t.Errorf("wantState mismatch\n got  %+v\n want %+v", state, tc.walReadAll.wantState)
+					t.Errorf("wantState mismatch\n got  %+v\n want %+v", state, &tc.walReadAll.wantState)
 				}
 				if diff := cmp.Diff(tc.walReadAll.wantEntries, entries, cmpopts.IgnoreUnexported(raftpb.Entry{}, raftpb.HardState{})); diff != "" {
 					t.Errorf("wantEntries mismatch (-want +got):\n%s", diff)
@@ -661,7 +664,7 @@ func TestWriteReadWAL(t *testing.T) {
 					require.NoError(t, err)
 				}
 				if !proto.Equal(&tc.readAllEntries.wantState, state) {
-					t.Errorf("wantState mismatch\n got  %+v\n want %+v", state, tc.readAllEntries.wantState)
+					t.Errorf("wantState mismatch\n got  %+v\n want %+v", state, &tc.readAllEntries.wantState)
 				}
 				if diff := cmp.Diff(tc.readAllEntries.wantEntries, entries, cmpopts.IgnoreUnexported(raftpb.Entry{}, raftpb.HardState{})); diff != "" {
 					t.Errorf("wantEntries mismatch (-want +got):\n%s", diff)

@@ -17,7 +17,7 @@ package membership
 import (
 	"testing"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
@@ -33,7 +33,7 @@ func TestIsMetaStoreOnly(t *testing.T) {
 	require.NoError(t, err)
 	assert.Truef(t, metaOnly, "Just created v2store should be meta-only")
 
-	mustSaveClusterVersionToStore(lg, s, semver.New("3.5.17"))
+	mustSaveClusterVersionToStore(lg, s, semver.MustParse("3.5.17"))
 	metaOnly, err = IsMetaStoreOnly(s)
 	require.NoError(t, err)
 	assert.Truef(t, metaOnly, "Just created v2store should be meta-only")

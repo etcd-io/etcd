@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
@@ -295,7 +296,10 @@ func keyValueRevision(key, value string, rev int64) model.KeyValue {
 }
 
 func TestValidateLinearizableOperationsTimeoutIsRespected(t *testing.T) {
-	timeout := time.Second
+	testutil.RegisterLeakDetection(t)
+
+	timeout := 1 * time.Nanosecond
+
 	const failedPutCount = 17
 	// Repeat the range read to make the final applyRequestWithResponse step slow.
 	const rangeReadCount = 3072
@@ -346,18 +350,13 @@ func TestValidateLinearizableOperationsTimeoutIsRespected(t *testing.T) {
 	})
 	keys := model.ModelKeys(history)
 
-	start := time.Now()
 	result := validateLinearizableOperationsAndVisualize(zap.NewNop(), keys, history, timeout)
-	elapsed := time.Since(start)
 
-	if result.Status != DeadlineExceeded {
-		t.Fatalf("validateLinearizableOperationsAndVisualize(...) status = %q, want %q", result.Status, DeadlineExceeded)
+	if result.Status != Timeout {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) status = %q, want %q", result.Status, Timeout)
 	}
-	if result.Message != "deadline exceeded" {
-		t.Fatalf("validateLinearizableOperationsAndVisualize(...) message = %q, want %q", result.Message, "deadline exceeded")
-	}
-	if elapsed > timeout+250*time.Millisecond {
-		t.Fatalf("validateLinearizableOperationsAndVisualize(...) does not respect timeout: %v, timeout was %v", elapsed, timeout)
+	if result.Message != "timed out" {
+		t.Fatalf("validateLinearizableOperationsAndVisualize(...) message = %q, want %q", result.Message, "timed out")
 	}
 }
 
