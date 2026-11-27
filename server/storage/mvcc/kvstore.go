@@ -281,14 +281,14 @@ func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
 
 func (s *store) Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, error) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	prevCompactionCompleted := s.checkPrevCompactionCompleted()
 	ch, prevCompactRev, err := s.updateCompactRev(rev)
 	trace.Step("check and update compact revision")
 	if err != nil {
-		s.mu.Unlock()
 		return ch, err
 	}
-	s.mu.Unlock()
 
 	return s.compact(trace, rev, prevCompactRev, prevCompactionCompleted), nil
 }
