@@ -29,6 +29,7 @@ import (
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -1176,4 +1177,16 @@ func TestUserChangePasswordWithOldLog(t *testing.T) {
 	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-test", HashedPassword: encodePassword("bar")})
 	require.Errorf(t, err, "expected %v, got %v", ErrUserNotFound, err)
 	require.ErrorIsf(t, err, ErrUserNotFound, "expected %v, got %v", ErrUserNotFound, err)
+}
+
+type nonTLSAuthInfo struct{}
+
+func (nonTLSAuthInfo) AuthType() string { return "fake" }
+
+func TestAuthInfoFromTLSNonTLSAuthInfo(t *testing.T) {
+	as := &authStore{}
+	ctx := peer.NewContext(context.Background(), &peer.Peer{AuthInfo: nonTLSAuthInfo{}})
+	require.NotPanics(t, func() {
+		require.Nil(t, as.AuthInfoFromTLS(ctx))
+	}, "non-TLS AuthInfo must not panic AuthInfoFromTLS")
 }
