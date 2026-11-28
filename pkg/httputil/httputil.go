@@ -23,6 +23,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 )
 
 // GracefulClose drains http.Response.Body until it hits EOF
@@ -43,6 +44,10 @@ func GetHostname(req *http.Request) string {
 	}
 	h, _, err := net.SplitHostPort(req.Host)
 	if err != nil {
+		// A bare IPv6 literal is valid in brackets without a port.
+		if strings.HasPrefix(req.Host, "[") && strings.HasSuffix(req.Host, "]") {
+			return strings.TrimSuffix(strings.TrimPrefix(req.Host, "["), "]")
+		}
 		return req.Host
 	}
 	return h

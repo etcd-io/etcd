@@ -48,3 +48,8 @@ func TestGetHostname(t *testing.T) {
 		assert.Equalf(t, hv, tt[i].host, "#%d: %q expected host %q, got '%v'", i, tt[i].req.Host, tt[i].host, hv)
 	}
 }
+
+func TestGetHostnameIPv6WithoutPort(t *testing.T) {
+	req := &http.Request{Host: "[::1]"}
+	assert.Equal(t, "::1", GetHostname(req))
+}
