@@ -101,21 +101,21 @@ func TestStorePut(t *testing.T) {
 			Revision{Main: 2},
 		},
 		{
-			Revision{Main: 1, Sub: 1},
+			Revision{Main: 2},
 			indexGetResp{Revision{Main: 2}, Revision{Main: 2}, 1, nil},
 			&rangeResp{[][]byte{newTestRevBytes(Revision{Main: 2, Sub: 1})}, [][]byte{kvb}},
 
-			Revision{Main: 2},
-			newTestRevBytes(Revision{Main: 2}),
+			Revision{Main: 3},
+			newTestRevBytes(Revision{Main: 3}),
 			&mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
-				ModRevision:    2,
+				ModRevision:    3,
 				Version:        2,
 				Lease:          2,
 			},
-			Revision{Main: 2},
+			Revision{Main: 3},
 		},
 		{
 			Revision{Main: 2},
@@ -167,7 +167,7 @@ func TestStorePut(t *testing.T) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
 		}
 		wact = []testutil.Action{
-			{Name: "get", Params: []any{[]byte("foo"), tt.wputrev.Main}},
+			{Name: "get", Params: []any{[]byte("foo"), tt.rev.Main}},
 			{Name: "put", Params: []any{[]byte("foo"), tt.wputrev}},
 		}
 		if g := fi.Action(); !reflect.DeepEqual(g, wact) {

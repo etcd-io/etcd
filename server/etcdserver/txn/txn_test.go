@@ -22,11 +22,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
@@ -404,6 +407,60 @@ func TestReadonlyTxnError(t *testing.T) {
 	}
 }
 
+// TestTxnReadOwnRevision checks the values and revisions visible inside a txn
+// before and after it writes two different keys.
+func TestTxnReadOwnRevision(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, b)
+	lg := zaptest.NewLogger(t)
+	lessor := &lease.FakeLessor{}
+	s := mvcc.NewStore(lg, b, lessor, mvcc.StoreConfig{})
+	defer s.Close()
+
+	// Put foo at every revision from 2 to 10.
+	for range 9 {
+		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+	}
+	require.Equal(t, int64(10), s.Rev())
+
+	req := &pb.TxnRequest{
+		Compare: []*pb.Compare{
+			{
+				Key:         []byte("foo"),
+				Target:      pb.Compare_MOD,
+				Result:      pb.Compare_EQUAL,
+				TargetUnion: &pb.Compare_ModRevision{ModRevision: 10},
+			},
+		},
+		Success: []*pb.RequestOp{
+			rangeOp("foo", "foo3"),
+			putOp("foo2", "bar2"),
+			putOp("foo", "bar1"),
+			rangeOp("foo", "foo3", withSortAscend),
+		},
+	}
+	resp, _, err := Txn(t.Context(), lg, req, false, s, lessor, false)
+	require.NoError(t, err)
+	require.True(t, resp.Succeeded)
+	require.Equal(t, int64(11), resp.Header.Revision)
+	require.Len(t, resp.Responses, 4)
+
+	before := resp.Responses[0].GetResponseRange()
+	require.Equal(t, int64(10), before.GetHeader().GetRevision())
+	wantBefore := []*mvccpb.KeyValue{
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 10, Version: 9},
+	}
+	require.Empty(t, cmp.Diff(wantBefore, before.Kvs, protocmp.Transform()))
+
+	after := resp.Responses[3].GetResponseRange()
+	require.Equal(t, int64(11), after.GetHeader().GetRevision())
+	wantAfter := []*mvccpb.KeyValue{
+		{Key: []byte("foo"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 11, Version: 10},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 11, ModRevision: 11, Version: 1},
+	}
+	require.Empty(t, cmp.Diff(wantAfter, after.Kvs, protocmp.Transform()))
+}
+
 func TestWriteTxnPanicWithoutApply(t *testing.T) {
 	b, bePath := betesting.NewDefaultTmpBackend(t)
 	s := mvcc.NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
@@ -459,4 +516,21 @@ func computeFileHash(filePath string) (string, error) {
 		return "", err
 	}
 	return string(h.Sum(nil)), nil
+}
+
+func rangeOp(key, end string, opts ...func(*pb.RangeRequest)) *pb.RequestOp {
+	req := &pb.RangeRequest{Key: []byte(key), RangeEnd: []byte(end)}
+	for _, opt := range opts {
+		opt(req)
+	}
+	return &pb.RequestOp{Request: &pb.RequestOp_RequestRange{RequestRange: req}}
+}
+
+func withSortAscend(r *pb.RangeRequest) {
+	r.SortOrder = pb.RangeRequest_ASCEND
+}
+
+func putOp(key, value string) *pb.RequestOp {
+	req := &pb.PutRequest{Key: []byte(key), Value: []byte(value)}
+	return &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: req}}
 }
