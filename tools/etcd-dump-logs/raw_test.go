@@ -25,9 +25,26 @@ import (
 func Test_readRaw(t *testing.T) {
 	path := t.TempDir()
 	mustCreateWALLog(t, path)
-	var out bytes.Buffer
-	readRaw(nil, walDir(path), &out)
-	assertReadRawOutput(t, `CRC: 0
+
+	zero := uint64(0)
+	tests := []struct {
+		name      string
+		fromIndex *uint64
+	}{
+		{name: "nil fromIndex", fromIndex: nil},
+		// main passes the -start-index flag value, which is never nil.
+		{name: "zero fromIndex", fromIndex: &zero},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var out bytes.Buffer
+			readRaw(tc.fromIndex, walDir(path), &out)
+			assertReadRawOutput(t, readRawExpectedOutput, out.String())
+		})
+	}
+}
+
+const readRawExpectedOutput = `CRC: 0
 Metadata: 
 Snapshot: index:0 term:0
 Entry: Term:1 Index:1 Type:EntryConfChange Data:"\010\001\020\000\030\002\"\000" 
@@ -60,8 +77,7 @@ Entry: Term:26 Index:32 Data:"\010\033\232K\033\n\005role3\022\022\010\001\022\0
 Entry: Term:27 Index:33 Data:"\010\034\242K\026\n\005role3\022\003key\032\010rangeend" 
 Entry: Term:27 Index:34 Data:"?" 
 EOF: All entries were processed.
-`, out.String())
-}
+`
 
 func assertReadRawOutput(t *testing.T, expected, actual string) {
 	t.Helper()
