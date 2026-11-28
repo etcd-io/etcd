@@ -17,7 +17,9 @@ package command
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -75,11 +77,23 @@ func txnCommandFunc(cmd *cobra.Command, args []string) {
 
 	txn := mustClientFromCmd(cmd).Txn(context.Background())
 	promptInteractive("compares:")
-	txn.If(readCompares(reader)...)
+	cmps, err := readCompares(reader)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitInvalidInput, err)
+	}
+	txn.If(cmps...)
 	promptInteractive("success requests (get, put, del):")
-	txn.Then(readOps(reader)...)
+	thenOps, err := readOps(reader)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitInvalidInput, err)
+	}
+	txn.Then(thenOps...)
 	promptInteractive("failure requests (get, put, del):")
-	txn.Else(readOps(reader)...)
+	elseOps, err := readOps(reader)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitInvalidInput, err)
+	}
+	txn.Else(elseOps...)
 
 	resp, err := txn.Commit()
 	if err != nil {
@@ -95,50 +109,57 @@ func promptInteractive(s string) {
 	}
 }
 
-func readCompares(r *bufio.Reader) (cmps []clientv3.Cmp) {
-	for {
-		line, err := r.ReadString('\n')
-		if err != nil {
-			cobrautl.ExitWithError(cobrautl.ExitInvalidInput, err)
-		}
+// readLine returns the next trimmed line of a txn section. done is true when
+// the section ended, either with an empty line or at the end of the input, so
+// the last section doesn't need a trailing empty line.
+func readLine(r *bufio.Reader) (string, bool, error) {
+	line, err := r.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", true, err
+	}
+	line = strings.TrimSpace(line)
+	if len(line) == 0 {
+		return "", true, nil
+	}
+	return line, false, nil
+}
 
-		// remove space from the line
-		line = strings.TrimSpace(line)
-		if len(line) == 0 {
-			break
+func readCompares(r *bufio.Reader) ([]clientv3.Cmp, error) {
+	var cmps []clientv3.Cmp
+	for {
+		line, done, err := readLine(r)
+		if err != nil {
+			return nil, err
+		}
+		if done {
+			return cmps, nil
 		}
 
 		cmp, err := ParseCompare(line)
 		if err != nil {
-			cobrautl.ExitWithError(cobrautl.ExitInvalidInput, err)
+			return nil, err
 		}
 		cmps = append(cmps, *cmp)
 	}
-
-	return cmps
 }
 
-func readOps(r *bufio.Reader) (ops []clientv3.Op) {
+func readOps(r *bufio.Reader) ([]clientv3.Op, error) {
+	var ops []clientv3.Op
 	for {
-		line, err := r.ReadString('\n')
+		line, done, err := readLine(r)
 		if err != nil {
-			cobrautl.ExitWithError(cobrautl.ExitInvalidInput, err)
+			return nil, err
 		}
-
-		// remove space from the line
-		line = strings.TrimSpace(line)
-		if len(line) == 0 {
-			break
+		if done {
+			return ops, nil
 		}
 
 		op, err := parseRequestUnion(line)
 		if err != nil {
-			cobrautl.ExitWithError(cobrautl.ExitInvalidInput, err)
+			return nil, err
 		}
 		ops = append(ops, *op)
 	}
-
-	return ops
 }
 
 func parseRequestUnion(line string) (*clientv3.Op, error) {
@@ -175,8 +196,13 @@ func parseRequestUnion(line string) (*clientv3.Op, error) {
 		return nil, fmt.Errorf("invalid txn request: %s", line)
 	}
 
-	op := <-opc
-	return &op, nil
+	// The command can succeed without running, e.g. for "get --help".
+	select {
+	case op := <-opc:
+		return &op, nil
+	default:
+		return nil, fmt.Errorf("invalid txn request: %s", line)
+	}
 }
 
 func ParseCompare(line string) (*clientv3.Cmp, error) {
@@ -198,6 +224,13 @@ func ParseCompare(line string) (*clientv3.Cmp, error) {
 	}
 	if serr != nil {
 		return nil, fmt.Errorf("malformed comparison: %s (%w)", line, serr)
+	}
+
+	// clientv3.Compare panics on an unknown operator.
+	switch op {
+	case "=", "!=", ">", "<":
+	default:
+		return nil, fmt.Errorf("malformed comparison: %s (unknown operator %s, expected one of =, !=, >, <)", line, op)
 	}
 
 	var (
