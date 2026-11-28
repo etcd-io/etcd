@@ -646,3 +646,10 @@ func waitForServer(t *testing.T, s Server) {
 		t.Fatal(err)
 	}
 }
+
+func TestComputeLatencyWithTinyLatency(t *testing.T) {
+	// rv > lat is clamped to lat/10. For lat < 10ns that clamps to zero,
+	// which must not be passed to Int63n.
+	got := computeLatency(time.Nanosecond, 100*time.Nanosecond)
+	require.Equal(t, time.Nanosecond, got)
+}
