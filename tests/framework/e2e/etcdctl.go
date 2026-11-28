@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -28,7 +29,47 @@ import (
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
+
+// Lock starts an "etcdctl lock" process and returns a handle to track
+// the lock acquisition.
+func (ctl *EtcdctlV3) Lock(ctx context.Context, name string) (intf.LockHandle, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "lock", name)
+	proc, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+	h := &etcdctlLockHandle{proc: proc, acquired: make(chan intf.AcquireResult, 1)}
+	go func() {
+		line, err := proc.ExpectFunc(ctx, func(string) bool { return true })
+		h.acquired <- intf.AcquireResult{Name: line, Err: err}
+	}()
+	return h, nil
+}
+
+type etcdctlLockHandle struct {
+	proc     *expect.ExpectProcess
+	acquired chan intf.AcquireResult
+}
+
+func (h *etcdctlLockHandle) Acquired() <-chan intf.AcquireResult {
+	return h.acquired
+}
+
+// Release interrupts the "etcdctl lock" process, which closes its
+// session and therefore releases the lock. It returns the error from
+// closing the process, which may report an unexpected exit code when
+// the process was still waiting for the lock.
+func (h *etcdctlLockHandle) Release() error {
+	if err := h.proc.Signal(os.Interrupt); err != nil {
+		return h.proc.Close()
+	}
+	err := CloseWithTimeout(h.proc, time.Second)
+	h.proc.Wait()
+	return err
+}
 
 type EtcdctlV3 struct {
 	cfg        ClientConfig

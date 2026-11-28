@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/concurrency"
 	etcdctlcmd "go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
@@ -56,6 +57,8 @@ func (e integrationRunner) NewCluster(ctx context.Context, tb testing.TB, opts .
 		DisableStrictReconfigCheck: !cfg.StrictReconfigCheck,
 		AuthToken:                  cfg.AuthToken,
 		SnapshotCount:              cfg.SnapshotCount,
+		SnapshotCatchUpEntries:     cfg.SnapshotCatchUpEntries,
+		SnapshotCatchUpEntries:     cfg.SnapshotCatchUpEntries,
 	}
 	integrationCfg.ClientTLS, err = tlsInfo(tb, cfg.ClientTLS)
 	if err != nil {
@@ -526,4 +529,46 @@ func (c integrationClient) MemberList(ctx context.Context, serializable bool) (*
 		return c.Client.MemberList(ctx, clientv3.WithSerializable())
 	}
 	return c.Client.MemberList(ctx)
+}
+
+func (c integrationClient) Lock(ctx context.Context, name string) (intf.LockHandle, error) {
+	session, err := concurrency.NewSession(c.Client, concurrency.WithContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	h := &integrationLockHandle{
+		session:  session,
+		mutex:    concurrency.NewMutex(session, name),
+		acquired: make(chan intf.AcquireResult, 1),
+	}
+	go func() {
+		err := h.mutex.Lock(ctx)
+		if err != nil {
+			h.acquired <- intf.AcquireResult{Err: err}
+			return
+		}
+		h.acquired <- intf.AcquireResult{Name: h.mutex.Key()}
+	}()
+	return h, nil
+}
+
+type integrationLockHandle struct {
+	session  *concurrency.Session
+	mutex    *concurrency.Mutex
+	acquired chan intf.AcquireResult
+}
+
+func (h *integrationLockHandle) Acquired() <-chan intf.AcquireResult {
+	return h.acquired
+}
+
+func (h *integrationLockHandle) Release() error {
+	var err error
+	if h.mutex.IsOwner() {
+		err = h.mutex.Unlock(context.Background())
+	}
+	if serr := h.session.Close(); err == nil {
+		err = serr
+	}
+	return err
 }
