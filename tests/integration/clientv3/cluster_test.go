@@ -16,16 +16,23 @@ package clientv3test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -320,6 +327,87 @@ func TestMemberPromote(t *testing.T) {
 			t.Fatalf("unexpected error when promoting learner member: %v", err)
 		}
 	}
+}
+
+func TestMemberPromoteLostResponse(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size: 3, UseTCP: true, DisableStrictReconfigCheck: true,
+	})
+	defer clus.Terminate(t)
+
+	leaderIdx := clus.WaitLeader(t)
+	followerIdx := (leaderIdx + 1) % 3
+	leader := clus.Members[leaderIdx]
+	leaderClient := clus.Client(leaderIdx)
+	follower := clus.Client(followerIdx)
+
+	learner := clus.MustNewMember(t)
+	learnerRegistered := false
+	t.Cleanup(func() {
+		// The cluster owns the learner after it is registered.
+		if learnerRegistered {
+			return
+		}
+		for _, listener := range learner.PeerListeners {
+			_ = listener.Close()
+		}
+		for _, listener := range learner.ClientListeners {
+			_ = listener.Close()
+		}
+		if learner.GRPCListener != nil {
+			_ = learner.GRPCListener.Close()
+		}
+	})
+	add, err := leaderClient.MemberAddAsLearner(t.Context(), learner.PeerURLs.StringSlice())
+	require.NoError(t, err)
+	clus.InitializeMemberWithResponse(t, learner, add)
+	learnerRegistered = true
+	require.NoError(t, learner.Launch())
+
+	promotePath := fmt.Sprintf("/members/promote/%d", add.Member.ID)
+	var dropped atomic.Bool
+	peer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != promotePath {
+			leader.RaftHandler.ServeHTTP(w, r)
+			return
+		}
+		recorder := httptest.NewRecorder()
+		leader.RaftHandler.ServeHTTP(recorder, r)
+		if recorder.Code == http.StatusOK && dropped.CompareAndSwap(false, true) {
+			panic(http.ErrAbortHandler)
+		}
+		for key, values := range recorder.Header() {
+			w.Header()[key] = values
+		}
+		w.WriteHeader(recorder.Code)
+		_, _ = w.Write(recorder.Body.Bytes())
+	}))
+	t.Cleanup(peer.Close)
+
+	peerURLs := []string{peer.URL}
+	_, err = leaderClient.MemberUpdate(t.Context(), uint64(leader.ID()), peerURLs)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		member := clus.Members[followerIdx].Server.Cluster().Member(leader.ID())
+		return member != nil && reflect.DeepEqual(member.PeerURLs, peerURLs)
+	}, 5*time.Second, 25*time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	var promoteErr error
+	require.Eventually(t, func() bool {
+		_, promoteErr = follower.MemberPromote(ctx, add.Member.ID)
+		return !errors.Is(promoteErr, rpctypes.ErrMemberLearnerNotReady)
+	}, 10*time.Second, 25*time.Millisecond)
+	require.True(t, dropped.Load())
+	require.Equal(t, codes.Unknown, status.Code(promoteErr))
+	require.Equal(t, "etcdserver: member promotion outcome is unknown", status.Convert(promoteErr).Message())
+
+	member, err := getMemberByID(ctx, leaderClient, add.Member.ID)
+	require.NoError(t, err)
+	require.False(t, member.IsLearner)
 }
 
 // TestMemberPromoteMemberNotLearner ensures that promoting a voting member fails.
