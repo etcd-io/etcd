@@ -437,9 +437,14 @@ func TestCacheCompactionResync(t *testing.T) {
 			{Key: []byte("baz"), Value: []byte("new_baz"), ModRevision: 18, CreateRevision: 18, Version: 1},
 		},
 	}
+	stub := newKVStub(firstSnapshot, secondSnapshot)
+	// The cache retries the failed watch on its own after a short backoff, and
+	// that retry restores the newer snapshot. Hold the retry so the assertions
+	// below always run inside the resync window instead of racing its timer.
+	stub.holdAfterFirst = make(chan struct{})
 	fakeClient := &clientv3.Client{
 		Watcher: newMockWatcher(16),
-		KV:      newKVStub(firstSnapshot, secondSnapshot),
+		KV:      stub,
 	}
 	cache, err := New(fakeClient, "")
 	if err != nil {
@@ -478,9 +483,12 @@ func TestCacheCompactionResync(t *testing.T) {
 	}
 
 	t.Log("Phase 3: resync after compaction")
+	// The retry is still held inside Get, so no watch can register yet: reset
+	// the registration signal, release the retry, then acknowledge its watch.
 	mw.resetRegistered()
-	mw.triggerCreatedNotify()
+	close(stub.holdAfterFirst)
 	<-mw.registered
+	mw.triggerCreatedNotify()
 	expectSnapshotRev := int64(20)
 	ctxResync, cancelResync := context.WithTimeout(t.Context(), time.Second)
 	defer cancelResync()
@@ -625,6 +633,12 @@ type kvStub struct {
 	queued      []*clientv3.GetResponse
 	defaultResp *clientv3.GetResponse
 	defaultErr  error
+	// holdAfterFirst, when non-nil, blocks every Get after the first one until
+	// the channel is closed. A test uses it to keep the cache inside its
+	// post-error resync window, which is otherwise as short as the retry
+	// backoff and can therefore expire before the test can observe it.
+	holdAfterFirst chan struct{}
+	gets           int
 }
 
 func newKVStub(resps ...*clientv3.GetResponse) *kvStub {
@@ -635,9 +649,18 @@ func newKVStub(resps ...*clientv3.GetResponse) *kvStub {
 	}
 }
 
-func (s *kvStub) Get(_ context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+func (s *kvStub) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
 	if s.defaultErr != nil {
 		return nil, s.defaultErr
+	}
+
+	s.gets++
+	if s.holdAfterFirst != nil && s.gets > 1 {
+		select {
+		case <-s.holdAfterFirst:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 
 	if len(s.queued) > 0 {
