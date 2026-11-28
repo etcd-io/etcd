@@ -1,0 +1,23 @@
+{
+  "name": "etcd",
+  "version": "1.0.0",
+  "description": "Agent skills for working with etcd: etcdctl key-value operations, cluster health and maintenance, and snapshot backup and restore.",
+  "author": {
+    "name": "etcd Authors",
+    "url": "https://etcd.io"
+  },
+  "homepage": "https://etcd.io",
+  "repository": "https://github.com/etcd-io/etcd",
+  "license": "Apache-2.0",
+  "keywords": [
+    "etcd",
+    "etcdctl",
+    "etcdutl",
+    "key-value",
+    "kubernetes",
+    "backup",
+    "raft",
+    "agent-skills"
+  ],
+  "skills": "./skills/"
+}

@@ -1,0 +1,20 @@
+{
+  "name": "etcd",
+  "interface": {
+    "displayName": "etcd"
+  },
+  "plugins": [
+    {
+      "name": "etcd",
+      "source": {
+        "source": "local",
+        "path": "./plugins/etcd"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

@@ -147,6 +147,12 @@ Now it's time to dig into the full etcd API and other guides.
 [security]: https://etcd.io/docs/latest/op-guide/security
 [tuning]: https://etcd.io/docs/latest/tuning
 
+## Agent skills
+
+An agent-agnostic plugin marketplace at [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json) registers
+[`plugins/etcd`](plugins/etcd), with [agent skills](https://agentskills.io/) for `etcdctl` key-value work, cluster
+maintenance and snapshot backup and restore, based on the [etcdctl](etcdctl/README.md) and [etcdutl](etcdutl/README.md) docs.
+
 ## Contact
 
 * Email: [etcd-dev](https://groups.google.com/g/etcd-dev)
