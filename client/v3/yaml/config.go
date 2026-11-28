@@ -18,6 +18,8 @@ package yaml
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
+	"io"
 	"os"
 
 	"sigs.k8s.io/yaml"
@@ -25,6 +27,9 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
+
+// maxConfigFileSize leaves room for client configuration while bounding memory use.
+const maxConfigFileSize = 1024 * 1024
 
 type yamlConfig struct {
 	clientv3.Config
@@ -41,10 +46,20 @@ type yamlConfig struct {
 }
 
 // NewConfig creates a new clientv3.Config from a yaml file.
+// The file is limited to 1 MiB.
 func NewConfig(fpath string) (*clientv3.Config, error) {
-	b, err := os.ReadFile(fpath)
+	f, err := os.Open(fpath)
 	if err != nil {
 		return nil, err
+	}
+	defer f.Close()
+
+	b, err := io.ReadAll(io.LimitReader(f, maxConfigFileSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(b) > maxConfigFileSize {
+		return nil, fmt.Errorf("file %q exceeds %d bytes limit", fpath, maxConfigFileSize)
 	}
 
 	yc := &yamlConfig{}
