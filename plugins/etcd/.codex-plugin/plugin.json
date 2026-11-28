@@ -1,0 +1,44 @@
+{
+  "name": "etcd",
+  "version": "1.0.0",
+  "description": "Agent skills for working with etcd: etcdctl key-value operations, cluster health and maintenance, and snapshot backup and restore.",
+  "author": {
+    "name": "etcd Authors",
+    "url": "https://etcd.io"
+  },
+  "homepage": "https://etcd.io",
+  "repository": "https://github.com/etcd-io/etcd",
+  "license": "Apache-2.0",
+  "keywords": [
+    "etcd",
+    "etcdctl",
+    "etcdutl",
+    "key-value",
+    "kubernetes",
+    "backup",
+    "raft",
+    "agent-skills"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "etcd",
+    "shortDescription": "Operate etcd clusters with etcdctl",
+    "longDescription": "Skills for etcd, the distributed reliable key-value store. Covers etcdctl key-value work (get/put/del with prefixes and revisions, watch, transactions, leases, locks and elections, TLS and output flags); cluster maintenance (endpoint health and status, membership changes, leader transfer, NOSPACE alarms, compaction and defragmentation, hash and performance checks); and snapshot backup and restore with etcdctl and etcdutl, including revision bumping for Kubernetes control planes.",
+    "developerName": "etcd Authors",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://etcd.io",
+    "defaultPrompt": [
+      "Check the health of my etcd cluster",
+      "Our etcd hit a NOSPACE alarm, help me recover",
+      "Take an etcd snapshot and show me how to restore it"
+    ],
+    "brandColor": "#4090D0",
+    "composerIcon": "./assets/logo.png",
+    "logo": "./assets/logo.png"
+  }
+}
