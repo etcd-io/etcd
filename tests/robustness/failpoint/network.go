@@ -16,6 +16,7 @@ package failpoint
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -34,6 +35,15 @@ var (
 	BlackholeUntilSnapshot Failpoint = blackholePeerNetworkFailpoint{triggerBlackhole{waitTillSnapshot: true}}
 	DelayPeerNetwork       Failpoint = delayPeerNetworkFailpoint{duration: time.Second, baseLatency: 75 * time.Millisecond, randomizedLatency: 50 * time.Millisecond}
 	DropPeerNetwork        Failpoint = dropPeerNetworkFailpoint{duration: time.Second, dropProbabilityPercent: 50}
+)
+
+const (
+	// waitTillSnapshotTimeout bounds how long waitTillSnapshot waits for the
+	// blackholed member to fall behind, so that a member that keeps up fails the
+	// caller instead of hanging until the test binary times out. It matches
+	// triggerTimeout, which already bounds robustness failpoint injection.
+	waitTillSnapshotTimeout      = time.Minute
+	waitTillSnapshotPollInterval = 100 * time.Millisecond
 )
 
 type blackholePeerNetworkFailpoint struct {
@@ -116,30 +126,74 @@ func waitTillSnapshot(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCl
 		return err
 	}
 	defer blackholedMemberClient.Close()
+
+	return pollUntilSnapshotNeeded(
+		ctx,
+		t.Logf,
+		blackholedMember.Config().Name,
+		entriesToGuaranteeSnapshot(*clus.Cfg),
+		waitTillSnapshotTimeout,
+		waitTillSnapshotPollInterval,
+		func(pollCtx context.Context) (int64, error) {
+			return latestRevisionForEndpoint(pollCtx, blackholedMemberClient)
+		},
+		func(pollCtx context.Context) (int64, error) {
+			return latestRevisionForEndpoint(pollCtx, clusterClient)
+		},
+	)
+}
+
+func pollUntilSnapshotNeeded(
+	ctx context.Context,
+	logf func(string, ...any),
+	memberName string,
+	minEntriesToGuarantee uint64,
+	timeout time.Duration,
+	pollInterval time.Duration,
+	blackholedRev func(context.Context) (int64, error),
+	clusterRev func(context.Context) (int64, error),
+) error {
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	var clusterRevision, blackholedMemberRevision int64
+	waitErr := func() error {
+		return fmt.Errorf("blackholed member %q did not fall more than %d entries behind the cluster (last cluster revision: %d, blackholed member revision: %d): %w",
+			memberName, minEntriesToGuarantee, clusterRevision, blackholedMemberRevision, waitCtx.Err())
+	}
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
+		if waitCtx.Err() != nil {
+			return waitErr()
 		}
 		// Have to refresh blackholedMemberRevision. It can still increase as blackholedMember processes changes that are received but not yet applied.
-		blackholedMemberRevision, err := latestRevisionForEndpoint(ctx, blackholedMemberClient)
+		rev, err := blackholedRev(waitCtx)
 		if err != nil {
+			if waitCtx.Err() != nil {
+				return waitErr()
+			}
 			return err
 		}
-		clusterRevision, err := latestRevisionForEndpoint(ctx, clusterClient)
+		blackholedMemberRevision = rev
+
+		rev, err = clusterRev(waitCtx)
 		if err != nil {
+			if waitCtx.Err() != nil {
+				return waitErr()
+			}
 			return err
 		}
-		minEntriesToGuarantee := entriesToGuaranteeSnapshot(*clus.Cfg)
-		t.Logf("clusterRevision: %d, blackholedMemberRevision: %d, minEntriesToGuarantee: %d", clusterRevision, blackholedMemberRevision, minEntriesToGuarantee)
+		clusterRevision = rev
+
+		logf("clusterRevision: %d, blackholedMemberRevision: %d, minEntriesToGuarantee: %d", clusterRevision, blackholedMemberRevision, minEntriesToGuarantee)
 		// Blackholed member has to be sufficiently behind to trigger snapshot transfer.
 		if clusterRevision-blackholedMemberRevision > int64(minEntriesToGuarantee) {
-			break
+			return nil
 		}
-		time.Sleep(100 * time.Millisecond)
+		select {
+		case <-waitCtx.Done():
+			return waitErr()
+		case <-time.After(pollInterval):
+		}
 	}
-	return nil
 }
 
 func entriesToGuaranteeSnapshot(config e2e.EtcdProcessClusterConfig) uint64 {
