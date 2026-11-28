@@ -389,8 +389,10 @@ func (f *featureGate) DeepCopy() MutableFeatureGate {
 	// Note that specialFeatures is treated as immutable by convention,
 	// and we maintain the value of f.closed across the copy.
 	fg := &featureGate{
-		special: specialFeatures,
-		closed:  f.closed,
+		lg:              f.lg,
+		featureGateName: f.featureGateName,
+		special:         specialFeatures,
+		closed:          f.closed,
 	}
 
 	fg.known.Store(known)
