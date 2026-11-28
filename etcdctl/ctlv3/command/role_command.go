@@ -174,7 +174,10 @@ func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
-	key, rangeEnd := permRange(args[2:])
+	key, rangeEnd, err := permRange(args[2:])
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
+	}
 	resp, err := mustClientFromCmd(cmd).Auth.RoleGrantPermission(context.TODO(), args[0], key, rangeEnd, perm)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -189,7 +192,10 @@ func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("role revoke-permission command requires role name and key [endkey] as its argument"))
 	}
 
-	key, rangeEnd := permRange(args[1:])
+	key, rangeEnd, err := permRange(args[1:])
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
+	}
 	resp, err := mustClientFromCmd(cmd).Auth.RoleRevokePermission(context.TODO(), args[0], key, rangeEnd)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -197,31 +203,20 @@ func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 	display.RoleRevokePermission(args[0], args[1], rangeEnd, resp)
 }
 
-func permRange(args []string) (string, string) {
+func permRange(args []string) (string, string, error) {
 	key := args[0]
-	var rangeEnd string
+	rangeEnd, err := rangeEndFromPermFlags(args)
+	if err != nil {
+		return "", "", err
+	}
 	if len(key) == 0 {
-		if rolePermPrefix && rolePermFromKey {
-			cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("--from-key and --prefix flags are mutually exclusive"))
-		}
-
 		// Range permission is expressed as adt.BytesAffineInterval,
 		// so the empty prefix which should be matched with every key must be like this ["\x00", <end>).
+		// For both --prefix and --from-key, rangeEndFromPermFlags returns "\x00",
+		// which the server treats as open ended, so the permission covers the entire key space.
 		key = "\x00"
-		if rolePermPrefix || rolePermFromKey {
-			// For the both cases of prefix and from-key, a permission with an empty key
-			// should allow access to the entire key space.
-			// 0x00 will be treated as open ended in server side.
-			rangeEnd = "\x00"
-		}
-	} else {
-		var err error
-		rangeEnd, err = rangeEndFromPermFlags(args[0:])
-		if err != nil {
-			cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
-		}
 	}
-	return key, rangeEnd
+	return key, rangeEnd, nil
 }
 
 func rangeEndFromPermFlags(args []string) (string, error) {
