@@ -102,7 +102,7 @@ func (atx *authBatchTx) UnsafeReadAuthEnabled() bool {
 }
 
 func (atx *authBatchTx) UnsafeReadAuthRevision() uint64 {
-	return unsafeReadAuthRevision(atx.tx)
+	return unsafeReadAuthRevision(atx.lg, atx.tx)
 }
 
 func (atx *authBatchTx) Lock() {
@@ -131,13 +131,24 @@ func unsafeReadAuthEnabled(tx backend.UnsafeReader) bool {
 }
 
 func (atx *authReadTx) UnsafeReadAuthRevision() uint64 {
-	return unsafeReadAuthRevision(atx.tx)
+	return unsafeReadAuthRevision(atx.lg, atx.tx)
 }
 
-func unsafeReadAuthRevision(tx backend.UnsafeReader) uint64 {
+func unsafeReadAuthRevision(lg *zap.Logger, tx backend.UnsafeReader) uint64 {
 	_, vs := tx.UnsafeRange(Auth, AuthRevisionKeyName, nil, 0)
 	if len(vs) != 1 {
 		// this can happen in the initialization phase
+		return 0
+	}
+	// A record of unexpected length means the stored value is corrupted.
+	// Treat it as revision 0 instead of indexing past the end of the slice,
+	// which would panic and kill the process while opening the backend.
+	if len(vs[0]) != revBytesLen {
+		lg.Warn(
+			"ignoring auth revision record of unexpected length",
+			zap.Int("expected-bytes", revBytesLen),
+			zap.Int("actual-bytes", len(vs[0])),
+		)
 		return 0
 	}
 	return binary.BigEndian.Uint64(vs[0])
