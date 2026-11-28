@@ -110,7 +110,7 @@ make: *** [Makefile:134: verify-genproto] Error 255
 To fix the above error, run the following script from the root of etcd repository:
 
 ```bash
-./scripts/genproto.sh
+make fix-genproto
 ```
 
 ### Indirect dependencies
