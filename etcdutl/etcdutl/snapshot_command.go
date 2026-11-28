@@ -131,7 +131,7 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 	}
 
 	if (revisionBump == 0 && markCompacted) || (revisionBump > 0 && !markCompacted) {
-		err := fmt.Errorf("--mark-compacted required if --revision-bump > 0")
+		err := fmt.Errorf("--mark-compacted required if --bump-revision > 0")
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
