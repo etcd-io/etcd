@@ -73,3 +73,32 @@ func TestNewKeepAliveListenerTLSEmptyConfig(t *testing.T) {
 		t.Errorf("err = nil, want not presented error")
 	}
 }
+
+type oneConnListener struct {
+	net.Conn
+	closed bool
+}
+
+func (l *oneConnListener) Accept() (net.Conn, error) { return l.Conn, nil }
+func (l *oneConnListener) Close() error              { return nil }
+func (l *oneConnListener) Addr() net.Addr            { return nil }
+
+type closeTrackingConn struct {
+	net.Conn
+	closed bool
+}
+
+func (c *closeTrackingConn) Close() error {
+	c.closed = true
+	return nil
+}
+
+func TestKeepAliveListenerClosesConnOnNonTCP(t *testing.T) {
+	tracked := &closeTrackingConn{}
+	ln := &keepaliveListener{Listener: &oneConnListener{Conn: tracked}}
+
+	_, err := ln.Accept()
+	require.ErrorIs(t, err, ErrNotTCP)
+	// The accepted connection must not be leaked when keepalive setup fails.
+	require.True(t, tracked.closed)
+}
