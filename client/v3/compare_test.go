@@ -76,3 +76,16 @@ func TestOpTxnClonesCmps(t *testing.T) {
 		t.Fatalf("txn request compare result = %v, want %v", got, pb.Compare_EQUAL)
 	}
 }
+
+// TestWithValueBytesOnFreshCmp ensures WithValueBytes creates the VALUE
+// target union instead of panicking when none exists yet.
+func TestWithValueBytesOnFreshCmp(t *testing.T) {
+	cmp := Cmp{}
+	cmp.WithValueBytes([]byte("abc"))
+	if got := cmp.ValueBytes(); string(got) != "abc" {
+		t.Fatalf("ValueBytes = %q, want %q", got, "abc")
+	}
+	if got := cmp.GetCompare().GetTarget(); got != pb.Compare_VALUE {
+		t.Fatalf("Target = %v, want VALUE", got)
+	}
+}
