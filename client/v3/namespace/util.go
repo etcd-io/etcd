@@ -32,6 +32,10 @@ func prefixInterval(pfx string, key, end []byte) (pfxKey []byte, pfxEnd []byte) 
 		if !ok {
 			// 0xff..ff => 0x00
 			pfxEnd = []byte{0}
+		} else if len(pfxEnd) > 0 && pfxEnd[len(pfxEnd)-1] == 0 {
+			// Incrementing a trailing 0xff produced a trailing 0x00; the
+			// upper bound is the shortened prefix.
+			pfxEnd = pfxEnd[:len(pfxEnd)-1]
 		}
 	} else if len(end) >= 1 {
 		pfxEnd = make([]byte, len(pfx)+len(end))
