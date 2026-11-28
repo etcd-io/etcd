@@ -126,7 +126,7 @@ depend on to make decisions in the best interest of the project in a consistent 
   - Request access to `etcd-development` GCP project where we publish releases
   - Request access to passwords shared between maintainers
   - Request cncf service desk access by emailing <projects@cncf.io>
-  - Raise cncf service desk ticket to be addded to [cncf-etcd-maintainers mailing list](https://lists.cncf.io/g/cncf-etcd-maintainers/directory)
+  - Raise cncf service desk ticket to be added to [cncf-etcd-maintainers mailing list](https://lists.cncf.io/g/cncf-etcd-maintainers/directory)
 
 ### Maintainer responsibilities and privileges
 
