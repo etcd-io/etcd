@@ -80,8 +80,8 @@ func (ss *SelectiveStringsValue) Set(s string) error {
 		if _, ok := ss.valids[vs[i]]; !ok {
 			return fmt.Errorf("invalid value %q", vs[i])
 		}
-		ss.vs = append(ss.vs, vs[i])
 	}
+	ss.vs = vs
 	sort.Strings(ss.vs)
 	return nil
 }

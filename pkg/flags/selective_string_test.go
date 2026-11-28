@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSelectiveStringValue(t *testing.T) {
@@ -63,4 +64,13 @@ func TestSelectiveStringsValue(t *testing.T) {
 		err := sf.Set(tt.val)
 		assert.Equalf(t, tt.pass, (err == nil), "#%d: want pass=%t, but got err=%v", i, tt.pass, err)
 	}
+}
+
+// A rejected value must leave the flag untouched; pflag reports the error but
+// keeps the value object, so partial writes would leak into later reads.
+func TestSelectiveStringsValueRejectedSetKeepsPreviousValue(t *testing.T) {
+	sf := NewSelectiveStringsValue("a", "b", "c")
+	require.NoError(t, sf.Set("a,b"))
+	require.Error(t, sf.Set("c,not-valid"))
+	assert.Equal(t, "a,b", sf.String())
 }
