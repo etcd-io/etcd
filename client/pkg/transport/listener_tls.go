@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net"
 	"os"
@@ -202,6 +203,13 @@ func checkCRL(crlPath string, cert []*x509.Certificate) error {
 	crlBytes, err := os.ReadFile(crlPath)
 	if err != nil {
 		return err
+	}
+	// The CRL file may be PEM-encoded (the default output of `openssl ca
+	// -gencrl`), while x509.ParseRevocationList requires DER. Decode a PEM
+	// block when present and fall back to the raw bytes as DER, so both
+	// spellings work. See #22877.
+	if block, _ := pem.Decode(crlBytes); block != nil {
+		crlBytes = block.Bytes
 	}
 	certList, err := x509.ParseRevocationList(crlBytes)
 	if err != nil {
