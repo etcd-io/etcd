@@ -122,6 +122,18 @@ func TestMaxUnaryRetries(t *testing.T) {
 	require.Equal(t, maxUnaryRetries, c.cfg.MaxUnaryRetries)
 }
 
+func TestSetEndpointsDoesNotRetainInputSlice(t *testing.T) {
+	c, err := NewClient(t, Config{Endpoints: []string{"127.0.0.1:2379"}})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
+
+	endpoints := []string{"127.0.0.1:3379"}
+	c.SetEndpoints(endpoints...)
+	endpoints[0] = "127.0.0.1:4379"
+
+	require.Equal(t, []string{"127.0.0.1:3379"}, c.Endpoints())
+}
+
 func TestBackoff(t *testing.T) {
 	backoffWaitBetween := 100 * time.Millisecond
 	cfg := Config{

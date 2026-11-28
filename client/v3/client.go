@@ -177,6 +177,7 @@ func (c *Client) Endpoints() []string {
 func (c *Client) SetEndpoints(eps ...string) {
 	c.epMu.Lock()
 	defer c.epMu.Unlock()
+	eps = append([]string(nil), eps...)
 	c.endpoints = eps
 
 	c.resolver.SetEndpoints(eps)
