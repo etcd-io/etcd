@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	errorspkg "errors"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"os"
@@ -907,6 +908,70 @@ func TestAddMember(t *testing.T) {
 	}
 	if cl.Member(1234) == nil {
 		t.Errorf("member with id 1234 is not added")
+	}
+}
+
+func TestPromoteMemberForwarding(t *testing.T) {
+	for _, tt := range []struct {
+		name         string
+		loseResponse bool
+		status       int
+		body         string
+		wantErr      string
+	}{
+		{
+			name: "rejected on first attempt", status: http.StatusPreconditionFailed,
+			body: membership.ErrMemberNotLearner.Error(), wantErr: membership.ErrMemberNotLearner.Error(),
+		},
+		{
+			name: "not a learner after lost response", loseResponse: true, status: http.StatusPreconditionFailed,
+			body: membership.ErrMemberNotLearner.Error(), wantErr: "etcdserver: member promotion outcome is unknown",
+		},
+		{
+			name: "not ready after lost response", loseResponse: true, status: http.StatusPreconditionFailed,
+			body: errors.ErrLearnerNotReady.Error(), wantErr: "etcdserver: member promotion outcome is unknown",
+		},
+		{
+			name: "success after lost response", loseResponse: true, status: http.StatusOK,
+			body: `[{"id":2}]`,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			leader := &membership.Member{ID: 1, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://leader"}}}
+			learner := &membership.Member{ID: 2, RaftAttributes: membership.RaftAttributes{IsLearner: true}}
+			attempts := 0
+			s := &EtcdServer{
+				lgMu:      new(sync.RWMutex),
+				lg:        lg,
+				r:         raftNode{raftNodeConfig: raftNodeConfig{Node: newNodeNop()}},
+				cluster:   membership.NewClusterFromMembers(lg, 0, []*membership.Member{leader, learner}),
+				applyWait: wait.NewTimeList(),
+				peerRt: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+					attempts++
+					assert.Equal(t, http.MethodPost, r.Method)
+					assert.Equal(t, "http://leader/members/promote/2", r.URL.String())
+					if attempts == 1 && tt.loseResponse {
+						return nil, io.EOF
+					}
+					return &http.Response{StatusCode: tt.status, Body: io.NopCloser(strings.NewReader(tt.body))}, nil
+				}),
+			}
+			s.setLead(uint64(leader.ID))
+
+			members, err := s.PromoteMember(t.Context(), uint64(learner.ID))
+			if tt.loseResponse {
+				assert.Equal(t, 2, attempts)
+			} else {
+				assert.Equal(t, 1, attempts)
+			}
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, []*membership.Member{{ID: learner.ID}}, members)
+		})
 	}
 }
 

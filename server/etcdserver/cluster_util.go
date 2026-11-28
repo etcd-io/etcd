@@ -323,16 +323,20 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 	req = req.WithContext(ctx)
 	resp, err := cc.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", errMemberPromoteOutcomeUnknown, err)
 	}
 	defer resp.Body.Close()
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", errMemberPromoteOutcomeUnknown, err)
 	}
 
 	if resp.StatusCode == http.StatusRequestTimeout {
-		return nil, errors.ErrTimeout
+		return nil, fmt.Errorf("%w: %w", errMemberPromoteOutcomeUnknown, errors.ErrTimeout)
+	}
+	// The peer can return an internal error after a proposal has been submitted.
+	if resp.StatusCode >= http.StatusInternalServerError {
+		return nil, fmt.Errorf("%w: HTTP %d (%s)", errMemberPromoteOutcomeUnknown, resp.StatusCode, b)
 	}
 	if resp.StatusCode == http.StatusPreconditionFailed {
 		// both ErrMemberNotLearner and ErrLearnerNotReady have same http status code
@@ -354,7 +358,7 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 
 	var membs []*membership.Member
 	if err := json.Unmarshal(b, &membs); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", errMemberPromoteOutcomeUnknown, err)
 	}
 	return membs, nil
 }
