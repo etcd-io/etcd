@@ -70,11 +70,13 @@ func (s *snapshotSender) send(merged *snap.Message) {
 	m := merged.Message
 	to := types.ID(m.GetTo()).String()
 
-	body := createSnapBody(s.tr.Logger, merged)
+	trailer := http.Header{snapshotDigestTrailer: nil}
+	body := createSnapBody(s.tr.Logger, merged, trailer)
 	defer body.Close()
 
 	u := s.picker.pick()
 	req := createPostRequest(s.tr.Logger, u, RaftSnapshotPrefix, body, "application/octet-stream", s.tr.URLs, s.from, s.cid)
+	req.Trailer = trailer
 
 	snapshotSizeVal := uint64(merged.TotalSize)
 	snapshotSize := humanize.Bytes(snapshotSizeVal)
@@ -182,7 +184,7 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	}
 }
 
-func createSnapBody(lg *zap.Logger, merged *snap.Message) io.ReadCloser {
+func createSnapBody(lg *zap.Logger, merged *snap.Message, trailer http.Header) io.ReadCloser {
 	buf := new(bytes.Buffer)
 	enc := &messageEncoder{w: buf}
 	// encode raft message
@@ -192,8 +194,15 @@ func createSnapBody(lg *zap.Logger, merged *snap.Message) io.ReadCloser {
 		}
 	}
 
+	var payload io.Reader = merged.ReadCloser
+	if trailer != nil {
+		payload = newSnapshotDigestReader(payload, func(digest string) error {
+			trailer.Set(snapshotDigestTrailer, digest)
+			return nil
+		})
+	}
 	return &pioutil.ReaderAndCloser{
-		Reader: io.MultiReader(buf, merged.ReadCloser),
+		Reader: io.MultiReader(buf, payload),
 		Closer: merged.ReadCloser,
 	}
 }

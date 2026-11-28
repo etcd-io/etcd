@@ -274,9 +274,9 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		zap.String("incoming-snapshot-message-size", humanize.Bytes(uint64(msgSize))),
 	)
 
-	// save incoming database snapshot.
-
-	n, err := h.snapshotter.SaveDBFrom(r.Body, m.Snapshot.Metadata.GetIndex())
+	// Verify an advertised database payload digest before promoting the received
+	// temporary file. Older senders do not advertise a digest.
+	n, err := h.snapshotter.SaveDBFrom(snapshotPayloadReader(r), m.Snapshot.Metadata.GetIndex())
 	if err != nil {
 		msg := fmt.Sprintf("failed to save KV snapshot (%v)", err)
 		h.lg.Warn(
