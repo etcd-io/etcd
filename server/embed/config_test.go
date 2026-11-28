@@ -96,6 +96,40 @@ func TestConfigFileOtherFields(t *testing.T) {
 	assert.Falsef(t, cfg.SocketOpts.ReuseAddress, "ReuseAddress does not match")
 }
 
+func TestConfigFileCORS(t *testing.T) {
+	tests := []struct {
+		name    string
+		cors    string
+		want    map[string]struct{}
+		wantErr bool
+	}{
+		{name: "wildcard", cors: "*", want: map[string]struct{}{"*": {}}},
+		{
+			name: "origins",
+			cors: "http://a.example.com:8080,https://b.example.com:443",
+			want: map[string]struct{}{"http://a.example.com:8080": {}, "https://b.example.com:443": {}},
+		},
+		{name: "origin without port", cors: "http://a.example.com", wantErr: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			b, err := yaml.Marshal(map[string]string{"cors": tc.cors})
+			require.NoError(t, err)
+
+			tmpfile := mustCreateCfgFile(t, b)
+
+			var cfg *Config
+			require.NotPanics(t, func() { cfg, err = ConfigFromFile(tmpfile.Name()) })
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, cfg.CORS)
+		})
+	}
+}
+
 func TestConfigFileFeatureGates(t *testing.T) {
 	testCases := []struct {
 		name                   string
