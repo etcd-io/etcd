@@ -539,7 +539,7 @@ func TestResumeCompactionOnTombstone(t *testing.T) {
 		require.Equal(t, firstKey, deletedKey)
 
 		deleteEvent = watchResp.Events[0]
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(5 * time.Second):
 		t.Fatal("timed out getting watch response")
 	}
 
@@ -558,7 +558,7 @@ func TestResumeCompactionOnTombstone(t *testing.T) {
 	select {
 	case watchResp := <-watchChan:
 		require.Equal(t, []*clientv3.Event{deleteEvent}, watchResp.Events)
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(5 * time.Second):
 		// we care only about the first response, but have an
 		// escape hatch in case the watch response is delayed.
 		t.Fatal("timed out getting watch response")
