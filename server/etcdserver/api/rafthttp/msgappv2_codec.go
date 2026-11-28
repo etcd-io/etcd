@@ -224,7 +224,9 @@ func (dec *msgAppV2Decoder) decode() (*raftpb.Message, error) {
 			dec.index++
 			// 1 alloc
 			m.Entries[i] = &raftpb.Entry{}
-			pbutil.MustUnmarshalMessage(m.Entries[i], buf)
+			if err := proto.Unmarshal(buf, m.Entries[i]); err != nil {
+				return nil, err
+			}
 		}
 		// decode commit index
 		if _, err := io.ReadFull(dec.r, dec.uint64buf); err != nil {
@@ -240,7 +242,9 @@ func (dec *msgAppV2Decoder) decode() (*raftpb.Message, error) {
 		if _, err := io.ReadFull(dec.r, buf); err != nil {
 			return nil, err
 		}
-		pbutil.MustUnmarshalMessage(&m, buf)
+		if err := proto.Unmarshal(buf, &m); err != nil {
+			return nil, err
+		}
 
 		dec.term = m.GetTerm()
 		dec.index = m.GetIndex()
