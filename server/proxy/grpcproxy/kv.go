@@ -45,8 +45,9 @@ func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {
 }
 
 func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	authToken := getAuthTokenFromClient(ctx)
 	if r.Serializable {
-		resp, err := p.cache.Get(r)
+		resp, err := p.cache.Get(r, authToken)
 		switch {
 		case err == nil:
 			cacheHits.Inc()
@@ -69,7 +70,7 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 	req := proto.Clone(r).(*pb.RangeRequest)
 	req.Serializable = true
 	gresp := (*pb.RangeResponse)(resp.Get())
-	p.cache.Add(req, gresp)
+	p.cache.Add(req, gresp, authToken)
 	cacheKeys.Set(float64(p.cache.Size()))
 
 	return gresp, nil
@@ -95,7 +96,7 @@ func (p *kvProxy) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*p
 	return (*pb.DeleteRangeResponse)(resp.Del()), err
 }
 
-func (p *kvProxy) txnToCache(reqs []*pb.RequestOp, resps []*pb.ResponseOp) {
+func (p *kvProxy) txnToCache(reqs []*pb.RequestOp, resps []*pb.ResponseOp, authToken string) {
 	for i := range resps {
 		switch tv := resps[i].Response.(type) {
 		case *pb.ResponseOp_ResponsePut:
@@ -106,12 +107,13 @@ func (p *kvProxy) txnToCache(reqs []*pb.RequestOp, resps []*pb.ResponseOp) {
 		case *pb.ResponseOp_ResponseRange:
 			req := *(reqs[i].GetRequestRange())
 			req.Serializable = true
-			p.cache.Add(&req, tv.ResponseRange)
+			p.cache.Add(&req, tv.ResponseRange, authToken)
 		}
 	}
 }
 
 func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
+	authToken := getAuthTokenFromClient(ctx)
 	op := TxnRequestToOp(r)
 	opResp, err := p.kv.Do(ctx, op)
 	if err != nil {
@@ -125,9 +127,9 @@ func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 	}
 	// update any fetched keys
 	if resp.Succeeded {
-		p.txnToCache(r.Success, resp.Responses)
+		p.txnToCache(r.Success, resp.Responses, authToken)
 	} else {
-		p.txnToCache(r.Failure, resp.Responses)
+		p.txnToCache(r.Failure, resp.Responses, authToken)
 	}
 
 	cacheKeys.Set(float64(p.cache.Size()))
