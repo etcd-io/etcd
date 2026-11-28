@@ -143,6 +143,12 @@ var (
 		ErrorDesc(ErrGRPCInvalidAuthToken):     ErrGRPCInvalidAuthToken,
 		ErrorDesc(ErrGRPCInvalidAuthMgmt):      ErrGRPCInvalidAuthMgmt,
 		ErrorDesc(ErrGRPCAuthOldRevision):      ErrGRPCAuthOldRevision,
+		ErrorDesc(ErrGRPCPermissionNotGiven):   ErrGRPCPermissionNotGiven,
+
+		ErrorDesc(ErrGRPCInvalidClientAPIVersion): ErrGRPCInvalidClientAPIVersion,
+		ErrorDesc(ErrGRPCWatchCanceled):           ErrGRPCWatchCanceled,
+
+		ErrorDesc(ErrGRPCTimeoutWaitAppliedIndex): ErrGRPCTimeoutWaitAppliedIndex,
 
 		ErrorDesc(ErrGRPCNoLeader):                   ErrGRPCNoLeader,
 		ErrorDesc(ErrGRPCNotLeader):                  ErrGRPCNotLeader,
