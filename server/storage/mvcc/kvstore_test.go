@@ -372,6 +372,132 @@ func TestStoreCompact(t *testing.T) {
 	}
 }
 
+type hookScheduler struct {
+	schedule.Scheduler
+	onSchedule func()
+}
+
+func (h *hookScheduler) Schedule(j schedule.Job) {
+	if h.onSchedule != nil {
+		h.onSchedule()
+	}
+	h.Scheduler.Schedule(j)
+}
+
+// TestStoreCompactConcurrentScheduleOrder ensures that store.Compact holds
+// s.mu while enqueuing the compaction job onto fifoSched so concurrent Compact
+// calls execute in the same order they advance ScheduledCompact.
+func TestStoreCompactConcurrentScheduleOrder(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	t.Log("write two sub-revisions at rev R and supersede one at rev R+1")
+	tw := s.Write(traceutil.TODO())
+	revR := tw.Put([]byte("k/a"), []byte("v1"), lease.NoLease)
+	tw.Put([]byte("k/c"), []byte("v2"), lease.NoLease)
+	tw.End()
+	revR1 := s.Put([]byte("k/c"), []byte("v3"), lease.NoLease)
+	s.Commit()
+
+	wantHash, _, err := s.HashStorage().HashByRev(revR)
+	require.NoError(t, err)
+
+	assertCompactOrderInvariants := func(targetRev int64, want KeyValueHash) {
+		rtx := b.ReadTx()
+		rtx.RLock()
+		sched, schedOK := UnsafeReadScheduledCompact(rtx)
+		fin, finOK := UnsafeReadFinishedCompact(rtx)
+		rtx.RUnlock()
+		require.True(t, schedOK)
+		require.True(t, finOK)
+		require.Equalf(t, sched, fin, "FinishedCompact regressed behind ScheduledCompact")
+
+		for _, h := range s.HashStorage().Hashes() {
+			if h.Revision == targetRev {
+				require.Equalf(t, want, h, "cached compaction hash mismatch for rev %d", targetRev)
+			}
+		}
+	}
+
+	t.Log("verify s.mu stays locked across fifoSched.Schedule and prevents order inversion")
+	origSched := s.fifoSched
+	fired := false
+	unlockedDuringSchedule := false
+	var chR1 <-chan struct{}
+	var errR1 error
+	s.fifoSched = &hookScheduler{
+		Scheduler: origSched,
+		onSchedule: func() {
+			if fired {
+				return
+			}
+			fired = true
+			if s.mu.TryLock() {
+				unlockedDuringSchedule = true
+				s.mu.Unlock()
+				chR1, errR1 = s.Compact(traceutil.TODO(), revR1)
+			}
+		},
+	}
+
+	chR, err := s.Compact(traceutil.TODO(), revR)
+	require.NoError(t, err)
+	s.fifoSched = origSched
+	if chR != nil {
+		<-chR
+	}
+	if chR1 != nil {
+		<-chR1
+	}
+	require.NoError(t, errR1)
+	assertCompactOrderInvariants(revR, wantHash)
+	require.Falsef(t, unlockedDuringSchedule, "store.mu must remain held while scheduling compaction")
+
+	t.Log("verify concurrent Compact calls preserve schedule order and cached hashes under race detector")
+	for range 25 {
+		w := s.Write(traceutil.TODO())
+		r1 := w.Put([]byte("k/a"), []byte("v1"), lease.NoLease)
+		w.Put([]byte("k/c"), []byte("v2"), lease.NoLease)
+		w.End()
+		r2 := s.Put([]byte("k/c"), []byte("v3"), lease.NoLease)
+		s.Commit()
+
+		gt, _, hashErr := s.HashStorage().HashByRev(r1)
+		require.NoError(t, hashErr)
+
+		gate := make(chan struct{})
+		var wg sync.WaitGroup
+		var c1, c2 <-chan struct{}
+		var e1, e2 error
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			<-gate
+			c1, e1 = s.Compact(traceutil.TODO(), r1)
+		}()
+		go func() {
+			defer wg.Done()
+			<-gate
+			c2, e2 = s.Compact(traceutil.TODO(), r2)
+		}()
+		close(gate)
+		wg.Wait()
+
+		if e1 != nil {
+			require.ErrorIs(t, e1, ErrCompacted)
+		}
+		require.NoError(t, e2)
+		if c1 != nil {
+			<-c1
+		}
+		if c2 != nil {
+			<-c2
+		}
+		assertCompactOrderInvariants(r1, gt)
+	}
+}
+
 func TestStoreRestore(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	s := newFakeStore(lg)
