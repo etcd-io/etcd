@@ -62,6 +62,23 @@ func TestPrefixInterval(t *testing.T) {
 			wKey: []byte("\xff\xffabc"),
 			wEnd: []byte{0},
 		},
+		// one-sided range, prefix ends in 0xff: end must drop the trailing 0xff
+		{
+			pfx: "a\xff",
+			key: []byte("abc"),
+			end: []byte{0},
+
+			wKey: []byte("a\xffabc"),
+			wEnd: []byte("b"),
+		},
+		{
+			pfx: "a\xff\xff",
+			key: []byte("abc"),
+			end: []byte{0},
+
+			wKey: []byte("a\xff\xffabc"),
+			wEnd: []byte("b"),
+		},
 	}
 	for i, tt := range tests {
 		pfxKey, pfxEnd := prefixInterval(tt.pfx, tt.key, tt.end)
