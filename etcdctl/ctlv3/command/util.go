@@ -174,7 +174,7 @@ func IsSerializable(option string) bool {
 		return true
 	case "l":
 	default:
-		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("unknown consistency flag %q", getConsistency))
+		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("unknown consistency flag %q", option))
 	}
 	return false
 }

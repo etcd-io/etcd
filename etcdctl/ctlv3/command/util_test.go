@@ -15,8 +15,14 @@
 package command
 
 import (
+	"errors"
+	"os"
+	"os/exec"
 	"reflect"
+	"strings"
 	"testing"
+
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 func TestArgify(t *testing.T) {
@@ -74,5 +80,37 @@ func TestArgify(t *testing.T) {
 				t.Errorf("Argify(%q) = %v, want %v", tt.input, result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestIsSerializable(t *testing.T) {
+	if IsSerializable("l") {
+		t.Errorf(`IsSerializable("l") = true, want false`)
+	}
+	if !IsSerializable("s") {
+		t.Errorf(`IsSerializable("s") = false, want true`)
+	}
+}
+
+// TestIsSerializableUnknownOption runs IsSerializable in a subprocess,
+// because it exits the process on an unknown option.
+func TestIsSerializableUnknownOption(t *testing.T) {
+	if option := os.Getenv("ETCDCTL_TEST_CONSISTENCY"); option != "" {
+		IsSerializable(option)
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=^TestIsSerializableUnknownOption$")
+	cmd.Env = append(os.Environ(), "ETCDCTL_TEST_CONSISTENCY=x")
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != cobrautl.ExitBadFeature {
+		t.Fatalf("expected exit code %d, got %v (stderr: %q)", cobrautl.ExitBadFeature, err, stderr.String())
+	}
+	if want := `unknown consistency flag "x"`; !strings.Contains(stderr.String(), want) {
+		t.Errorf("stderr = %q, want it to contain %q", stderr.String(), want)
 	}
 }
