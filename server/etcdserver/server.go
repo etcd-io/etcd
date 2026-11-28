@@ -1407,6 +1407,13 @@ func (s *EtcdServer) mayAddMember(memb membership.Member) error {
 		return nil
 	}
 
+	// Evaluate quorum safety against a membership view that includes every
+	// committed change: a member that has not yet applied a committed change
+	// could otherwise accept a change the leader would refuse.
+	if err := s.waitAppliedIndex(); err != nil {
+		return err
+	}
+
 	// protect quorum when adding voting member
 	if !memb.IsLearner && !s.cluster.IsReadyToAddVotingMember() {
 		lg.Warn(
@@ -1602,6 +1609,13 @@ func (s *EtcdServer) isLearnerReady(lg *zap.Logger, id uint64) error {
 func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 	if !s.Cfg.StrictReconfigCheck {
 		return nil
+	}
+
+	// Evaluate quorum safety against a membership view that includes every
+	// committed change: a member that has not yet applied a committed change
+	// could otherwise accept a change the leader would refuse.
+	if err := s.waitAppliedIndex(); err != nil {
+		return err
 	}
 
 	lg := s.Logger()
