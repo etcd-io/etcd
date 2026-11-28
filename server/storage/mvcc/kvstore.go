@@ -127,8 +127,7 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.restore(); err != nil {
-		// TODO: return the error instead of panic here?
-		panic("failed to recover store from backend")
+		lg.Fatal("failed to recover store from backend", zap.Error(err))
 	}
 
 	return s
@@ -323,7 +322,6 @@ func (s *store) Restore(b backend.Backend) error {
 	return s.restore()
 }
 
-//nolint:unparam
 func (s *store) restore() error {
 	s.setupMetricsReporter()
 
@@ -353,10 +351,22 @@ func (s *store) restore() error {
 	// index keys concurrently as they're loaded in from tx
 	keysGauge.Set(0)
 	rkvc, revc := restoreIntoIndex(s.lg, s.kvindex)
+	var previousRev Revision
 	for {
 		keys, vals := tx.UnsafeRange(schema.Key, min, max, int64(restoreChunkKeys))
 		if len(keys) == 0 {
 			break
+		}
+		// Validate the replay order before sending revisions to the index goroutine.
+		for _, key := range keys {
+			rev := BytesToRev(key)
+			if !rev.GreaterThan(previousRev) {
+				close(rkvc)
+				<-revc
+				tx.RUnlock()
+				return fmt.Errorf("mvcc: revision %v follows %v during restore", rev, previousRev)
+			}
+			previousRev = rev
 		}
 		// rkvc blocks if the total pending keys exceeds the restore
 		// chunk size to keep keys from consuming too much memory.

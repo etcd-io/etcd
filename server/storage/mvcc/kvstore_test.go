@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"math"
 	mrand "math/rand"
+	"os"
+	"os/exec"
 	"reflect"
 	"sort"
 	"strconv"
@@ -431,6 +433,139 @@ func TestStoreRestore(t *testing.T) {
 	require.Equal(t, int64(1), version)
 	_, _, _, err = s.kvindex.Get([]byte("foo"), 5)
 	require.ErrorIs(t, err, ErrRevisionNotFound)
+}
+
+func TestStoreRestoreOutOfOrderRevisions(t *testing.T) {
+	tests := []struct {
+		name      string
+		revisions []BucketKey
+	}{
+		{
+			name:      "main_revision",
+			revisions: []BucketKey{newBucketKey(3, 0, false), newBucketKey(2, 0, false)},
+		},
+		{
+			name:      "sub_revision",
+			revisions: []BucketKey{newBucketKey(3, 2, false), newBucketKey(3, 1, false)},
+		},
+		{
+			name:      "tombstone",
+			revisions: []BucketKey{newBucketKey(3, 0, false), newBucketKey(2, 0, true)},
+		},
+		{
+			name:      "equal_revision",
+			revisions: []BucketKey{newBucketKey(3, 0, false), newBucketKey(3, 0, true)},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+			s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+			defer b.Close()
+			defer s.Close()
+
+			for i, rev := range tt.revisions {
+				kv := &mvccpb.KeyValue{Key: []byte("foo")}
+				if !rev.tombstone {
+					kv.Value = []byte("bar")
+					kv.CreateRevision = 2
+					kv.ModRevision = rev.Main
+					kv.Version = 1
+				}
+				value, err := proto.Marshal(kv)
+				if err != nil {
+					t.Fatal(err)
+				}
+				tx := b.BatchTx()
+				tx.LockOutsideApply()
+				tx.UnsafePut(schema.Key, BucketKeyToBytes(rev, NewRevBytes()), value)
+				tx.Unlock()
+				if i == 0 {
+					// Restore reads committed entries before buffered entries.
+					b.ForceCommit()
+				}
+			}
+
+			err := s.Restore(b)
+			wantErr := fmt.Sprintf("mvcc: revision %v follows %v during restore", tt.revisions[1].Revision, tt.revisions[0].Revision)
+			if err == nil || err.Error() != wantErr {
+				t.Fatalf("restore error = %v, want %q", err, wantErr)
+			}
+		})
+	}
+}
+
+func TestStoreRestoreOutOfOrderRevisionsAcrossChunks(t *testing.T) {
+	oldChunk := restoreChunkKeys
+	restoreChunkKeys = 2
+	defer func() { restoreChunkKeys = oldChunk }()
+
+	lg := zaptest.NewLogger(t)
+	s := newFakeStore(lg)
+	s.kvindex = newTreeIndex(lg)
+	defer s.Close()
+	b := s.b.(*fakeBackend)
+	b.tx.rangeRespc <- rangeResp{}
+	b.tx.rangeRespc <- rangeResp{}
+	value, err := proto.Marshal(&mvccpb.KeyValue{Key: []byte("foo"), CreateRevision: 2, Version: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, revisions := range [][]int64{{2, 4}, {3, 5}} {
+		var keys [][]byte
+		for _, rev := range revisions {
+			keys = append(keys, newTestRevBytes(Revision{Main: rev}))
+		}
+		b.tx.rangeRespc <- rangeResp{keys, [][]byte{value, value}}
+	}
+	err = s.restore()
+	if wantErr := "mvcc: revision {3 0} follows {4 0} during restore"; err == nil || err.Error() != wantErr {
+		t.Fatalf("restore error = %v, want %q", err, wantErr)
+	}
+	if rev, _, _, err := s.kvindex.Get([]byte("foo"), 4); err != nil || rev != (Revision{Main: 4}) {
+		t.Fatalf("restored revision = %v, error = %v, want {4 0}", rev, err)
+	}
+}
+
+func TestNewStoreOutOfOrderRevisions(t *testing.T) {
+	const backendPathEnv = "ETCD_TEST_RESTORE_BACKEND_PATH"
+	if path := os.Getenv(backendPathEnv); path != "" {
+		lg := zap.NewExample()
+		b := backend.NewDefaultBackend(lg, path)
+		defer b.Close()
+		s := NewStore(lg, b, nil, StoreConfig{})
+		defer s.Close()
+		return
+	}
+
+	b, path := betesting.NewDefaultTmpBackend(t)
+	value, err := proto.Marshal(&mvccpb.KeyValue{Key: []byte("foo"), CreateRevision: 2, ModRevision: 2, Version: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx := b.BatchTx()
+	tx.LockOutsideApply()
+	tx.UnsafeCreateBucket(schema.Key)
+	for _, tombstone := range []bool{false, true} {
+		tx.UnsafePut(schema.Key, newTestBucketKeyBytes(newBucketKey(2, 0, tombstone)), value)
+	}
+	tx.Unlock()
+	if err := b.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestNewStoreOutOfOrderRevisions$")
+	cmd.Env = append(os.Environ(), backendPathEnv+"="+path)
+	output, err := cmd.CombinedOutput()
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+		t.Fatalf("store startup error = %v, want exit code 1; output: %s", err, output)
+	}
+	if !bytes.Contains(output, []byte("failed to recover store from backend")) ||
+		!bytes.Contains(output, []byte("mvcc: revision {2 0} follows {2 0} during restore")) ||
+		bytes.Contains(output, []byte("panic:")) {
+		t.Fatalf("unexpected store startup output: %s", output)
+	}
 }
 
 func TestRestoreDelete(t *testing.T) {
