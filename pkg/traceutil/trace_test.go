@@ -298,3 +298,17 @@ func TestLogIfLong(t *testing.T) {
 		})
 	}
 }
+
+func TestInsertStepNegativeIndex(t *testing.T) {
+	tr := newTrace("op", nil)
+	tr.Step("first")
+	tr.Step("second")
+
+	require.NotPanics(t, func() {
+		tr.InsertStep(-1, time.Now(), "inserted")
+	})
+	require.Len(t, tr.steps, 3)
+	assert.Equal(t, "inserted", tr.steps[0].msg)
+	assert.Equal(t, "first", tr.steps[1].msg)
+	assert.Equal(t, "second", tr.steps[2].msg)
+}

@@ -121,6 +121,9 @@ func (t *Trace) SetStartTime(time time.Time) {
 
 func (t *Trace) InsertStep(at int, time time.Time, msg string, fields ...Field) {
 	newStep := step{time: time, msg: msg, fields: fields}
+	if at < 0 {
+		at = 0
+	}
 	if at < len(t.steps) {
 		t.steps = append(t.steps[:at+1], t.steps[at:]...)
 		t.steps[at] = newStep
