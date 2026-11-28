@@ -136,6 +136,11 @@ func (txr *txReadBuffer) ForEach(bucket Bucket, visitor func(k, v []byte) error)
 	return nil
 }
 
+func (txr *txReadBuffer) reset() {
+	txr.txBuffer.reset()
+	txr.bufVersion++
+}
+
 // unsafeCopy returns a copy of txReadBuffer, caller should acquire backend.readTx.RLock()
 func (txr *txReadBuffer) unsafeCopy() txReadBuffer {
 	txrCopy := txReadBuffer{
