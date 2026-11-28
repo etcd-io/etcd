@@ -226,6 +226,36 @@ func TestWatchResponseEventsNotSharedAcrossWatchers(t *testing.T) {
 	}
 }
 
+func TestWatchPutDoesNotRetainCallerValue(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	w := s.NewWatchStream()
+	defer w.Close()
+
+	key := []byte("foo")
+	value := []byte("bar")
+	watchID, err := w.Watch(t.Context(), 0, key, nil, 0)
+	if err != nil {
+		t.Fatalf("failed to create watcher: %v", err)
+	}
+
+	s.Put(key, value, lease.NoLease)
+	copy(value, "baz")
+
+	resp := <-w.Chan()
+	if resp.WatchID != watchID {
+		t.Fatalf("watch ID = %d, want %d", resp.WatchID, watchID)
+	}
+	if len(resp.Events) != 1 {
+		t.Fatalf("event count = %d, want 1", len(resp.Events))
+	}
+	if got := string(resp.Events[0].Kv.Value); got != "bar" {
+		t.Errorf("watch event value = %q, want %q", got, "bar")
+	}
+}
+
 func collectWatchResponsesForWatchers(t *testing.T, ch <-chan WatchResponse, watcherIDs ...WatchID) map[WatchID]WatchResponse {
 	t.Helper()
 	target := make(map[WatchID]struct{}, len(watcherIDs))
