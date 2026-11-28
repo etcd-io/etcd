@@ -279,3 +279,17 @@ func TestUberApplier_Alarm_Deactivate(t *testing.T) {
 	require.NotNil(t, result)
 	assert.NoError(t, result.Err)
 }
+
+func TestUberApplier_Alarm_UnknownAction(t *testing.T) {
+	ua := defaultUberApplier(t)
+	result := ua.Apply(&InternalRaftRequestWrapper{InternalRaftRequest: &pb.InternalRaftRequest{
+		Header: &pb.RequestHeader{},
+		Alarm: &pb.AlarmRequest{
+			Action:   pb.AlarmRequest_AlarmAction(60),
+			MemberID: memberID,
+			Alarm:    pb.AlarmType_NOSPACE,
+		},
+	}}, membership.ApplyBoth)
+	require.NotNil(t, result)
+	require.ErrorIs(t, result.Err, errors.ErrUnknownAlarmAction)
+}

@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	mvcctxn "go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -107,6 +108,9 @@ func (a *applierV3backend) LeaseCheckpoint(lc *pb.LeaseCheckpointRequest) (*pb.L
 }
 
 func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
+	if ar == nil {
+		return nil, errors.ErrUnknownAlarmAction
+	}
 	resp := &pb.AlarmResponse{}
 
 	switch ar.Action {
@@ -130,7 +134,7 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 		resp.Alarms = append(resp.Alarms, m)
 		alarms.WithLabelValues(types.ID(ar.MemberID).String(), m.Alarm.String()).Dec()
 	default:
-		return nil, nil
+		return nil, errors.ErrUnknownAlarmAction
 	}
 	return resp, nil
 }

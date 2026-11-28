@@ -23,6 +23,8 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -256,15 +258,31 @@ func (ms *maintenanceServer) HashKV(ctx context.Context, r *pb.HashKVRequest) (*
 }
 
 func (ms *maintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
+	if err := checkAlarmRequest(ar); err != nil {
+		return nil, err
+	}
 	resp, err := ms.a.Alarm(ctx, ar)
 	if err != nil {
 		return nil, togRPCError(err)
+	}
+	if resp == nil {
+		return nil, status.Error(codes.Internal, "etcdserver: nil alarm response")
 	}
 	if resp.Header == nil {
 		resp.Header = &pb.ResponseHeader{}
 	}
 	ms.hdr.fill(resp.Header)
 	return resp, nil
+}
+
+func checkAlarmRequest(ar *pb.AlarmRequest) error {
+	if ar == nil {
+		return status.Error(codes.InvalidArgument, errors.ErrUnknownAlarmAction.Error())
+	}
+	if _, ok := pb.AlarmRequest_AlarmAction_name[int32(ar.Action)]; !ok {
+		return status.Errorf(codes.InvalidArgument, "%s: %d", errors.ErrUnknownAlarmAction.Error(), ar.Action)
+	}
+	return nil
 }
 
 func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {
