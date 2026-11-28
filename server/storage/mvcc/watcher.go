@@ -48,7 +48,11 @@ type WatchStream interface {
 	// in events that are sent to the created watcher through stream channel.
 	// The watch ID is used when it's not equal to AutoWatchID. Otherwise,
 	// an auto-generated watch ID is returned.
-	Watch(ctx context.Context, id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error)
+	//
+	// The returned "rev" is the store revision the watcher was registered at.
+	// Unless "startRev" asks for history, every event the watcher delivers has
+	// a higher revision than "rev".
+	Watch(ctx context.Context, id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, int64, error)
 
 	// Chan returns a chan. All watch response will be sent to the returned chan.
 	Chan() <-chan WatchResponse
@@ -112,17 +116,17 @@ type watchStream struct {
 }
 
 // Watch creates a new watcher in the stream and returns its WatchID.
-func (ws *watchStream) Watch(ctx context.Context, id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error) {
+func (ws *watchStream) Watch(ctx context.Context, id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, int64, error) {
 	// prevent wrong range where key >= end lexicographically
 	// watch request with 'WithFromKey' has empty-byte range end
 	if len(end) != 0 && bytes.Compare(key, end) != -1 {
-		return -1, ErrEmptyWatcherRange
+		return -1, 0, ErrEmptyWatcherRange
 	}
 
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 	if ws.closed {
-		return -1, ErrEmptyWatcherRange
+		return -1, 0, ErrEmptyWatcherRange
 	}
 
 	if id == clientv3.AutoWatchID {
@@ -132,10 +136,10 @@ func (ws *watchStream) Watch(ctx context.Context, id WatchID, key, end []byte, s
 		id = ws.nextID
 		ws.nextID++
 	} else if _, ok := ws.watchers[id]; ok {
-		return -1, ErrWatcherDuplicateID
+		return -1, 0, ErrWatcherDuplicateID
 	}
 
-	w, c := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
+	w, rev, c := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
 
 	span := trace.SpanFromContext(ctx)
 	ws.cancels[id] = func() {
@@ -143,7 +147,7 @@ func (ws *watchStream) Watch(ctx context.Context, id WatchID, key, end []byte, s
 		c()
 	}
 	ws.watchers[id] = w
-	return id, nil
+	return id, rev, nil
 }
 
 func (ws *watchStream) Chan() <-chan WatchResponse {

@@ -47,7 +47,7 @@ var (
 func ChanBufLen() int { return chanBufLen }
 
 type watchable interface {
-	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
+	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, int64, cancelFunc)
 	progress(w *watcher)
 	progressAll(watchers map[WatchID]*watcher) bool
 	rev() int64
@@ -125,7 +125,7 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 	}
 }
 
-func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
+func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, int64, cancelFunc) {
 	wa := &watcher{
 		key:      key,
 		end:      end,
@@ -138,9 +138,10 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 
 	s.mu.Lock()
 	s.revMu.RLock()
-	synced := startRev > s.store.currentRev || startRev == 0
+	rev := s.store.currentRev
+	synced := startRev > rev || startRev == 0
 	if synced {
-		wa.minRev = s.store.currentRev + 1
+		wa.minRev = rev + 1
 		if startRev > wa.minRev {
 			wa.minRev = startRev
 		}
@@ -154,7 +155,7 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 
 	watcherGauge.Inc()
 
-	return wa, func() { s.cancelWatcher(wa) }
+	return wa, rev, func() { s.cancelWatcher(wa) }
 }
 
 // cancelWatcher removes references of the watcher from the watchableStore

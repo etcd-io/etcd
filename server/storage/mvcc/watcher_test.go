@@ -33,6 +33,47 @@ import (
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
+// TestWatcherWatchRev tests that Watch returns the store revision the watcher
+// was registered at and that a current-revision watcher only delivers events
+// above it.
+func TestWatcherWatchRev(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	w := s.NewWatchStream()
+	defer w.Close()
+
+	for i := 0; i < 3; i++ {
+		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+	}
+
+	id, rev, err := w.Watch(t.Context(), 0, []byte("foo"), nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rev != s.Rev() {
+		t.Fatalf("rev = %d, want store revision %d", rev, s.Rev())
+	}
+
+	// a historical watcher is still registered at the current store revision
+	if _, histRev, err := w.Watch(t.Context(), 0, []byte("bar"), nil, 1); err != nil {
+		t.Fatal(err)
+	} else if histRev != rev {
+		t.Fatalf("historical watcher rev = %d, want %d", histRev, rev)
+	}
+
+	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+
+	resp := <-w.Chan()
+	if resp.WatchID != id {
+		t.Fatalf("watch id in event = %d, want %d", resp.WatchID, id)
+	}
+	if got := resp.Events[0].Kv.ModRevision; got != rev+1 {
+		t.Fatalf("first event revision = %d, want %d", got, rev+1)
+	}
+}
+
 // TestWatcherWatchID tests that each watcher provides unique watchID,
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
@@ -46,7 +87,7 @@ func TestWatcherWatchID(t *testing.T) {
 	idm := make(map[WatchID]struct{})
 
 	for i := 0; i < 10; i++ {
-		id, _ := w.Watch(t.Context(), 0, []byte("foo"), nil, 0)
+		id, _, _ := w.Watch(t.Context(), 0, []byte("foo"), nil, 0)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
@@ -68,7 +109,7 @@ func TestWatcherWatchID(t *testing.T) {
 
 	// unsynced watchers
 	for i := 10; i < 20; i++ {
-		id, _ := w.Watch(t.Context(), 0, []byte("foo2"), nil, 1)
+		id, _, _ := w.Watch(t.Context(), 0, []byte("foo2"), nil, 1)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
@@ -109,7 +150,7 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 	}
 
 	for i, tcase := range tt {
-		id, err := w.Watch(t.Context(), tcase.givenID, []byte("foo"), nil, 0)
+		id, _, err := w.Watch(t.Context(), tcase.givenID, []byte("foo"), nil, 0)
 		if tcase.expectedErr != nil || err != nil {
 			if !errors.Is(err, tcase.expectedErr) {
 				t.Errorf("expected get error %q in test case %d, got %q", tcase.expectedErr, i, err)
@@ -136,7 +177,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 	keyWatch, keyEnd, keyPut := []byte("foo"), []byte("fop"), []byte("foobar")
 
 	for i := 0; i < 10; i++ {
-		id, _ := w.Watch(t.Context(), 0, keyWatch, keyEnd, 0)
+		id, _, _ := w.Watch(t.Context(), 0, keyWatch, keyEnd, 0)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: unexpected duplicated id %x", i, id)
 		}
@@ -168,7 +209,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 
 	// unsynced watchers
 	for i := 10; i < 15; i++ {
-		id, _ := w.Watch(t.Context(), 0, keyWatch1, keyEnd1, 1)
+		id, _, _ := w.Watch(t.Context(), 0, keyWatch1, keyEnd1, 1)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
@@ -204,11 +245,11 @@ func TestWatchResponseEventsNotSharedAcrossWatchers(t *testing.T) {
 
 	key := []byte("foo")
 	value := []byte("bar")
-	id1, err := w.Watch(t.Context(), 0, key, nil, 0)
+	id1, _, err := w.Watch(t.Context(), 0, key, nil, 0)
 	if err != nil {
 		t.Fatalf("failed to create first watcher: %v", err)
 	}
-	id2, err := w.Watch(t.Context(), 0, key, nil, 0)
+	id2, _, err := w.Watch(t.Context(), 0, key, nil, 0)
 	if err != nil {
 		t.Fatalf("failed to create second watcher: %v", err)
 	}
@@ -257,14 +298,14 @@ func TestWatcherWatchWrongRange(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	if _, err := w.Watch(t.Context(), 0, []byte("foa"), []byte("foa"), 1); !errors.Is(err, ErrEmptyWatcherRange) {
+	if _, _, err := w.Watch(t.Context(), 0, []byte("foa"), []byte("foa"), 1); !errors.Is(err, ErrEmptyWatcherRange) {
 		t.Fatalf("key == end range given; expected ErrEmptyWatcherRange, got %+v", err)
 	}
-	if _, err := w.Watch(t.Context(), 0, []byte("fob"), []byte("foa"), 1); !errors.Is(err, ErrEmptyWatcherRange) {
+	if _, _, err := w.Watch(t.Context(), 0, []byte("fob"), []byte("foa"), 1); !errors.Is(err, ErrEmptyWatcherRange) {
 		t.Fatalf("key > end range given; expected ErrEmptyWatcherRange, got %+v", err)
 	}
 	// watch request with 'WithFromKey' has empty-byte range end
-	if id, _ := w.Watch(t.Context(), 0, []byte("foo"), []byte{}, 1); id != 0 {
+	if id, _, _ := w.Watch(t.Context(), 0, []byte("foo"), []byte{}, 1); id != 0 {
 		t.Fatalf("\x00 is range given; id expected 0, got %d", id)
 	}
 }
@@ -317,7 +358,7 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	id, _ := w.Watch(t.Context(), 0, []byte("foo"), nil, 0)
+	id, _, _ := w.Watch(t.Context(), 0, []byte("foo"), nil, 0)
 
 	tests := []struct {
 		cancelID WatchID
@@ -405,7 +446,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 
 			w := s.NewWatchStream()
 
-			id, _ := w.Watch(t.Context(), 0, notTestKey, nil, tc.startRev)
+			id, _, _ := w.Watch(t.Context(), 0, notTestKey, nil, tc.startRev)
 			w.RequestProgress(id)
 			asssertProgressSent(t, w, id, tc.expectProgressBeforeSync)
 			s.syncWatchers()
