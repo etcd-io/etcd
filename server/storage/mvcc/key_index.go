@@ -74,6 +74,7 @@ type keyIndex struct {
 	key         []byte
 	modified    Revision // the main rev of the last modification
 	generations []generation
+	liveSize    int64 // len(key) + len(value) for the current non-deleted version
 }
 
 // put puts a revision to the keyIndex.
