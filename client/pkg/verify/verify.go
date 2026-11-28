@@ -38,14 +38,25 @@ func IsVerificationEnabled(verification VerificationType) bool {
 	return env == string(envVerifyValueAll) || env == strings.ToLower(string(verification))
 }
 
+// restoreEnv returns a function that restores envVerify to its current
+// state, preserving whether it was set at all.
+func restoreEnv() func() {
+	previousEnv, wasSet := os.LookupEnv(envVerify)
+	return func() {
+		if wasSet {
+			os.Setenv(envVerify, previousEnv)
+		} else {
+			os.Unsetenv(envVerify)
+		}
+	}
+}
+
 // EnableVerifications sets `envVerify` and returns a function that
 // can be used to bring the original settings.
 func EnableVerifications(verification VerificationType) func() {
-	previousEnv := getEnvVerify()
+	restore := restoreEnv()
 	os.Setenv(envVerify, string(verification))
-	return func() {
-		os.Setenv(envVerify, previousEnv)
-	}
+	return restore
 }
 
 // EnableAllVerifications enables verification and returns a function
@@ -57,11 +68,9 @@ func EnableAllVerifications() func() {
 // DisableVerifications unsets `envVerify` and returns a function that
 // can be used to bring the original settings.
 func DisableVerifications() func() {
-	previousEnv := getEnvVerify()
+	restore := restoreEnv()
 	os.Unsetenv(envVerify)
-	return func() {
-		os.Setenv(envVerify, previousEnv)
-	}
+	return restore
 }
 
 // Verify performs verification if the assertions are enabled.
