@@ -16,13 +16,18 @@ package v3rpc
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"math"
 	"reflect"
 	"testing"
+	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/server/v3/etcdserver/apply"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
 func TestSendFragment(t *testing.T) {
@@ -114,4 +119,142 @@ func createResponse(dataSize, events int) (resp *pb.WatchResponse) {
 		}
 	}
 	return resp
+}
+
+type pendingWatchRPCStream struct {
+	pb.Watch_WatchServer
+	responses chan *pb.WatchResponse
+}
+
+func (s *pendingWatchRPCStream) Send(response *pb.WatchResponse) error {
+	s.responses <- response
+	return nil
+}
+
+type pendingMVCCWatchStream struct {
+	mvcc.WatchStream
+	responses chan mvcc.WatchResponse
+}
+
+func (s *pendingMVCCWatchStream) Chan() <-chan mvcc.WatchResponse { return s.responses }
+
+type pendingWatchableKV struct {
+	mvcc.WatchableKV
+	previous *mvccpb.KeyValue
+}
+
+func (w *pendingWatchableKV) Range(_ context.Context, _, _ []byte, _ mvcc.RangeOptions) (*mvcc.RangeResult, error) {
+	return &mvcc.RangeResult{KVs: []*mvccpb.KeyValue{w.previous}}, nil
+}
+
+type pendingWatchStatus struct {
+	apply.RaftStatusGetter
+	termStarted  chan struct{}
+	continueTerm chan struct{}
+}
+
+func (s *pendingWatchStatus) Term() uint64 {
+	close(s.termStarted)
+	<-s.continueTerm
+	return 1
+}
+
+func (s *pendingWatchStatus) Leader() types.ID { return 1 }
+
+func TestWatchPendingResponsePreservesOptions(t *testing.T) {
+	const id = mvcc.WatchID(1)
+	t.Run("prev_kv", func(t *testing.T) {
+		previous := &mvccpb.KeyValue{Key: []byte("key"), Value: []byte("old"), ModRevision: 1}
+		event := &mvccpb.Event{
+			Type: mvccpb.Event_PUT,
+			Kv:   &mvccpb.KeyValue{Key: []byte("key"), Value: []byte("new"), CreateRevision: 1, ModRevision: 2},
+		}
+		sws, status, rpcStream := newPendingWatchStream(t, id, 1024, &pendingWatchableKV{previous: previous}, []*mvccpb.Event{event})
+
+		sws.mu.Lock()
+		sws.prevKV[id] = true
+		sws.mu.Unlock()
+		close(status.continueTerm)
+		sws.ctrlStream <- &pb.WatchResponse{WatchId: int64(id), Created: true}
+
+		_ = receivePendingWatchResponse(t, rpcStream)
+		response := receivePendingWatchResponse(t, rpcStream)
+		if len(response.Events) != 1 || !reflect.DeepEqual(response.Events[0].PrevKv, previous) {
+			t.Fatalf("watch replay did not include requested PrevKv: %+v", response)
+		}
+	})
+
+	t.Run("fragment", func(t *testing.T) {
+		events := []*mvccpb.Event{
+			{Type: mvccpb.Event_PUT, Kv: &mvccpb.KeyValue{Key: []byte("key1"), Value: []byte("new1"), CreateRevision: 1, ModRevision: 2}},
+			{Type: mvccpb.Event_PUT, Kv: &mvccpb.KeyValue{Key: []byte("key2"), Value: []byte("new2"), CreateRevision: 1, ModRevision: 2}},
+		}
+		sws, status, rpcStream := newPendingWatchStream(t, id, 1, &pendingWatchableKV{}, events)
+
+		sws.mu.Lock()
+		sws.fragment[id] = true
+		sws.mu.Unlock()
+		close(status.continueTerm)
+		sws.ctrlStream <- &pb.WatchResponse{WatchId: int64(id), Created: true}
+
+		_ = receivePendingWatchResponse(t, rpcStream)
+		first := receivePendingWatchResponse(t, rpcStream)
+		second := receivePendingWatchResponse(t, rpcStream)
+		if !first.Fragment || first.Fragment == second.Fragment || len(first.Events) != 1 || len(second.Events) != 1 {
+			t.Fatalf("watch replay did not preserve fragmentation: first=%+v second=%+v", first, second)
+		}
+	})
+}
+
+func newPendingWatchStream(t *testing.T, id mvcc.WatchID, maxRequestBytes uint, watchable *pendingWatchableKV, events []*mvccpb.Event) (*serverWatchStream, *pendingWatchStatus, *pendingWatchRPCStream) {
+	t.Helper()
+
+	watchStream := &pendingMVCCWatchStream{responses: make(chan mvcc.WatchResponse, 1)}
+	status := &pendingWatchStatus{termStarted: make(chan struct{}), continueTerm: make(chan struct{})}
+	rpcStream := &pendingWatchRPCStream{responses: make(chan *pb.WatchResponse, 8)}
+	sws := &serverWatchStream{
+		maxRequestBytes: maxRequestBytes,
+		sg:              status,
+		watchable:       watchable,
+		gRPCStream:      rpcStream,
+		watchStream:     watchStream,
+		ctrlStream:      make(chan *pb.WatchResponse, 1),
+		progress:        make(map[mvcc.WatchID]bool),
+		prevKV:          make(map[mvcc.WatchID]bool),
+		fragment:        make(map[mvcc.WatchID]bool),
+		closec:          make(chan struct{}),
+	}
+	done := make(chan struct{})
+	go func() {
+		sws.sendLoop()
+		close(done)
+	}()
+	t.Cleanup(func() {
+		select {
+		case <-status.continueTerm:
+		default:
+			close(status.continueTerm)
+		}
+		close(sws.closec)
+		close(watchStream.responses)
+		<-done
+	})
+	watchStream.responses <- mvcc.WatchResponse{WatchID: id, Revision: 2, Events: events}
+	select {
+	case <-status.termStarted:
+	case <-time.After(time.Second):
+		t.Fatal("watch event was not processed")
+	}
+	return sws, status, rpcStream
+}
+
+func receivePendingWatchResponse(t *testing.T, stream *pendingWatchRPCStream) *pb.WatchResponse {
+	t.Helper()
+	select {
+	case response := <-stream.responses:
+		return response
+	case <-time.After(time.Second):
+		t.Fatal("watch response was not sent")
+		return nil
+	}
 }
