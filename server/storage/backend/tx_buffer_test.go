@@ -140,3 +140,20 @@ func TestDedupe(t *testing.T) {
 		})
 	}
 }
+
+func TestTxReadBufferResetIncrementsVersion(t *testing.T) {
+	txr := txReadBuffer{
+		txBuffer: txBuffer{
+			buckets: map[BucketID]*bucketBuffer{
+				1: newBucketBuffer(),
+			},
+		},
+		bufVersion: 1,
+	}
+	txr.buckets[1].add([]byte("key"), []byte("val"))
+
+	txr.reset()
+
+	assert.Equal(t, uint64(2), txr.bufVersion)
+	assert.Equal(t, 0, txr.buckets[1].used)
+}

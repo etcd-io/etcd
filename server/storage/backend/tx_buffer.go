@@ -122,6 +122,11 @@ type txReadBuffer struct {
 	bufVersion uint64
 }
 
+func (txr *txReadBuffer) reset() {
+	txr.txBuffer.reset()
+	txr.bufVersion++
+}
+
 func (txr *txReadBuffer) Range(bucket Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
 	if b := txr.buckets[bucket.ID()]; b != nil {
 		return b.Range(key, endKey, limit)

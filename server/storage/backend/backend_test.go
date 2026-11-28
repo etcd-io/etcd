@@ -440,6 +440,50 @@ func TestConcurrentReadTx(t *testing.T) {
 	}
 }
 
+func TestConcurrentReadTxDoesNotUseStaleCacheAfterCommit(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Key)
+	tx.UnsafePut(schema.Key, []byte("key"), []byte("value"))
+	tx.Unlock()
+
+	// Populate txReadBufferCache with the uncommitted write.
+	read := b.ConcurrentReadTx()
+	read.RLock()
+	keys, vals := read.UnsafeRange(schema.Key, []byte("a"), []byte("z"), 0)
+	read.RUnlock()
+	require.Equal(t, [][]byte{[]byte("key")}, keys)
+	require.Equal(t, [][]byte{[]byte("value")}, vals)
+
+	// Commit flushes the write to bbolt and resets readTx.buf.
+	b.ForceCommit()
+
+	// A new ConcurrentReadTx must not combine the committed bbolt row with the
+	// stale pre-commit txReadBufferCache entry.
+	read = b.ConcurrentReadTx()
+	read.RLock()
+	keys, vals = read.UnsafeRange(schema.Key, []byte("a"), []byte("z"), 0)
+	read.RUnlock()
+	require.Equal(t, [][]byte{[]byte("key")}, keys)
+	require.Equal(t, [][]byte{[]byte("value")}, vals)
+
+	// Deleting the key commits and resets readTx.buf again; a subsequent
+	// ConcurrentReadTx must not observe the deleted key from a stale cache.
+	tx.Lock()
+	tx.UnsafeDelete(schema.Key, []byte("key"))
+	tx.Unlock()
+
+	read = b.ConcurrentReadTx()
+	read.RLock()
+	keys, vals = read.UnsafeRange(schema.Key, []byte("a"), []byte("z"), 0)
+	read.RUnlock()
+	require.Empty(t, keys)
+	require.Empty(t, vals)
+}
+
 // TestBackendWritebackForEach checks that partially written / buffered
 // data is visited in the same order as fully committed data.
 func TestBackendWritebackForEach(t *testing.T) {
