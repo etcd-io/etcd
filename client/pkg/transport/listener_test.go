@@ -674,3 +674,33 @@ func TestNewListenerWithACRLFile(t *testing.T) {
 		})
 	}
 }
+
+// TestSelfCertBareHostSAN verifies that hosts passed without a port still
+// land in the generated certificate's SAN. SplitHostPort fails for bare
+// IPs/hostnames; ignoring that error used to produce a cert with no SANs.
+func TestSelfCertBareHostSAN(t *testing.T) {
+	for _, host := range []string{"127.0.0.1", "localhost"} {
+		t.Run(host, func(t *testing.T) {
+			d := t.TempDir()
+			info, err := SelfCert(zaptest.NewLogger(t), d, []string{host}, 1)
+			require.NoError(t, err)
+
+			b, err := os.ReadFile(info.CertFile)
+			require.NoError(t, err)
+			block, _ := pem.Decode(b)
+			require.NotNil(t, block)
+			cert, err := x509.ParseCertificate(block.Bytes)
+			require.NoError(t, err)
+
+			if ip := net.ParseIP(host); ip != nil {
+				for _, san := range cert.IPAddresses {
+					if san.Equal(ip) {
+						return
+					}
+				}
+				t.Fatalf("certificate SAN missing bare IP %s: IPs=%v DNS=%v", host, cert.IPAddresses, cert.DNSNames)
+			}
+			require.Contains(t, cert.DNSNames, host)
+		})
+	}
+}
