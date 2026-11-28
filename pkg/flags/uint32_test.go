@@ -104,3 +104,9 @@ func TestUint32FromFlag(t *testing.T) {
 		})
 	}
 }
+
+func TestUint32ValueRejectedSetKeepsPreviousValue(t *testing.T) {
+	val := NewUint32Value(200)
+	require.Error(t, val.Set("not-a-number"))
+	assert.Equal(t, uint32(200), uint32(*val))
+}
