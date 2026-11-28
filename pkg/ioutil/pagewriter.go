@@ -87,6 +87,9 @@ func (pw *PageWriter) Write(p []byte) (n int, err error) {
 		pages := len(p) / pw.pageBytes
 		c, werr := pw.w.Write(p[:pages*pw.pageBytes])
 		n += c
+		if werr == nil && c < pages*pw.pageBytes {
+			werr = io.ErrShortWrite
+		}
 		if werr != nil {
 			return n, werr
 		}
@@ -108,8 +111,12 @@ func (pw *PageWriter) flush() (int, error) {
 	if pw.bufferedBytes == 0 {
 		return 0, nil
 	}
-	n, err := pw.w.Write(pw.buf[:pw.bufferedBytes])
+	buf := pw.buf[:pw.bufferedBytes]
+	n, err := pw.w.Write(buf)
 	pw.pageOffset = (pw.pageOffset + pw.bufferedBytes) % pw.pageBytes
 	pw.bufferedBytes = 0
+	if err == nil && n < len(buf) {
+		err = io.ErrShortWrite
+	}
 	return n, err
 }
