@@ -14,6 +14,7 @@ Previous change logs can be found at [CHANGELOG-3.7](https://github.com/etcd-io/
   - [Cleanup the legacy v2 snapshot source code and cleanup orphaned defragmentation files on bootstrap](https://github.com/etcd-io/etcd/pull/22341)
 - [Add `LeaderId` (`leader_id`) to `ResponseHeader`, including headers for `DefragmentResponse`, `SnapshotResponse`, and `MoveLeaderResponse`](https://github.com/etcd-io/etcd/pull/22327).
 - [Add `NonBlockingDefrag` feature gate to enable non-blocking backend defragmentation](https://github.com/etcd-io/etcd/pull/22425)
+- Fix [`etcdutl snapshot restore` hanging forever, without printing the underlying error, when a bbolt commit panics on a corrupt snapshot](https://github.com/etcd-io/etcd/pull/22832)
 
 ### Package `clientv3`
 
