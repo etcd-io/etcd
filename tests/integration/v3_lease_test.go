@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -1167,6 +1168,138 @@ func testV3LeaseTimeToLiveWithLeaderChanged(t *testing.T, fpName string) {
 	require.GreaterOrEqual(t, int64(100), ttlResp.TTL)
 
 	require.NoError(t, <-errCh)
+}
+
+// TestV3LeaseExpiryRevokeQueuedOnDeposedLeader ensures that lease expiry
+// revokes queued behind maxPendingRevokes on a leader that is then partitioned
+// are not forwarded to the new leader and committed there once the partition
+// heals. A lease that the new leader extended (Promote) and that a client
+// renewed successfully must not be revoked before its TTL runs out.
+// Reproduces https://github.com/etcd-io/etcd/issues/22714.
+func TestV3LeaseExpiryRevokeQueuedOnDeposedLeader(t *testing.T) {
+	integration.BeforeTest(t)
+
+	// Use the configuration the issue was reported with, a 1s election
+	// timeout. It keeps the partitioned leader a stale primary lessor long
+	// enough (> 500ms lessor scan interval) for it to observe the expiries
+	// and queue the revokes before CheckQuorum steps it down.
+	oldElectionTicks := integration.ElectionTicks
+	integration.ElectionTicks = 100
+	defer func() { integration.ElectionTicks = oldElectionTicks }()
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	ctx := t.Context()
+
+	leadIdx := clus.WaitLeader(t)
+	leader := clus.Members[leadIdx]
+	others := []*integration.Member{
+		clus.Members[(leadIdx+1)%3],
+		clus.Members[(leadIdx+2)%3],
+	}
+	// the keepalive client only ever reaches the two non-partitioned members,
+	// so renewals keep working on the new leader while the old one is cut off.
+	keepAliveClient := others[0].Client
+
+	const nLeases = 200
+	const ttlSeconds = 4
+	leaseIDs := make([]int64, nLeases)
+
+	leadGRPC := integration.ToGRPC(leader.Client)
+	var wg sync.WaitGroup
+	errc := make(chan error, 2*nLeases)
+	grantStart := time.Now()
+	for i := 0; i < nLeases; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			gresp, err := leadGRPC.Lease.LeaseGrant(ctx, &pb.LeaseGrantRequest{TTL: ttlSeconds})
+			if err != nil {
+				errc <- err
+				return
+			}
+			leaseIDs[i] = gresp.ID
+			_, err = leadGRPC.KV.Put(ctx, &pb.PutRequest{
+				Key:   []byte(fmt.Sprintf("lease-%d-key", i)),
+				Value: []byte("bar"),
+				Lease: gresp.ID,
+			})
+			if err != nil {
+				errc <- err
+			}
+		}(i)
+	}
+	wg.Wait()
+	close(errc)
+	for err := range errc {
+		require.NoError(t, err)
+	}
+	// all concurrent grants commit within a few hundred ms, so every lease
+	// expires about ttlSeconds from now, just like the issue's repro.
+	expiresAt := grantStart.Add(ttlSeconds * time.Second)
+
+	// partition the leader 0.3s before the leases expire on it. Until then
+	// the leases are left unrenewed, as in the issue's repro, so they really
+	// do expire on the old leader.
+	time.Sleep(time.Until(expiresAt.Add(-300 * time.Millisecond)))
+	leader.InjectPartition(t, others...)
+
+	// heal the partition 3s after the cut; the deposed leader's queued
+	// revokes can only reach the new leader once it rejoins.
+	time.Sleep(3 * time.Second)
+	leader.RecoverPartition(t, others...)
+
+	// Keep every lease alive through the majority side, ~200ms per lease.
+	// (Starting this only now matters: while the old leader is partitioned
+	// but still leader, renewals forwarded to it by a follower's leasehttp
+	// path - which InjectPartition does not cut - would refresh its leaseMap
+	// and the leases would never expire there at all.)
+	kaCtx, kaCancel := context.WithCancel(ctx)
+	var kaWG sync.WaitGroup
+	for i := 0; i < nLeases; i++ {
+		kaWG.Add(1)
+		go func(id int64) {
+			defer kaWG.Done()
+			for {
+				select {
+				case <-kaCtx.Done():
+					return
+				default:
+				}
+				kctx, cancel := context.WithTimeout(kaCtx, time.Second)
+				_, _ = keepAliveClient.KeepAliveOnce(kctx, clientv3.LeaseID(id))
+				cancel()
+				select {
+				case <-kaCtx.Done():
+					return
+				case <-time.After(200 * time.Millisecond):
+				}
+			}
+		}(leaseIDs[i])
+	}
+	defer func() {
+		kaCancel()
+		kaWG.Wait()
+	}()
+
+	// The hung proposals take one request timeout (~5s+2*election) to release
+	// their semaphore slots; the forwarded revokes commit shortly after.
+	// Give the drain window time to finish, then every lease must still be
+	// alive: each was renewed fractions of a second ago on the new leader.
+	time.Sleep(10 * time.Second)
+	kaCancel()
+	kaWG.Wait()
+
+	var missing []int64
+	ttlClient := integration.ToGRPC(keepAliveClient).Lease
+	for _, id := range leaseIDs {
+		resp, err := ttlClient.LeaseTimeToLive(ctx, &pb.LeaseTimeToLiveRequest{ID: id})
+		if err != nil || resp.GetTTL() <= 0 {
+			missing = append(missing, id)
+		}
+	}
+	require.Emptyf(t, missing, "%d of %d leases revoked early by a deposed leader's queued expiry revokes", len(missing), nLeases)
 }
 
 // acquireLeaseAndKey creates a new lease and creates an attached key.
