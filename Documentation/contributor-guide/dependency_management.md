@@ -173,7 +173,7 @@ For an example of how to update etcd to a new patch release of Go refer to issue
 
 References:
 
-- <https://github.com/kubernetes/sig-release/blob/master/release-engineering/handbooks/go.md>
+- <https://github.com/kubernetes/sig-release/blob/master/release-engineering/handbooks/go-updates.md>
 
 ## Core dependencies mappings
 
