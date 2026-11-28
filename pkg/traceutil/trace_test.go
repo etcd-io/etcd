@@ -298,3 +298,14 @@ func TestLogIfLong(t *testing.T) {
 		})
 	}
 }
+
+func TestStepWithFunctionReenablesStepsAfterPanic(t *testing.T) {
+	tr := newTrace("op", nil)
+	func() {
+		defer func() { _ = recover() }()
+		tr.StepWithFunction(func() { panic("boom") }, "panicking step")
+	}()
+	tr.Step("later step")
+	require.Len(t, tr.steps, 1)
+	assert.Equal(t, "later step", tr.steps[0].msg)
+}
