@@ -76,6 +76,11 @@ type Etcd struct {
 
 	tracingExporterShutdown func()
 
+	// caReloadShutdown stops the background pollers that reload trusted CA
+	// files when --auto-reload-ca-certificates is enabled. It is nil when
+	// the feature is disabled.
+	caReloadShutdown func()
+
 	Server *etcdserver.EtcdServer
 
 	cfg Config
@@ -114,6 +119,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	serving := false
 	e = &Etcd{cfg: *inCfg, stopc: make(chan struct{})}
 	cfg := &e.cfg
+	if e.caReloadShutdown, err = cfg.setupCAReloading(); err != nil {
+		return e, err
+	}
 	defer func() {
 		if e == nil || err == nil {
 			return
@@ -463,6 +471,11 @@ func (e *Etcd) Close() {
 	// shutdown tracing exporter
 	if e.tracingExporterShutdown != nil {
 		e.tracingExporterShutdown()
+	}
+
+	// stop the trusted CA file reload pollers
+	if e.caReloadShutdown != nil {
+		e.caReloadShutdown()
 	}
 
 	// close rafthttp transports
