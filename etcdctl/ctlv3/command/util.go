@@ -95,6 +95,7 @@ func isCommandTimeoutFlagSet(cmd *cobra.Command) bool {
 
 // get the process_resident_memory_bytes from <server>/metrics
 func endpointMemoryMetrics(host string, scfg *clientv3.SecureConfig) float64 {
+	const maxMetricsResponseSize = 8 << 20
 	residentMemoryKey := "process_resident_memory_bytes"
 	var residentMemoryValue string
 	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
@@ -118,10 +119,14 @@ func endpointMemoryMetrics(host string, scfg *clientv3.SecureConfig) float64 {
 		fmt.Printf("fetch error: %v\n", err)
 		return 0.0
 	}
-	byts, readerr := io.ReadAll(resp.Body)
+	byts, readerr := io.ReadAll(io.LimitReader(resp.Body, maxMetricsResponseSize+1))
 	resp.Body.Close()
 	if readerr != nil {
 		fmt.Printf("fetch error: reading %s: %v\n", url, readerr)
+		return 0.0
+	}
+	if len(byts) > maxMetricsResponseSize {
+		fmt.Printf("fetch error: reading %s: response exceeds limit of %d bytes\n", url, maxMetricsResponseSize)
 		return 0.0
 	}
 
