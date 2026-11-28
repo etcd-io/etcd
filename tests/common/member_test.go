@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -150,6 +151,80 @@ func TestMemberAdd(t *testing.T) {
 	}
 }
 
+// TestCtlV3MemberAddAsLearnerWithOneMemberDown verifies the case
+// of adding new member when one or two existing members are down.
+// Refer to https://github.com/etcd-io/etcd/issues/21640
+func TestCtlV3MemberAddAsLearnerWithOneMemberDown(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	testCases := []struct {
+		name        string
+		clusterSize int
+		downMembers int
+		expectErr   bool
+	}{
+		{
+			name:        "0 out of 1 member is down, allow adding member",
+			clusterSize: 1,
+			downMembers: 0,
+			expectErr:   false,
+		},
+		{
+			name:        "1 out of 3 members is down, reject adding member",
+			clusterSize: 3,
+			downMembers: 1,
+			expectErr:   true,
+		},
+		{
+			name:        "1 out of 4 members is down, allow adding member",
+			clusterSize: 4,
+			downMembers: 1,
+			expectErr:   false,
+		},
+		{
+			name:        "1 out of 5 members is down, allow adding member",
+			clusterSize: 5,
+			downMembers: 1,
+			expectErr:   false,
+		},
+		{
+			name:        "2 out of 5 members are down, reject adding member",
+			clusterSize: 5,
+			downMembers: 2,
+			expectErr:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), etcdserver.HealthInterval+15*time.Second) // ctx requires longer deadline due to the sleep below
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(tc.clusterSize))
+			defer clus.Close()
+			// use the last member since it will not be stopped
+			cc := clus.Members()[len(clus.Members())-1].Client()
+
+			testutils.ExecuteUntil(ctx, t, func() {
+				t.Logf("Stopping %d member", tc.downMembers)
+				for i := 0; i < tc.downMembers; i++ {
+					t.Logf("Stopping member %d", i)
+					clus.Members()[i].Stop()
+				}
+
+				time.Sleep(etcdserver.HealthInterval + 2*time.Second)
+
+				t.Log("Adding a new learner")
+				_, err := cc.MemberAddAsLearner(ctx, "new-learner", []string{"http://10.0.0.12:2380"})
+				if tc.expectErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		})
+	}
+}
+
 func TestMemberRemove(t *testing.T) {
 	testRunner.BeforeTest(t)
 
@@ -227,6 +302,64 @@ func TestMemberRemove(t *testing.T) {
 				})
 			})
 		}
+	}
+}
+
+func TestRemoveNonExistingMember(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(1))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+
+	testutils.ExecuteUntil(ctx, t, func() {
+		_, err := cc.MemberRemove(ctx, 1)
+		require.Error(t, err)
+
+		// Ensure that membership is properly bootstrapped.
+		members := clus.Members()
+		require.NotEmpty(t, members)
+		member := members[0]
+		member.Stop()
+		assert.NoError(t, member.Start(ctx))
+	})
+}
+
+func TestMemberUpdate(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	for _, tc := range clusterTestCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
+			defer clus.Close()
+			cc := testutils.MustClient(clus.Client())
+
+			testutils.ExecuteUntil(ctx, t, func() {
+				listResp, err := cc.MemberList(ctx, false)
+				require.NoError(t, err)
+				require.NotEmptyf(t, listResp.Members, "listResp members should not be empty")
+				member := listResp.Members[0]
+
+				peerURLs := []string{"http://localhost:123"}
+				resp, err := cc.MemberUpdate(ctx, member.ID, peerURLs)
+				require.NoErrorf(t, err, "could not update member")
+				require.NotNilf(t, resp, "update response should not be nil")
+
+				// validate that the member peer-urls were updated
+				var updatedMember *etcdserverpb.Member
+				for _, m := range resp.Members {
+					if m.ID == member.ID {
+						updatedMember = m
+					}
+				}
+				require.NotNilf(t, updatedMember, "updated member not included in update response")
+				require.ElementsMatchf(t, updatedMember.PeerURLs, peerURLs, "updated member.PeerURLs do not match expected urls")
+			})
+		})
 	}
 }
 

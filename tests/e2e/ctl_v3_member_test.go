@@ -31,7 +31,6 @@ import (
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/expect"
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -41,30 +40,12 @@ func TestCtlV3MemberListWithHex(t *testing.T) { testCtl(t, memberListWithHexTest
 func TestCtlV3MemberAdd(t *testing.T)          { testCtl(t, memberAddTest) }
 func TestCtlV3MemberAddAsLearner(t *testing.T) { testCtl(t, memberAddAsLearnerTest) }
 
-func TestCtlV3MemberUpdate(t *testing.T) { testCtl(t, memberUpdateTest) }
-
 func TestCtlV3MemberPromoteWithAuthFromLeader(t *testing.T) {
 	testCtl(t, memberPromoteWithAuth(false), withTestTimeout(30*time.Second))
 }
 
 func TestCtlV3MemberPromoteWithAuthFromFollower(t *testing.T) {
 	testCtl(t, memberPromoteWithAuth(true), withTestTimeout(30*time.Second))
-}
-
-func TestCtlV3MemberUpdateNoTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigNoTLS()))
-}
-
-func TestCtlV3MemberUpdateClientTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigClientTLS()))
-}
-
-func TestCtlV3MemberUpdateClientAutoTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-
-func TestCtlV3MemberUpdatePeerTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigPeerTLS()))
 }
 
 // TestCtlV3ConsistentMemberList requires the gofailpoint to be enabled.
@@ -309,109 +290,7 @@ func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: fmt.Sprintf(" added%sto cluster ", asLearner)})
 }
 
-func memberUpdateTest(cx ctlCtx) {
-	mr, err := getMemberList(cx, false)
-	require.NoError(cx.t, err)
-
-	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
-	memberID := fmt.Sprintf("%x", mr.Members[0].ID)
-	require.NoError(cx.t, ctlV3MemberUpdate(cx, memberID, peerURL))
-}
-
 func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "update", memberID, fmt.Sprintf("--peer-urls=%s", peerURL))
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: " updated in cluster "})
-}
-
-func TestRemoveNonExistingMember(t *testing.T) {
-	e2e.BeforeTest(t)
-	ctx := t.Context()
-
-	cfg := e2e.ConfigStandalone(*e2e.NewConfig())
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(cfg))
-	require.NoError(t, err)
-	defer epc.Close()
-	c := epc.Etcdctl()
-
-	_, err = c.MemberRemove(ctx, 1)
-	require.Error(t, err)
-
-	// Ensure that membership is properly bootstrapped.
-	assert.NoError(t, epc.Restart(ctx))
-}
-
-// TestCtlV3MemberAddAsLearnerWithOneMemberDown verifies the case
-// of adding new member when one or two existing members are down.
-// Refer to https://github.com/etcd-io/etcd/issues/21640
-func TestCtlV3MemberAddAsLearnerWithOneMemberDown(t *testing.T) {
-	testCases := []struct {
-		name        string
-		clusterSize int
-		downMembers int
-		expectErr   bool
-	}{
-		{
-			name:        "0 out of 1 member is down, allow adding member",
-			clusterSize: 1,
-			downMembers: 0,
-			expectErr:   false,
-		},
-		{
-			name:        "1 out of 3 members is down, reject adding member",
-			clusterSize: 3,
-			downMembers: 1,
-			expectErr:   true,
-		},
-		{
-			name:        "1 out of 4 members is down, allow adding member",
-			clusterSize: 4,
-			downMembers: 1,
-			expectErr:   false,
-		},
-		{
-			name:        "1 out of 5 members is down, allow adding member",
-			clusterSize: 5,
-			downMembers: 1,
-			expectErr:   false,
-		},
-		{
-			name:        "2 out of 5 members are down, reject adding member",
-			clusterSize: 5,
-			downMembers: 2,
-			expectErr:   true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			e2e.BeforeTest(t)
-			ctx := t.Context()
-
-			t.Logf("Bootstrap a cluster with %d members", tc.clusterSize)
-			epc, err := e2e.NewEtcdProcessCluster(ctx, t,
-				e2e.WithClusterSize(tc.clusterSize),
-			)
-			require.NoError(t, err)
-			defer func() {
-				_ = epc.Close()
-			}()
-
-			t.Logf("Killing %d member", tc.downMembers)
-			for i := 0; i < tc.downMembers; i++ {
-				t.Logf("Killing member, name: %s, peerURL: %s", epc.Procs[i].Config().Name, epc.Procs[i].Config().PeerURL.String())
-				err = epc.Procs[i].Kill()
-				require.NoError(t, err)
-			}
-
-			time.Sleep(etcdserver.HealthInterval + 2*time.Second)
-
-			t.Log("Adding a new learner")
-			_, err = epc.Procs[len(epc.Procs)-1].Etcdctl().MemberAddAsLearner(ctx, "new-learner", []string{"http://10.0.0.12:2380"})
-			if tc.expectErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
 }
