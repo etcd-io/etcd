@@ -55,6 +55,10 @@ func evalCmp(resp *v3.GetResponse, tcmp v3.Cmp) bool {
 			if tv, _ := cmp.GetTargetUnion().(*v3pb.Compare_Version); tv != nil {
 				result = compareInt64(kv.Version, tv.Version)
 			}
+		case v3pb.Compare_LEASE:
+			if tv, _ := cmp.GetTargetUnion().(*v3pb.Compare_Lease); tv != nil {
+				result = compareInt64(int64(kv.Lease), tv.Lease)
+			}
 		}
 	}
 	switch tcmp.GetCompare().GetResult() {
