@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"bytes"
 	"sync"
 
 	"go.uber.org/zap"
@@ -57,6 +58,7 @@ func (ti *treeIndex) Put(key []byte, rev Revision) {
 	defer ti.Unlock()
 	okeyi, ok := ti.tree.Get(keyi)
 	if !ok {
+		keyi.key = bytes.Clone(key)
 		keyi.put(ti.lg, rev.Main, rev.Sub)
 		ti.tree.ReplaceOrInsert(keyi)
 		return

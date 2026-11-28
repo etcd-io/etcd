@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -239,7 +240,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 
 	ver = ver + 1
 	kv := &mvccpb.KeyValue{
-		Key:            key,
+		Key:            bytes.Clone(key),
 		Value:          value,
 		CreateRevision: c,
 		ModRevision:    rev,

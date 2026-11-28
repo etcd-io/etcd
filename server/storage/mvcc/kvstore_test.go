@@ -181,6 +181,27 @@ func TestStorePut(t *testing.T) {
 	}
 }
 
+func TestStorePutDoesNotRetainCallerKey(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	key := []byte("foo")
+	s.Put(key, []byte("bar"), lease.NoLease)
+	copy(key, []byte("boo"))
+
+	result, err := s.Range(t.Context(), []byte("foo"), nil, RangeOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.KVs) != 1 {
+		t.Fatalf("range returned %d keys, want 1", len(result.KVs))
+	}
+	if got := string(result.KVs[0].Value); got != "bar" {
+		t.Errorf("value = %q, want %q", got, "bar")
+	}
+}
+
 func TestStoreRange(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	key := newTestRevBytes(Revision{Main: 2})
