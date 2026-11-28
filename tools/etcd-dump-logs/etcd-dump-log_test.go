@@ -227,7 +227,8 @@ func appendNormalIRREnts(ents *[]*raftpb.Entry) {
 		var currentry raftpb.Entry
 		currentry.Term = new(uint64(i + 4))
 		currentry.Index = new(uint64(i + 10))
-		currentry.Type = raftpb.EntryNormal.Enum()
+		// Type is left unset: EntryNormal is the zero value, so raft never sets it
+		// and normal entries read back from a real WAL have a nil Type.
 		currentry.Data = pbutil.MustMarshalMessage(irr)
 		*ents = append(*ents, &currentry)
 	}
@@ -237,7 +238,7 @@ func appendUnknownNormalEnts(ents *[]*raftpb.Entry) {
 	var currentry raftpb.Entry
 	currentry.Term = new(uint64(27))
 	currentry.Index = new(uint64(34))
-	currentry.Type = raftpb.EntryNormal.Enum()
+	// Type is left unset, as for every normal entry written by raft.
 	currentry.Data = []byte("?")
 	*ents = append(*ents, &currentry)
 }

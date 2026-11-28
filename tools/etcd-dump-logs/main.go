@@ -162,7 +162,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		for _, e := range ents {
 			// WAL might contain entries with e.Index >= *endIndex from prev term, then e.Index < *endIndex in the next term.
 			// We cannot break when e.Index >= *endIndex.
-			if *e.Index >= *endIndex {
+			if e.GetIndex() >= *endIndex {
 				continue
 			}
 			entries = append(entries, e)
@@ -283,7 +283,7 @@ func printConfChange(entry *raftpb.Entry) {
 	if err := proto.Unmarshal(entry.Data, &r); err != nil {
 		fmt.Print("\t???")
 	} else {
-		fmt.Printf("\tmethod=%s id=%s", *r.Type, types.ID(*r.NodeId))
+		fmt.Printf("\tmethod=%s id=%s", r.GetType(), types.ID(r.GetNodeId()))
 	}
 }
 
