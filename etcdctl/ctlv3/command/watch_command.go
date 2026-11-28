@@ -139,7 +139,7 @@ func watchInteractiveFunc(cmd *cobra.Command, osArgs []string, envKey, envRange 
 }
 
 func getWatchChan(c *clientv3.Client, args []string) (clientv3.WatchChan, error) {
-	if len(args) < 1 {
+	if len(args) < 1 || len(args) > 2 {
 		return nil, errBadArgsNum
 	}
 

@@ -15,11 +15,45 @@
 package command
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
+
+type fakeWatcher struct {
+	clientv3.Watcher
+}
+
+func (fakeWatcher) Watch(context.Context, string, ...clientv3.OpOption) clientv3.WatchChan {
+	return make(chan clientv3.WatchResponse)
+}
+
+func Test_getWatchChan(t *testing.T) {
+	watchPrefix, watchRev, watchPrevKey, progressNotify = false, 0, false, false
+
+	c := clientv3.NewCtxClient(t.Context())
+	c.Watcher = fakeWatcher{}
+
+	tt := []struct {
+		args []string
+		err  error
+	}{
+		{args: nil, err: errBadArgsNum},
+		{args: []string{"foo"}},
+		{args: []string{"foo", "bar"}},
+		// extra arguments must not be silently dropped along with range_end
+		{args: []string{"foo", "bar", "baz"}, err: errBadArgsNum},
+	}
+	for i, ts := range tt {
+		ch, err := getWatchChan(c, ts.args)
+		require.ErrorIsf(t, err, ts.err, "#%d: error expected %v, got %v", i, ts.err, err)
+		require.Equalf(t, ts.err == nil, ch != nil, "#%d: unexpected watch channel %v", i, ch)
+	}
+}
 
 func Test_parseWatchArgs(t *testing.T) {
 	tt := []struct {
