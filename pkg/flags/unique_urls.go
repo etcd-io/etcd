@@ -93,5 +93,10 @@ func UniqueURLsFromFlag(fs *flag.FlagSet, urlsFlagName string) []url.URL {
 
 // UniqueURLsMapFromFlag returns a map from url strings got from the flag.
 func UniqueURLsMapFromFlag(fs *flag.FlagSet, urlsFlagName string) map[string]struct{} {
-	return (*fs.Lookup(urlsFlagName).Value.(*UniqueURLs)).Values
+	values := (*fs.Lookup(urlsFlagName).Value.(*UniqueURLs)).Values
+	cp := make(map[string]struct{}, len(values))
+	for v := range values {
+		cp[v] = struct{}{}
+	}
+	return cp
 }
