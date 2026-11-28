@@ -275,3 +275,19 @@ func TestJWTBad(t *testing.T) {
 func testJWTOpts() string {
 	return fmt.Sprintf("%s,pub-key=%s,priv-key=%s,sign-method=RS256", tokenTypeJWT, jwtRSAPubKey, jwtRSAPrivKey)
 }
+
+func TestJWTInfoPreservesLargeRevision(t *testing.T) {
+	provider := &tokenJWT{
+		lg:         zap.NewNop(),
+		signMethod: jwt.SigningMethodHS256,
+		key:        []byte("test secret"),
+		ttl:        time.Minute,
+	}
+	const revision uint64 = 1<<53 + 1
+	token, err := provider.assign(t.Context(), "user", revision)
+	require.NoError(t, err)
+
+	info, ok := provider.info(t.Context(), token, 0)
+	require.True(t, ok)
+	require.Equal(t, revision, info.Revision)
+}
