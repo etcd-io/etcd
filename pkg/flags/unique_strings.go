@@ -74,5 +74,10 @@ func UniqueStringsFromFlag(fs *flag.FlagSet, flagName string) []string {
 
 // UniqueStringsMapFromFlag returns a map of strings from the flag.
 func UniqueStringsMapFromFlag(fs *flag.FlagSet, flagName string) map[string]struct{} {
-	return (*fs.Lookup(flagName).Value.(*UniqueStringsValue)).Values
+	values := (*fs.Lookup(flagName).Value.(*UniqueStringsValue)).Values
+	cp := make(map[string]struct{}, len(values))
+	for v := range values {
+		cp[v] = struct{}{}
+	}
+	return cp
 }

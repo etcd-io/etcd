@@ -15,6 +15,7 @@
 package flags
 
 import (
+	"flag"
 	"reflect"
 	"testing"
 
@@ -63,4 +64,15 @@ func TestNewUniqueStrings(t *testing.T) {
 		require.Truef(t, reflect.DeepEqual(tests[i].exp, uv.Values), "#%d: expected %+v, got %+v", i, tests[i].exp, uv.Values)
 		require.Equalf(t, uv.String(), tests[i].rs, "#%d: expected %q, got %q", i, tests[i].rs, uv.String())
 	}
+}
+
+func TestUniqueStringsMapFromFlagReturnsCopy(t *testing.T) {
+	uv := NewUniqueStringsValue("a,b")
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	fs.Var(uv, "names", "")
+
+	m := UniqueStringsMapFromFlag(fs, "names")
+	delete(m, "a")
+
+	require.Contains(t, UniqueStringsMapFromFlag(fs, "names"), "a", "caller must not be able to mutate the flag's internal map")
 }
