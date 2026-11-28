@@ -52,7 +52,7 @@ func (*passthroughQuota) Cost(any) int       { return 0 }
 func (*passthroughQuota) Remaining() int64   { return 1 }
 
 type BackendQuota struct {
-	be              backend.Backend
+	be              func() backend.Backend
 	maxBackendBytes int64
 }
 
@@ -72,7 +72,7 @@ var (
 )
 
 // NewBackendQuota creates a quota layer with the given storage limit.
-func NewBackendQuota(lg *zap.Logger, quotaBackendBytesCfg int64, be backend.Backend, name string) Quota {
+func NewBackendQuota(lg *zap.Logger, quotaBackendBytesCfg int64, be func() backend.Backend, name string) Quota {
 	quotaBackendBytes.Set(float64(quotaBackendBytesCfg))
 	if quotaBackendBytesCfg < 0 {
 		// disable quotas if negative
@@ -130,7 +130,7 @@ func (b *BackendQuota) Available(v any) bool {
 		return true
 	}
 	// TODO: maybe optimize Backend.Size()
-	return b.be.Size()+int64(cost) < b.maxBackendBytes
+	return b.be().Size()+int64(cost) < b.maxBackendBytes
 }
 
 func (b *BackendQuota) Cost(v any) int {
@@ -174,5 +174,5 @@ func costTxn(r *pb.TxnRequest) int {
 }
 
 func (b *BackendQuota) Remaining() int64 {
-	return b.maxBackendBytes - b.be.Size()
+	return b.maxBackendBytes - b.be().Size()
 }

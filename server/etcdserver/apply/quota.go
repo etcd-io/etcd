@@ -30,7 +30,9 @@ type quotaApplierV3 struct {
 }
 
 func newQuotaApplierV3(lg *zap.Logger, quotaBackendBytesCfg int64, be backend.Backend, app applierV3) applierV3 {
-	return &quotaApplierV3{app, serverstorage.NewBackendQuota(lg, quotaBackendBytesCfg, be, "v3-applier")}
+	currentBackend := func() backend.Backend { return be }
+	quota := serverstorage.NewBackendQuota(lg, quotaBackendBytesCfg, currentBackend, "v3-applier")
+	return &quotaApplierV3{app, quota}
 }
 
 func (a *quotaApplierV3) Put(p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {

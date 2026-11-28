@@ -18,8 +18,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
 func TestCostTxn(t *testing.T) {
@@ -75,6 +77,53 @@ func TestCostTxn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.want, costTxn(tt.req))
+		})
+	}
+}
+
+type sizeOnlyBackend struct {
+	backend.Backend
+	size int64
+}
+
+func (b *sizeOnlyBackend) Size() int64 { return b.size }
+
+func TestBackendQuotaFollowsCurrentBackend(t *testing.T) {
+	const quotaBytes = int64(1024 * 1024)
+	put := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+
+	tests := []struct {
+		name       string
+		sizeBefore int64
+		sizeAfter  int64
+		wantBefore bool
+		wantAfter  bool
+	}{
+		{
+			name:       "full backend replaced by a small one",
+			sizeBefore: quotaBytes,
+			sizeAfter:  4096,
+			wantBefore: false,
+			wantAfter:  true,
+		},
+		{
+			name:       "small backend replaced by a full one",
+			sizeBefore: 4096,
+			sizeAfter:  quotaBytes,
+			wantBefore: true,
+			wantAfter:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var current backend.Backend = &sizeOnlyBackend{size: tt.sizeBefore}
+			q := NewBackendQuota(zaptest.NewLogger(t), quotaBytes, func() backend.Backend { return current }, "test")
+			require.Equal(t, tt.wantBefore, q.Available(put))
+
+			current = &sizeOnlyBackend{size: tt.sizeAfter}
+			require.Equal(t, tt.wantAfter, q.Available(put))
+			require.Equal(t, quotaBytes-tt.sizeAfter, q.Remaining())
 		})
 	}
 }
