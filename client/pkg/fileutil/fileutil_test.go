@@ -177,3 +177,11 @@ func TestTouchDirAll(t *testing.T) {
 
 	assert.NoError(t, TouchDirAll(zaptest.NewLogger(t), tmpdir))
 }
+
+func TestListFilesSkipsWalkErrors(t *testing.T) {
+	// A missing root makes filepath.Walk call the callback with a non-nil
+	// error and a nil FileInfo; such a path must not be reported as a file.
+	files, err := ListFiles(filepath.Join(os.TempDir(), "etcd-listfiles-does-not-exist"), func(string) bool { return true })
+	require.Error(t, err)
+	assert.Empty(t, files)
+}
