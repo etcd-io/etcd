@@ -10,6 +10,7 @@ package gw
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"io"
@@ -29,6 +30,7 @@ import (
 var (
 	_ codes.Code
 	_ io.Reader
+	_ json.Token
 	_ status.Status
 	_ = errors.New
 	_ = runtime.String
@@ -41,8 +43,14 @@ func request_Election_Campaign_0(ctx context.Context, marshaler runtime.Marshale
 		protoReq v3electionpb.CampaignRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	dec := marshaler.NewDecoder(req.Body)
+	if err := dec.Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if td, ok := dec.(interface{ Token() (json.Token, error) }); ok {
+		if _, err := td.Token(); !errors.Is(err, io.EOF) {
+			return nil, metadata, status.Error(codes.InvalidArgument, "unexpected data after request body")
+		}
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
@@ -56,8 +64,14 @@ func local_request_Election_Campaign_0(ctx context.Context, marshaler runtime.Ma
 		protoReq v3electionpb.CampaignRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	dec := marshaler.NewDecoder(req.Body)
+	if err := dec.Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if td, ok := dec.(interface{ Token() (json.Token, error) }); ok {
+		if _, err := td.Token(); !errors.Is(err, io.EOF) {
+			return nil, metadata, status.Error(codes.InvalidArgument, "unexpected data after request body")
+		}
 	}
 	msg, err := server.Campaign(ctx, &protoReq)
 	return msg, metadata, err
@@ -68,8 +82,14 @@ func request_Election_Proclaim_0(ctx context.Context, marshaler runtime.Marshale
 		protoReq v3electionpb.ProclaimRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	dec := marshaler.NewDecoder(req.Body)
+	if err := dec.Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if td, ok := dec.(interface{ Token() (json.Token, error) }); ok {
+		if _, err := td.Token(); !errors.Is(err, io.EOF) {
+			return nil, metadata, status.Error(codes.InvalidArgument, "unexpected data after request body")
+		}
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
@@ -83,8 +103,14 @@ func local_request_Election_Proclaim_0(ctx context.Context, marshaler runtime.Ma
 		protoReq v3electionpb.ProclaimRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	dec := marshaler.NewDecoder(req.Body)
+	if err := dec.Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if td, ok := dec.(interface{ Token() (json.Token, error) }); ok {
+		if _, err := td.Token(); !errors.Is(err, io.EOF) {
+			return nil, metadata, status.Error(codes.InvalidArgument, "unexpected data after request body")
+		}
 	}
 	msg, err := server.Proclaim(ctx, &protoReq)
 	return msg, metadata, err
@@ -95,8 +121,14 @@ func request_Election_Leader_0(ctx context.Context, marshaler runtime.Marshaler,
 		protoReq v3electionpb.LeaderRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	dec := marshaler.NewDecoder(req.Body)
+	if err := dec.Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if td, ok := dec.(interface{ Token() (json.Token, error) }); ok {
+		if _, err := td.Token(); !errors.Is(err, io.EOF) {
+			return nil, metadata, status.Error(codes.InvalidArgument, "unexpected data after request body")
+		}
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
@@ -110,8 +142,14 @@ func local_request_Election_Leader_0(ctx context.Context, marshaler runtime.Mars
 		protoReq v3electionpb.LeaderRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	dec := marshaler.NewDecoder(req.Body)
+	if err := dec.Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if td, ok := dec.(interface{ Token() (json.Token, error) }); ok {
+		if _, err := td.Token(); !errors.Is(err, io.EOF) {
+			return nil, metadata, status.Error(codes.InvalidArgument, "unexpected data after request body")
+		}
 	}
 	msg, err := server.Leader(ctx, &protoReq)
 	return msg, metadata, err
@@ -122,8 +160,14 @@ func request_Election_Observe_0(ctx context.Context, marshaler runtime.Marshaler
 		protoReq v3electionpb.LeaderRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	dec := marshaler.NewDecoder(req.Body)
+	if err := dec.Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if td, ok := dec.(interface{ Token() (json.Token, error) }); ok {
+		if _, err := td.Token(); !errors.Is(err, io.EOF) {
+			return nil, metadata, status.Error(codes.InvalidArgument, "unexpected data after request body")
+		}
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
@@ -145,8 +189,14 @@ func request_Election_Resign_0(ctx context.Context, marshaler runtime.Marshaler,
 		protoReq v3electionpb.ResignRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	dec := marshaler.NewDecoder(req.Body)
+	if err := dec.Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if td, ok := dec.(interface{ Token() (json.Token, error) }); ok {
+		if _, err := td.Token(); !errors.Is(err, io.EOF) {
+			return nil, metadata, status.Error(codes.InvalidArgument, "unexpected data after request body")
+		}
 	}
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
@@ -160,8 +210,14 @@ func local_request_Election_Resign_0(ctx context.Context, marshaler runtime.Mars
 		protoReq v3electionpb.ResignRequest
 		metadata runtime.ServerMetadata
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	dec := marshaler.NewDecoder(req.Body)
+	if err := dec.Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if td, ok := dec.(interface{ Token() (json.Token, error) }); ok {
+		if _, err := td.Token(); !errors.Is(err, io.EOF) {
+			return nil, metadata, status.Error(codes.InvalidArgument, "unexpected data after request body")
+		}
 	}
 	msg, err := server.Resign(ctx, &protoReq)
 	return msg, metadata, err
