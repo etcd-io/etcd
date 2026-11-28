@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -286,7 +287,18 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 	)
 
 	for _, host := range hosts {
-		h, _, _ := net.SplitHostPort(host)
+		h := host
+		if strings.Contains(h, "://") {
+			if u, err := url.Parse(h); err == nil {
+				h = u.Host
+			}
+		}
+		if splitHost, _, err := net.SplitHostPort(h); err == nil {
+			h = splitHost
+		}
+		if h == "" {
+			continue
+		}
 		if ip := net.ParseIP(h); ip != nil {
 			tmpl.IPAddresses = append(tmpl.IPAddresses, ip)
 		} else {

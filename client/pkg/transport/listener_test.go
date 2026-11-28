@@ -512,6 +512,39 @@ func TestNewListenerTLSInfoSelfCert(t *testing.T) {
 	}, "expected panic with nil log")
 }
 
+func TestSelfCertHosts(t *testing.T) {
+	hosts := []string{
+		"127.0.0.1",
+		"127.0.0.2:2379",
+		"[::1]:2379",
+		"localhost",
+		"example.com:2379",
+		"https://127.0.0.3:2379",
+		"https://etcd.example.com:2379",
+		":2379",
+		"",
+	}
+	tlsinfo, err := SelfCert(zaptest.NewLogger(t), t.TempDir(), hosts, 1)
+	require.NoError(t, err)
+
+	certPEM, err := os.ReadFile(tlsinfo.CertFile)
+	require.NoError(t, err)
+	block, _ := pem.Decode(certPEM)
+	require.NotNil(t, block)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	require.NoError(t, err)
+
+	wantDNS := []string{"localhost", "example.com", "etcd.example.com"}
+	assert.Equal(t, wantDNS, cert.DNSNames)
+
+	var gotIPs []string
+	for _, ip := range cert.IPAddresses {
+		gotIPs = append(gotIPs, ip.String())
+	}
+	wantIPs := []string{"127.0.0.1", "127.0.0.2", "::1", "127.0.0.3"}
+	assert.Equal(t, wantIPs, gotIPs)
+}
+
 func TestIsClosedConnError(t *testing.T) {
 	l, err := NewListener("testsocket", "unix", nil)
 	if err != nil {
