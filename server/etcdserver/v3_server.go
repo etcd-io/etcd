@@ -23,8 +23,6 @@ import (
 	"strconv"
 	"time"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/protobuf/proto"
@@ -105,20 +103,13 @@ type Authenticator interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	var span trace.Span
-	ctx, span = traceutil.Tracer.Start(ctx, "range", trace.WithAttributes(
-		attribute.String("range_begin", string(r.GetKey())),
-		attribute.String("range_end", string(r.GetRangeEnd())),
-		attribute.Int64("rev", r.GetRevision()),
-		attribute.Int64("limit", r.GetLimit()),
-		attribute.Bool("count_only", r.GetCountOnly()),
-		attribute.Bool("keys_only", r.GetKeysOnly()),
-	))
-	defer span.End()
-
 	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "range",
-		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
-		traceutil.Field{Key: "range_end", Value: string(r.RangeEnd)},
+		traceutil.Field{Key: "range_begin", Value: string(r.GetKey())},
+		traceutil.Field{Key: "range_end", Value: string(r.GetRangeEnd())},
+		traceutil.Field{Key: "rev", Value: r.GetRevision()},
+		traceutil.Field{Key: "limit", Value: r.GetLimit()},
+		traceutil.Field{Key: "count_only", Value: r.GetCountOnly()},
+		traceutil.Field{Key: "keys_only", Value: r.GetKeysOnly()},
 	)
 
 	var resp *pb.RangeResponse
@@ -157,20 +148,14 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 
 func (s *EtcdServer) RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error {
 	ctx := rs.Context()
-	var span trace.Span
-	ctx, span = traceutil.Tracer.Start(ctx, "range_streaming", trace.WithAttributes(
-		attribute.String("range_begin", string(r.GetKey())),
-		attribute.String("range_end", string(r.GetRangeEnd())),
-		attribute.Int64("rev", r.GetRevision()),
-		attribute.Int64("limit", r.GetLimit()),
-		attribute.Bool("count_only", r.GetCountOnly()),
-	))
-	defer span.End()
-
 	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "range_streaming",
-		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
-		traceutil.Field{Key: "range_end", Value: string(r.RangeEnd)},
+		traceutil.Field{Key: "range_begin", Value: string(r.GetKey())},
+		traceutil.Field{Key: "range_end", Value: string(r.GetRangeEnd())},
+		traceutil.Field{Key: "rev", Value: r.GetRevision()},
+		traceutil.Field{Key: "limit", Value: r.GetLimit()},
+		traceutil.Field{Key: "count_only", Value: r.GetCountOnly()},
 	)
+	defer trace.LogIfLong(traceThreshold)
 
 	if !r.Serializable {
 		err := s.read.LinearizableReadNotify(ctx)
@@ -294,11 +279,10 @@ func adjustChunkLimit(lastLimit int64, lastSize, targetSize int) int64 {
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
-	var span trace.Span
-	ctx, span = traceutil.Tracer.Start(ctx, "put", trace.WithAttributes(
-		attribute.String("key", string(r.GetKey())),
-	))
-	defer span.End()
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "put",
+		traceutil.Field{Key: "key", Value: string(r.GetKey())},
+	)
+	defer trace.End()
 
 	ctx = context.WithValue(ctx, traceutil.StartTimeKey{}, time.Now())
 	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{Put: r})
@@ -309,12 +293,11 @@ func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse
 }
 
 func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	var span trace.Span
-	ctx, span = traceutil.Tracer.Start(ctx, "delete_range", trace.WithAttributes(
-		attribute.String("range_begin", string(r.GetKey())),
-		attribute.String("range_end", string(r.GetRangeEnd())),
-	))
-	defer span.End()
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "delete_range",
+		traceutil.Field{Key: "range_begin", Value: string(r.GetKey())},
+		traceutil.Field{Key: "range_end", Value: string(r.GetRangeEnd())},
+	)
+	defer trace.End()
 
 	resp, err := s.raftRequest(ctx, &pb.InternalRaftRequest{DeleteRange: r})
 	if err != nil {
@@ -326,22 +309,18 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
 	readOnly := txn.IsTxnReadonly(r)
 
-	var span trace.Span
-	ctx, span = traceutil.Tracer.Start(ctx, "txn", trace.WithAttributes(
-		attribute.String("compare_first_key", firstCompareKey(r.GetCompare())),
-		attribute.String("success_first_key", firstOpKey(r.GetSuccess())),
-		attribute.String("success_first_type", firstOpType(r.GetSuccess())),
-		attribute.Int64("success_first_lease", firstOpLease(r.GetSuccess())),
-		attribute.Int("compare_len", len(r.GetCompare())),
-		attribute.Int("success_len", len(r.GetSuccess())),
-		attribute.Int("failure_len", len(r.GetFailure())),
-		attribute.Bool("read_only", readOnly),
-	))
-	defer span.End()
-
-	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "transaction",
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "txn",
+		traceutil.Field{Key: "compare_first_key", Value: firstCompareKey(r.GetCompare())},
+		traceutil.Field{Key: "success_first_key", Value: firstOpKey(r.GetSuccess())},
+		traceutil.Field{Key: "success_first_type", Value: firstOpType(r.GetSuccess())},
+		traceutil.Field{Key: "success_first_lease", Value: firstOpLease(r.GetSuccess())},
+		traceutil.Field{Key: "compare_len", Value: len(r.GetCompare())},
+		traceutil.Field{Key: "success_len", Value: len(r.GetSuccess())},
+		traceutil.Field{Key: "failure_len", Value: len(r.GetFailure())},
 		traceutil.Field{Key: "read_only", Value: readOnly},
 	)
+	defer trace.End()
+
 	if readOnly {
 		if !txn.IsTxnSerializable(r) {
 			err := s.read.LinearizableReadNotify(ctx)
@@ -381,15 +360,13 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 }
 
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
-	var span trace.Span
-	ctx, span = traceutil.Tracer.Start(ctx, "compact", trace.WithAttributes(
-		attribute.Bool("is_physical", r.GetPhysical()),
-		attribute.Int64("rev", r.GetRevision()),
-	))
-	defer span.End()
-
 	startTime := time.Now()
-	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "compact")
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "compact",
+		traceutil.Field{Key: "is_physical", Value: r.GetPhysical()},
+		traceutil.Field{Key: "rev", Value: r.GetRevision()},
+	)
+	defer trace.End()
+
 	result, err := s.processInternalRaftRequestOnce(ctx, &pb.InternalRaftRequest{Compaction: r})
 	if result != nil && result.Trace != nil {
 		trace = result.Trace
@@ -438,12 +415,11 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 		// only use positive int64 id's
 		r.ID = int64(s.reqIDGen.Next() & ((1 << 63) - 1))
 	}
-	var span trace.Span
-	ctx, span = traceutil.Tracer.Start(ctx, "lease_grant", trace.WithAttributes(
-		attribute.Int64("id", r.ID),
-		attribute.Int64("ttl", r.GetTTL()),
-	))
-	defer span.End()
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "lease_grant",
+		traceutil.Field{Key: "id", Value: r.ID},
+		traceutil.Field{Key: "ttl", Value: r.GetTTL()},
+	)
+	defer trace.End()
 
 	if err := s.requireAuthInfo(ctx); err != nil {
 		return nil, err
@@ -469,11 +445,10 @@ func (s *EtcdServer) waitAppliedIndex() error {
 }
 
 func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	var span trace.Span
-	ctx, span = traceutil.Tracer.Start(ctx, "lease_revoke", trace.WithAttributes(
-		attribute.Int64("id", r.GetID()),
-	))
-	defer span.End()
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "lease_revoke",
+		traceutil.Field{Key: "id", Value: r.GetID()},
+	)
+	defer trace.End()
 
 	if err := s.requireAuthInfo(ctx); err != nil {
 		return nil, err
@@ -487,11 +462,10 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 }
 
 func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error) {
-	var span trace.Span
-	ctx, span = traceutil.Tracer.Start(ctx, "lease_renew", trace.WithAttributes(
-		attribute.Int64("id", int64(id)),
-	))
-	defer span.End()
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "lease_renew",
+		traceutil.Field{Key: "id", Value: int64(id)},
+	)
+	defer trace.End()
 
 	if s.isLeader() {
 		// If s.isLeader() returns true, but we fail to ensure the current
@@ -1014,7 +988,7 @@ func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest
 func (s *EtcdServer) raftRequest(ctx context.Context, r *pb.InternalRaftRequest) (proto.Message, error) {
 	result, err := s.processInternalRaftRequestOnce(ctx, r)
 	if err != nil {
-		trace.SpanFromContext(ctx).RecordError(err)
+		traceutil.Get(ctx).RecordError(err)
 		return nil, err
 	}
 	if result.Err != nil {
@@ -1110,8 +1084,8 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r *pb.I
 	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
 	defer cancel()
 
-	span := trace.SpanFromContext(ctx)
-	span.AddEvent("Send raft proposal")
+	trace := traceutil.Get(ctx)
+	trace.Step("Send raft proposal")
 	err = s.r.Propose(cctx, data)
 	if err != nil {
 		proposalsFailed.Inc()
@@ -1123,7 +1097,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r *pb.I
 
 	select {
 	case x := <-ch:
-		span.AddEvent("Receive raft result")
+		trace.Step("Receive raft result")
 		return x.(*apply2.Result), nil
 	case <-cctx.Done():
 		proposalsFailed.Inc()
