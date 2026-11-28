@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"bytes"
 	"sync"
 
 	"go.uber.org/zap"
@@ -177,7 +178,7 @@ func (ti *treeIndex) Range(key, end []byte, atRev int64, limit int, withTotalCou
 		if modified, created, version, err := ki.get(ti.lg, atRev); err == nil {
 			if !reachedLimit {
 				modifies = append(modifies, modified)
-				keys = append(keys, ki.key)
+				keys = append(keys, bytes.Clone(ki.key))
 				creates = append(creates, created)
 				versions = append(versions, version)
 			}

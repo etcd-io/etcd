@@ -254,6 +254,30 @@ func TestStoreRange(t *testing.T) {
 	}
 }
 
+func TestFastKeysOnlyRangeDoesNotExposeIndexKey(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+	got, err := s.Range(t.Context(), []byte("foo"), []byte("fop"), RangeOptions{FastKeysOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.KVs) != 1 || string(got.KVs[0].Key) != "foo" {
+		t.Fatalf("fast keys-only range = %+v, want key foo", got.KVs)
+	}
+	got.KVs[0].Key[0] = 'b'
+
+	got, err = s.Range(t.Context(), []byte("foo"), nil, RangeOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.KVs) != 1 || string(got.KVs[0].Value) != "bar" {
+		t.Fatalf("ordinary range after mutating keys-only result = %+v, want key foo/value bar", got.KVs)
+	}
+}
+
 func TestStoreDeleteRange(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	key := newTestRevBytes(Revision{Main: 2})
