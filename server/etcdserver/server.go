@@ -839,6 +839,14 @@ func (s *EtcdServer) run() {
 		case ap := <-s.r.apply():
 			f := schedule.NewJob("server_applyAll", func(context.Context) { s.applyAll(&ep, &ap) })
 			sched.Schedule(f)
+		case m := <-s.r.msgSnapC:
+			// snapshot requested via send(). Scheduled after the queued applies,
+			// since it captures the applied state.
+			f := schedule.NewJob("server_sendMergedSnap", func(context.Context) {
+				merged := s.createMergedSnapshotMessage(m, ep.appliedt, ep.appliedi, ep.confState)
+				s.sendMergedSnap(merged)
+			})
+			sched.Schedule(f)
 		case leases := <-expiredLeaseC:
 			s.revokeExpiredLeases(leases)
 		case err := <-s.errorc:
@@ -988,14 +996,11 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	// storage, since the raft routine might be slower than toApply routine.
 	<-apply.notifyc
 
-	s.snapshotIfNeededAndCompactRaftLog(ep)
-	select {
-	// snapshot requested via send()
-	case m := <-s.r.msgSnapC:
-		merged := s.createMergedSnapshotMessage(m, ep.appliedt, ep.appliedi, ep.confState)
-		s.sendMergedSnap(merged)
-	default:
+	if apply.onApplyCompleted != nil {
+		apply.onApplyCompleted()
 	}
+
+	s.snapshotIfNeededAndCompactRaftLog(ep)
 }
 
 func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
@@ -2097,6 +2102,12 @@ func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 		// So KV().Commit() cannot run in parallel with toApply. It has to be called outside
 		// the go routine created below.
 		s.KV().Commit()
+
+		// Raft cannot restart from a WAL snapshot entry ahead of the WAL commit index.
+		s.r.waitForCommitSaved(ep.appliedi)
+		// Keep the WAL snapshot entries in index order, see snapshotMu.
+		s.r.snapshotMu.Lock()
+		defer s.r.snapshotMu.Unlock()
 	}
 
 	snap, err := s.r.raftStorage.CreateSnapshot(ep.appliedi, ep.confState, nil)

@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -53,11 +54,27 @@ type injectFailure func(ctx context.Context, t *testing.T, clus *e2e.EtcdProcess
 func TestHTTPHealthHandler(t *testing.T) {
 	e2e.BeforeTest(t)
 	client := &http.Client{}
+	// A stuck Raft loop no longer serves ReadIndex, so only serializable checks pass.
+	raftLoopStuckChecks := []healthCheckConfig{
+		{
+			// current kubeadm etcd liveness check failed to detect raft loop deadlock in steady state
+			// ref. https://github.com/kubernetes/kubernetes/blob/master/cmd/kubeadm/app/phases/etcd/local.go#L225-L226
+			// current liveness probe depends on the etcd /health check has a flaw that new /livez check should resolve.
+			url:                "/health?serializable=true",
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			url:                  "/health?serializable=false",
+			expectedTimeoutError: true,
+		},
+	}
 	tcs := []struct {
 		name           string
 		injectFailure  injectFailure
 		clusterOptions []e2e.EPClusterOption
 		healthChecks   []healthCheckConfig
+		// syncStorageWritesOnly skips the case with asynchronous Raft storage writes.
+		syncStorageWritesOnly bool
 	}{
 		{
 			name:           "no failures", // happy case
@@ -120,19 +137,20 @@ func TestHTTPHealthHandler(t *testing.T) {
 			name:           "raft loop deadlock",
 			injectFailure:  triggerRaftLoopDeadLock,
 			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true)},
-			healthChecks: []healthCheckConfig{
-				{
-					// current kubeadm etcd liveness check failed to detect raft loop deadlock in steady state
-					// ref. https://github.com/kubernetes/kubernetes/blob/master/cmd/kubeadm/app/phases/etcd/local.go#L225-L226
-					// current liveness probe depends on the etcd /health check has a flaw that new /livez check should resolve.
-					url:                "/health?serializable=true",
-					expectedStatusCode: http.StatusOK,
-				},
-				{
-					url:                  "/health?serializable=false",
-					expectedTimeoutError: true,
-				},
-			},
+			healthChecks:   raftLoopStuckChecks,
+		},
+		{
+			name:           "raft loop deadlock with async storage writes",
+			injectFailure:  triggerRaftLoopDeadLock,
+			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true), e2e.WithServerFeatureGate(string(features.RaftAsyncStorageWrites), true)},
+			healthChecks:   raftLoopStuckChecks,
+		},
+		{
+			name:                  "disk stall",
+			injectFailure:         triggerDiskStall,
+			clusterOptions:        []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true)},
+			healthChecks:          raftLoopStuckChecks,
+			syncStorageWritesOnly: true, // TODO: see triggerDiskStall.
 		},
 		// verify that auth enabled serializable read must go through mvcc
 		{
@@ -150,6 +168,9 @@ func TestHTTPHealthHandler(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.syncStorageWritesOnly {
+				skipIfRaftAsyncStorageWrites(t, tc.clusterOptions...)
+			}
 			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 			defer cancel()
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, tc.clusterOptions...)
@@ -201,11 +222,25 @@ var defaultHealthCheckConfigs = []healthCheckConfig{
 func TestHTTPLivezReadyzHandler(t *testing.T) {
 	e2e.BeforeTest(t)
 	client := &http.Client{}
+	// TODO expected behavior of livez check should be 503 or timeout after RaftLoopDeadLock check is implemented.
+	raftLoopStuckChecks := []healthCheckConfig{
+		{
+			url:                "/livez",
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			url:                  "/readyz",
+			expectedTimeoutError: true,
+			expectedStatusCode:   http.StatusServiceUnavailable,
+		},
+	}
 	tcs := []struct {
 		name           string
 		injectFailure  injectFailure
 		clusterOptions []e2e.EPClusterOption
 		healthChecks   []healthCheckConfig
+		// syncStorageWritesOnly skips the case with asynchronous Raft storage writes.
+		syncStorageWritesOnly bool
 	}{
 		{
 			name:           "no failures", // happy case
@@ -260,18 +295,20 @@ func TestHTTPLivezReadyzHandler(t *testing.T) {
 			name:           "raft loop deadlock",
 			injectFailure:  triggerRaftLoopDeadLock,
 			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true)},
-			// TODO expected behavior of livez check should be 503 or timeout after RaftLoopDeadLock check is implemented.
-			healthChecks: []healthCheckConfig{
-				{
-					url:                "/livez",
-					expectedStatusCode: http.StatusOK,
-				},
-				{
-					url:                  "/readyz",
-					expectedTimeoutError: true,
-					expectedStatusCode:   http.StatusServiceUnavailable,
-				},
-			},
+			healthChecks:   raftLoopStuckChecks,
+		},
+		{
+			name:           "raft loop deadlock with async storage writes",
+			injectFailure:  triggerRaftLoopDeadLock,
+			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true), e2e.WithServerFeatureGate(string(features.RaftAsyncStorageWrites), true)},
+			healthChecks:   raftLoopStuckChecks,
+		},
+		{
+			name:                  "disk stall",
+			injectFailure:         triggerDiskStall,
+			clusterOptions:        []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true)},
+			healthChecks:          raftLoopStuckChecks,
+			syncStorageWritesOnly: true, // TODO: see triggerDiskStall.
 		},
 		// verify that auth enabled serializable read must go through mvcc
 		{
@@ -313,6 +350,9 @@ func TestHTTPLivezReadyzHandler(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.syncStorageWritesOnly {
+				skipIfRaftAsyncStorageWrites(t, tc.clusterOptions...)
+			}
 			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 			defer cancel()
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, tc.clusterOptions...)
@@ -387,7 +427,23 @@ func blackhole(_ context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, _ 
 	proxy.BlackholeRx()
 }
 
+// triggerRaftLoopDeadLock makes the Raft loop hang. The leader sends its
+// messages from the Raft loop on every Ready, with synchronous and asynchronous
+// Raft storage writes alike.
 func triggerRaftLoopDeadLock(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, duration time.Duration) {
+	require.NoError(t, clus.Procs[0].Failpoints().SetupHTTP(ctx, "raftBeforeLeaderSend", fmt.Sprintf(`sleep("%s")`, duration)))
+	clus.Procs[0].Etcdctl().Put(context.Background(), "foo", "bar", config.PutOptions{Timeout: putCommandTimeout})
+}
+
+// triggerDiskStall makes the next write to the WAL hang.
+//
+// TODO: the disk stall cases only hold with synchronous Raft storage writes,
+// where the Raft loop writes the WAL itself, so a hanging write stops it. With
+// asynchronous storage writes, the append worker writes the WAL while the Raft
+// loop keeps serving ReadIndex, so the linearizable health checks still pass.
+// The cases are skipped then, until we decide how a stalled disk should show up
+// in the health checks.
+func triggerDiskStall(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, duration time.Duration) {
 	require.NoError(t, clus.Procs[0].Failpoints().SetupHTTP(ctx, "raftBeforeSave", fmt.Sprintf(`sleep("%s")`, duration)))
 	clus.Procs[0].Etcdctl().Put(context.Background(), "foo", "bar", config.PutOptions{Timeout: putCommandTimeout})
 }

@@ -106,6 +106,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 		{
 			name: "default",
 			expectedFeatures: map[featuregate.Feature]bool{
+				features.RaftAsyncStorageWrites:       true, // TODO: temporary, to validate in CI
 				features.StopGRPCServiceOnDefrag:      false,
 				features.InitialCorruptCheck:          false,
 				features.TxnModeWriteWithSharedBuffer: true,
@@ -119,6 +120,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			name:                   "can set feature gate StopGRPCServiceOnDefrag to true from feature gate flag",
 			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=true",
 			expectedFeatures: map[featuregate.Feature]bool{
+				features.RaftAsyncStorageWrites:       true, // TODO: temporary, to validate in CI
 				features.StopGRPCServiceOnDefrag:      true,
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           true,
@@ -129,6 +131,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			name:                   "can set feature gate InitialCorruptCheck to true from feature gate flag",
 			serverFeatureGatesJSON: "InitialCorruptCheck=true",
 			expectedFeatures: map[featuregate.Feature]bool{
+				features.RaftAsyncStorageWrites:       true, // TODO: temporary, to validate in CI
 				features.InitialCorruptCheck:          true,
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           true,
@@ -139,6 +142,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			name:                   "can set feature gate StopGRPCServiceOnDefrag to false from feature gate flag",
 			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=false",
 			expectedFeatures: map[featuregate.Feature]bool{
+				features.RaftAsyncStorageWrites:       true, // TODO: temporary, to validate in CI
 				features.StopGRPCServiceOnDefrag:      false,
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           true,
@@ -149,6 +153,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			name:                   "can set feature gate TxnModeWriteWithSharedBuffer to true from feature gate flag",
 			serverFeatureGatesJSON: "TxnModeWriteWithSharedBuffer=true",
 			expectedFeatures: map[featuregate.Feature]bool{
+				features.RaftAsyncStorageWrites:       true, // TODO: temporary, to validate in CI
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           true,
 				features.NonBlockingDefrag:            true,
@@ -158,6 +163,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			name:                   "can set feature gate TxnModeWriteWithSharedBuffer to false from feature gate flag",
 			serverFeatureGatesJSON: "TxnModeWriteWithSharedBuffer=false",
 			expectedFeatures: map[featuregate.Feature]bool{
+				features.RaftAsyncStorageWrites:       true, // TODO: temporary, to validate in CI
 				features.TxnModeWriteWithSharedBuffer: false,
 				features.FastLeaseKeepAlive:           true,
 				features.NonBlockingDefrag:            true,
@@ -167,6 +173,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			name:                   "can set feature gate CompactHashCheck to true from feature gate flag",
 			serverFeatureGatesJSON: "CompactHashCheck=true",
 			expectedFeatures: map[featuregate.Feature]bool{
+				features.RaftAsyncStorageWrites:       true, // TODO: temporary, to validate in CI
 				features.CompactHashCheck:             true,
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           true,
@@ -177,6 +184,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			name:                   "can set feature gate LeaseCheckpoint and LeaseCheckpointPersist to true from feature gate flag",
 			serverFeatureGatesJSON: "LeaseCheckpointPersist=true,LeaseCheckpoint=true",
 			expectedFeatures: map[featuregate.Feature]bool{
+				features.RaftAsyncStorageWrites:       true, // TODO: temporary, to validate in CI
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.LeaseCheckpoint:              true,
 				features.LeaseCheckpointPersist:       true,
@@ -188,6 +196,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			name:                   "can set feature gate FastLeaseKeepAlive to true from feature gate flag",
 			serverFeatureGatesJSON: "FastLeaseKeepAlive=false",
 			expectedFeatures: map[featuregate.Feature]bool{
+				features.RaftAsyncStorageWrites:       true, // TODO: temporary, to validate in CI
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.FastLeaseKeepAlive:           false,
 				features.NonBlockingDefrag:            true,

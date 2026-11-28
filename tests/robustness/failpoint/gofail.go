@@ -63,8 +63,8 @@ var (
 	RaftAfterSaveSnapPanic                    Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	ApplyBeforeOpenSnapshot                   Failpoint = goPanicFailpoint{"applyBeforeOpenSnapshot", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	BeforeApplyOneConfChangeSleep             Failpoint = killAndGofailSleep{"beforeApplyOneConfChange", time.Second}
-	RaftBeforeSaveSleep                       Failpoint = gofailSleepAndDeactivate{"raftBeforeSave", time.Second}
-	RaftAfterSaveSleep                        Failpoint = gofailSleepAndDeactivate{"raftAfterSave", time.Second}
+	RaftBeforeSaveSleep                       Failpoint = storageStallFailpoint{gofailSleepAndDeactivate{"raftBeforeSave", time.Second}}
+	RaftAfterSaveSleep                        Failpoint = storageStallFailpoint{gofailSleepAndDeactivate{"raftAfterSave", time.Second}}
 	SleepBeforeSendWatchResponse              Failpoint = gofailSleepAndDeactivate{"beforeSendWatchResponse", time.Second}
 	SleepBeforeSyncWatchers                   Failpoint = gofailSleepAndDeactivate{"beforeSyncWatchers", time.Second}
 	SleepBeforeMoveVictims                    Failpoint = gofailSleepAndDeactivate{"beforeMoveVictims", time.Second}
@@ -95,6 +95,27 @@ type featureGatedFailpoint struct {
 
 func (f featureGatedFailpoint) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess, profile traffic.Profile) bool {
 	if config.ServerConfig.ServerFeatureGate.Enabled(f.feature) != f.enabled {
+		return false
+	}
+	return f.Failpoint.Available(config, member, profile)
+}
+
+// storageStallFailpoint wraps a Failpoint that stalls Raft storage writes, so
+// it's not reported as available on a cluster of one member with asynchronous
+// Raft storage writes.
+//
+// TODO: there, the member keeps serving reads while its storage writes stall,
+// so clients keep sending conditional writes that time out and are applied
+// once the stall ends. Most of them fail their comparison, which the
+// linearization check cannot tell as no watch event shows it, so the check
+// times out. Make it available again once the check resolves the outcome of
+// persisted failed writes by replaying the WAL.
+type storageStallFailpoint struct {
+	Failpoint
+}
+
+func (f storageStallFailpoint) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess, profile traffic.Profile) bool {
+	if config.ClusterSize == 1 && config.ServerConfig.ServerFeatureGate.Enabled(features.RaftAsyncStorageWrites) {
 		return false
 	}
 	return f.Failpoint.Available(config, member, profile)
