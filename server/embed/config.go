@@ -1087,7 +1087,9 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 		urlsmap, err = types.NewURLsMap(clusterStr)
 		// only etcd member must belong to the discovered cluster.
 		// proxy does not need to belong to the discovered cluster.
-		if which == "etcd" {
+		// Skip the membership check if parsing failed, otherwise the
+		// parse error is masked by a misleading "cannot find local etcd member" error.
+		if which == "etcd" && err == nil {
 			if _, ok := urlsmap[cfg.Name]; !ok {
 				return nil, "", fmt.Errorf("cannot find local etcd member %q in SRV records", cfg.Name)
 			}

@@ -598,6 +598,32 @@ func TestPeerURLsMapAndTokenFromSRV(t *testing.T) {
 	}
 }
 
+func TestPeerURLsMapAndTokenFromSRVInvalidURL(t *testing.T) {
+	defer func() { getCluster = srv.GetCluster }()
+
+	getCluster = func(serviceScheme string, service string, name string, dns string, apurls types.URLs) ([]string, error) {
+		if serviceScheme == "https" && service == "etcd-server-ssl" {
+			return []string{"1.example.com=ftp://1.example.com:2380"}, nil
+		}
+		return nil, notFoundErr(service, dns)
+	}
+
+	cfg := NewConfig()
+	cfg.Name = "1.example.com"
+	cfg.InitialCluster = ""
+	cfg.InitialClusterToken = ""
+	cfg.DNSCluster = "example.com"
+	cfg.AdvertisePeerUrls = types.MustNewURLs([]string{"https://1.example.com:2380"})
+	require.NoError(t, cfg.Validate())
+
+	_, _, err := cfg.PeerURLsMapAndToken("etcd")
+	require.Error(t, err)
+	// The real URL parsing error must be reported, not a misleading
+	// "cannot find local etcd member" error.
+	require.Contains(t, err.Error(), "URL scheme must be http, https, unix, or unixs")
+	require.NotContains(t, err.Error(), "cannot find local etcd member")
+}
+
 func TestLeaseCheckpointValidate(t *testing.T) {
 	tcs := []struct {
 		name               string
