@@ -6,6 +6,7 @@ toolchain go1.27.4
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/anishathalye/porcupine v1.3.1
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/dustin/go-humanize v1.1.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
