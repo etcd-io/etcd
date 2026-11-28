@@ -147,8 +147,14 @@ func (f *fifo) WaitFinish(n int) {
 }
 
 // Stop stops the scheduler and cancels all pending jobs.
+// It is safe to call Stop more than once.
 func (f *fifo) Stop() {
 	f.mu.Lock()
+	if f.cancel == nil {
+		f.mu.Unlock()
+		<-f.donec
+		return
+	}
 	f.cancel()
 	f.cancel = nil
 	f.mu.Unlock()
